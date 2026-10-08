@@ -1,0 +1,186 @@
+<!doctype html>
+<html lang="bn">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#176b3a">
+<meta name="description" content="NANDA Dairy & Agro Management App">
+<link rel="manifest" href="manifest.json">
+<title>NANDA Dairy & Agro</title>
+<style>
+:root{--green:#176b3a;--green2:#2c9655;--bg:#f3f7f4;--card:#fff;--text:#17221b;--muted:#68756d;--line:#e2e9e4;--red:#b42318;--amber:#a15c00;--blue:#175cd3;--shadow:0 3px 16px rgba(20,50,30,.08)}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,"Noto Sans Bengali",sans-serif}
+button,input,select,textarea{font:inherit}button{cursor:pointer}.hidden{display:none!important}
+.login{min-height:100vh;display:grid;place-items:center;padding:18px;background:linear-gradient(135deg,#e8f4eb,#f7fbf8)}
+.loginbox{width:min(430px,100%);background:#fff;padding:25px;border-radius:22px;box-shadow:0 10px 40px #174d2c18}
+.logo{font-size:30px;font-weight:900;color:var(--green)}.sub{color:var(--muted);margin-top:4px}
+.field{margin:12px 0}.field label{display:block;font-size:13px;color:var(--muted);margin-bottom:5px}
+input,select,textarea{width:100%;padding:11px 12px;border:1px solid #d7e0da;border-radius:10px;background:#fff;outline:none}
+input:focus,select:focus,textarea:focus{border-color:var(--green)}
+.btn{border:0;border-radius:10px;padding:10px 14px;font-weight:700}.primary{background:var(--green);color:#fff}.secondary{background:#edf5ef;color:var(--green)}.danger{background:#ffe9e7;color:var(--red)}.small{padding:7px 9px;font-size:12px}
+.top{position:sticky;top:0;z-index:20;background:linear-gradient(135deg,var(--green),var(--green2));color:white;padding:14px 16px;box-shadow:0 2px 12px #0002}
+.toprow{display:flex;justify-content:space-between;align-items:center;gap:10px}.brand{font-size:19px;font-weight:900}.role{font-size:12px;opacity:.85}
+.nav{position:sticky;top:63px;z-index:19;background:#fff;border-bottom:1px solid var(--line);display:flex;gap:7px;overflow:auto;padding:9px}.nav button{border:0;background:#eff5f1;color:var(--green);padding:9px 12px;border-radius:18px;white-space:nowrap;font-weight:700}.nav button.active{background:var(--green);color:#fff}
+main{max-width:1250px;margin:auto;padding:14px}.page{display:none}.page.active{display:block}
+h2{font-size:21px;margin:5px 0 15px}.section{background:var(--card);border-radius:16px;padding:15px;margin:0 0 14px;box-shadow:var(--shadow)}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px}.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(145px,1fr));gap:10px;margin-bottom:14px}.metric{font-size:24px;font-weight:900;margin-top:3px}.muted{font-size:12px;color:var(--muted)}
+table{width:100%;border-collapse:collapse}th,td{padding:9px 8px;border-bottom:1px solid var(--line);text-align:left;font-size:12px;white-space:nowrap}th{background:#f3f7f4;color:#425148}
+.tablewrap{overflow:auto}.pill{display:inline-block;padding:4px 8px;border-radius:20px;background:#eaf4ed;color:var(--green);font-size:11px;font-weight:700}.alert{padding:11px;border-radius:10px;margin:7px 0;background:#fff5df;color:#7b4a00}.alert.red{background:#ffe9e7;color:#9f1c13}.alert.green{background:#e8f7ed;color:#176b3a}
+.bar{height:9px;background:#e6eee8;border-radius:8px;overflow:hidden}.bar>i{display:block;height:100%;background:var(--green)}
+.toast{position:fixed;right:15px;bottom:15px;z-index:99;background:#18251d;color:#fff;padding:12px 15px;border-radius:10px;box-shadow:0 6px 25px #0003}
+.modal{position:fixed;inset:0;background:#0007;z-index:80;display:grid;place-items:center;padding:15px}.modalbox{background:#fff;width:min(700px,100%);max-height:90vh;overflow:auto;border-radius:18px;padding:18px}
+.footer{padding:20px;text-align:center;color:var(--muted);font-size:11px}
+@media(max-width:600px){main{padding:9px}.cards{grid-template-columns:repeat(2,1fr)}.metric{font-size:20px}.top{padding:12px}.nav{top:57px}}
+</style>
+</head>
+<body>
+<div id="login" class="login">
+  <div class="loginbox">
+    <div class="logo">🐄 NANDA Dairy & Agro</div>
+    <div class="sub">Farm Management • Milk Sales • Customers • Cattle</div><div class="muted" style="margin-top:6px">Master build target: Android • Windows • Web • Cloud-ready</div>
+    <div class="field"><label>Login ID</label><input id="uid" value="admin"></div>
+    <div class="field"><label>Password</label><input id="pwd" type="password" value="admin123"></div>
+    <button class="btn primary" style="width:100%" onclick="login()">Login</button>
+    <div class="section" style="margin-top:15px;background:#f5faf6">
+      <b>Demo access</b><br><span class="muted">Admin: admin / admin123<br>Customer: cust001 / 1234</span>
+    </div>
+  </div>
+</div>
+
+<div id="app" class="hidden">
+<div id="connectionBanner" style="position:sticky;top:0;z-index:30;padding:7px 12px;text-align:center;font-size:12px;font-weight:700;background:#fff5df;color:#7b4a00">Offline-first: local data is safe on this device. Sync when Internet is available.</div>
+<header class="top"><div class="toprow"><div><div class="brand">🐄 NANDA Dairy & Agro</div><div id="role" class="role"></div></div><div style="display:flex;gap:6px;align-items:center"><button class="btn secondary small" onclick="requestCloudSync()">Sync</button><button class="btn secondary small" onclick="logout()">Logout</button></div></div></header>
+<nav id="nav" class="nav"></nav>
+<main id="main"></main>
+<div class="footer">NANDA Dairy & Agro • Local-first PWA • Data backup recommended</div>
+</div>
+<div id="modal" class="modal hidden"></div>
+<div id="toast" class="toast hidden"></div>
+
+<script>
+const DBKEY="nanda_dairy_ready_v2";
+const defaultDB={
+settings:{farm:"NANDA Dairy & Agro",owner:"Bibhas Munshi",estd:"2025",defaultRate:42},
+customers:[{id:"CUST001",name:"Demo Customer",phone:"",address:"",daily:3,rate:42,user:"cust001",pw:"1234",due:0,active:true}],
+cattle:[
+{id:"NDA-C001",breed:"Jersey",type:"Jersey Cross",gen:"F2",composition:"Jersey 75%",dob:"2022-01-01",weight:500,lact:2,status:"Pregnant",milk:13,sire:"Jersey Romio",dam:"",nextCalving:"2026-09-04"},
+{id:"NDA-C002",breed:"Jersey",type:"Sahiwal Jersey Cross",gen:"F1",composition:"Jersey 50%",dob:"2023-09-20",weight:380,lact:1,status:"Pregnant",milk:10,sire:"Jersey Bigshot",dam:"",nextCalving:"2026-12-12"},
+{id:"NDA-C003",breed:"HF",type:"HF Cross",gen:"F2",composition:"HF 75%",dob:"2021-03-20",weight:480,lact:3,status:"Pregnant",milk:11,sire:"HF Maverik",dam:"",nextCalving:"2027-05-09"},
+{id:"NDA-C004",breed:"Jersey",type:"Gir Jersey Cross",gen:"F1",composition:"Jersey 50%",dob:"2023-12-20",weight:310,lact:1,status:"Milking",milk:9,sire:"HF Spike",dam:"",nextCalving:"2027-05-05"},
+{id:"NDA-C005",breed:"Jersey",type:"Jersey",gen:"F1",composition:"Jersey",dob:"2024-11-20",weight:"",lact:0,status:"Heifer",milk:0,sire:"Jersey Zig",dam:"",nextCalving:""}
+],
+calves:[],ai:[],milk:[],sales:[],expenses:[],orders:[],payments:[],health:[],
+semen:[],
+stock:[
+{name:"Wheat Bran",cat:"Feed",qty:500,unit:"kg",min:100,cost:0,expiry:""},
+{name:"Broken Maize",cat:"Feed",qty:400,unit:"kg",min:100,cost:0,expiry:""},
+{name:"Mustard Cake",cat:"Feed",qty:200,unit:"kg",min:50,cost:0,expiry:""},
+{name:"Mineral Mixture",cat:"Feed",qty:25,unit:"kg",min:5,cost:0,expiry:""},
+{name:"Dewormer",cat:"Medicine",qty:5,unit:"bottle",min:2,cost:0,expiry:""}
+],
+bills:[],counter:1
+};
+let db=loadDB(), session=null;
+const SYNC_KEY="nanda_sync_queue_v1";
+function syncQueue(){try{return JSON.parse(localStorage.getItem(SYNC_KEY))||[]}catch(e){return[]}}
+function markPending(){localStorage.setItem(SYNC_KEY,JSON.stringify([{id:Date.now(),type:"database_snapshot",createdAt:new Date().toISOString()}]));updateConnectionUI()}
+function updateConnectionUI(){const b=document.getElementById("connectionBanner");if(!b)return;const online=navigator.onLine;const pending=syncQueue().length;b.textContent=online?(pending?`Online • ${pending} local change set pending for cloud sync`:`Online • Cloud sync ready when backend is connected`):`Offline • Local mode active • ${pending} change set pending`;b.style.background=online?"#e8f7ed":"#fff5df";b.style.color=online?"#176b3a":"#7b4a00"}
+window.addEventListener("online",updateConnectionUI);window.addEventListener("offline",updateConnectionUI);
+function requestCloudSync(){if(!navigator.onLine){toast("Internet নেই — local data-তেই save হয়েছে।");return}toast("Local changes marked for cloud sync. Backend endpoint এখনও configure করা হয়নি.");updateConnectionUI()}
+
+function loadDB(){try{return JSON.parse(localStorage.getItem(DBKEY))||structuredClone(defaultDB)}catch(e){return structuredClone(defaultDB)}}
+function save(){localStorage.setItem(DBKEY,JSON.stringify(db));markPending()}
+function today(){return new Date().toISOString().slice(0,10)}
+function money(v){return "₹"+Number(v||0).toLocaleString("en-IN",{maximumFractionDigits:2})}
+function num(v){return Number(v||0)}
+function uid(){return "ID"+Date.now().toString(36).toUpperCase()}
+function esc(v){return String(v??"").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[m]))}
+function toast(s){let t=document.getElementById("toast");t.textContent=s;t.classList.remove("hidden");setTimeout(()=>t.classList.add("hidden"),2200)}
+function login(){
+ let id=document.getElementById("uid").value.trim(), pw=document.getElementById("pwd").value;
+ if(id==="admin"&&pw==="admin123"){session={role:"admin"};openApp()}
+ else{let c=db.customers.find(x=>x.user===id&&x.pw===pw&&x.active!==false);if(c){session={role:"customer",customerId:c.id};openApp()}else alert("Login ID বা Password ভুল।")}
+}
+function logout(){session=null;document.getElementById("app").classList.add("hidden");document.getElementById("login").classList.remove("hidden")}
+function customer(){return db.customers.find(x=>x.id===session.customerId)}
+function openApp(){document.getElementById("login").classList.add("hidden");document.getElementById("app").classList.remove("hidden");updateConnectionUI();document.getElementById("role").textContent=session.role==="admin"?"Owner / Admin":"Customer • "+customer().name;buildNav();go(session.role==="admin"?"dashboard":"mydashboard")}
+function buildNav(){
+ let items=session.role==="admin"?[
+ ["dashboard","🏠 Dashboard"],["cattle","🐄 Cattle"],["breeding","🧬 Breeding"],["milk","🥛 Milk"],["sales","💰 Sales"],["customers","👤 Customers"],["orders","📦 Orders"],["expenses","💸 Expenses"],["stock","📦 Stock"],["semen","🧬 Semen / Bull Stock"],["health","🩺 Health"],["reports","📊 Reports"],["backup","☁️ Backup"]
+]:[["mydashboard","🏠 My Dashboard"],["myorders","🥛 My Orders"],["mypay","💳 Payments"],["mybills","🧾 Bills"]];
+document.getElementById("nav").innerHTML=items.map(x=>`<button id="nav-${x[0]}" onclick="go('${x[0]}')">${x[1]}</button>`).join("")
+}
+function go(page){
+document.querySelectorAll(".nav button").forEach(x=>x.classList.remove("active"));document.getElementById("nav-"+page)?.classList.add("active");
+let m=document.getElementById("main");m.innerHTML=pages[page]();bind(page)
+}
+function card(label,value,sub=""){return `<div class="section"><div class="muted">${label}</div><div class="metric">${value}</div><div class="muted">${sub}</div></div>`}
+function formFields(fields){return `<div class="grid">${fields.map(f=>`<div class="field">${f.type==="textarea"?`<label>${f.label}</label><textarea name="${f.name}" rows="2">${esc(f.value||"")}</textarea>`:`<label>${f.label}</label><${f.type==="select"?"select": "input"} name="${f.name}" ${f.type==="select"?"":`type="${f.type||"text"}"`} ${f.required?"required":""}>${f.type==="select"?f.options.map(o=>`<option ${o==f.value?"selected":""}>${esc(o)}</option>`).join(""):""}</${f.type==="select"?"select":"input"}`}</div>`).join("")}</div>`}
+function table(rows,cols,actions=""){if(!rows.length)return `<div class="muted">কোনো record নেই।</div>`;return `<div class="tablewrap"><table><thead><tr>${cols.map(c=>`<th>${c[1]}</th>`).join("")}${actions?"<th>Action</th>":""}</tr></thead><tbody>${rows.map(r=>`<tr>${cols.map(c=>`<td>${esc(typeof c[2]==="function"?c[2](r):r[c[0]])}</td>`).join("")}${actions?`<td>${actions(r)}</td>`:""}</tr>`).join("")}</tbody></table></div>`}
+
+const pages={
+dashboard:()=>{let prod=db.milk.reduce((s,x)=>s+num(x.qty),0),sales=db.sales.reduce((s,x)=>s+num(x.amount),0),exp=db.expenses.reduce((s,x)=>s+num(x.amount),0),due=db.sales.reduce((s,x)=>s+num(x.due),0),req=db.orders.filter(x=>x.date===today()).reduce((s,x)=>s+num(x.qty),0);return `<h2>Farm Dashboard</h2><div class="cards">${card("🥛 Recorded Milk",prod.toFixed(1)+" kg","all entries")}${card("💰 Sales",money(sales),"all channels")}${card("💸 Expense",money(exp),"all categories")}${card("📈 Operating Profit",money(sales-exp),"sales − recorded expenses")}${card("🐄 Cattle",db.cattle.length,"registered")}${card("👤 Customers",db.customers.length,"active accounts")}${card("📦 Today's Requirement",req.toFixed(1)+" kg","customer orders")}${card("💳 Recorded Due",money(due),"sales ledger")}</div><div class="section"><h3>🔔 Smart Alerts</h3>${alerts()}</div><div class="section"><h3>Quick actions</h3><button class="btn primary" onclick="go('milk')">+ Milk</button> <button class="btn primary" onclick="go('sales')">+ Sale</button> <button class="btn secondary" onclick="go('expenses')">+ Expense</button> <button class="btn secondary" onclick="go('stock')">Stock</button></div>`},
+cattle:()=>`<h2>🐄 Cattle Register</h2><div class="section"><form id="f-cattle">${formFields([
+{label:"Tag ID",name:"id",value:"NDA-C"+String(db.cattle.length+1).padStart(3,"0"),required:true},{label:"Breed",name:"breed",value:"Jersey"},
+{label:"Breed Type",name:"type"},{label:"Generation",name:"gen",type:"select",options:["F1","F2","F3","F4+","Pure/100%"]},
+{label:"Composition",name:"composition"},{label:"DOB",name:"dob",type:"date"},{label:"Weight kg",name:"weight",type:"number"},
+{label:"Lactation",name:"lact",type:"number"},{label:"Status",name:"status",type:"select",options:["Milking","Pregnant","Dry","Heat","Heifer","Calf","Sick","Sold/Transferred"]},
+{label:"Milk kg/day",name:"milk",type:"number"},{label:"Sire / Semen",name:"sire"},{label:"Dam",name:"dam"},{label:"Expected Calving",name:"nextCalving",type:"date"}
+])}<button class="btn primary">Save Cattle</button></form></div>${table(db.cattle,[["id","Tag"],["breed","Breed"],["type","Type"],["gen","Gen"],["composition","Composition"],["dob","DOB"],["weight","Weight"],["lact","Lact"],["status","Status"],["milk","Milk/day"],["sire","Sire/Semen"],["nextCalving","Calving"]],r=>`<button class="btn small danger" onclick="del('cattle','${r.id}');go('cattle')">Delete</button>`)}`,
+breeding:()=>`<h2>🧬 AI • Pregnancy • Calving • Pedigree</h2><div class="section"><form id="f-ai">${formFields([
+{label:"Cattle ID",name:"cow",value:"NDA-C001"},{label:"AI Date",name:"date",type:"date",value:today()},{label:"Semen/Bull",name:"semen"},
+{label:"Company",name:"company"},{label:"AI Cost ₹",name:"cost",type:"number"},{label:"Pregnancy Test",name:"preg",type:"date"},
+{label:"Result",name:"result",type:"select",options:["Pending","Positive","Negative"]},{label:"Expected Calving",name:"calving",type:"date"},{label:"Actual Calving",name:"actual",type:"date"}
+])}<button class="btn primary">Save Breeding Record</button></form></div>${table(db.ai,[["cow","Cow"],["date","AI"],["semen","Semen"],["company","Company"],["cost","Cost"],["preg","Pregnancy"],["result","Result"],["calving","Expected Calving"],["actual","Actual Calving"]])}<div class="section"><h3>Generation / Breed Summary</h3>${genSummary()}</div>`,
+milk:()=>`<h2>🥛 Daily Milk Production</h2><div class="section"><form id="f-milk">${formFields([{label:"Date",name:"date",type:"date",value:today()},{label:"Cattle ID",name:"cow"},{label:"Morning kg",name:"morning",type:"number"},{label:"Evening kg",name:"evening",type:"number"}])}<button class="btn primary">Save Milk Record</button></form></div>${table(db.milk,[["date","Date"],["cow","Cow"],["morning","Morning"],["evening","Evening"],["qty","Total"]])}`,
+sales:()=>`<h2>💰 Milk Sales — 4 Channels</h2><div class="section"><form id="f-sale">${formFields([{label:"Date",name:"date",type:"date",value:today()},{label:"Sales Channel",name:"channel",type:"select",options:["Customer / Direct","House Shop","Amul","Others"]},{label:"Buyer / Customer",name:"buyer"},{label:"Milk kg",name:"qty",type:"number"},{label:"Rate ₹/kg",name:"rate",type:"number",value:db.settings.defaultRate},{label:"Payment Received ₹",name:"payment",type:"number",value:0},{label:"Payment Method",name:"method",type:"select",options:["Cash","UPI","Bank","Other"]}])}<button class="btn primary">Save Sale & Generate Ledger</button></form></div>${table(db.sales,[["date","Date"],["channel","Channel"],["buyer","Buyer"],["qty","kg"],["rate","Rate"],["amount","Amount"],["payment","Paid"],["due","Due"]])}`,
+customers:()=>`<h2>👤 Customer Accounts</h2><div class="section"><form id="f-customer">${formFields([{label:"Customer ID",name:"id",value:"CUST"+String(db.customers.length+1).padStart(3,"0"),required:true},{label:"Name",name:"name",required:true},{label:"Mobile",name:"phone"},{label:"Address",name:"address"},{label:"Daily Requirement kg",name:"daily",type:"number"},{label:"Milk Rate ₹",name:"rate",type:"number",value:42},{label:"Login ID",name:"user",required:true},{label:"Password",name:"pw",required:true}])}<button class="btn primary">Create Customer Account</button></form></div>${table(db.customers,[["id","ID"],["name","Name"],["phone","Mobile"],["daily","Daily kg"],["rate","Rate"],["due","Due"],["user","Login"]])}`,
+orders:()=>`<h2>📦 Customer Milk Requirements</h2><div class="section"><b>Today's requirement:</b> ${db.orders.filter(x=>x.date===today()).reduce((s,x)=>s+num(x.qty),0).toFixed(1)} kg</div>${table(db.orders,[["date","Date"],["customer","Customer"],["qty","kg"],["status","Status"]],r=>`<button class="btn small secondary" onclick="orderStatus('${r.id}')">${r.status}</button>`)}`,
+expenses:()=>`<h2>💸 Expenses & Monthly Analysis</h2><div class="section"><form id="f-expense">${formFields([{label:"Date",name:"date",type:"date",value:today()},{label:"Category",name:"cat",type:"select",options:["Feed","Fodder","Medicine","Vaccination","AI","Labour","Electricity","Water","Transport","Maintenance","Equipment","Animal Purchase","Other"]},{label:"Amount ₹",name:"amount",type:"number"},{label:"Note",name:"note"}])}<button class="btn primary">Save Expense</button></form></div><div class="section"><h3>Category totals</h3>${expenseSummary()}</div>${table(db.expenses,[["date","Date"],["cat","Category"],["amount","Amount"],["note","Note"]])}`,
+
+semen:()=>`<h2>🧬 Semen / Bull Stock</h2><div class="section"><p>Track company, bull, breed, sexed/conventional, dose price and available stock. Production version will automatically reduce stock when an AI record consumes a dose.</p><form id="f-semen">${formFields([{label:"Company",name:"company",required:true},{label:"Bull Name",name:"bull",required:true},{label:"Breed",name:"breed",required:true},{label:"Type",name:"type",type:"select",options:["Sexed","Conventional"]},{label:"Price / Dose ₹",name:"price",type:"number"},{label:"Available Doses",name:"qty",type:"number"},{label:"Minimum Stock",name:"min",type:"number",value:5}])}<button class="btn primary">Save Semen Stock</button></form></div>${table(db.semen||[],[["company","Company"],["bull","Bull"],["breed","Breed"],["type","Type"],["price","₹/dose"],["qty","Available"],["min","Min"],["status","Status",r=>num(r.qty)<=num(r.min)?"LOW":"OK"]])}`,
+stock:()=>`<h2>📦 Feed & Medicine Stock</h2><div class="section"><form id="f-stock">${formFields([{label:"Item",name:"name",required:true},{label:"Category",name:"cat",type:"select",options:["Feed","Medicine"]},{label:"Quantity",name:"qty",type:"number"},{label:"Unit",name:"unit",value:"kg"},{label:"Minimum Stock",name:"min",type:"number"},{label:"Cost/Unit ₹",name:"cost",type:"number"},{label:"Expiry (medicine)",name:"expiry",type:"date"}])}<button class="btn primary">Add / Update Stock</button></form></div><div class="section">${stockAlerts()}</div>${table(db.stock,[["name","Item"],["cat","Category"],["qty","Current"],["unit","Unit"],["min","Minimum"],["cost","Cost"],["expiry","Expiry"],["status","Status",r=>num(r.qty)<=num(r.min)?"LOW":"OK"]])}`,
+health:()=>`<h2>🩺 Treatment • Vaccination • Deworming</h2><div class="section"><form id="f-health">${formFields([{label:"Cattle ID",name:"cow"},{label:"Date",name:"date",type:"date",value:today()},{label:"Type",name:"type",type:"select",options:["Treatment","Vaccination","Deworming"]},{label:"Disease / Vaccine / Medicine",name:"item"},{label:"Dose",name:"dose"},{label:"Cost ₹",name:"cost",type:"number"},{label:"Vet / Technician",name:"vet"},{label:"Next Due",name:"nextDue",type:"date"},{label:"Result / Note",name:"note"}])}<button class="btn primary">Save Health Record</button></form></div>${table(db.health,[["cow","Cow"],["date","Date"],["type","Type"],["item","Item"],["dose","Dose"],["cost","Cost"],["vet","Vet"],["nextDue","Next Due"],["note","Note"]])}`,
+reports:()=>`<h2>📊 Reports & Analytics</h2><div class="section"><h3>Weekly sales by day</h3>${weeklyReport()}</div><div class="section"><h3>Sales by channel</h3>${channelReport()}</div><div class="section"><h3>Monthly expense focus</h3>${expenseSummary()}</div><div class="section"><h3>Customer sales & due</h3>${customerReport()}</div>`,
+backup:()=>`<h2>☁️ Backup & Data Tools</h2><div class="section"><p class="muted">এই version browser-local. নিয়মিত backup রাখুন।</p><button class="btn primary" onclick="exportData()">Download Backup</button> <label class="btn secondary" style="display:inline-block"><input type="file" accept=".json" hidden onchange="importData(event)">Restore Backup</label></div><div class="section"><h3>Demo reset</h3><button class="btn danger" onclick="resetAll()">Reset all local data</button></div>`,
+mydashboard:()=>{let c=customer(), sales=db.sales.filter(x=>x.buyer===c.name), paid=db.payments.filter(x=>x.customer===c.id).reduce((s,x)=>s+num(x.amount),0),bill=sales.reduce((s,x)=>s+num(x.amount),0);return `<h2>🏠 My Dashboard</h2><div class="cards">${card("🥛 My Milk",sales.reduce((s,x)=>s+num(x.qty),0).toFixed(1)+" kg","recorded sales")}${card("🧾 My Bill",money(bill),"recorded")}${card("💳 Paid",money(paid),"payment history")}${card("💰 Due",money(Math.max(0,bill-paid)),"calculated")}</div><div class="section"><h3>আগামী দিনের Milk Requirement</h3><form id="f-order">${formFields([{label:"Date",name:"date",type:"date",value:new Date(Date.now()+86400000).toISOString().slice(0,10)},{label:"Required kg",name:"qty",type:"number",value:c.daily}])}<button class="btn primary">Submit Requirement</button></form></div>`},
+myorders:()=>{let c=customer();return `<h2>🥛 My Orders</h2>${table(db.orders.filter(x=>x.customer===c.id),[["date","Date"],["qty","kg"],["status","Status"]])}`},
+mypay:()=>{let c=customer();return `<h2>💳 My Payments</h2>${table(db.payments.filter(x=>x.customer===c.id),[["date","Date"],["amount","Amount"],["method","Method"],["bill","Bill No."]])}`},
+mybills:()=>{let c=customer();return `<h2>🧾 My Bills & Statement</h2><div class="section"><button class="btn primary" onclick="printCustomerStatement()">Print / Save PDF Statement</button></div>${table(db.sales.filter(x=>x.buyer===c.name),[["date","Date"],["qty","kg"],["rate","Rate"],["amount","Amount"],["payment","Paid"],["due","Due"]])}`
+}
+};
+
+function bind(p){
+let f=document.getElementById("f-"+(p==="mydashboard"?"order":p));if(!f)return;
+f.onsubmit=e=>{e.preventDefault();let o=Object.fromEntries(new FormData(f).entries());
+if(p==="cattle")db.cattle.push({...o,weight:num(o.weight),lact:num(o.lact),milk:num(o.milk)});
+if(p==="breeding")db.ai.push({...o,cost:num(o.cost)});
+if(p==="milk"){let q=num(o.morning)+num(o.evening);db.milk.push({...o,qty:q});let cow=db.cattle.find(x=>x.id===o.cow);if(cow)cow.milk=q}
+if(p==="sales"){let amount=num(o.qty)*num(o.rate),pay=num(o.payment),due=Math.max(0,amount-pay);let bill="NDA-"+String(db.counter++).padStart(6,"0");db.sales.push({...o,amount,payment:pay,due,bill});if(o.channel==="Customer / Direct"){let c=db.customers.find(x=>x.name===o.buyer);if(c&&pay>0)db.payments.push({id:uid(),customer:c.id,date:o.date,amount:pay,method:o.method,bill})}}
+if(p==="customers")db.customers.push({...o,daily:num(o.daily),rate:num(o.rate),due:0,active:true});
+if(p==="orders"){}
+if(p==="expenses")db.expenses.push({...o,amount:num(o.amount)});
+if(p==="semen"){db.semen=db.semen||[];db.semen.push({...o,price:num(o.price),qty:num(o.qty),min:num(o.min)});save();toast("Semen stock saved");go("semen");return}
+if(p==="stock"){let old=db.stock.find(x=>x.name.toLowerCase()===o.name.toLowerCase());if(old)Object.assign(old,{cat:o.cat,qty:num(o.qty),unit:o.unit,min:num(o.min),cost:num(o.cost),expiry:o.expiry});else db.stock.push({...o,qty:num(o.qty),min:num(o.min),cost:num(o.cost)})}
+if(p==="health")db.health.push({...o,cost:num(o.cost)});
+if(p==="mydashboard")db.orders.push({id:uid(),customer:customer().id,date:o.date,qty:num(o.qty),status:"Pending"});
+save();toast("Saved successfully");go(p)}
+}
+function del(type,id){db[type]=db[type].filter(x=>x.id!==id);save();toast("Deleted")}
+function orderStatus(id){let x=db.orders.find(x=>x.id===id);if(x){x.status=x.status==="Pending"?"Accepted":x.status==="Accepted"?"Delivered":"Pending";save();go("orders")}}
+function genSummary(){let m={};db.cattle.forEach(c=>{let k=(c.breed||"Unknown")+" • "+(c.gen||"");m[k]=(m[k]||0)+1});return Object.entries(m).map(([k,v])=>`<span class="pill">${esc(k)}: ${v}</span>`).join(" ")||"No data"}
+function alerts(){let a=[];db.stock.forEach(x=>{if(num(x.qty)<=num(x.min))a.push(`<div class="alert red">🔴 ${esc(x.name)}: Low stock — ${x.qty} ${esc(x.unit)}</div>`);if(x.expiry&&x.expiry<=new Date(Date.now()+30*86400000).toISOString().slice(0,10))a.push(`<div class="alert">⚠️ ${esc(x.name)}: Expiry approaching (${x.expiry})</div>`)});
+db.cattle.forEach(c=>{if(c.nextCalving&&c.nextCalving>=today()&&c.nextCalving<=new Date(Date.now()+30*86400000).toISOString().slice(0,10))a.push(`<div class="alert">🐄 ${esc(c.id)}: Calving due ${c.nextCalving}</div>`)});
+return a.join("")||`<div class="alert green">✅ No critical alerts.</div>`}
+function stockAlerts(){return alerts()}
+function expenseSummary(){let m={};db.expenses.forEach(x=>m[x.cat]=(m[x.cat]||0)+num(x.amount));let vals=Object.entries(m);if(!vals.length)return '<span class="muted">Expense data নেই।</span>';let mx=Math.max(...vals.map(x=>x[1]));return vals.sort((a,b)=>b[1]-a[1]).map(([k,v])=>`<div style="margin:9px 0"><b>${esc(k)}</b> — ${money(v)}<div class="bar"><i style="width:${mx?Math.min(100,v/mx*100):0}%"></i></div></div>`).join("")}
+function weeklyReport(){let days=["রবিবার","সোমবার","মঙ্গলবার","বুধবার","বৃহস্পতিবার","শুক্রবার","শনিবার"],m={};db.sales.forEach(x=>{let d=new Date(x.date+"T00:00:00");let k=days[d.getDay()];m[k]=(m[k]||0)+num(x.qty)});let mx=Math.max(1,...Object.values(m));return days.map(d=>`<div style="margin:9px 0"><b>${d}</b> — ${(m[d]||0).toFixed(1)} kg<div class="bar"><i style="width:${(m[d]||0)/mx*100}%"></i></div></div>`).join("")}
+function channelReport(){let m={};db.sales.forEach(x=>m[x.channel]=(m[x.channel]||0)+num(x.qty));return Object.entries(m).map(([k,v])=>`<div><b>${esc(k)}</b>: ${v.toFixed(1)} kg</div>`).join("")||'<span class="muted">Sales data নেই।</span>'}
+function customerReport(){return table(db.customers,[["id","ID"],["name","Customer"],["daily","Daily"],["rate","Rate"],["due","Recorded Due"]])}
+function exportData(){let blob=new Blob([JSON.stringify(db,null,2)],{type:"application/json"}),a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="NANDA_Dairy_Backup_"+today()+".json";a.click()}
+function importData(e){let f=e.target.files[0];if(!f)return;let r=new FileReader();r.onload=()=>{try{db=JSON.parse(r.result);save();alert("Backup restored");location.reload()}catch(x){alert("Invalid backup file")}};r.readAsText(f)}
+function resetAll(){if(confirm("সব local data মুছে demo data ফিরিয়ে আনবেন?")){localStorage.removeItem(DBKEY);location.reload()}}
+function printCustomerStatement(){let c=customer(),rows=db.sales.filter(x=>x.buyer===c.name);let total=rows.reduce((s,x)=>s+num(x.amount),0),paid=rows.reduce((s,x)=>s+num(x.payment),0);let w=window.open("","_blank");w.document.write(`<html><head><title>NANDA Statement</title><style>body{font-family:Arial;padding:30px}table{width:100%;border-collapse:collapse}th,td{border:1px solid #ccc;padding:8px}</style></head><body><h1>NANDA Dairy & Agro</h1><h3>Customer Statement</h3><p>Customer: ${esc(c.name)}<br>ID: ${esc(c.id)}<br>Date: ${today()}</p><table><tr><th>Date</th><th>Milk kg</th><th>Rate</th><th>Amount</th><th>Paid</th><th>Due</th></tr>${rows.map(x=>`<tr><td>${x.date}</td><td>${x.qty}</td><td>${x.rate}</td><td>${x.amount}</td><td>${x.payment}</td><td>${x.due}</td></tr>`).join("")}</table><h3>Total: ₹${total} &nbsp; Paid: ₹${paid} &nbsp; Balance: ₹${Math.max(0,total-paid)}</h3></body></html>`);w.document.close();w.print()}
+if("serviceWorker" in navigator)navigator.serviceWorker.register("sw.js").catch(()=>{});
+</script>
+</body></html>
