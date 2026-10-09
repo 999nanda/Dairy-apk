@@ -3,57 +3,122 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Nanda Dairy & Agro Management System</title>
-    <!-- PWA Manifest Link -->
-    <link rel="manifest" href="manifest.json">
-    <meta name="theme-color" content="#1b5e20">
-    
-    <!-- Firebase SDKs -->
-    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
-
+    <title>Nanda Dairy & Agro - Management System</title>
     <style>
-        :root { --primary: #1b5e20; --danger: #c62828; --bg: #f4f6f8; }
-        body { font-family: 'Segoe UI', Arial, sans-serif; background: var(--bg); margin: 0; padding: 20px; }
-        .container { max-width: 800px; margin: 0 auto; background: #fff; padding: 20px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
-        .header { display: flex; align-items: center; justify-content: space-between; border-bottom: 2px solid var(--primary); padding-bottom: 10px; margin-bottom: 20px; }
-        .logo { width: 50px; height: 50px; border-radius: 50%; background: var(--primary); display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; font-size: 20px; }
-        .title { color: var(--primary); margin: 0; font-size: 22px; }
-        .form-group { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 15px; }
-        input, select, button { padding: 10px; border: 1px solid #ccc; border-radius: 6px; font-size: 14px; }
-        button { background: var(--primary); color: white; border: none; cursor: pointer; font-weight: bold; }
-        button:hover { opacity: 0.9; }
-        .btn-delete { background: var(--danger); color: white; padding: 6px 12px; border: none; border-radius: 4px; cursor: pointer; }
-        .data-table { width: 100%; border-collapse: collapse; margin-top: 20px; }
-        .data-table th, .data-table td { border: 1px solid #ddd; padding: 10px; text-align: left; }
-        .data-table th { background: var(--primary); color: white; }
-        #login-sec { max-width: 350px; margin: 80px auto; padding: 20px; background: white; border-radius: 10px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); text-align: center; }
-        #app-sec { display: none; }
+        :root {
+            --primary: #1b5e20;
+            --danger: #c62828;
+            --bg: #f4f6f4;
+        }
+        body {
+            font-family: 'Segoe UI', Arial, sans-serif;
+            background: var(--bg);
+            margin: 0;
+            padding: 20px;
+        }
+        .container {
+            max-width: 600px;
+            margin: auto;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        #login-sec {
+            max-width: 400px;
+            margin: 50px auto;
+            padding: 30px;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            text-align: center;
+        }
+        .app-sec {
+            display: none;
+        }
     </style>
+    <!-- Firebase App (compat) SDK -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
 </head>
 <body>
 
-    <!-- 🔑 লগইন সিস্টেম -->
+    <!-- লগইন সেকশন -->
     <div id="login-sec">
         <h2>Nanda Dairy & Agro</h2>
         <p>লগইন করুন</p>
-        <input type="email" id="email" placeholder="User ID" style="width: 90%; margin-bottom: 10px;"><br>
-        <input type="password" id="password" placeholder="password" style="width: 90%; margin-bottom: 15px;"><br>
-        <button onclick="handleLogin()" style="width: 98%;">login</button>
+        <input type="email" id="email" placeholder="User ID" style="width: 90%; margin-bottom: 10px; padding: 8px;"><br>
+        <input type="password" id="password" placeholder="password" style="width: 90%; margin-bottom: 15px; padding: 8px;"><br>
+        <button id="login-btn" style="width: 98%; padding: 10px; background: #1b5e20; color: white; border: none; border-radius: 4px; cursor: pointer;">login</button>
     </div>
 
-    <!-- 📊 ড্যাশবোর্ড ও ডাটাবেজ কন্টেইনার -->
-    <div id="app-sec" class="container">
-        <div class="header">
+    <!-- ড্যাশবোর্ড ও ডেটাবেজ কন্টেইনার -->
+    <div id="app-sec" class="container app-sec">
+        <div class="header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
             <div style="display: flex; align-items: center; gap: 12px;">
-                <div class="logo">NDA</div>
-                <h1 class="title">Nanda Dairy & Agro</h1>
+                <div style="background: var(--primary); color: white; padding: 10px; border-radius: 4px;">NDA</div>
+                <h1 class="title" style="font-size: 20px; margin: 0;">Nanda Dairy & Agro</h1>
             </div>
-            <button onclick="logout()" style="background: #555;">লগআউট</button>
+            <button onclick="logout()" style="background: #555; color: white; border: none; padding: 8px 12px; border-radius: 4px; cursor: pointer;">লগআউট</button>
         </div>
+        <div>
+            <h3>স্বাগতম, ডেটা যোগ করুন</h3>
+        </div>
+    </div>
 
-        <h3>নতুন এন্ট্রি যোগ করুন</h3>
-        <div class="form-group">
-            <input type="date" id="entry-date">
-            <input type="text" id="cow-id" placeholder="
+    <script>
+        // Firebase Configuration
+        const firebaseConfig = {
+            apiKey: "AIzaSyDummyKeyForTemplate999",
+            authDomain: "nandamunshi1999.firebaseapp.com",
+            projectId: "nandamunshi1999",
+            storageBucket: "nandamunshi1999.appspot.com",
+            messagingSenderId: "123456789",
+            appId: "1:123456789:web:abcdef"
+        };
+
+        // Initialize Firebase
+        if (!firebase.apps.length) {
+            firebase.initializeApp(firebaseConfig);
+        }
+
+        const auth = firebase.auth();
+
+        // Login Event Listener
+        document.getElementById('login-btn').addEventListener('click', function() {
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+            
+            auth.signInWithEmailAndPassword(email, password)
+                .then((userCredential) => {
+                    document.getElementById('login-sec').style.display = 'none';
+                    document.getElementById('app-sec').style.display = 'block';
+                })
+                .catch((error) => {
+                    alert("লগইন ব্যর্থ হয়েছে: " + error.message);
+                });
+        });
+
+        // Logout Function
+        function logout() {
+            auth.signOut().then(() => {
+                document.getElementById('app-sec').style.display = 'none';
+                document.getElementById('login-sec').style.display = 'block';
+                document.getElementById('email').value = '';
+                document.getElementById('password').value = '';
+            });
+        }
+
+        // Auth State Monitor
+        auth.onAuthStateChanged((user) => {
+            if (user) {
+                document.getElementById('login-sec').style.display = 'none';
+                document.getElementById('app-sec').style.display = 'block';
+            } else {
+                document.getElementById('app-sec').style.display = 'none';
+                document.getElementById('login-sec').style.display = 'block';
+            }
+        });
+    </script>
+</body>
+</html>
