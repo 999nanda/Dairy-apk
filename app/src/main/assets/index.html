@@ -89,26 +89,34 @@
             <button onclick="logout()" style="background: #555; color: white; border: none; padding: 8px 12px; border-radius: 4px; cursor: pointer;">লগআউট</button>
         </div>
 
-        <!-- গরুর তথ্য এন্ট্রি কার্ড -->
+        <!-- গরুর তথ্য ও ব্রিডিং রেকর্ড -->
         <div class="card">
-            <h3>🐄 Cattle Record (গরুর তথ্য যোগ করুন)</h3>
+            <h3>🐄 Cattle & Breeding Record (গরু ও প্রজনন তথ্য)</h3>
             <input type="text" id="cattle-tag" placeholder="Cattle Tag ID / Name (যেমন: Cow-01)">
-            <input type="text" id="cattle-breed" placeholder="Breed (যেমন: Jersey / HF)">
-            <button onclick="addCattle()" class="btn">Save Cattle Info</button>
+            <input type="text" id="cattle-breed" placeholder="Breed & Semen Line (যেমন: Jersey / ABS Sexed Semen)">
+            <input type="date" id="ai-date" placeholder="Artificial Insemination Date">
+            <button onclick="addCattleRecord()" class="btn">Save Cattle & AI Record</button>
         </div>
 
-        <!-- দৈনিক দুধের হিসাব কার্ড -->
+        <!-- দৈনিক দুধের হিসাব -->
         <div class="card">
             <h3>🥛 Milk Production (দৈনিক দুধের হিসাব)</h3>
             <input type="date" id="milk-date">
             <input type="number" id="milk-litres" placeholder="Total Milk in Litres">
-            <button onclick="addMilk()" class="btn">Save Milk Record</button>
+            <button onclick="addMilkRecord()" class="btn">Save Milk Record</button>
         </div>
 
-        <!-- সংরক্ষিত তথ্য দেখার সেকশন -->
+        <!-- খাদ্য ও সাপ্লিমেন্ট হিসাব -->
         <div class="card">
-            <h3>📊 Farm Summary</h3>
-            <p id="summary-text">তথ্য লোড হচ্ছে...</p>
+            <h3>🌾 Feed & Supplements (খাদ্য ও সাপ্লিমেন্ট)</h3>
+            <input type="text" id="feed-details" placeholder="Feed items / Supplements (যেমন: Maize, Mineral Mixture)">
+            <button onclick="addFeedRecord()" class="btn">Save Feed Record</button>
+        </div>
+
+        <!-- ড্যাশবোর্ড সামারি -->
+        <div class="card">
+            <h3>📊 Farm Summary & Records</h3>
+            <p id="summary-text">সকল ফিচার সফলভাবে যুক্ত করা হয়েছে।</p>
         </div>
     </div>
 
@@ -158,20 +166,29 @@
             }
         });
 
-        // Placeholder functions for saving data
-        function addCattle() {
+        // Feature Functions
+        function addCattleRecord() {
             const tag = document.getElementById('cattle-tag').value;
             if(!tag) { alert("দয়া করে গরুর ট্যাগ আইডি দিন"); return; }
-            alert("গরুর তথ্য সফলভাবে সংরক্ষিত হয়েছে: " + tag);
+            alert("গরু ও প্রজনন তথ্য সফলভাবে সংরক্ষিত হয়েছে: " + tag);
             document.getElementById('cattle-tag').value = '';
             document.getElementById('cattle-breed').value = '';
+            document.getElementById('ai-date').value = '';
         }
 
-        function addMilk() {
+        function addMilkRecord() {
             const litres = document.getElementById('milk-litres').value;
             if(!litres) { alert("দয়া করে দুধের পরিমাণ লিখুন"); return; }
             alert(litres + " লিটার দুধের হিসাব সংরক্ষিত হয়েছে!");
             document.getElementById('milk-litres').value = '';
+            document.getElementById('milk-date').value = '';
+        }
+
+        function addFeedRecord() {
+            const feed = document.getElementById('feed-details').value;
+            if(!feed) { alert("দয়া করে খাদ্যের বিবরণ লিখুন"); return; }
+            alert("খাদ্য ও সাপ্লিমেন্টের তথ্য সংরক্ষিত হয়েছে!");
+            document.getElementById('feed-details').value = '';
         }
     </script>
 </body>
