@@ -5,7 +5,6 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>NANDA Dairy & Agro</title>
   <link rel="icon" type="image/png" href="logo.png">
-  <link rel="manifest" href="manifest.json">
 
   <!-- Firebase লাইব্রেরি -->
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
@@ -72,7 +71,7 @@
 </head>
 <body>
 
-  <!-- ১. লগইন বক্স -->
+  <!-- লগইন সেকশন -->
   <div id="loginScreen">
     <div class="login-box">
       <img src="logo.png" alt="Logo" onerror="this.src='https://cdn-icons-png.flaticon.com/512/2395/2395796.png'">
@@ -91,7 +90,7 @@
     </div>
   </div>
 
-  <!-- ২. মূল অ্যাপ্লিকেশন -->
+  <!-- মূল অ্যাপ্লিকেশন -->
   <div id="appBody" style="display: none;">
     <header>
       <div class="header-title">
@@ -111,7 +110,7 @@
 
     <div class="container">
       
-      <!-- ড্যাশবোর্ড -->
+      <!-- ১. ড্যাশবোর্ড -->
       <div id="tab-dashboard" class="tab-content">
         <div class="summary-grid">
           <div class="summary-card">
@@ -133,7 +132,7 @@
         </div>
       </div>
 
-      <!-- ক্যাটল লিস্ট -->
+      <!-- ২. ক্যাটল লিস্ট -->
       <div id="tab-cattle" class="tab-content" style="display: none;">
         <div class="card">
           <h2>নতুন গরু যুক্ত করুন</h2>
@@ -143,322 +142,4 @@
               <input type="text" id="cowTag" placeholder="যেমন: C-101">
             </div>
             <div class="input-group">
-              <label>জাত (Breed)</label>
-              <input type="text" id="cowBreed" placeholder="যেমন: ফ্রিজিয়ান/শাহিওয়াল">
-            </div>
-            <div class="input-group">
-              <label>দৈনিক গড় দুধ (লিটার)</label>
-              <input type="number" id="cowCapacity" placeholder="যেমন: ১২">
-            </div>
-          </div>
-          <button class="btn" onclick="addCattle()">গরু সংরক্ষণ করুন</button>
-        </div>
-
-        <div class="card">
-          <h2>সকল গরুর তালিকা</h2>
-          <div class="table-container">
-            <table>
-              <thead>
-                <tr>
-                  <th>আইডি</th>
-                  <th>জাত</th>
-                  <th>গড় দুধ</th>
-                  <th>অ্যাকশন</th>
-                </tr>
-              </thead>
-              <tbody id="cattleTableBody"></tbody>
-            </table>
-          </div>
-        </div>
-      </div>
-
-      <!-- দুধের রেকর্ড -->
-      <div id="tab-milk" class="tab-content" style="display: none;">
-        <div class="card">
-          <h2>দুধ দোহন এন্ট্রি</h2>
-          <div class="form-grid">
-            <div class="input-group">
-              <label>তারিখ *</label>
-              <input type="date" id="milkDate">
-            </div>
-            <div class="input-group">
-              <label>গরুর আইডি</label>
-              <input type="text" id="milkCowTag" placeholder="ট্যাগ নম্বর">
-            </div>
-            <div class="input-group">
-              <label>সেশন</label>
-              <select id="milkSession">
-                <option value="সকাল">সকাল</option>
-                <option value="বিকাল">বিকাল</option>
-              </select>
-            </div>
-            <div class="input-group">
-              <label>দুধের পরিমাণ (লিটার) *</label>
-              <input type="number" id="milkLiters" step="0.1" placeholder="০.০">
-            </div>
-          </div>
-          <button class="btn" onclick="addMilkRecord()">দুধের রেকর্ড সেভ করুন</button>
-        </div>
-
-        <div class="card">
-          <h2>দৈনিক দুধের খাতা</h2>
-          <div class="table-container">
-            <table>
-              <thead>
-                <tr>
-                  <th>তারিখ</th>
-                  <th>গরুর আইডি</th>
-                  <th>সেশন</th>
-                  <th>পরিমাণ</th>
-                  <th>অ্যাকশন</th>
-                </tr>
-              </thead>
-              <tbody id="milkTableBody"></tbody>
-            </table>
-          </div>
-        </div>
-      </div>
-
-      <!-- বিলিং ও বাকি -->
-      <div id="tab-billing" class="tab-content" style="display: none;">
-        <div class="card">
-          <h2>কাস্টমার বিল ও পেমেন্ট এন্ট্রি</h2>
-          <div class="form-grid">
-            <div class="input-group">
-              <label>তারিখ *</label>
-              <input type="date" id="billDate">
-            </div>
-            <div class="input-group">
-              <label>কাস্টমারের নাম *</label>
-              <input type="text" id="billCustomer" placeholder="নাম">
-            </div>
-            <div class="input-group">
-              <label>মোবাইল নম্বর</label>
-              <input type="text" id="billPhone" placeholder="মোবাইল">
-            </div>
-            <div class="input-group">
-              <label>দুধের পরিমাণ (লিটার)</label>
-              <input type="number" id="billQty" oninput="calcBill()" placeholder="০">
-            </div>
-            <div class="input-group">
-              <label>দর (টাকা প্রতি লিটার)</label>
-              <input type="number" id="billRate" oninput="calcBill()" placeholder="৳">
-            </div>
-            <div class="input-group">
-              <label>মোট বিল (টাকা)</label>
-              <input type="number" id="billTotal" readonly style="background:#eee;">
-            </div>
-            <div class="input-group">
-              <label>পরিশোধ করেছে (টাকা)</label>
-              <input type="number" id="billPaid" oninput="calcBill()" placeholder="৳">
-            </div>
-            <div class="input-group">
-              <label>বকেয়া / বাকি (টাকা)</label>
-              <input type="number" id="billDue" readonly style="background:#ffebee; color:red; font-weight:bold;">
-            </div>
-          </div>
-          <button class="btn" onclick="addBill()">বিল সেভ করুন</button>
-        </div>
-
-        <div class="card">
-          <h2>কাস্টমার বিলিং হিস্ট্রি</h2>
-          <div class="table-container">
-            <table>
-              <thead>
-                <tr>
-                  <th>তারিখ</th>
-                  <th>কাস্টমার</th>
-                  <th>মোট বিল</th>
-                  <th>পরিশোধ</th>
-                  <th>বাকি</th>
-                  <th>ইনভয়েস/অ্যাকশন</th>
-                </tr>
-              </thead>
-              <tbody id="billingTableBody"></tbody>
-            </table>
-          </div>
-        </div>
-      </div>
-
-      <!-- খরচের খাতা -->
-      <div id="tab-expense" class="tab-content" style="display: none;">
-        <div class="card">
-          <h2>নতুন খরচ এন্ট্রি</h2>
-          <div class="form-grid">
-            <div class="input-group">
-              <label>তারিখ *</label>
-              <input type="date" id="expDate">
-            </div>
-            <div class="input-group">
-              <label>খরচের বিবরণ *</label>
-              <input type="text" id="expTitle" placeholder="যেমন: ভুসি, ওষুধ, বিদ্যুৎ বিল">
-            </div>
-            <div class="input-group">
-              <label>টাকার পরিমাণ *</label>
-              <input type="number" id="expAmount" placeholder="৳">
-            </div>
-          </div>
-          <button class="btn" onclick="addExpense()">খরচ সেভ করুন</button>
-        </div>
-
-        <div class="card">
-          <h2>খরচের তালিকা</h2>
-          <div class="table-container">
-            <table>
-              <thead>
-                <tr>
-                  <th>তারিখ</th>
-                  <th>বিবরণ</th>
-                  <th>টাকা</th>
-                  <th>অ্যাকশন</th>
-                </tr>
-              </thead>
-              <tbody id="expenseTableBody"></tbody>
-            </table>
-          </div>
-        </div>
-      </div>
-
-    </div>
-  </div>
-
-  <!-- ইনভয়েস প্রিন্ট মোডাল -->
-  <div id="invoiceModal">
-    <div class="invoice-card">
-      <div id="invoicePrintArea">
-        <div style="text-align: center; border-bottom: 2px dashed #888; padding-bottom: 12px; margin-bottom: 15px;">
-          <h2 style="margin: 0; color: #1b5e20;">Nanda Dairy Agro</h2>
-          <p style="font-size: 12px; color: #555;">দুধের মান নিশ্চিত, সেবাই আমাদের লক্ষ্য</p>
-          <p style="font-size: 13px; font-weight: bold; margin-top: 5px;">ক্যাশ মেমো / রসিদ</p>
-        </div>
-        <div id="invoiceDetails" style="font-size: 14px; line-height: 1.8;"></div>
-        <p style="text-align: center; font-size: 11px; margin-top: 25px; color: #666;">ধন্যবাদ, আবার আসবেন!</p>
-      </div>
-      <div style="display: flex; gap: 10px; margin-top: 20px;">
-        <button class="btn btn-print" style="flex: 1;" onclick="window.print()">প্রিন্ট করুন</button>
-        <button class="btn btn-danger" style="flex: 1;" onclick="closeInvoice()">বন্ধ করুন</button>
-      </div>
-    </div>
-  </div>
-
-  <!-- স্ক্রিপ্ট লজিক -->
-  <script>
-    const firebaseConfig = {
-      apiKey: "AIzaSyAtmDkYLV6rh4jfJT2OPJZ5_R4c99S8-t4",
-      authDomain: "nanda-dairy-agro-b5888.firebaseapp.com",
-      databaseURL: "https://nanda-dairy-agro-b5888-default-rtdb.firebaseio.com",
-      projectId: "nanda-dairy-agro-b5888",
-      storageBucket: "nanda-dairy-agro-b5888.firebasestorage.app",
-      messagingSenderId: "284932687587",
-      appId: "1:284932687587:web:1613d832d65dabfb5f67d6"
-    };
-
-    let db;
-    try {
-      firebase.initializeApp(firebaseConfig);
-      db = firebase.database();
-    } catch(e) {
-      console.error(e);
-    }
-
-    function checkLogin() {
-      const u = document.getElementById('loginId').value.trim();
-      const p = document.getElementById('loginPass').value.trim();
-      if(u === 'nanda' && p === '1234') {
-        localStorage.setItem('nanda_dairy_auth', 'true');
-        showApp();
-      } else {
-        document.getElementById('loginErr').innerText = 'ভুল আইডি বা পাসওয়ার্ড!';
-      }
-    }
-
-    function showApp() {
-      document.getElementById('loginScreen').style.display = 'none';
-      document.getElementById('appBody').style.display = 'block';
-      listenData();
-    }
-
-    function logout() {
-      localStorage.removeItem('nanda_dairy_auth');
-      location.reload();
-    }
-
-    window.onload = function() {
-      const today = new Date().toISOString().split('T')[0];
-      if(document.getElementById('milkDate')) document.getElementById('milkDate').value = today;
-      if(document.getElementById('billDate')) document.getElementById('billDate').value = today;
-      if(document.getElementById('expDate')) document.getElementById('expDate').value = today;
-
-      if(localStorage.getItem('nanda_dairy_auth') === 'true') {
-        showApp();
-      }
-    };
-
-    function switchTab(tab) {
-      document.querySelectorAll('.tab-content').forEach(el => el.style.display = 'none');
-      document.querySelectorAll('nav button').forEach(el => el.classList.remove('active'));
-      document.getElementById('tab-' + tab).style.display = 'block';
-      if(event && event.target) event.target.classList.add('active');
-    }
-
-    function calcBill() {
-      const qty = parseFloat(document.getElementById('billQty').value) || 0;
-      const rate = parseFloat(document.getElementById('billRate').value) || 0;
-      const total = qty * rate;
-      document.getElementById('billTotal').value = total;
-
-      const paid = parseFloat(document.getElementById('billPaid').value) || 0;
-      document.getElementById('billDue').value = total - paid;
-    }
-
-    function addCattle() {
-      const tag = document.getElementById('cowTag').value.trim();
-      const breed = document.getElementById('cowBreed').value.trim();
-      const cap = document.getElementById('cowCapacity').value || 0;
-
-      if(!tag) return alert('ট্যাগ নম্বর অবশ্যই দিতে হবে!');
-      db.ref('cattle').push({ tag, breed, cap });
-      document.getElementById('cowTag').value = '';
-      document.getElementById('cowBreed').value = '';
-      document.getElementById('cowCapacity').value = '';
-    }
-
-    function addMilkRecord() {
-      const date = document.getElementById('milkDate').value;
-      const cow = document.getElementById('milkCowTag').value.trim() || 'সাধারণ';
-      const session = document.getElementById('milkSession').value;
-      const liters = parseFloat(document.getElementById('milkLiters').value) || 0;
-
-      if(!liters) return alert('দুধের পরিমাণ দিন!');
-      db.ref('milk').push({ date, cow, session, liters });
-      document.getElementById('milkLiters').value = '';
-    }
-
-    function addBill() {
-      const date = document.getElementById('billDate').value;
-      const name = document.getElementById('billCustomer').value.trim();
-      const phone = document.getElementById('billPhone').value.trim();
-      const qty = parseFloat(document.getElementById('billQty').value) || 0;
-      const rate = parseFloat(document.getElementById('billRate').value) || 0;
-      const total = parseFloat(document.getElementById('billTotal').value) || 0;
-      const paid = parseFloat(document.getElementById('billPaid').value) || 0;
-      const due = parseFloat(document.getElementById('billDue').value) || 0;
-
-      if(!name) return alert('কাস্টমারের নাম দিন!');
-      db.ref('bills').push({ date, name, phone, qty, rate, total, paid, due });
-      document.getElementById('billCustomer').value = '';
-      document.getElementById('billPhone').value = '';
-      document.getElementById('billQty').value = '';
-      document.getElementById('billRate').value = '';
-      document.getElementById('billTotal').value = '';
-      document.getElementById('billPaid').value = '';
-      document.getElementById('billDue').value = '';
-    }
-
-    function addExpense() {
-      const date = document.getElementById('expDate').value;
-      const title = document.getElementById('expTitle').value.trim();
-      const amount = parseFloat(document.getElementById('expAmount').value) || 0;
-
-      if(!title || !amount) return alert('বিবরণ ও টাকার পরিমাণ দিন!');
-      db.ref('expenses').push({
+              <label
