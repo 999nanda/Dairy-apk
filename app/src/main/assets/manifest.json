@@ -1,20 +1,16 @@
 {
   "name": "NANDA Dairy & Agro",
-  "short_name": "Dairy Agro",
+  "short_name": "Nanda Dairy",
   "start_url": "index.html",
   "display": "standalone",
-  "background_color": "#ffffff",
+  "background_color": "#1b5e20",
   "theme_color": "#1b5e20",
   "icons": [
     {
       "src": "logo.png",
-      "sizes": "192x192",
-      "type": "image/png"
-    },
-    {
-      "src": "logo.png",
-      "sizes": "512x512",
-      "type": "image/png"
+      "sizes": "192x192 512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
     }
   ]
 }
