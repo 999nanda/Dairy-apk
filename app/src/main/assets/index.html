@@ -286,4 +286,281 @@
           <div class="form-grid">
             <div class="input-group">
               <label>তারিখ *</label>
-              <input type="date"
+              <input type="date" id="expDate">
+            </div>
+            <div class="input-group">
+              <label>খরচের বিবরণ *</label>
+              <input type="text" id="expTitle" placeholder="যেমন: ভুসি, ওষুধ, বিদ্যুৎ বিল">
+            </div>
+            <div class="input-group">
+              <label>টাকার পরিমাণ *</label>
+              <input type="number" id="expAmount" placeholder="৳">
+            </div>
+          </div>
+          <button class="btn" onclick="addExpense()">খরচ সেভ করুন</button>
+        </div>
+
+        <div class="card">
+          <h2>খরচের তালিকা</h2>
+          <div class="table-container">
+            <table>
+              <thead>
+                <tr>
+                  <th>তারিখ</th>
+                  <th>বিবরণ</th>
+                  <th>টাকা</th>
+                  <th>অ্যাকশন</th>
+                </tr>
+              </thead>
+              <tbody id="expenseTableBody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ইনভয়েস প্রিন্ট মোডাল -->
+  <div id="invoiceModal">
+    <div class="invoice-card">
+      <div id="invoicePrintArea">
+        <div style="text-align: center; border-bottom: 2px dashed #888; padding-bottom: 12px; margin- удобный: 15px;">
+          <h2 style="margin: 0; color: #1b5e20;">Nanda Dairy Agro</h2>
+          <p style="font-size: 12px; color: #555;">দুধের মান নিশ্চিত, সেবাই আমাদের লক্ষ্য</p>
+          <p style="font-size: 13px; font-weight: bold; margin-top: 5px;">ক্যাশ মেমো / রসিদ</p>
+        </div>
+        <div id="invoiceDetails" style="font-size: 14px; line-height: 1.8;"></div>
+        <p style="text-align: center; font-size: 11px; margin-top: 25px; color: #666;">ধন্যবাদ, আবার আসবেন!</p>
+      </div>
+      <div style="display: flex; gap: 10px; margin-top: 20px;">
+        <button class="btn btn-print" style="flex: 1;" onclick="window.print()">প্রিন্ট করুন</button>
+        <button class="btn btn-danger" style="flex: 1;" onclick="closeInvoice()">বন্ধ করুন</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- সম্পূর্ণ স্ক্রিপ্ট ও ডাটাবেস লজিক -->
+  <script>
+    function getEl(id) {
+      return document.getElementById(id);
+    }
+
+    var firebaseConfig = {
+      apiKey: "AIzaSyAtmDkYLV6rh4jfJT2OPJZ5_R4c99S8-t4",
+      authDomain: "nanda-dairy-agro-b5888.firebaseapp.com",
+      databaseURL: "https://nanda-dairy-agro-b5888-default-rtdb.firebaseio.com",
+      projectId: "nanda-dairy-agro-b5888",
+      storageBucket: "nanda-dairy-agro-b5888.firebasestorage.app",
+      messagingSenderId: "284932687587",
+      appId: "1:284932687587:web:1613d832d65dabfb5f67d6"
+    };
+
+    var db = null;
+    try {
+      if (window.firebase && !firebase.apps.length) {
+        firebase.initializeApp(firebaseConfig);
+      }
+      if (window.firebase) {
+        db = firebase.database();
+      }
+    } catch(e) {
+      console.log("Firebase Init:", e);
+    }
+
+    function unlockApp() {
+      var ls = getEl('loginScreen');
+      var ab = getEl('appBody');
+      if (ls) ls.style.display = 'none';
+      if (ab) ab.style.display = 'block';
+      listenData();
+    }
+
+    function doLogin() {
+      var uEl = getEl('loginId');
+      var pEl = getEl('loginPass');
+      var errEl = getEl('loginErr');
+      
+      var u = (uEl ? uEl.value : '').trim().toLowerCase();
+      var p = (pEl ? pEl.value : '').trim();
+      
+      if (u === 'nanda' && p === '1234') {
+        localStorage.setItem('nanda_dairy_auth', 'true');
+        unlockApp();
+      } else {
+        if (errEl) errEl.innerText = 'ভুল আইডি বা পাসওয়ার্ড! আইডি: nanda, পাসওয়ার্ড: 1234';
+      }
+    }
+
+    function doLogout() {
+      localStorage.removeItem('nanda_dairy_auth');
+      location.reload();
+    }
+
+    function switchTab(tab) {
+      document.querySelectorAll('.tab-content').forEach(function(el) { el.style.display = 'none'; });
+      document.querySelectorAll('nav button').forEach(function(el) { el.classList.remove('active'); });
+      var target = getEl('tab-' + tab);
+      if (target) target.style.display = 'block';
+      if (window.event && window.event.target) {
+        window.event.target.classList.add('active');
+      }
+    }
+
+    function calcBill() {
+      var qty = parseFloat(getEl('billQty') ? getEl('billQty').value : 0) || 0;
+      var rate = parseFloat(getEl('billRate') ? getEl('billRate').value : 0) || 0;
+      var total = qty * rate;
+      if (getEl('billTotal')) getEl('billTotal').value = total;
+
+      var paid = parseFloat(getEl('billPaid') ? getEl('billPaid').value : 0) || 0;
+      if (getEl('billDue')) getEl('billDue').value = total - paid;
+    }
+
+    function addCattle() {
+      var tag = (getEl('cowTag') ? getEl('cowTag').value : '').trim();
+      var breed = (getEl('cowBreed') ? getEl('cowBreed').value : '').trim();
+      var cap = (getEl('cowCapacity') ? getEl('cowCapacity').value : 0) || 0;
+
+      if (!tag) return alert('ট্যাগ নম্বর অবশ্যই দিতে হবে!');
+      if (db) db.ref('cattle').push({ tag: tag, breed: breed, cap: cap });
+      if (getEl('cowTag')) getEl('cowTag').value = '';
+      if (getEl('cowBreed')) getEl('cowBreed').value = '';
+      if (getEl('cowCapacity')) getEl('cowCapacity').value = '';
+    }
+
+    function addMilkRecord() {
+      var date = getEl('milkDate') ? getEl('milkDate').value : '';
+      var cow = (getEl('milkCowTag') ? getEl('milkCowTag').value : '').trim() || 'সাধারণ';
+      var session = getEl('milkSession') ? getEl('milkSession').value : 'সকাল';
+      var liters = parseFloat(getEl('milkLiters') ? getEl('milkLiters').value : 0) || 0;
+
+      if (!liters) return alert('দুধের পরিমাণ দিন!');
+      if (db) db.ref('milk').push({ date: date, cow: cow, session: session, liters: liters });
+      if (getEl('milkLiters')) getEl('milkLiters').value = '';
+    }
+
+    function addBill() {
+      var date = getEl('billDate') ? getEl('billDate').value : '';
+      var name = (getEl('billCustomer') ? getEl('billCustomer').value : '').trim();
+      var phone = (getEl('billPhone') ? getEl('billPhone').value : '').trim();
+      var qty = parseFloat(getEl('billQty') ? getEl('billQty').value : 0) || 0;
+      var rate = parseFloat(getEl('billRate') ? getEl('billRate').value : 0) || 0;
+      var total = parseFloat(getEl('billTotal') ? getEl('billTotal').value : 0) || 0;
+      var paid = parseFloat(getEl('billPaid') ? getEl('billPaid').value : 0) || 0;
+      var due = parseFloat(getEl('billDue') ? getEl('billDue').value : 0) || 0;
+
+      if (!name) return alert('কাস্টমারের নাম দিন!');
+      if (db) db.ref('bills').push({ date: date, name: name, phone: phone, qty: qty, rate: rate, total: total, paid: paid, due: due });
+      if (getEl('billCustomer')) getEl('billCustomer').value = '';
+      if (getEl('billPhone')) getEl('billPhone').value = '';
+      if (getEl('billQty')) getEl('billQty').value = '';
+      if (getEl('billRate')) getEl('billRate').value = '';
+      if (getEl('billTotal')) getEl('billTotal').value = '';
+      if (getEl('billPaid')) getEl('billPaid').value = '';
+      if (getEl('billDue')) getEl('billDue').value = '';
+    }
+
+    function addExpense() {
+      var date = getEl('expDate') ? getEl('expDate').value : '';
+      var title = (getEl('expTitle') ? getEl('expTitle').value : '').trim();
+      var amount = parseFloat(getEl('expAmount') ? getEl('expAmount').value : 0) || 0;
+
+      if (!title || !amount) return alert('বিবরণ ও টাকার পরিমাণ দিন!');
+      if (db) db.ref('expenses').push({ date: date, title: title, amount: amount });
+      if (getEl('expTitle')) getEl('expTitle').value = '';
+      if (getEl('expAmount')) getEl('expAmount').value = '';
+    }
+
+    function deleteItem(path, id) {
+      if (confirm('আপনি কি নিশ্চিতভাবে এই এন্ট্রিটি মুছে ফেলতে চান?')) {
+        if (db) db.ref(path).child(id).remove();
+      }
+    }
+
+    function showInvoice(date, name, phone, qty, rate, total, paid, due) {
+      var html = '<p><strong>তারিখ:</strong> ' + date + '</p>' +
+                 '<p><strong>কাস্টমার:</strong> ' + name + '</p>' +
+                 '<p><strong>মোবাইল:</strong> ' + (phone || 'দেওয়া হয়নি') + '</p>' +
+                 '<hr style="margin: 8px 0; border: none; border-top: 1px solid #ddd;">' +
+                 '<p>দুধের পরিমাণ: ' + qty + ' লিটার</p>' +
+                 '<p>দর: ৳' + rate + ' / লিটার</p>' +
+                 '<p><strong>মোট বিল:</strong> ৳' + total + '</p>' +
+                 '<p style="color: green;"><strong>পরিশোধ:</strong> ৳' + paid + '</p>' +
+                 '<p style="color: red;"><strong>বকেয়া / বাকি:</strong> ৳' + due + '</p>';
+      if (getEl('invoiceDetails')) getEl('invoiceDetails').innerHTML = html;
+      if (getEl('invoiceModal')) getEl('invoiceModal').style.display = 'flex';
+    }
+
+    function closeInvoice() {
+      if (getEl('invoiceModal')) getEl('invoiceModal').style.display = 'none';
+    }
+
+    function listenData() {
+      if (!db) return;
+      
+      db.ref('cattle').on('value', function(snap) {
+        var body = getEl('cattleTableBody');
+        if (!body) return;
+        body.innerHTML = '';
+        var count = 0;
+        snap.forEach(function(child) {
+          count++;
+          var d = child.val();
+          body.innerHTML += '<tr><td><strong>' + d.tag + '</strong></td><td>' + (d.breed || '-') + '</td><td>' + d.cap + ' লি:</td><td><button class="action-btn btn-danger" onclick="deleteItem(\'cattle\', \'' + child.key + '\')">মুছুন</button></td></tr>';
+        });
+        if (getEl('dash-cow-count')) getEl('dash-cow-count').innerText = count;
+      });
+
+      var today = new Date().toISOString().split('T')[0];
+      db.ref('milk').on('value', function(snap) {
+        var body = getEl('milkTableBody');
+        if (!body) return;
+        body.innerHTML = '';
+        var todayMilk = 0;
+        snap.forEach(function(child) {
+          var d = child.val();
+          if (d.date === today) todayMilk += Number(d.liters);
+          body.innerHTML += '<tr><td>' + d.date + '</td><td>' + d.cow + '</td><td>' + d.session + '</td><td><strong>' + d.liters + ' লি:</strong></td><td><button class="action-btn btn-danger" onclick="deleteItem(\'milk\', \'' + child.key + '\')">মুছুন</button></td></tr>';
+        });
+        if (getEl('dash-milk-today')) getEl('dash-milk-today').innerText = todayMilk.toFixed(1) + ' লিটার';
+      });
+
+      db.ref('bills').on('value', function(snap) {
+        var body = getEl('billingTableBody');
+        if (!body) return;
+        body.innerHTML = '';
+        var totalDue = 0;
+        snap.forEach(function(child) {
+          var d = child.val();
+          totalDue += Number(d.due);
+          body.innerHTML += '<tr><td>' + d.date + '</td><td><strong>' + d.name + '</strong></td><td>৳' + d.total + '</td><td>৳' + d.paid + '</td><td style="color:red; font-weight:bold;">৳' + d.due + '</td><td><button class="action-btn btn-print" onclick="showInvoice(\'' + d.date + '\', \'' + d.name + '\', \'' + d.phone + '\', \'' + d.qty + '\', \'' + d.rate + '\', \'' + d.total + '\', \'' + d.paid + '\', \'' + d.due + '\')">রসিদ</button><button class="action-btn btn-danger" onclick="deleteItem(\'bills\', \'' + child.key + '\')">মুছুন</button></td></tr>';
+        });
+        if (getEl('dash-total-due')) getEl('dash-total-due').innerText = '৳ ' + totalDue.toLocaleString();
+      });
+
+      db.ref('expenses').on('value', function(snap) {
+        var body = getEl('expenseTableBody');
+        if (!body) return;
+        body.innerHTML = '';
+        var totalExp = 0;
+        snap.forEach(function(child) {
+          var d = child.val();
+          totalExp += Number(d.amount);
+          body.innerHTML += '<tr><td>' + d.date + '</td><td>' + d.title + '</td><td>৳' + d.amount + '</td><td><button class="action-btn btn-danger" onclick="deleteItem(\'expenses\', \'' + child.key + '\')">মুছুন</button></td></tr>';
+        });
+        if (getEl('dash-total-exp')) getEl('dash-total-exp').innerText = '৳ ' + totalExp.toLocaleString();
+      });
+    }
+
+    var todayStr = new Date().toISOString().split('T')[0];
+    if (getEl('milkDate')) getEl('milkDate').value = todayStr;
+    if (getEl('billDate')) getEl('billDate').value = todayStr;
+    if (getEl('expDate')) getEl('expDate').value = todayStr;
+
+    if (localStorage.getItem('nanda_dairy_auth') === 'true') {
+      unlockApp();
+    }
+  </script>
+</body>
+</html>
