@@ -53,14 +53,17 @@
     /* Buttons */
     .btn { background: var(--primary); color: white; border: none; padding: 9px 18px; border-radius: 6px; cursor: pointer; font-size: 13.5px; font-weight: 600; display: inline-flex; align-items: center; gap: 6px; }
     .btn:hover { background: var(--primary-light); }
+    .btn-edit { background: #0288d1; color: white; }
+    .btn-edit:hover { background: #0277bd; }
+    .btn-cancel { background: #757575; color: white; margin-left: 8px; }
     .btn-danger { background: var(--danger); color: white; }
     .btn-info { background: var(--info); color: white; }
     .action-btn { padding: 4px 9px; font-size: 12px; border: none; border-radius: 4px; cursor: pointer; margin-right: 4px; font-weight: 600; }
 
     /* Table Styles */
     .table-container { overflow-x: auto; margin-top: 10px; }
-    table { width: 100%; border-collapse: collapse; font-size: 12.5px; text-align: left; min-width: 900px; }
-    th, td { padding: 10px 12px; border-bottom: 1px solid #eceff1; white-space: nowrap; }
+    table { width: 100%; border-collapse: collapse; font-size: 12.5px; text-align: left; min-width: 950px; }
+    th, td { padding: 10px 12px; border-bottom: 1px solid #eceff1; white-space: nowrap; vertical-align: middle; }
     th { background: #f8faf9; color: #555; font-weight: 600; }
     tr:hover { background: #fafdfb; }
 
@@ -95,7 +98,7 @@
 </head>
 <body>
 
-  <!-- লগইন স্ক্রিন -->
+  <!-- ১. লগইন স্ক্রিন -->
   <div id="loginScreen">
     <div class="login-box">
       <img src="https://cdn-icons-png.flaticon.com/512/2395/2395796.png" alt="Logo">
@@ -114,7 +117,7 @@
     </div>
   </div>
 
-  <!-- মূল অ্যাপ্লিকেশন -->
+  <!-- ২. মূল অ্যাপ্লিকেশন -->
   <div id="appBody" style="display: none;">
     <header>
       <div class="header-title">
@@ -130,7 +133,7 @@
       </div>
     </header>
 
-    <!-- ন্যাভিগেশন বার -->
+    <!-- ১৩টি মডিউল ন্যাভিগেশন বার -->
     <nav>
       <button class="active" onclick="switchTab('dashboard')">📊 Dashboard</button>
       <button onclick="switchTab('cattle')">🐄 Cattle</button>
@@ -179,10 +182,10 @@
         </div>
       </div>
 
-      <!-- ২. Cattle Register (ভিডিওর মতো হুবহু ফিল্ডসমূহ) -->
+      <!-- ২. Cattle Register (এডিট মোড ও অটো দুধ হিসাব সহ) -->
       <div id="tab-cattle" class="tab-content" style="display: none;">
-        <div class="card">
-          <h2>🐄 Cattle Register</h2>
+        <div class="card" id="cattleFormCard">
+          <h2 id="cattleFormTitle">🐄 Cattle Register</h2>
           <div class="form-grid">
             <div class="input-group">
               <label>Tag ID *</label>
@@ -223,7 +226,7 @@
               <input type="number" id="cowLactation" placeholder="যেমন: 2">
             </div>
             <div class="input-group">
-              <label>Daily Milk (লিটার/দিন)</label>
+              <label>Daily Milk (প্রারম্ভিক/আনুমানিক লিটার)</label>
               <input type="number" id="cowCapacity" placeholder="যেমন: 12">
             </div>
             <div class="input-group">
@@ -252,7 +255,10 @@
               <input type="date" id="cowExpCalving">
             </div>
           </div>
-          <button class="btn" onclick="addCattle()">Save Cattle</button>
+          <div>
+            <button class="btn" id="saveCattleBtn" onclick="saveOrUpdateCattle()">Save Cattle</button>
+            <button class="btn btn-cancel" id="cancelCattleBtn" style="display:none;" onclick="cancelCattleEdit()">Cancel</button>
+          </div>
         </div>
 
         <div class="card">
@@ -270,7 +276,7 @@
                   <th>Weight</th>
                   <th>Lact</th>
                   <th>Status</th>
-                  <th>Milk/day</th>
+                  <th>Milk / Day (রেকর্ড থেকে অটো হিসাব)</th>
                   <th>Sire/Semen</th>
                   <th>Calving</th>
                   <th>Action</th>
@@ -346,8 +352,8 @@
               <input type="date" id="milkDate">
             </div>
             <div class="input-group">
-              <label>গরুর ট্যাগ/আইডি</label>
-              <input type="text" id="milkCowTag" placeholder="ট্যাগ নম্বর">
+              <label>গরুর ট্যাগ/আইডি *</label>
+              <input type="text" id="milkCowTag" placeholder="যেমন: NDA-C001">
             </div>
             <div class="input-group">
               <label>সেশন</label>
@@ -372,7 +378,7 @@
               <thead>
                 <tr>
                   <th>তারিখ</th>
-                  <th>গরু</th>
+                  <th>গরুর ট্যাগ</th>
                   <th>সেশন</th>
                   <th>পরিমাণ</th>
                   <th>মুছুন</th>
@@ -818,6 +824,11 @@
       console.log("Firebase Init:", e);
     }
 
+    // গ্লোবাল ক্যাশ ও এডিট ট্র্যাকার
+    var currentEditingKey = null;
+    var cachedCattle = {};
+    var cachedMilkList = [];
+
     function doLogin() {
       var u = (getEl('loginId') ? getEl('loginId').value : '').trim().toLowerCase();
       var p = (getEl('loginPass') ? getEl('loginPass').value : '').trim();
@@ -853,11 +864,14 @@
     function deleteRecord(path, id) {
       if (confirm('আপনি কি নিশ্চিতভাবে এই এন্ট্রিটি মুছে ফেলতে চান?')) {
         if (db) db.ref(path).child(id).remove();
+        if (path === 'cattle' && currentEditingKey === id) {
+          cancelCattleEdit();
+        }
       }
     }
 
-    /* ১. Cattle Add (ভিডিও অনুযায়ী সম্পূর্ণ ডেটা সেভ) */
-    function addCattle() {
+    /* ১. গরু সংরক্ষণ বা আপডেট (Save or Update) */
+    function saveOrUpdateCattle() {
       var tag = (getEl('cowTag') ? getEl('cowTag').value : '').trim();
       var breed = (getEl('cowBreed') ? getEl('cowBreed').value : '').trim();
       var breedType = (getEl('cowBreedType') ? getEl('cowBreedType').value : '').trim();
@@ -874,34 +888,152 @@
 
       if (!tag) return alert('Tag ID অবশ্যই দিতে হবে!');
 
-      if (db) {
-        db.ref('cattle').push({
-          tag: tag,
-          breed: breed,
-          breedType: breedType,
-          composition: composition,
-          generation: generation,
-          dob: dob,
-          weight: weight,
-          lactation: lactation,
-          cap: cap,
-          status: status,
-          sire: sire,
-          dam: dam,
-          expCalving: expCalving
-        });
-      }
+      var cattleData = {
+        tag: tag,
+        breed: breed,
+        breedType: breedType,
+        composition: composition,
+        generation: generation,
+        dob: dob,
+        weight: weight,
+        lactation: lactation,
+        cap: cap,
+        status: status,
+        sire: sire,
+        dam: dam,
+        expCalving: expCalving
+      };
 
-      // ফর্ম ফাঁকা করা
+      if (db) {
+        if (currentEditingKey) {
+          // এডিট আপডেট
+          db.ref('cattle').child(currentEditingKey).update(cattleData, function(err) {
+            if (!err) {
+              alert('গরুর তথ্য সফলভাবে আপডেট করা হয়েছে!');
+              cancelCattleEdit();
+            }
+          });
+        } else {
+          // নতুন সংরক্ষণ
+          db.ref('cattle').push(cattleData);
+          clearCattleForm();
+        }
+      }
+    }
+
+    /* গরু এডিট ফাংশন */
+    function editCattle(key) {
+      var d = cachedCattle[key];
+      if (!d) return;
+
+      currentEditingKey = key;
+      getEl('cowTag').value = d.tag || '';
+      getEl('cowBreed').value = d.breed || '';
+      getEl('cowBreedType').value = d.breedType || '';
+      getEl('cowComposition').value = d.composition || '';
+      getEl('cowGeneration').value = d.generation || 'F1';
+      getEl('cowDob').value = d.dob || '';
+      getEl('cowWeight').value = d.weight || '';
+      getEl('cowLactation').value = d.lactation || '';
+      getEl('cowCapacity').value = d.cap || '';
+      getEl('cowStatus').value = d.status || 'Milking';
+      getEl('cowSire').value = d.sire || '';
+      getEl('cowDam').value = d.dam || '';
+      getEl('cowExpCalving').value = d.expCalving || '';
+
+      getEl('cattleFormTitle').innerText = '✏️ Edit Cattle: ' + (d.tag || '');
+      getEl('saveCattleBtn').innerText = 'Update Cattle';
+      getEl('saveCattleBtn').className = 'btn btn-edit';
+      getEl('cancelCattleBtn').style.display = 'inline-flex';
+
+      // ফর্মের দিকে স্ক্রোল করা
+      getEl('cattleFormCard').scrollIntoView({ behavior: 'smooth' });
+    }
+
+    function cancelCattleEdit() {
+      currentEditingKey = null;
+      clearCattleForm();
+      getEl('cattleFormTitle').innerText = '🐄 Cattle Register';
+      getEl('saveCattleBtn').innerText = 'Save Cattle';
+      getEl('saveCattleBtn').className = 'btn';
+      getEl('cancelCattleBtn').style.display = 'none';
+    }
+
+    function clearCattleForm() {
       getEl('cowTag').value = '';
       getEl('cowBreed').value = '';
       getEl('cowBreedType').value = '';
       getEl('cowComposition').value = '';
+      getEl('cowDob').value = '';
       getEl('cowWeight').value = '';
       getEl('cowLactation').value = '';
       getEl('cowCapacity').value = '';
       getEl('cowSire').value = '';
       getEl('cowDam').value = '';
+      getEl('cowExpCalving').value = '';
+    }
+
+    /* রেন্ডার ক্যাটল টেবিল (মিল্ক রেকর্ড থেকে অটো গড় ও মোট দুধ/দিন হিসাব) */
+    function renderCattleTable() {
+      var body = getEl('cattleTableBody');
+      if (!body) return;
+      body.innerHTML = '';
+      var count = 0;
+
+      for (var key in cachedCattle) {
+        count++;
+        var d = cachedCattle[key];
+        var tagNormalized = (d.tag || '').trim().toLowerCase();
+
+        // এই গরুর দুধ রেকর্ড হিসাব করা
+        var matchingMilk = cachedMilkList.filter(function(m) {
+          return (m.cow || '').trim().toLowerCase() === tagNormalized;
+        });
+
+        var totalMilk = 0;
+        var uniqueDays = {};
+        matchingMilk.forEach(function(m) {
+          totalMilk += Number(m.liters) || 0;
+          if (m.date) uniqueDays[m.date] = true;
+        });
+
+        var dayCount = Object.keys(uniqueDays).length;
+        var milkDisplay = '';
+
+        if (dayCount > 0) {
+          var avgPerDay = (totalMilk / dayCount).toFixed(1);
+          milkDisplay = '<strong>' + avgPerDay + ' লি:</strong>' +
+                        '<div style="font-size:11px; color:#555; margin-top:2px;">(মোট ' + totalMilk.toFixed(1) + ' লি: / ' + dayCount + ' দিন)</div>';
+        } else {
+          var initialCap = Number(d.cap) || 0;
+          milkDisplay = initialCap > 0 ? (initialCap + ' লি: <span style="font-size:11px; color:#888;">(আনুমানিক)</span>') : '<span style="color:#888;">রেকর্ড নেই</span>';
+        }
+
+        var badgeClass = 'badge-other';
+        if (d.status === 'Milking') badgeClass = 'badge-milking';
+        else if (d.status === 'Pregnant') badgeClass = 'badge-pregnant';
+        else if (d.status === 'Dry') badgeClass = 'badge-dry';
+
+        body.innerHTML += '<tr>' +
+          '<td><strong>' + (d.tag || '-') + '</strong></td>' +
+          '<td>' + (d.breed || '-') + '</td>' +
+          '<td>' + (d.breedType || '-') + '</td>' +
+          '<td>' + (d.generation || '-') + '</td>' +
+          '<td>' + (d.composition || '-') + '</td>' +
+          '<td>' + (d.dob || '-') + '</td>' +
+          '<td>' + (d.weight ? d.weight + ' kg' : '-') + '</td>' +
+          '<td>' + (d.lactation || '-') + '</td>' +
+          '<td><span class="badge ' + badgeClass + '">' + (d.status || '-') + '</span></td>' +
+          '<td>' + milkDisplay + '</td>' +
+          '<td>' + (d.sire || '-') + '</td>' +
+          '<td>' + (d.expCalving || '-') + '</td>' +
+          '<td>' +
+            '<button class="action-btn btn-edit" onclick="editCattle(\'' + key + '\')">Edit</button>' +
+            '<button class="action-btn btn-danger" onclick="deleteRecord(\'cattle\', \'' + key + '\')">Delete</button>' +
+          '</td>' +
+        '</tr>';
+      }
+      if (getEl('dash-cow-count')) getEl('dash-cow-count').innerText = count;
     }
 
     /* ২. Breeding */
@@ -919,9 +1051,10 @@
     /* ৩. Milk */
     function addMilkRecord() {
       var date = getEl('milkDate') ? getEl('milkDate').value : '';
-      var cow = (getEl('milkCowTag') ? getEl('milkCowTag').value : '').trim() || 'সাধারণ';
+      var cow = (getEl('milkCowTag') ? getEl('milkCowTag').value : '').trim();
       var session = getEl('milkSession') ? getEl('milkSession').value : 'সকাল';
       var liters = parseFloat(getEl('milkLiters') ? getEl('milkLiters').value : 0) || 0;
+      if (!cow) return alert('গরুর ট্যাগ নম্বর দিন!');
       if (!liters) return alert('দুধের পরিমাণ দিন!');
       if (db) db.ref('milk').push({ date: date, cow: cow, session: session, liters: liters });
       getEl('milkLiters').value = '';
@@ -1051,38 +1184,35 @@
       if (!db) return;
       var today = new Date().toISOString().split('T')[0];
 
-      // Cattle Table (ভিডিওর মতো হুবহু সব কলাম প্রদর্শন)
+      // Cattle ডেটা লিসেনার
       db.ref('cattle').on('value', function(snap) {
-        var body = getEl('cattleTableBody');
-        if (body) body.innerHTML = '';
-        var count = 0;
+        cachedCattle = {};
         snap.forEach(function(child) {
-          count++;
-          var d = child.val();
-          var badgeClass = 'badge-other';
-          if (d.status === 'Milking') badgeClass = 'badge-milking';
-          else if (d.status === 'Pregnant') badgeClass = 'badge-pregnant';
-          else if (d.status === 'Dry') badgeClass = 'badge-dry';
-
-          if (body) {
-            body.innerHTML += '<tr>' +
-              '<td><strong>' + (d.tag || '-') + '</strong></td>' +
-              '<td>' + (d.breed || '-') + '</td>' +
-              '<td>' + (d.breedType || '-') + '</td>' +
-              '<td>' + (d.generation || '-') + '</td>' +
-              '<td>' + (d.composition || '-') + '</td>' +
-              '<td>' + (d.dob || '-') + '</td>' +
-              '<td>' + (d.weight || '-') + '</td>' +
-              '<td>' + (d.lactation || '-') + '</td>' +
-              '<td><span class="badge ' + badgeClass + '">' + (d.status || '-') + '</span></td>' +
-              '<td>' + (d.cap || '0') + '</td>' +
-              '<td>' + (d.sire || '-') + '</td>' +
-              '<td>' + (d.expCalving || '-') + '</td>' +
-              '<td><button class="action-btn btn-danger" onclick="deleteRecord(\'cattle\', \'' + child.key + '\')">Delete</button></td>' +
-            '</tr>';
-          }
+          cachedCattle[child.key] = child.val();
         });
-        if (getEl('dash-cow-count')) getEl('dash-cow-count').innerText = count;
+        renderCattleTable();
+      });
+
+      // Milk ডেটা লিসেনার (এটি আপডেট হলে ক্যাটল টেবিলও নিজে থেকে রিফ্রেশ হবে)
+      db.ref('milk').on('value', function(snap) {
+        var body = getEl('milkTableBody');
+        if (body) body.innerHTML = '';
+        var todayMilk = 0; var totalMilk = 0;
+        cachedMilkList = [];
+
+        snap.forEach(function(child) {
+          var d = child.val();
+          cachedMilkList.push(d);
+          var lit = Number(d.liters) || 0;
+          totalMilk += lit;
+          if (d.date === today) todayMilk += lit;
+          if (body) body.innerHTML += '<tr><td>' + d.date + '</td><td><strong>' + d.cow + '</strong></td><td>' + d.session + '</td><td><strong>' + lit + ' লি:</strong></td><td><button class="action-btn btn-danger" onclick="deleteRecord(\'milk\', \'' + child.key + '\')">মুছুন</button></td></tr>';
+        });
+        if (getEl('dash-milk-today')) getEl('dash-milk-today').innerText = todayMilk.toFixed(1) + ' লি:';
+        if (getEl('rep-milk')) getEl('rep-milk').innerText = totalMilk.toFixed(1);
+
+        // গরুর টেবিলের দুধের গড় আবার রেন্ডার করা
+        renderCattleTable();
       });
 
       // Breeding
@@ -1093,22 +1223,6 @@
           var d = child.val();
           if (body) body.innerHTML += '<tr><td><strong>' + d.tag + '</strong></td><td>' + d.aiDate + '</td><td>' + (d.semenId || '-') + '</td><td>' + d.status + '</td><td>' + (d.calvingDate || '-') + '</td><td><button class="action-btn btn-danger" onclick="deleteRecord(\'breeding\', \'' + child.key + '\')">মুছুন</button></td></tr>';
         });
-      });
-
-      // Milk
-      db.ref('milk').on('value', function(snap) {
-        var body = getEl('milkTableBody');
-        if (body) body.innerHTML = '';
-        var todayMilk = 0; var totalMilk = 0;
-        snap.forEach(function(child) {
-          var d = child.val();
-          var lit = Number(d.liters) || 0;
-          totalMilk += lit;
-          if (d.date === today) todayMilk += lit;
-          if (body) body.innerHTML += '<tr><td>' + d.date + '</td><td>' + d.cow + '</td><td>' + d.session + '</td><td><strong>' + lit + ' লি:</strong></td><td><button class="action-btn btn-danger" onclick="deleteRecord(\'milk\', \'' + child.key + '\')">মুছুন</button></td></tr>';
-        });
-        if (getEl('dash-milk-today')) getEl('dash-milk-today').innerText = todayMilk.toFixed(1) + ' লি:';
-        if (getEl('rep-milk')) getEl('rep-milk').innerText = totalMilk.toFixed(1);
       });
 
       // Sales
