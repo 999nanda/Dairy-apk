@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>NANDA Dairy & Agro</title>
+  <title>NANDA Dairy & Agro - Enterprise Farm ERP</title>
   <link rel="icon" type="image/png" href="logo.png">
 
   <!-- Firebase লাইব্রেরি -->
@@ -13,55 +13,78 @@
   <style>
     :root {
       --primary: #1b5e20;
-      --primary-light: #4c8c4a;
+      --primary-light: #2e7d32;
+      --accent: #4caf50;
       --secondary: #e8f5e9;
       --danger: #d32f2f;
+      --warning: #f57c00;
+      --info: #0288d1;
       --dark: #212121;
+      --light: #f8f9fa;
     }
     * { box-sizing: border-box; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 0; padding: 0; }
-    body { background-color: #f0f2f5; color: var(--dark); padding-bottom: 50px; }
-    
-    header { background: var(--primary); color: white; padding: 15px 20px; display: flex; align-items: center; justify-content: space-between; box-shadow: 0 2px 8px rgba(0,0,0,0.2); }
+    body { background-color: #f1f5f2; color: var(--dark); padding-bottom: 60px; }
+
+    /* Header */
+    header { background: linear-gradient(135deg, #1b5e20, #2e7d32); color: white; padding: 14px 20px; display: flex; align-items: center; justify-content: space-between; box-shadow: 0 3px 10px rgba(0,0,0,0.15); position: sticky; top: 0; z-index: 100; }
     .header-title { display: flex; align-items: center; gap: 12px; }
-    .header-title img { height: 45px; width: 45px; border-radius: 8px; object-fit: contain; background: white; padding: 2px; }
-    .header-title h1 { font-size: 20px; }
-    .logout-btn { background: #b71c1c; color: white; border: none; padding: 6px 14px; border-radius: 6px; cursor: pointer; font-weight: bold; }
+    .header-title img { height: 42px; width: 42px; border-radius: 8px; background: white; padding: 2px; }
+    .header-title h1 { font-size: 19px; font-weight: 700; letter-spacing: 0.5px; }
+    .logout-btn { background: #b71c1c; color: white; border: none; padding: 7px 15px; border-radius: 6px; cursor: pointer; font-weight: bold; font-size: 13px; }
 
-    nav { display: flex; background: white; overflow-x: auto; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
-    nav button { flex: 1; min-width: 110px; padding: 14px 10px; border: none; background: none; font-size: 14px; font-weight: 600; color: #555; cursor: pointer; border-bottom: 3px solid transparent; transition: 0.3s; }
-    nav button.active { color: var(--primary); border-bottom: 3px solid var(--primary); background: var(--secondary); }
+    /* Navigation Bar (১৩টি মডিউল সহজে স্ক্রোল করার ব্যবস্থা) */
+    nav { display: flex; background: white; overflow-x: auto; box-shadow: 0 2px 5px rgba(0,0,0,0.06); padding: 5px 10px; scrollbar-width: thin; }
+    nav button { flex: 0 0 auto; padding: 10px 16px; border: none; background: none; font-size: 13.5px; font-weight: 600; color: #495057; cursor: pointer; border-radius: 6px; margin-right: 5px; transition: all 0.2s; white-space: nowrap; }
+    nav button:hover { background: #f0f4f1; color: var(--primary); }
+    nav button.active { background: var(--secondary); color: var(--primary); font-weight: 700; border-bottom: 3px solid var(--primary); }
 
-    .container { max-width: 900px; margin: 20px auto; padding: 0 15px; }
+    .container { max-width: 1100px; margin: 20px auto; padding: 0 15px; }
 
-    .card { background: white; border-radius: 10px; padding: 20px; margin-bottom: 20px; box-shadow: 0 2px 6px rgba(0,0,0,0.06); }
-    h2 { font-size: 18px; margin-bottom: 15px; color: var(--primary); border-bottom: 2px solid var(--secondary); padding-bottom: 6px; }
+    /* Cards & Forms */
+    .card { background: white; border-radius: 10px; padding: 20px; margin-bottom: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
+    h2 { font-size: 17px; margin-bottom: 15px; color: var(--primary); border-bottom: 2px solid var(--secondary); padding-bottom: 6px; display: flex; justify-content: space-between; align-items: center; }
     .form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; margin-bottom: 15px; }
-    .input-group label { display: block; font-size: 12px; font-weight: 600; margin-bottom: 4px; color: #444; }
-    input, select { width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 6px; font-size: 14px; }
-    .btn { background: var(--primary); color: white; border: none; padding: 10px 18px; border-radius: 6px; cursor: pointer; font-size: 14px; font-weight: 600; }
-    .btn:hover { background: var(--primary-light); }
-    .btn-danger { background: var(--danger); }
-    .btn-danger:hover { background: #b71c1c; }
-
-    .table-container { overflow-x: auto; }
-    table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 13px; }
-    th, td { padding: 10px; border-bottom: 1px solid #eee; text-align: left; }
-    th { background: #fafafa; color: #666; font-weight: 600; }
-    .action-btn { padding: 5px 10px; font-size: 12px; border: none; border-radius: 4px; cursor: pointer; margin-right: 5px; }
-    .btn-print { background: #0288d1; color: white; }
-
-    .summary-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 15px; margin-bottom: 20px; }
-    .summary-card { background: white; padding: 18px; border-radius: 10px; border-left: 5px solid var(--primary); box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
-    .summary-card p { font-size: 12px; color: #666; font-weight: 600; }
-    .summary-card h3 { font-size: 22px; color: var(--primary); margin-top: 5px; }
-
-    #loginScreen { position: fixed; inset: 0; background: #e8f5e9; display: flex; align-items: center; justify-content: center; z-index: 1000; padding: 20px; }
-    .login-box { background: white; padding: 30px; border-radius: 12px; width: 100%; max-width: 380px; box-shadow: 0 8px 24px rgba(0,0,0,0.15); text-align: center; }
-    .login-box img { height: 70px; margin-bottom: 15px; object-fit: contain; }
-
-    #invoiceModal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 2000; align-items: center; justify-content: center; padding: 15px; }
-    .invoice-card { background: white; max-width: 450px; width: 100%; border-radius: 8px; padding: 25px; box-shadow: 0 5px 15px rgba(0,0,0,0.3); }
+    .input-group label { display: block; font-size: 12px; font-weight: 600; margin-bottom: 5px; color: #444; }
+    input, select, textarea { width: 100%; padding: 9px 12px; border: 1px solid #ced4da; border-radius: 6px; font-size: 13.5px; outline: none; }
+    input:focus, select:focus, textarea:focus { border-color: var(--primary); box-shadow: 0 0 0 2px rgba(27,94,32,0.15); }
     
+    /* Buttons */
+    .btn { background: var(--primary); color: white; border: none; padding: 9px 18px; border-radius: 6px; cursor: pointer; font-size: 13.5px; font-weight: 600; display: inline-flex; align-items: center; gap: 6px; }
+    .btn:hover { background: var(--primary-light); }
+    .btn-danger { background: var(--danger); color: white; }
+    .btn-warning { background: var(--warning); color: white; }
+    .btn-info { background: var(--info); color: white; }
+    .action-btn { padding: 4px 9px; font-size: 12px; border: none; border-radius: 4px; cursor: pointer; margin-right: 4px; font-weight: 600; }
+
+    /* Tables */
+    .table-container { overflow-x: auto; margin-top: 10px; }
+    table { width: 100%; border-collapse: collapse; font-size: 13px; text-align: left; }
+    th, td { padding: 11px 12px; border-bottom: 1px solid #eceff1; }
+    th { background: #f8faf9; color: #555; font-weight: 600; }
+    tr:hover { background: #fafdfb; }
+
+    /* Badges */
+    .badge { padding: 3px 8px; border-radius: 12px; font-size: 11px; font-weight: 600; display: inline-block; }
+    .badge-success { background: #e8f5e9; color: #2e7d32; }
+    .badge-warning { background: #fff3e0; color: #e65100; }
+    .badge-danger { background: #ffebee; color: #c62828; }
+    .badge-info { background: #e1f5fe; color: #0277bd; }
+
+    /* Dashboard Widgets */
+    .summary-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 25px; }
+    .summary-card { background: white; padding: 18px; border-radius: 10px; border-left: 5px solid var(--primary); box-shadow: 0 2px 6px rgba(0,0,0,0.05); }
+    .summary-card p { font-size: 12px; color: #666; font-weight: 600; text-transform: uppercase; }
+    .summary-card h3 { font-size: 24px; color: var(--primary); margin-top: 6px; font-weight: 700; }
+
+    /* Login Screen */
+    #loginScreen { position: fixed; inset: 0; background: #e8f5e9; display: flex; align-items: center; justify-content: center; z-index: 1000; padding: 20px; }
+    .login-box { background: white; padding: 32px; border-radius: 12px; width: 100%; max-width: 380px; box-shadow: 0 8px 24px rgba(0,0,0,0.12); text-align: center; }
+    .login-box img { height: 70px; margin-bottom: 12px; }
+
+    /* Invoice Modal */
+    #invoiceModal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 2000; align-items: center; justify-content: center; padding: 15px; }
+    .invoice-card { background: white; max-width: 480px; width: 100%; border-radius: 8px; padding: 25px; box-shadow: 0 5px 20px rgba(0,0,0,0.3); }
+
     @media print {
       body * { visibility: hidden; }
       #invoicePrintArea, #invoicePrintArea * { visibility: visible; }
@@ -71,21 +94,21 @@
 </head>
 <body>
 
-  <!-- ১. লগইন বক্স -->
+  <!-- ১. লগইন স্ক্রিন -->
   <div id="loginScreen">
     <div class="login-box">
       <img src="https://cdn-icons-png.flaticon.com/512/2395/2395796.png" alt="Logo">
-      <h2 style="border:none; margin-bottom: 5px;">Nanda Dairy Agro</h2>
-      <p style="font-size: 13px; color: #666; margin-bottom: 20px;">লগইন করতে ইউজার আইডি ও পাসওয়ার্ড দিন</p>
-      <div style="text-align: left; margin-bottom: 15px;">
+      <h2 style="border:none; margin-bottom: 5px; justify-content:center;">Nanda Dairy Agro</h2>
+      <p style="font-size: 13px; color: #666; margin-bottom: 20px;">ফার্ম ম্যানেজমেন্ট সিস্টেমে স্বাগতম</p>
+      <div style="text-align: left; margin-bottom: 14px;">
         <label style="font-size: 12px; font-weight:600;">ইউজার আইডি</label>
-        <input type="text" id="loginId" placeholder="ইউজার আইডি দিন" value="nanda" style="margin-top: 4px;">
+        <input type="text" id="loginId" value="nanda" style="margin-top: 4px;">
       </div>
       <div style="text-align: left; margin-bottom: 20px;">
         <label style="font-size: 12px; font-weight:600;">পাসওয়ার্ড</label>
-        <input type="password" id="loginPass" placeholder="পাসওয়ার্ড দিন" value="1234" style="margin-top: 4px;">
+        <input type="password" id="loginPass" value="1234" style="margin-top: 4px;">
       </div>
-      <button class="btn" style="width: 100%; padding: 12px;" onclick="doLogin()">লগইন করুন</button>
+      <button class="btn" style="width: 100%; padding: 11px; justify-content:center;" onclick="doLogin()">লগইন করুন</button>
       <p id="loginErr" style="color: red; font-size: 12px; margin-top: 10px;"></p>
     </div>
   </div>
@@ -100,45 +123,62 @@
       <button class="logout-btn" onclick="doLogout()">লগআউট</button>
     </header>
 
+    <!-- ১৩টি মডিউল ন্যাভিগেশন -->
     <nav>
-      <button class="active" onclick="switchTab('dashboard')">ড্যাশবোর্ড</button>
-      <button onclick="switchTab('cattle')">ক্যাটল লিস্ট</button>
-      <button onclick="switchTab('milk')">দুধের রেকর্ড</button>
-      <button onclick="switchTab('billing')">বিলিং ও বাকি</button>
-      <button onclick="switchTab('expense')">খরচের খাতা</button>
+      <button class="active" onclick="switchTab('dashboard')">📊 Dashboard</button>
+      <button onclick="switchTab('cattle')">🐄 Cattle</button>
+      <button onclick="switchTab('breeding')">🧬 Breeding</button>
+      <button onclick="switchTab('milk')">🥛 Milk</button>
+      <button onclick="switchTab('sales')">💰 Sales</button>
+      <button onclick="switchTab('customers')">👥 Customer</button>
+      <button onclick="switchTab('orders')">📦 Orders</button>
+      <button onclick="switchTab('expenses')">🧾 Expenses</button>
+      <button onclick="switchTab('stock')">🌾 Stock</button>
+      <button onclick="switchTab('semen')">💉 Semen/Bull</button>
+      <button onclick="switchTab('health')">🩺 Health</button>
+      <button onclick="switchTab('reports')">📈 Reports</button>
+      <button onclick="switchTab('backup')">💾 Backup</button>
     </nav>
 
     <div class="container">
       
-      <!-- ড্যাশবোর্ড -->
+      <!-- ১. Dashboard -->
       <div id="tab-dashboard" class="tab-content">
         <div class="summary-grid">
           <div class="summary-card">
             <p>মোট গরু সংখ্যা</p>
             <h3 id="dash-cow-count">০</h3>
           </div>
-          <div class="summary-card" style="border-left-color: #0288d1;">
+          <div class="summary-card" style="border-left-color: var(--info);">
             <p>আজকের মোট দুধ</p>
-            <h3 id="dash-milk-today">০ লিটার</h3>
+            <h3 id="dash-milk-today">০ লি:</h3>
           </div>
-          <div class="summary-card" style="border-left-color: #d32f2f;">
-            <p>মোট বাকি/বকেয়া</p>
+          <div class="summary-card" style="border-left-color: #7b1fa2;">
+            <p>মোট কাস্টমার বকেয়া</p>
             <h3 id="dash-total-due">৳ ০</h3>
           </div>
-          <div class="summary-card" style="border-left-color: #f57c00;">
-            <p>চলতি মাসের খরচ</p>
+          <div class="summary-card" style="border-left-color: var(--warning);">
+            <p>মোট বিক্রয় (Sales)</p>
+            <h3 id="dash-total-sales">৳ ০</h3>
+          </div>
+          <div class="summary-card" style="border-left-color: var(--danger);">
+            <p>মোট খরচ (Expense)</p>
             <h3 id="dash-total-exp">৳ ০</h3>
+          </div>
+          <div class="summary-card" style="border-left-color: #00897b;">
+            <p>পেন্ডিং অর্ডার</p>
+            <h3 id="dash-pending-orders">০ টি</h3>
           </div>
         </div>
       </div>
 
-      <!-- ক্যাটল লিস্ট -->
+      <!-- ২. Cattle List -->
       <div id="tab-cattle" class="tab-content" style="display: none;">
         <div class="card">
           <h2>নতুন গরু যুক্ত করুন</h2>
           <div class="form-grid">
             <div class="input-group">
-              <label>গরুর ট্যাগ/আইডি নম্বর *</label>
+              <label>গরুর ট্যাগ/আইডি *</label>
               <input type="text" id="cowTag" placeholder="যেমন: C-101">
             </div>
             <div class="input-group">
@@ -146,11 +186,21 @@
               <input type="text" id="cowBreed" placeholder="যেমন: ফ্রিজিয়ান/শাহিওয়াল">
             </div>
             <div class="input-group">
+              <label>স্ট্যাটাস</label>
+              <select id="cowStatus">
+                <option value="দুধাল (Milking)">দুধাল (Milking)</option>
+                <option value="গর্ভবতী (Pregnant)">গর্ভবতী (Pregnant)</option>
+                <option value="শুষ্ক (Dry)">শুষ্ক (Dry)</option>
+                <option value="বাছুর (Calf)">বাছুর (Calf)</option>
+                <option value="ষাঁড় (Bull)">ষাঁড় (Bull)</option>
+              </select>
+            </div>
+            <div class="input-group">
               <label>দৈনিক গড় দুধ (লিটার)</label>
               <input type="number" id="cowCapacity" placeholder="যেমন: ১২">
             </div>
           </div>
-          <button class="btn" onclick="addCattle()">গরু সংরক্ষণ করুন</button>
+          <button class="btn" onclick="addCattle()">সংরক্ষণ করুন</button>
         </div>
 
         <div class="card">
@@ -159,10 +209,11 @@
             <table>
               <thead>
                 <tr>
-                  <th>আইডি</th>
+                  <th>ট্যাগ/আইডি</th>
                   <th>জাত</th>
+                  <th>স্ট্যাটাস</th>
                   <th>গড় দুধ</th>
-                  <th>অ্যাকশন</th>
+                  <th>মুছুন</th>
                 </tr>
               </thead>
               <tbody id="cattleTableBody"></tbody>
@@ -171,17 +222,71 @@
         </div>
       </div>
 
-      <!-- দুধের রেকর্ড -->
+      <!-- ৩. Breeding -->
+      <div id="tab-breeding" class="tab-content" style="display: none;">
+        <div class="card">
+          <h2>প্রজনন / ব্রিডিং এন্ট্রি</h2>
+          <div class="form-grid">
+            <div class="input-group">
+              <label>গরুর ট্যাগ নম্বর *</label>
+              <input type="text" id="brCowTag" placeholder="ট্যাগ দিন">
+            </div>
+            <div class="input-group">
+              <label>ইনসেমিনেশন (AI) তারিখ *</label>
+              <input type="date" id="brAiDate">
+            </div>
+            <div class="input-group">
+              <label>সিমেন / ষাঁড়ের আইডি</label>
+              <input type="text" id="brSemenId" placeholder="যেমন: HF-802">
+            </div>
+            <div class="input-group">
+              <label>গর্ভধারণ স্ট্যাটাস</label>
+              <select id="brStatus">
+                <option value="পেন্ডিং / চেক বাকি">পেন্ডিং / চেক বাকি</option>
+                <option value="গর্ভবতী (Confirmed)">গর্ভবতী (Confirmed)</option>
+                <option value="ব্যর্থ (Failed)">ব্যর্থ (Failed)</option>
+                <option value="প্রসব সম্পন্ন (Calved)">প্রসব সম্পন্ন (Calved)</option>
+              </select>
+            </div>
+            <div class="input-group">
+              <label>সম্ভাব্য প্রসবের তারিখ (আনুমানিক)</label>
+              <input type="date" id="brCalvingDate">
+            </div>
+          </div>
+          <button class="btn" onclick="addBreeding()">ব্রিডিং রেকর্ড সেভ করুন</button>
+        </div>
+
+        <div class="card">
+          <h2>প্রজনন রেকর্ড খাতা</h2>
+          <div class="table-container">
+            <table>
+              <thead>
+                <tr>
+                  <th>গরুর ট্যাগ</th>
+                  <th>AI তারিখ</th>
+                  <th>সিমেন আইডি</th>
+                  <th>স্ট্যাটাস</th>
+                  <th>সম্ভাব্য প্রসব তারিখ</th>
+                  <th>মুছুন</th>
+                </tr>
+              </thead>
+              <tbody id="breedingTableBody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- ৪. Milk Records -->
       <div id="tab-milk" class="tab-content" style="display: none;">
         <div class="card">
-          <h2>দুধ দোহন এন্ট্রি</h2>
+          <h2>দুধ উৎপাদন এন্ট্রি</h2>
           <div class="form-grid">
             <div class="input-group">
               <label>তারিখ *</label>
               <input type="date" id="milkDate">
             </div>
             <div class="input-group">
-              <label>গরুর আইডি</label>
+              <label>গরুর ট্যাগ/আইডি</label>
               <input type="text" id="milkCowTag" placeholder="ট্যাগ নম্বর">
             </div>
             <div class="input-group">
@@ -189,6 +294,7 @@
               <select id="milkSession">
                 <option value="সকাল">সকাল</option>
                 <option value="বিকাল">বিকাল</option>
+                <option value="দুপুর">দুপুর</option>
               </select>
             </div>
             <div class="input-group">
@@ -200,16 +306,16 @@
         </div>
 
         <div class="card">
-          <h2>দৈনিক দুধের খাতা</h2>
+          <h2>দৈনিক দুধ উৎপাদন তালিকা</h2>
           <div class="table-container">
             <table>
               <thead>
                 <tr>
                   <th>তারিখ</th>
-                  <th>গরুর আইডি</th>
+                  <th>গরু</th>
                   <th>সেশন</th>
                   <th>পরিমাণ</th>
-                  <th>অ্যাকশন</th>
+                  <th>মুছুন</th>
                 </tr>
               </thead>
               <tbody id="milkTableBody"></tbody>
@@ -218,69 +324,172 @@
         </div>
       </div>
 
-      <!-- বিলিং ও বাকি -->
-      <div id="tab-billing" class="tab-content" style="display: none;">
+      <!-- ৫. Sales & Billing -->
+      <div id="tab-sales" class="tab-content" style="display: none;">
         <div class="card">
-          <h2>কাস্টমার বিল ও পেমেন্ট এন্ট্রি</h2>
+          <h2>পণ্য বিক্রয় ও ইনভয়েস</h2>
           <div class="form-grid">
             <div class="input-group">
               <label>তারিখ *</label>
-              <input type="date" id="billDate">
+              <input type="date" id="saleDate">
             </div>
             <div class="input-group">
               <label>কাস্টমারের নাম *</label>
-              <input type="text" id="billCustomer" placeholder="নাম">
+              <input type="text" id="saleCustomer" placeholder="নাম">
             </div>
             <div class="input-group">
               <label>মোবাইল নম্বর</label>
-              <input type="text" id="billPhone" placeholder="মোবাইল">
+              <input type="text" id="salePhone" placeholder="মোবাইল">
             </div>
             <div class="input-group">
-              <label>দুধের পরিমাণ (লিটার)</label>
-              <input type="number" id="billQty" oninput="calcBill()" placeholder="০">
+              <label>পণ্য</label>
+              <select id="saleItem">
+                <option value="তরল দুধ">তরল দুধ</option>
+                <option value="ঘি">ঘি</option>
+                <option value="মাখন">মাখন</option>
+                <option value="ছানা/পনির">ছানা/পনির</option>
+                <option value="গোবর সার">গোবর সার</option>
+              </select>
             </div>
             <div class="input-group">
-              <label>দর (টাকা প্রতি লিটার)</label>
-              <input type="number" id="billRate" oninput="calcBill()" placeholder="৳">
+              <label>পরিমাণ (লিটার/কেজি)</label>
+              <input type="number" id="saleQty" oninput="calcSale()" placeholder="০">
             </div>
             <div class="input-group">
-              <label>মোট বিল (টাকা)</label>
-              <input type="number" id="billTotal" readonly style="background:#eee;">
+              <label>দর (টাকা)</label>
+              <input type="number" id="saleRate" oninput="calcSale()" placeholder="৳">
             </div>
             <div class="input-group">
-              <label>পরিশোধ করেছে (টাকা)</label>
-              <input type="number" id="billPaid" oninput="calcBill()" placeholder="৳">
+              <label>মোট টাকা</label>
+              <input type="number" id="saleTotal" readonly style="background:#eee;">
             </div>
             <div class="input-group">
-              <label>বকেয়া / বাকি (টাকা)</label>
-              <input type="number" id="billDue" readonly style="background:#ffebee; color:red; font-weight:bold;">
+              <label>পরিশোধ (নগদ)</label>
+              <input type="number" id="salePaid" oninput="calcSale()" placeholder="৳">
+            </div>
+            <div class="input-group">
+              <label>বাকি / বকেয়া</label>
+              <input type="number" id="saleDue" readonly style="background:#ffebee; color:red; font-weight:bold;">
             </div>
           </div>
-          <button class="btn" onclick="addBill()">বিল সেভ করুন</button>
+          <button class="btn" onclick="addSale()">বিক্রি সেভ করুন</button>
         </div>
 
         <div class="card">
-          <h2>কাস্টমার বিলিং হিস্ট্রি</h2>
+          <h2>বিক্রয় ও বাকি তালিকা</h2>
           <div class="table-container">
             <table>
               <thead>
                 <tr>
                   <th>তারিখ</th>
                   <th>কাস্টমার</th>
+                  <th>পণ্য ও পরিমাণ</th>
                   <th>মোট বিল</th>
                   <th>পরিশোধ</th>
                   <th>বাকি</th>
-                  <th>ইনভয়েস/অ্যাকশন</th>
+                  <th>অ্যাকশন</th>
                 </tr>
               </thead>
-              <tbody id="billingTableBody"></tbody>
+              <tbody id="salesTableBody"></tbody>
             </table>
           </div>
         </div>
       </div>
 
-      <!-- খরচের খাতা -->
-      <div id="tab-expense" class="tab-content" style="display: none;">
+      <!-- ৬. Customer Directory -->
+      <div id="tab-customers" class="tab-content" style="display: none;">
+        <div class="card">
+          <h2>নতুন কাস্টমার যুক্ত করুন</h2>
+          <div class="form-grid">
+            <div class="input-group">
+              <label>কাস্টমারের নাম *</label>
+              <input type="text" id="custName" placeholder="নাম">
+            </div>
+            <div class="input-group">
+              <label>মোবাইল নম্বর *</label>
+              <input type="text" id="custPhone" placeholder="মোবাইল">
+            </div>
+            <div class="input-group">
+              <label>ঠিকানা</label>
+              <input type="text" id="custAddress" placeholder="ঠিকানা">
+            </div>
+            <div class="input-group">
+              <label>দৈনিক চাহিদা (লিটার)</label>
+              <input type="number" id="custDailyDemand" placeholder="যেমন: ২">
+            </div>
+          </div>
+          <button class="btn" onclick="addCustomer()">কাস্টমার সংরক্ষণ করুন</button>
+        </div>
+
+        <div class="card">
+          <h2>কাস্টমার তালিকা</h2>
+          <div class="table-container">
+            <table>
+              <thead>
+                <tr>
+                  <th>নাম</th>
+                  <th>মোবাইল</th>
+                  <th>ঠিকানা</th>
+                  <th>দৈনিক চাহিদা</th>
+                  <th>মুছুন</th>
+                </tr>
+              </thead>
+              <tbody id="customerTableBody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- ৭. Orders -->
+      <div id="tab-orders" class="tab-content" style="display: none;">
+        <div class="card">
+          <h2>নতুন অর্ডার গ্রহণ করুন</h2>
+          <div class="form-grid">
+            <div class="input-group">
+              <label>ডেলিভারি তারিখ *</label>
+              <input type="date" id="orderDate">
+            </div>
+            <div class="input-group">
+              <label>কাস্টমারের নাম *</label>
+              <input type="text" id="orderCustomer" placeholder="নাম">
+            </div>
+            <div class="input-group">
+              <label>আইটেম ও পরিমাণ *</label>
+              <input type="text" id="orderItems" placeholder="যেমন: ৫ লিটার দুধ">
+            </div>
+            <div class="input-group">
+              <label>স্ট্যাটাস</label>
+              <select id="orderStatus">
+                <option value="পেন্ডিং">পেন্ডিং</option>
+                <option value="ডেলিভারড">ডেলিভারড</option>
+                <option value="বাতিল">বাতিল</option>
+              </select>
+            </div>
+          </div>
+          <button class="btn" onclick="addOrder()">অর্ডার যুক্ত করুন</button>
+        </div>
+
+        <div class="card">
+          <h2>সকল অর্ডার তালিকা</h2>
+          <div class="table-container">
+            <table>
+              <thead>
+                <tr>
+                  <th>তারিখ</th>
+                  <th>কাস্টমার</th>
+                  <th>আইটেম</th>
+                  <th>স্ট্যাটাস</th>
+                  <th>মুছুন</th>
+                </tr>
+              </thead>
+              <tbody id="ordersTableBody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- ৮. Expenses -->
+      <div id="tab-expenses" class="tab-content" style="display: none;">
         <div class="card">
           <h2>নতুন খরচ এন্ট্রি</h2>
           <div class="form-grid">
@@ -289,15 +498,25 @@
               <input type="date" id="expDate">
             </div>
             <div class="input-group">
-              <label>খরচের বিবরণ *</label>
-              <input type="text" id="expTitle" placeholder="যেমন: ভুসি, ওষুধ, বিদ্যুৎ বিল">
+              <label>খরচের খাত</label>
+              <select id="expCategory">
+                <option value="খাদ্য / ভুসি / ঘাস">খাদ্য / ভুসি / ঘাস</option>
+                <option value="ওষুধ ও চিকিৎসা">ওষুধ ও চিকিৎসা</option>
+                <option value="শ্রমিক বেতন">শ্রমিক বেতন</option>
+                <option value="বিদ্যুৎ / গ্যাস বিল">বিদ্যুৎ / গ্যাস বিল</option>
+                <option value="অন্যান্য">অন্যান্য</option>
+              </select>
+            </div>
+            <div class="input-group">
+              <label>বিবরণ *</label>
+              <input type="text" id="expTitle" placeholder="খরচের বিবরণ">
             </div>
             <div class="input-group">
               <label>টাকার পরিমাণ *</label>
               <input type="number" id="expAmount" placeholder="৳">
             </div>
           </div>
-          <button class="btn" onclick="addExpense()">খরচ সেভ করুন</button>
+          <button class="btn" onclick="addExpense()">খরচ সংরক্ষণ করুন</button>
         </div>
 
         <div class="card">
@@ -307,14 +526,187 @@
               <thead>
                 <tr>
                   <th>তারিখ</th>
+                  <th>খাত</th>
                   <th>বিবরণ</th>
                   <th>টাকা</th>
-                  <th>অ্যাকশন</th>
+                  <th>মুছুন</th>
                 </tr>
               </thead>
               <tbody id="expenseTableBody"></tbody>
             </table>
           </div>
+        </div>
+      </div>
+
+      <!-- ৯. Stock / Inventory -->
+      <div id="tab-stock" class="tab-content" style="display: none;">
+        <div class="card">
+          <h2>খাদ্য ও পণ্য স্টক এন্ট্রি</h2>
+          <div class="form-grid">
+            <div class="input-group">
+              <label>পণ্যের নাম *</label>
+              <input type="text" id="stkName" placeholder="যেমন: গমের ভুসি, ফিড">
+            </div>
+            <div class="input-group">
+              <label>পরিমাণ *</label>
+              <input type="number" id="stkQty" placeholder="পরিমাণ">
+            </div>
+            <div class="input-group">
+              <label>একক</label>
+              <select id="stkUnit">
+                <option value="কেজি">কেজি</option>
+                <option value="বস্তা">বস্তা</option>
+                <option value="টন">টন</option>
+                <option value="পিস">পিস</option>
+              </select>
+            </div>
+            <div class="input-group">
+              <label>সর্বনিম্ন সতর্কবার্তা লেভেল</label>
+              <input type="number" id="stkAlert" placeholder="যেমন: ৫">
+            </div>
+          </div>
+          <button class="btn" onclick="addStock()">স্টক আপডেট করুন</button>
+        </div>
+
+        <div class="card">
+          <h2>বর্তমান স্টক তালিকা</h2>
+          <div class="table-container">
+            <table>
+              <thead>
+                <tr>
+                  <th>পণ্য</th>
+                  <th>মজুদ পরিমাণ</th>
+                  <th>একক</th>
+                  <th>সতর্কবার্তা লেভেল</th>
+                  <th>মুছুন</th>
+                </tr>
+              </thead>
+              <tbody id="stockTableBody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- ১০. Semen/Bull Stock -->
+      <div id="tab-semen" class="tab-content" style="display: none;">
+        <div class="card">
+          <h2>সিমেন (Semen Straw) ও ব্রিডার ষাঁড়ের স্টক</h2>
+          <div class="form-grid">
+            <div class="input-group">
+              <label>স্ট্র / ব্যাচ নম্বর *</label>
+              <input type="text" id="semBatch" placeholder="যেমন: HF-8902">
+            </div>
+            <div class="input-group">
+              <label>ষাঁড়ের জাত / নাম</label>
+              <input type="text" id="semBreed" placeholder="যেমন: ১০০% হোলস্টেইন ফ্রিজিয়ান">
+            </div>
+            <div class="input-group">
+              <label>কোম্পানি / সোর্স</label>
+              <input type="text" id="semSource" placeholder="যেমন: ব্র্যাক / সরকারি">
+            </div>
+            <div class="input-group">
+              <label>মজুদ স্ট্র সংখ্যা (পিস) *</label>
+              <input type="number" id="semCount" placeholder="পিস">
+            </div>
+          </div>
+          <button class="btn" onclick="addSemen()">সিমেন স্টক সেভ করুন</button>
+        </div>
+
+        <div class="card">
+          <h2>সিমেন স্টক তালিকা</h2>
+          <div class="table-container">
+            <table>
+              <thead>
+                <tr>
+                  <th>ব্যাচ নম্বর</th>
+                  <th>জাত</th>
+                  <th>সোর্স</th>
+                  <th>মজুদ সংখ্যা</th>
+                  <th>মুছুন</th>
+                </tr>
+              </thead>
+              <tbody id="semenTableBody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- ১১. Health -->
+      <div id="tab-health" class="tab-content" style="display: none;">
+        <div class="card">
+          <h2>টিকা, কৃমিনাশক ও চিকিৎসা রেকর্ড</h2>
+          <div class="form-grid">
+            <div class="input-group">
+              <label>তারিখ *</label>
+              <input type="date" id="hlthDate">
+            </div>
+            <div class="input-group">
+              <label>গরুর ট্যাগ নম্বর *</label>
+              <input type="text" id="hlthCowTag" placeholder="ট্যাগ দিন">
+            </div>
+            <div class="input-group">
+              <label>ট্রিটমেন্ট টাইপ</label>
+              <select id="hlthType">
+                <option value="ভ্যাক্সিন / টিকা (FMD/Anthrax)">ভ্যাক্সিন / টিকা (FMD/Anthrax)</option>
+                <option value="কৃমিনাশক (Deworming)">কৃমিনাশক (Deworming)</option>
+                <option value="সাধারণ চিকিৎসা ও ওষুধ">সাধারণ চিকিৎসা ও ওষুধ</option>
+                <option value="ডাক্তারি পরীক্ষা">ডাক্তারি পরীক্ষা</option>
+              </select>
+            </div>
+            <div class="input-group">
+              <label>ওষুধের নাম / বিবরণ</label>
+              <input type="text" id="hlthDesc" placeholder="ওষুধের নাম">
+            </div>
+            <div class="input-group">
+              <label>পরবর্তী ডোজের তারিখ</label>
+              <input type="date" id="hlthNextDate">
+            </div>
+          </div>
+          <button class="btn" onclick="addHealth()">স্বাস্থ্য রেকর্ড সেভ করুন</button>
+        </div>
+
+        <div class="card">
+          <h2>গরুর স্বাস্থ্য রেকর্ড হিস্ট্রি</h2>
+          <div class="table-container">
+            <table>
+              <thead>
+                <tr>
+                  <th>তারিখ</th>
+                  <th>গরু ট্যাগ</th>
+                  <th>টাইপ</th>
+                  <th>বিবরণ</th>
+                  <th>পরবর্তী ডোজ</th>
+                  <th>মুছুন</th>
+                </tr>
+              </thead>
+              <tbody id="healthTableBody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- ১২. Reports -->
+      <div id="tab-reports" class="tab-content" style="display: none;">
+        <div class="card">
+          <h2>ফার্মের সামগ্রিক রিপোর্ট ও সারসংক্ষেপ</h2>
+          <div style="line-height: 2; font-size: 15px; margin-top: 10px;">
+            <p><strong>মোট রেকর্ডকৃত দুধ উৎপাদন:</strong> <span id="rep-milk" style="color:var(--primary); font-weight:bold;">০</span> লিটার</p>
+            <p><strong>মোট সামগ্রিক বিক্রয় (Sales Revenue):</strong> <span id="rep-sales" style="color:green; font-weight:bold;">৳ ০</span></p>
+            <p><strong>মোট সামগ্রিক খরচ (Expenses):</strong> <span id="rep-expenses" style="color:red; font-weight:bold;">৳ ০</span></p>
+            <hr style="margin: 15px 0;">
+            <p><strong>বর্তমান লাভ / ক্ষতি (Net Cash Flow):</strong> <span id="rep-profit" style="font-size: 18px; font-weight:bold;">৳ ০</span></p>
+          </div>
+        </div>
+      </div>
+
+      <!-- ১৩. Backup -->
+      <div id="tab-backup" class="tab-content" style="display: none;">
+        <div class="card">
+          <h2>ডাটা ব্যাকআপ ও নিরাপত্তা</h2>
+          <p style="font-size: 13.5px; color: #555; margin-bottom: 20px; line-height: 1.6;">
+            আপনার সমস্ত ডেটা রিয়েলটাইমে ক্লাউডে সুরক্ষিত রয়েছে। আপনি চাইলে সম্পূর্ণ ফার্মের যাবতীয় ডেটা এক ক্লিকে নিজের কম্পিউটারে ফাইল আকারে ব্যাকআপ করে রাখতে পারেন।
+          </p>
+          <button class="btn btn-info" onclick="downloadBackup()">📥 সম্পূর্ণ ফার্ম ডেটা ব্যাকআপ ডাউনলোড করুন (JSON)</button>
         </div>
       </div>
 
@@ -325,8 +717,8 @@
   <div id="invoiceModal">
     <div class="invoice-card">
       <div id="invoicePrintArea">
-        <div style="text-align: center; border-bottom: 2px dashed #888; padding-bottom: 12px; margin- удобный: 15px;">
-          <h2 style="margin: 0; color: #1b5e20;">Nanda Dairy Agro</h2>
+        <div style="text-align: center; border-bottom: 2px dashed #888; padding-bottom: 12px; margin-bottom: 15px;">
+          <h2 style="margin: 0; color: #1b5e20; justify-content:center;">Nanda Dairy Agro</h2>
           <p style="font-size: 12px; color: #555;">দুধের মান নিশ্চিত, সেবাই আমাদের লক্ষ্য</p>
           <p style="font-size: 13px; font-weight: bold; margin-top: 5px;">ক্যাশ মেমো / রসিদ</p>
         </div>
@@ -334,17 +726,15 @@
         <p style="text-align: center; font-size: 11px; margin-top: 25px; color: #666;">ধন্যবাদ, আবার আসবেন!</p>
       </div>
       <div style="display: flex; gap: 10px; margin-top: 20px;">
-        <button class="btn btn-print" style="flex: 1;" onclick="window.print()">প্রিন্ট করুন</button>
+        <button class="btn btn-info" style="flex: 1;" onclick="window.print()">প্রিন্ট করুন</button>
         <button class="btn btn-danger" style="flex: 1;" onclick="closeInvoice()">বন্ধ করুন</button>
       </div>
     </div>
   </div>
 
-  <!-- সম্পূর্ণ স্ক্রিপ্ট ও ডাটাবেস লজিক -->
+  <!-- স্ক্রিপ্ট লজিক -->
   <script>
-    function getEl(id) {
-      return document.getElementById(id);
-    }
+    function getEl(id) { return document.getElementById(id); }
 
     var firebaseConfig = {
       apiKey: "AIzaSyAtmDkYLV6rh4jfJT2OPJZ5_R4c99S8-t4",
@@ -368,28 +758,21 @@
       console.log("Firebase Init:", e);
     }
 
-    function unlockApp() {
-      var ls = getEl('loginScreen');
-      var ab = getEl('appBody');
-      if (ls) ls.style.display = 'none';
-      if (ab) ab.style.display = 'block';
-      listenData();
-    }
-
     function doLogin() {
-      var uEl = getEl('loginId');
-      var pEl = getEl('loginPass');
-      var errEl = getEl('loginErr');
-      
-      var u = (uEl ? uEl.value : '').trim().toLowerCase();
-      var p = (pEl ? pEl.value : '').trim();
-      
+      var u = (getEl('loginId') ? getEl('loginId').value : '').trim().toLowerCase();
+      var p = (getEl('loginPass') ? getEl('loginPass').value : '').trim();
       if (u === 'nanda' && p === '1234') {
         localStorage.setItem('nanda_dairy_auth', 'true');
         unlockApp();
       } else {
-        if (errEl) errEl.innerText = 'ভুল আইডি বা পাসওয়ার্ড! আইডি: nanda, পাসওয়ার্ড: 1234';
+        if (getEl('loginErr')) getEl('loginErr').innerText = 'ভুল আইডি বা পাসওয়ার্ড!';
       }
+    }
+
+    function unlockApp() {
+      if (getEl('loginScreen')) getEl('loginScreen').style.display = 'none';
+      if (getEl('appBody')) getEl('appBody').style.display = 'block';
+      listenAllData();
     }
 
     function doLogout() {
@@ -407,156 +790,318 @@
       }
     }
 
-    function calcBill() {
-      var qty = parseFloat(getEl('billQty') ? getEl('billQty').value : 0) || 0;
-      var rate = parseFloat(getEl('billRate') ? getEl('billRate').value : 0) || 0;
-      var total = qty * rate;
-      if (getEl('billTotal')) getEl('billTotal').value = total;
-
-      var paid = parseFloat(getEl('billPaid') ? getEl('billPaid').value : 0) || 0;
-      if (getEl('billDue')) getEl('billDue').value = total - paid;
+    // মুছে ফেলার কমন ফাংশন
+    function deleteRecord(path, id) {
+      if (confirm('আপনি কি নিশ্চিতভাবে এই তথ্যটি মুছে ফেলতে চান?')) {
+        if (db) db.ref(path).child(id).remove();
+      }
     }
 
+    // ১. Cattle
     function addCattle() {
       var tag = (getEl('cowTag') ? getEl('cowTag').value : '').trim();
       var breed = (getEl('cowBreed') ? getEl('cowBreed').value : '').trim();
-      var cap = (getEl('cowCapacity') ? getEl('cowCapacity').value : 0) || 0;
-
-      if (!tag) return alert('ট্যাগ নম্বর অবশ্যই দিতে হবে!');
-      if (db) db.ref('cattle').push({ tag: tag, breed: breed, cap: cap });
-      if (getEl('cowTag')) getEl('cowTag').value = '';
-      if (getEl('cowBreed')) getEl('cowBreed').value = '';
-      if (getEl('cowCapacity')) getEl('cowCapacity').value = '';
+      var status = getEl('cowStatus') ? getEl('cowStatus').value : '';
+      var cap = parseFloat(getEl('cowCapacity') ? getEl('cowCapacity').value : 0) || 0;
+      if (!tag) return alert('গরুর ট্যাগ নম্বর আবশ্যক!');
+      if (db) db.ref('cattle').push({ tag: tag, breed: breed, status: status, cap: cap });
+      getEl('cowTag').value = ''; getEl('cowBreed').value = ''; getEl('cowCapacity').value = '';
     }
 
+    // ২. Breeding
+    function addBreeding() {
+      var tag = (getEl('brCowTag') ? getEl('brCowTag').value : '').trim();
+      var aiDate = getEl('brAiDate') ? getEl('brAiDate').value : '';
+      var semenId = (getEl('brSemenId') ? getEl('brSemenId').value : '').trim();
+      var status = getEl('brStatus') ? getEl('brStatus').value : '';
+      var calvingDate = getEl('brCalvingDate') ? getEl('brCalvingDate').value : '';
+      if (!tag || !aiDate) return alert('গরুর ট্যাগ ও AI তারিখ আবশ্যক!');
+      if (db) db.ref('breeding').push({ tag: tag, aiDate: aiDate, semenId: semenId, status: status, calvingDate: calvingDate });
+      getEl('brCowTag').value = ''; getEl('brSemenId').value = '';
+    }
+
+    // ৩. Milk
     function addMilkRecord() {
       var date = getEl('milkDate') ? getEl('milkDate').value : '';
       var cow = (getEl('milkCowTag') ? getEl('milkCowTag').value : '').trim() || 'সাধারণ';
       var session = getEl('milkSession') ? getEl('milkSession').value : 'সকাল';
       var liters = parseFloat(getEl('milkLiters') ? getEl('milkLiters').value : 0) || 0;
-
       if (!liters) return alert('দুধের পরিমাণ দিন!');
       if (db) db.ref('milk').push({ date: date, cow: cow, session: session, liters: liters });
-      if (getEl('milkLiters')) getEl('milkLiters').value = '';
+      getEl('milkLiters').value = '';
     }
 
-    function addBill() {
-      var date = getEl('billDate') ? getEl('billDate').value : '';
-      var name = (getEl('billCustomer') ? getEl('billCustomer').value : '').trim();
-      var phone = (getEl('billPhone') ? getEl('billPhone').value : '').trim();
-      var qty = parseFloat(getEl('billQty') ? getEl('billQty').value : 0) || 0;
-      var rate = parseFloat(getEl('billRate') ? getEl('billRate').value : 0) || 0;
-      var total = parseFloat(getEl('billTotal') ? getEl('billTotal').value : 0) || 0;
-      var paid = parseFloat(getEl('billPaid') ? getEl('billPaid').value : 0) || 0;
-      var due = parseFloat(getEl('billDue') ? getEl('billDue').value : 0) || 0;
-
-      if (!name) return alert('কাস্টমারের নাম দিন!');
-      if (db) db.ref('bills').push({ date: date, name: name, phone: phone, qty: qty, rate: rate, total: total, paid: paid, due: due });
-      if (getEl('billCustomer')) getEl('billCustomer').value = '';
-      if (getEl('billPhone')) getEl('billPhone').value = '';
-      if (getEl('billQty')) getEl('billQty').value = '';
-      if (getEl('billRate')) getEl('billRate').value = '';
-      if (getEl('billTotal')) getEl('billTotal').value = '';
-      if (getEl('billPaid')) getEl('billPaid').value = '';
-      if (getEl('billDue')) getEl('billDue').value = '';
+    // ৪. Sales & Calc
+    function calcSale() {
+      var qty = parseFloat(getEl('saleQty') ? getEl('saleQty').value : 0) || 0;
+      var rate = parseFloat(getEl('saleRate') ? getEl('saleRate').value : 0) || 0;
+      var total = qty * rate;
+      if (getEl('saleTotal')) getEl('saleTotal').value = total;
+      var paid = parseFloat(getEl('salePaid') ? getEl('salePaid').value : 0) || 0;
+      if (getEl('saleDue')) getEl('saleDue').value = total - paid;
     }
 
-    function addExpense() {
-      var date = getEl('expDate') ? getEl('expDate').value : '';
-      var title = (getEl('expTitle') ? getEl('expTitle').value : '').trim();
-      var amount = parseFloat(getEl('expAmount') ? getEl('expAmount').value : 0) || 0;
-
-      if (!title || !amount) return alert('বিবরণ ও টাকার পরিমাণ দিন!');
-      if (db) db.ref('expenses').push({ date: date, title: title, amount: amount });
-      if (getEl('expTitle')) getEl('expTitle').value = '';
-      if (getEl('expAmount')) getEl('expAmount').value = '';
+    function addSale() {
+      var date = getEl('saleDate') ? getEl('saleDate').value : '';
+      var name = (getEl('saleCustomer') ? getEl('saleCustomer').value : '').trim();
+      var phone = (getEl('salePhone') ? getEl('salePhone').value : '').trim();
+      var item = getEl('saleItem') ? getEl('saleItem').value : '';
+      var qty = parseFloat(getEl('saleQty') ? getEl('saleQty').value : 0) || 0;
+      var rate = parseFloat(getEl('saleRate') ? getEl('saleRate').value : 0) || 0;
+      var total = parseFloat(getEl('saleTotal') ? getEl('saleTotal').value : 0) || 0;
+      var paid = parseFloat(getEl('salePaid') ? getEl('salePaid').value : 0) || 0;
+      var due = parseFloat(getEl('saleDue') ? getEl('saleDue').value : 0) || 0;
+      if (!name) return alert('কাস্টমারের নাম আবশ্যক!');
+      if (db) db.ref('sales').push({ date: date, name: name, phone: phone, item: item, qty: qty, rate: rate, total: total, paid: paid, due: due });
+      getEl('saleCustomer').value = ''; getEl('salePhone').value = ''; getEl('saleQty').value = ''; getEl('saleRate').value = ''; getEl('saleTotal').value = ''; getEl('salePaid').value = ''; getEl('saleDue').value = '';
     }
 
-    function deleteItem(path, id) {
-      if (confirm('আপনি কি নিশ্চিতভাবে এই এন্ট্রিটি মুছে ফেলতে চান?')) {
-        if (db) db.ref(path).child(id).remove();
-      }
-    }
-
-    function showInvoice(date, name, phone, qty, rate, total, paid, due) {
+    function showInvoice(date, name, phone, item, qty, rate, total, paid, due) {
       var html = '<p><strong>তারিখ:</strong> ' + date + '</p>' +
                  '<p><strong>কাস্টমার:</strong> ' + name + '</p>' +
-                 '<p><strong>মোবাইল:</strong> ' + (phone || 'দেওয়া হয়নি') + '</p>' +
+                 '<p><strong>মোবাইল:</strong> ' + (phone || '-') + '</p>' +
                  '<hr style="margin: 8px 0; border: none; border-top: 1px solid #ddd;">' +
-                 '<p>দুধের পরিমাণ: ' + qty + ' লিটার</p>' +
-                 '<p>দর: ৳' + rate + ' / লিটার</p>' +
+                 '<p>পণ্য: ' + item + ' (' + qty + ')</p>' +
+                 '<p>দর: ৳' + rate + '</p>' +
                  '<p><strong>মোট বিল:</strong> ৳' + total + '</p>' +
                  '<p style="color: green;"><strong>পরিশোধ:</strong> ৳' + paid + '</p>' +
                  '<p style="color: red;"><strong>বকেয়া / বাকি:</strong> ৳' + due + '</p>';
       if (getEl('invoiceDetails')) getEl('invoiceDetails').innerHTML = html;
       if (getEl('invoiceModal')) getEl('invoiceModal').style.display = 'flex';
     }
+    function closeInvoice() { if (getEl('invoiceModal')) getEl('invoiceModal').style.display = 'none'; }
 
-    function closeInvoice() {
-      if (getEl('invoiceModal')) getEl('invoiceModal').style.display = 'none';
+    // ৫. Customer
+    function addCustomer() {
+      var name = (getEl('custName') ? getEl('custName').value : '').trim();
+      var phone = (getEl('custPhone') ? getEl('custPhone').value : '').trim();
+      var addr = (getEl('custAddress') ? getEl('custAddress').value : '').trim();
+      var demand = (getEl('custDailyDemand') ? getEl('custDailyDemand').value : 0) || 0;
+      if (!name) return alert('কাস্টমারের নাম আবশ্যক!');
+      if (db) db.ref('customers').push({ name: name, phone: phone, addr: addr, demand: demand });
+      getEl('custName').value = ''; getEl('custPhone').value = ''; getEl('custAddress').value = ''; getEl('custDailyDemand').value = '';
     }
 
-    function listenData() {
+    // ৬. Orders
+    function addOrder() {
+      var date = getEl('orderDate') ? getEl('orderDate').value : '';
+      var customer = (getEl('orderCustomer') ? getEl('orderCustomer').value : '').trim();
+      var items = (getEl('orderItems') ? getEl('orderItems').value : '').trim();
+      var status = getEl('orderStatus') ? getEl('orderStatus').value : 'পেন্ডিং';
+      if (!customer || !items) return alert('কাস্টমার ও আইটেমের নাম আবশ্যক!');
+      if (db) db.ref('orders').push({ date: date, customer: customer, items: items, status: status });
+      getEl('orderCustomer').value = ''; getEl('orderItems').value = '';
+    }
+
+    // ৭. Expenses
+    function addExpense() {
+      var date = getEl('expDate') ? getEl('expDate').value : '';
+      var category = getEl('expCategory') ? getEl('expCategory').value : '';
+      var title = (getEl('expTitle') ? getEl('expTitle').value : '').trim();
+      var amount = parseFloat(getEl('expAmount') ? getEl('expAmount').value : 0) || 0;
+      if (!title || !amount) return alert('বিবরণ ও টাকার পরিমাণ দিন!');
+      if (db) db.ref('expenses').push({ date: date, category: category, title: title, amount: amount });
+      getEl('expTitle').value = ''; getEl('expAmount').value = '';
+    }
+
+    // ৮. Stock
+    function addStock() {
+      var name = (getEl('stkName') ? getEl('stkName').value : '').trim();
+      var qty = parseFloat(getEl('stkQty') ? getEl('stkQty').value : 0) || 0;
+      var unit = getEl('stkUnit') ? getEl('stkUnit').value : 'কেজি';
+      var alertLevel = parseFloat(getEl('stkAlert') ? getEl('stkAlert').value : 0) || 0;
+      if (!name) return alert('পণ্যের নাম দিন!');
+      if (db) db.ref('stock').push({ name: name, qty: qty, unit: unit, alertLevel: alertLevel });
+      getEl('stkName').value = ''; getEl('stkQty').value = ''; getEl('stkAlert').value = '';
+    }
+
+    // ৯. Semen
+    function addSemen() {
+      var batch = (getEl('semBatch') ? getEl('semBatch').value : '').trim();
+      var breed = (getEl('semBreed') ? getEl('semBreed').value : '').trim();
+      var source = (getEl('semSource') ? getEl('semSource').value : '').trim();
+      var count = parseFloat(getEl('semCount') ? getEl('semCount').value : 0) || 0;
+      if (!batch) return alert('স্ট্র বা ব্যাচ নম্বর দিন!');
+      if (db) db.ref('semen').push({ batch: batch, breed: breed, source: source, count: count });
+      getEl('semBatch').value = ''; getEl('semBreed').value = ''; getEl('semSource').value = ''; getEl('semCount').value = '';
+    }
+
+    // ১০. Health
+    function addHealth() {
+      var date = getEl('hlthDate') ? getEl('hlthDate').value : '';
+      var cowTag = (getEl('hlthCowTag') ? getEl('hlthCowTag').value : '').trim();
+      var type = getEl('hlthType') ? getEl('hlthType').value : '';
+      var desc = (getEl('hlthDesc') ? getEl('hlthDesc').value : '').trim();
+      var nextDate = getEl('hlthNextDate') ? getEl('hlthNextDate').value : '';
+      if (!cowTag) return alert('গরুর ট্যাগ নম্বর আবশ্যক!');
+      if (db) db.ref('health').push({ date: date, cowTag: cowTag, type: type, desc: desc, nextDate: nextDate });
+      getEl('hlthCowTag').value = ''; getEl('hlthDesc').value = '';
+    }
+
+    // ১১. Backup Download
+    function downloadBackup() {
+      if (!db) return alert('ডাটাবেস কানেক্টেড নেই!');
+      db.ref('/').once('value', function(snap) {
+        var dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(snap.val(), null, 2));
+        var dlAnchorElem = document.createElement('a');
+        dlAnchorElem.setAttribute("href", dataStr);
+        dlAnchorElem.setAttribute("download", "Nanda_Dairy_Agro_Backup_" + new Date().toISOString().split('T')[0] + ".json");
+        dlAnchorElem.click();
+      });
+    }
+
+    // রিয়েল-টাইম সিঙ্ক লিসেনার
+    function listenAllData() {
       if (!db) return;
-      
+      var today = new Date().toISOString().split('T')[0];
+
+      // Cattle
       db.ref('cattle').on('value', function(snap) {
         var body = getEl('cattleTableBody');
-        if (!body) return;
-        body.innerHTML = '';
+        if (body) body.innerHTML = '';
         var count = 0;
         snap.forEach(function(child) {
           count++;
           var d = child.val();
-          body.innerHTML += '<tr><td><strong>' + d.tag + '</strong></td><td>' + (d.breed || '-') + '</td><td>' + d.cap + ' লি:</td><td><button class="action-btn btn-danger" onclick="deleteItem(\'cattle\', \'' + child.key + '\')">মুছুন</button></td></tr>';
+          if (body) body.innerHTML += '<tr><td><strong>' + d.tag + '</strong></td><td>' + (d.breed || '-') + '</td><td><span class="badge badge-info">' + d.status + '</span></td><td>' + d.cap + ' লি:</td><td><button class="action-btn btn-danger" onclick="deleteRecord(\'cattle\', \'' + child.key + '\')">মুছুন</button></td></tr>';
         });
         if (getEl('dash-cow-count')) getEl('dash-cow-count').innerText = count;
       });
 
-      var today = new Date().toISOString().split('T')[0];
+      // Breeding
+      db.ref('breeding').on('value', function(snap) {
+        var body = getEl('breedingTableBody');
+        if (body) body.innerHTML = '';
+        snap.forEach(function(child) {
+          var d = child.val();
+          if (body) body.innerHTML += '<tr><td><strong>' + d.tag + '</strong></td><td>' + d.aiDate + '</td><td>' + (d.semenId || '-') + '</td><td><span class="badge badge-warning">' + d.status + '</span></td><td>' + (d.calvingDate || '-') + '</td><td><button class="action-btn btn-danger" onclick="deleteRecord(\'breeding\', \'' + child.key + '\')">মুছুন</button></td></tr>';
+        });
+      });
+
+      // Milk
       db.ref('milk').on('value', function(snap) {
         var body = getEl('milkTableBody');
-        if (!body) return;
-        body.innerHTML = '';
-        var todayMilk = 0;
+        if (body) body.innerHTML = '';
+        var todayMilk = 0; var totalMilk = 0;
         snap.forEach(function(child) {
           var d = child.val();
-          if (d.date === today) todayMilk += Number(d.liters);
-          body.innerHTML += '<tr><td>' + d.date + '</td><td>' + d.cow + '</td><td>' + d.session + '</td><td><strong>' + d.liters + ' লি:</strong></td><td><button class="action-btn btn-danger" onclick="deleteItem(\'milk\', \'' + child.key + '\')">মুছুন</button></td></tr>';
+          var lit = Number(d.liters) || 0;
+          totalMilk += lit;
+          if (d.date === today) todayMilk += lit;
+          if (body) body.innerHTML += '<tr><td>' + d.date + '</td><td>' + d.cow + '</td><td>' + d.session + '</td><td><strong>' + lit + ' লি:</strong></td><td><button class="action-btn btn-danger" onclick="deleteRecord(\'milk\', \'' + child.key + '\')">মুছুন</button></td></tr>';
         });
-        if (getEl('dash-milk-today')) getEl('dash-milk-today').innerText = todayMilk.toFixed(1) + ' লিটার';
+        if (getEl('dash-milk-today')) getEl('dash-milk-today').innerText = todayMilk.toFixed(1) + ' লি:';
+        if (getEl('rep-milk')) getEl('rep-milk').innerText = totalMilk.toFixed(1);
       });
 
-      db.ref('bills').on('value', function(snap) {
-        var body = getEl('billingTableBody');
-        if (!body) return;
-        body.innerHTML = '';
-        var totalDue = 0;
+      // Sales
+      db.ref('sales').on('value', function(snap) {
+        var body = getEl('salesTableBody');
+        if (body) body.innerHTML = '';
+        var totalSales = 0; var totalDue = 0;
         snap.forEach(function(child) {
           var d = child.val();
-          totalDue += Number(d.due);
-          body.innerHTML += '<tr><td>' + d.date + '</td><td><strong>' + d.name + '</strong></td><td>৳' + d.total + '</td><td>৳' + d.paid + '</td><td style="color:red; font-weight:bold;">৳' + d.due + '</td><td><button class="action-btn btn-print" onclick="showInvoice(\'' + d.date + '\', \'' + d.name + '\', \'' + d.phone + '\', \'' + d.qty + '\', \'' + d.rate + '\', \'' + d.total + '\', \'' + d.paid + '\', \'' + d.due + '\')">রসিদ</button><button class="action-btn btn-danger" onclick="deleteItem(\'bills\', \'' + child.key + '\')">মুছুন</button></td></tr>';
+          totalSales += Number(d.total) || 0;
+          totalDue += Number(d.due) || 0;
+          if (body) body.innerHTML += '<tr><td>' + d.date + '</td><td><strong>' + d.name + '</strong></td><td>' + d.item + ' (' + d.qty + ')</td><td>৳' + d.total + '</td><td>৳' + d.paid + '</td><td style="color:red; font-weight:bold;">৳' + d.due + '</td><td><button class="action-btn btn-info" onclick="showInvoice(\'' + d.date + '\', \'' + d.name + '\', \'' + d.phone + '\', \'' + d.item + '\', \'' + d.qty + '\', \'' + d.rate + '\', \'' + d.total + '\', \'' + d.paid + '\', \'' + d.due + '\')">রসিদ</button><button class="action-btn btn-danger" onclick="deleteRecord(\'sales\', \'' + child.key + '\')">মুছুন</button></td></tr>';
         });
+        if (getEl('dash-total-sales')) getEl('dash-total-sales').innerText = '৳ ' + totalSales.toLocaleString();
         if (getEl('dash-total-due')) getEl('dash-total-due').innerText = '৳ ' + totalDue.toLocaleString();
+        if (getEl('rep-sales')) getEl('rep-sales').innerText = '৳ ' + totalSales.toLocaleString();
+        updateNetFlow();
       });
 
+      // Customers
+      db.ref('customers').on('value', function(snap) {
+        var body = getEl('customerTableBody');
+        if (body) body.innerHTML = '';
+        snap.forEach(function(child) {
+          var d = child.val();
+          if (body) body.innerHTML += '<tr><td><strong>' + d.name + '</strong></td><td>' + (d.phone || '-') + '</td><td>' + (d.addr || '-') + '</td><td>' + (d.demand || 0) + ' লি:</td><td><button class="action-btn btn-danger" onclick="deleteRecord(\'customers\', \'' + child.key + '\')">মুছুন</button></td></tr>';
+        });
+      });
+
+      // Orders
+      db.ref('orders').on('value', function(snap) {
+        var body = getEl('ordersTableBody');
+        if (body) body.innerHTML = '';
+        var pending = 0;
+        snap.forEach(function(child) {
+          var d = child.val();
+          if (d.status === 'পেন্ডিং') pending++;
+          if (body) body.innerHTML += '<tr><td>' + d.date + '</td><td><strong>' + d.customer + '</strong></td><td>' + d.items + '</td><td><span class="badge ' + (d.status==='পেন্ডিং'?'badge-warning':'badge-success') + '">' + d.status + '</span></td><td><button class="action-btn btn-danger" onclick="deleteRecord(\'orders\', \'' + child.key + '\')">মুছুন</button></td></tr>';
+        });
+        if (getEl('dash-pending-orders')) getEl('dash-pending-orders').innerText = pending + ' টি';
+      });
+
+      // Expenses
       db.ref('expenses').on('value', function(snap) {
         var body = getEl('expenseTableBody');
-        if (!body) return;
-        body.innerHTML = '';
+        if (body) body.innerHTML = '';
         var totalExp = 0;
         snap.forEach(function(child) {
           var d = child.val();
-          totalExp += Number(d.amount);
-          body.innerHTML += '<tr><td>' + d.date + '</td><td>' + d.title + '</td><td>৳' + d.amount + '</td><td><button class="action-btn btn-danger" onclick="deleteItem(\'expenses\', \'' + child.key + '\')">মুছুন</button></td></tr>';
+          totalExp += Number(d.amount) || 0;
+          if (body) body.innerHTML += '<tr><td>' + d.date + '</td><td>' + d.category + '</td><td>' + d.title + '</td><td>৳' + d.amount + '</td><td><button class="action-btn btn-danger" onclick="deleteRecord(\'expenses\', \'' + child.key + '\')">মুছুন</button></td></tr>';
         });
         if (getEl('dash-total-exp')) getEl('dash-total-exp').innerText = '৳ ' + totalExp.toLocaleString();
+        if (getEl('rep-expenses')) getEl('rep-expenses').innerText = '৳ ' + totalExp.toLocaleString();
+        updateNetFlow();
+      });
+
+      // Stock
+      db.ref('stock').on('value', function(snap) {
+        var body = getEl('stockTableBody');
+        if (body) body.innerHTML = '';
+        snap.forEach(function(child) {
+          var d = child.val();
+          var isLow = Number(d.qty) <= Number(d.alertLevel);
+          if (body) body.innerHTML += '<tr><td><strong>' + d.name + '</strong></td><td style="color:' + (isLow?'red':'inherit') + '; font-weight:bold;">' + d.qty + '</td><td>' + d.unit + '</td><td>' + d.alertLevel + ' ' + (isLow?'<span class="badge badge-danger">স্টক কম</span>':'') + '</td><td><button class="action-btn btn-danger" onclick="deleteRecord(\'stock\', \'' + child.key + '\')">মুছুন</button></td></tr>';
+        });
+      });
+
+      // Semen
+      db.ref('semen').on('value', function(snap) {
+        var body = getEl('semenTableBody');
+        if (body) body.innerHTML = '';
+        snap.forEach(function(child) {
+          var d = child.val();
+          if (body) body.innerHTML += '<tr><td><strong>' + d.batch + '</strong></td><td>' + (d.breed || '-') + '</td><td>' + (d.source || '-') + '</td><td><strong>' + d.count + ' স্ট্র</strong></td><td><button class="action-btn btn-danger" onclick="deleteRecord(\'semen\', \'' + child.key + '\')">মুছুন</button></td></tr>';
+        });
+      });
+
+      // Health
+      db.ref('health').on('value', function(snap) {
+        var body = getEl('healthTableBody');
+        if (body) body.innerHTML = '';
+        snap.forEach(function(child) {
+          var d = child.val();
+          if (body) body.innerHTML += '<tr><td>' + d.date + '</td><td><strong>' + d.cowTag + '</strong></td><td>' + d.type + '</td><td>' + (d.desc || '-') + '</td><td>' + (d.nextDate || '-') + '</td><td><button class="action-btn btn-danger" onclick="deleteRecord(\'health\', \'' + child.key + '\')">মুছুন</button></td></tr>';
+        });
       });
     }
 
+    function updateNetFlow() {
+      var sText = getEl('rep-sales') ? getEl('rep-sales').innerText.replace(/[^0-9.-]+/g,"") : "0";
+      var eText = getEl('rep-expenses') ? getEl('rep-expenses').innerText.replace(/[^0-9.-]+/g,"") : "0";
+      var sales = parseFloat(sText) || 0;
+      var expenses = parseFloat(eText) || 0;
+      var net = sales - expenses;
+      var profitEl = getEl('rep-profit');
+      if (profitEl) {
+        profitEl.innerText = '৳ ' + net.toLocaleString();
+        profitEl.style.color = net >= 0 ? 'green' : 'red';
+      }
+    }
+
+    // ইনিশিয়ালাইজেশন
     var todayStr = new Date().toISOString().split('T')[0];
     if (getEl('milkDate')) getEl('milkDate').value = todayStr;
-    if (getEl('billDate')) getEl('billDate').value = todayStr;
+    if (getEl('saleDate')) getEl('saleDate').value = todayStr;
+    if (getEl('orderDate')) getEl('orderDate').value = todayStr;
     if (getEl('expDate')) getEl('expDate').value = todayStr;
+    if (getEl('brAiDate')) getEl('brAiDate').value = todayStr;
+    if (getEl('hlthDate')) getEl('hlthDate').value = todayStr;
 
     if (localStorage.getItem('nanda_dairy_auth') === 'true') {
       unlockApp();
