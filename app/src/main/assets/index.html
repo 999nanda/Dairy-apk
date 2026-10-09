@@ -17,7 +17,7 @@
             padding: 20px;
         }
         .container {
-            max-width: 600px;
+            max-width: 800px;
             margin: auto;
             background: white;
             padding: 20px;
@@ -36,6 +36,33 @@
         .app-sec {
             display: none;
         }
+        .card {
+            background: #f9fbf9;
+            border: 1px solid #d0e1d4;
+            padding: 15px;
+            border-radius: 6px;
+            margin-bottom: 15px;
+        }
+        input, select {
+            width: 100%;
+            padding: 8px;
+            margin-bottom: 10px;
+            box-sizing: border-box;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+        }
+        button.btn {
+            background: var(--primary);
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 4px;
+            cursor: pointer;
+            width: 100%;
+        }
+        button.btn:hover {
+            opacity: 0.9;
+        }
     </style>
     <!-- Firebase App (compat) SDK -->
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
@@ -47,27 +74,46 @@
     <div id="login-sec">
         <h2>Nanda Dairy & Agro</h2>
         <p>লগইন করুন</p>
-        <input type="email" id="email" placeholder="User ID" style="width: 90%; margin-bottom: 10px; padding: 8px;"><br>
-        <input type="password" id="password" placeholder="password" style="width: 90%; margin-bottom: 15px; padding: 8px;"><br>
-        <button id="login-btn" style="width: 98%; padding: 10px; background: #1b5e20; color: white; border: none; border-radius: 4px; cursor: pointer;">login</button>
+        <input type="email" id="email" placeholder="User ID">
+        <input type="password" id="password" placeholder="password">
+        <button id="login-btn" class="btn">login</button>
     </div>
 
     <!-- ড্যাশবোর্ড ও ডেটাবেজ কন্টেইনার -->
     <div id="app-sec" class="container app-sec">
-        <div class="header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; border-bottom: 2px solid #eee; padding-bottom: 10px;">
             <div style="display: flex; align-items: center; gap: 12px;">
-                <div style="background: var(--primary); color: white; padding: 10px; border-radius: 4px;">NDA</div>
-                <h1 class="title" style="font-size: 20px; margin: 0;">Nanda Dairy & Agro</h1>
+                <div style="background: var(--primary); color: white; padding: 10px; border-radius: 4px; font-weight: bold;">NDA</div>
+                <h2 style="margin: 0; color: var(--primary);">Nanda Dairy & Agro</h2>
             </div>
             <button onclick="logout()" style="background: #555; color: white; border: none; padding: 8px 12px; border-radius: 4px; cursor: pointer;">লগআউট</button>
         </div>
-        <div>
-            <h3>স্বাগতম, ডেটা যোগ করুন</h3>
+
+        <!-- গরুর তথ্য এন্ট্রি কার্ড -->
+        <div class="card">
+            <h3>🐄 Cattle Record (গরুর তথ্য যোগ করুন)</h3>
+            <input type="text" id="cattle-tag" placeholder="Cattle Tag ID / Name (যেমন: Cow-01)">
+            <input type="text" id="cattle-breed" placeholder="Breed (যেমন: Jersey / HF)">
+            <button onclick="addCattle()" class="btn">Save Cattle Info</button>
+        </div>
+
+        <!-- দৈনিক দুধের হিসাব কার্ড -->
+        <div class="card">
+            <h3>🥛 Milk Production (দৈনিক দুধের হিসাব)</h3>
+            <input type="date" id="milk-date">
+            <input type="number" id="milk-litres" placeholder="Total Milk in Litres">
+            <button onclick="addMilk()" class="btn">Save Milk Record</button>
+        </div>
+
+        <!-- সংরক্ষিত তথ্য দেখার সেকশন -->
+        <div class="card">
+            <h3>📊 Farm Summary</h3>
+            <p id="summary-text">তথ্য লোড হচ্ছে...</p>
         </div>
     </div>
 
     <script>
-        // Firebase Configuration (Updated with Real Credentials)
+        // Firebase Configuration
         const firebaseConfig = {
             apiKey: "AIzaSyCIT-87nONARad983vfskY3zTqNucs5NOE",
             authDomain: "nanda-dairy-agro.firebaseapp.com",
@@ -77,7 +123,6 @@
             appId: "1:999024920419:web:23bef582efd8701b393556"
         };
 
-        // Initialize Firebase
         if (!firebase.apps.length) {
             firebase.initializeApp(firebaseConfig);
         }
@@ -90,10 +135,6 @@
             const password = document.getElementById('password').value;
             
             auth.signInWithEmailAndPassword(email, password)
-                .then((userCredential) => {
-                    document.getElementById('login-sec').style.display = 'none';
-                    document.getElementById('app-sec').style.display = 'block';
-                })
                 .catch((error) => {
                     alert("লগইন ব্যর্থ হয়েছে: " + error.message);
                 });
@@ -101,12 +142,7 @@
 
         // Logout Function
         function logout() {
-            auth.signOut().then(() => {
-                document.getElementById('app-sec').style.display = 'none';
-                document.getElementById('login-sec').style.display = 'block';
-                document.getElementById('email').value = '';
-                document.getElementById('password').value = '';
-            });
+            auth.signOut();
         }
 
         // Auth State Monitor
@@ -117,8 +153,26 @@
             } else {
                 document.getElementById('app-sec').style.display = 'none';
                 document.getElementById('login-sec').style.display = 'block';
+                document.getElementById('email').value = '';
+                document.getElementById('password').value = '';
             }
         });
+
+        // Placeholder functions for saving data
+        function addCattle() {
+            const tag = document.getElementById('cattle-tag').value;
+            if(!tag) { alert("দয়া করে গরুর ট্যাগ আইডি দিন"); return; }
+            alert("গরুর তথ্য সফলভাবে সংরক্ষিত হয়েছে: " + tag);
+            document.getElementById('cattle-tag').value = '';
+            document.getElementById('cattle-breed').value = '';
+        }
+
+        function addMilk() {
+            const litres = document.getElementById('milk-litres').value;
+            if(!litres) { alert("দয়া করে দুধের পরিমাণ লিখুন"); return; }
+            alert(litres + " লিটার দুধের হিসাব সংরক্ষিত হয়েছে!");
+            document.getElementById('milk-litres').value = '';
+        }
     </script>
 </body>
 </html>
