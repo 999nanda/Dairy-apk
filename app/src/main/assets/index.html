@@ -4,6 +4,45 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>NANDA Dairy & Agro</title>
+  <link rel="icon" type="image/png" href="logo.png">
+
+  <!-- লগইন লজিক সবার ওপরে রাখা হয়েছে যাতে কখনোই মিস না হয় -->
+  <script>
+    window.checkLogin = function() {
+      var u = document.getElementById('loginId').value.trim();
+      var p = document.getElementById('loginPass').value.trim();
+      if (u === 'nanda' && p === '1234') {
+        localStorage.setItem('nanda_dairy_auth', 'true');
+        document.getElementById('loginScreen').style.display = 'none';
+        document.getElementById('appBody').style.display = 'block';
+        if (typeof window.listenData === 'function') {
+          window.listenData();
+        }
+      } else {
+        document.getElementById('loginErr').innerText = 'ভুল আইডি বা পাসওয়ার্ড!';
+      }
+    };
+
+    window.logout = function() {
+      localStorage.removeItem('nanda_dairy_auth');
+      location.reload();
+    };
+
+    window.onload = function() {
+      var today = new Date().toISOString().split('T')[0];
+      if (document.getElementById('milkDate')) document.getElementById('milkDate').value = today;
+      if (document.getElementById('billDate')) document.getElementById('billDate').value = today;
+      if (document.getElementById('expDate')) document.getElementById('expDate').value = today;
+
+      if (localStorage.getItem('nanda_dairy_auth') === 'true') {
+        document.getElementById('loginScreen').style.display = 'none';
+        document.getElementById('appBody').style.display = 'block';
+        if (typeof window.listenData === 'function') {
+          window.listenData();
+        }
+      }
+    };
+  </script>
 
   <!-- Firebase লাইব্রেরি -->
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
@@ -56,4 +95,39 @@
 
     #loginScreen { position: fixed; inset: 0; background: #e8f5e9; display: flex; align-items: center; justify-content: center; z-index: 1000; padding: 20px; }
     .login-box { background: white; padding: 30px; border-radius: 12px; width: 100%; max-width: 380px; box-shadow: 0 8px 24px rgba(0,0,0,0.15); text-align: center; }
-    .login-
+    .login-box img { height: 70px; margin-bottom: 15px; object-fit: contain; }
+
+    #invoiceModal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 2000; align-items: center; justify-content: center; padding: 15px; }
+    .invoice-card { background: white; max-width: 450px; width: 100%; border-radius: 8px; padding: 25px; box-shadow: 0 5px 15px rgba(0,0,0,0.3); }
+    
+    @media print {
+      body * { visibility: hidden; }
+      #invoicePrintArea, #invoicePrintArea * { visibility: visible; }
+      #invoicePrintArea { position: absolute; left: 0; top: 0; width: 100%; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ১. লগইন বক্স -->
+  <div id="loginScreen">
+    <div class="login-box">
+      <img src="logo.png" alt="Logo" onerror="this.src='https://cdn-icons-png.flaticon.com/512/2395/2395796.png'">
+      <h2 style="border:none; margin-bottom: 5px;">Nanda Dairy Agro</h2>
+      <p style="font-size: 13px; color: #666; margin-bottom: 20px;">লগইন করতে ইউজার আইডি ও পাসওয়ার্ড দিন</p>
+      <div style="text-align: left; margin-bottom: 15px;">
+        <label style="font-size: 12px; font-weight:600;">ইউজার আইডি</label>
+        <input type="text" id="loginId" placeholder="ইউজার আইডি দিন" value="nanda" style="margin-top: 4px;">
+      </div>
+      <div style="text-align: left; margin-bottom: 20px;">
+        <label style="font-size: 12px; font-weight:600;">পাসওয়ার্ড</label>
+        <input type="password" id="loginPass" placeholder="পাসওয়ার্ড দিন" value="1234" style="margin-top: 4px;">
+      </div>
+      <button class="btn" style="width: 100%; padding: 12px;" onclick="window.checkLogin()">লগইন করুন</button>
+      <p id="loginErr" style="color: red; font-size: 12px; margin-top: 10px;"></p>
+    </div>
+  </div>
+
+  <!-- ২. মূল অ্যাপ্লিকেশন -->
+  <div id="appBody" style="display: none;">
+    <header>
