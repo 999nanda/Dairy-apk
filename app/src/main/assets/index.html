@@ -10,11 +10,10 @@
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
 
-  <!-- লগইন ও নিরাপত্তা স্ক্রিপ্ট (কোনো অটো-লগইন নেই) -->
+  <!-- লগইন ও প্রাথমিক স্ক্রিপ্ট -->
   <script>
     function getEl(id) { return document.getElementById(id); }
 
-    // ব্রাউজারের পুরোনো কোনো লগইন মেমোরি থাকলে সাথে সাথে মুছে ফেলা
     try {
       localStorage.clear();
       sessionStorage.clear();
@@ -36,13 +35,11 @@
       if (window.firebase) db = firebase.database();
     } catch(e) { console.log(e); }
 
-    // ম্যানুয়াল লগইন চেকার
     window.doLogin = function() {
       var u = (getEl('loginId') ? getEl('loginId').value : '').trim().toLowerCase();
       var p = (getEl('loginPass') ? getEl('loginPass').value : '').trim();
       
       if (u === 'nanda' && p === '1234') {
-        // পাসওয়ার্ড সঠিক হলে ড্যাশবোর্ড দেখাবে
         getEl('loginScreen').style.display = 'none';
         getEl('appBody').style.display = 'block';
         if (typeof window.listenAllData === 'function') window.listenAllData();
@@ -60,7 +57,6 @@
       ['milkDate','saleDate','orderDate','expDate','brAiDate','hlthDate'].forEach(function(id) {
         if (getEl(id)) getEl(id).value = today;
       });
-      // নিশ্চিত করা যে সবসময় লগইন স্ক্রিন প্রদর্শিত থাকবে
       if (getEl('loginScreen')) getEl('loginScreen').style.display = 'flex';
       if (getEl('appBody')) getEl('appBody').style.display = 'none';
     };
@@ -72,7 +68,7 @@
     body { background-color: #f1f5f2; color: var(--dark); padding-bottom: 60px; }
     header { background: linear-gradient(135deg, #1b5e20, #2e7d32); color: white; padding: 12px 18px; display: flex; align-items: center; justify-content: space-between; box-shadow: 0 3px 10px rgba(0,0,0,0.15); position: sticky; top: 0; z-index: 100; }
     .header-title { display: flex; align-items: center; gap: 10px; }
-    .header-title img { height: 40px; width: 40px; border-radius: 8px; background: white; padding: 2px; }
+    .header-title img { height: 44px; width: 44px; border-radius: 50%; object-fit: cover; background: white; padding: 2px; box-shadow: 0 2px 4px rgba(0,0,0,0.2); }
     .header-title h1 { font-size: 18px; font-weight: 700; }
     .header-right { display: flex; align-items: center; gap: 8px; }
     .sync-badge { background: #2e7d32; border: 1px solid #81c784; color: white; padding: 4px 10px; border-radius: 20px; font-size: 11px; font-weight: 600; }
@@ -107,10 +103,9 @@
     .summary-card p { font-size: 11.5px; color: #666; font-weight: 600; text-transform: uppercase; }
     .summary-card h3 { font-size: 22px; color: var(--primary); margin-top: 5px; font-weight: 700; }
     
-    /* লগইন স্ক্রিন সর্বদা সবার ওপরে ভেসে থাকবে */
     #loginScreen { position: fixed; inset: 0; background: #e8f5e9; display: flex; align-items: center; justify-content: center; z-index: 99999; padding: 20px; }
-    .login-box { background: white; padding: 32px; border-radius: 12px; width: 100%; max-width: 380px; box-shadow: 0 8px 24px rgba(0,0,0,0.12); text-align: center; }
-    .login-box img { height: 70px; margin-bottom: 12px; }
+    .login-box { background: white; padding: 32px; border-radius: 16px; width: 100%; max-width: 380px; box-shadow: 0 8px 24px rgba(0,0,0,0.12); text-align: center; }
+    .login-box img { height: 95px; width: 95px; border-radius: 50%; object-fit: cover; margin-bottom: 14px; box-shadow: 0 3px 10px rgba(0,0,0,0.15); border: 2px solid var(--secondary); }
     
     #invoiceModal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 2000; align-items: center; justify-content: center; padding: 15px; }
     .invoice-card { background: white; max-width: 480px; width: 100%; border-radius: 8px; padding: 25px; }
@@ -119,10 +114,10 @@
 </head>
 <body>
 
-  <!-- ১. লগইন স্ক্রিন (প্রতিবার অ্যাপ খোলার সাথে সাথেই এটি আসবে) -->
+  <!-- ১. লগইন স্ক্রিন -->
   <div id="loginScreen">
     <div class="login-box">
-      src="https://raw.githubusercontent.com/999nanda/Dairy-apk/main/app/src/main/assets/logo.png"
+      <img src="logo.png" alt="Nanda Dairy Agro" onerror="this.onerror=null; this.src='https://cdn-icons-png.flaticon.com/512/2395/2395796.png';">
       <h2 style="border:none; margin-bottom: 5px; justify-content:center;">Nanda Dairy Agro</h2>
       <p style="font-size: 13px; color: #666; margin-bottom: 20px;">ফার্ম ম্যানেজমেন্ট সিস্টেমে স্বাগতম</p>
       <div style="text-align: left; margin-bottom: 14px;">
@@ -138,11 +133,11 @@
     </div>
   </div>
 
-  <!-- ২. মূল অ্যাপ্লিকেশন (লগইনের আগে এটি কোনোভাবেই দেখা যাবে না) -->
-  src="https://raw.githubusercontent.com/999nanda/Dairy-apk/main/app/src/main/assets/logo.png"
+  <!-- ২. মূল অ্যাপ্লিকেশন -->
+  <div id="appBody" style="display: none;">
     <header>
       <div class="header-title">
-        <img src="https://cdn-icons-png.flaticon.com/512/2395/2395796.png" alt="Logo">
+        <img src="logo.png" alt="Nanda Dairy Agro" onerror="this.onerror=null; this.src='https://cdn-icons-png.flaticon.com/512/2395/2395796.png';">
         <div>
           <h1>NANDA Dairy & Agro</h1>
           <span style="font-size: 11px; opacity: 0.85;">Owner / Admin</span>
@@ -314,7 +309,7 @@
         <div class="card">
           <h2>📦 অর্ডার গ্রহণ এন্ট্রি</h2>
           <div class="form-grid">
-            <div class="input-group"><label>তারিখ *</label><input type="date" id="orderDate"></div>
+            <div class="input-group"><label>ডেলিভারি তারিখ *</label><input type="date" id="orderDate"></div>
             <div class="input-group"><label>কাস্টমারের নাম *</label><input type="text" id="orderCustomer"></div>
             <div class="input-group"><label>আইটেম ও পরিমাণ *</label><input type="text" id="orderItems"></div>
             <div class="input-group"><label>স্ট্যাটাস</label><select id="orderStatus"><option value="পেন্ডিং">পেন্ডিং</option><option value="ডেলিভারড">ডেলিভারড</option><option value="বাতিল">বাতিল</option></select></div>
