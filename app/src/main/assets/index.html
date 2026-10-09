@@ -10,9 +10,15 @@
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
 
-  <!-- লগইন ও প্রাথমিক স্ক্রিপ্ট সবার ওপরে লোড হচ্ছে -->
+  <!-- লগইন ও নিরাপত্তা স্ক্রিপ্ট (কোনো অটো-লগইন নেই) -->
   <script>
     function getEl(id) { return document.getElementById(id); }
+
+    // ব্রাউজারের পুরোনো কোনো লগইন মেমোরি থাকলে সাথে সাথে মুছে ফেলা
+    try {
+      localStorage.clear();
+      sessionStorage.clear();
+    } catch(e) {}
 
     var firebaseConfig = {
       apiKey: "AIzaSyAtmDkYLV6rh4jfJT2OPJZ5_R4c99S8-t4",
@@ -30,25 +36,22 @@
       if (window.firebase) db = firebase.database();
     } catch(e) { console.log(e); }
 
+    // ম্যানুয়াল লগইন চেকার
     window.doLogin = function() {
       var u = (getEl('loginId') ? getEl('loginId').value : '').trim().toLowerCase();
       var p = (getEl('loginPass') ? getEl('loginPass').value : '').trim();
+      
       if (u === 'nanda' && p === '1234') {
-        localStorage.setItem('nanda_dairy_auth', 'true');
-        unlockApp();
+        // পাসওয়ার্ড সঠিক হলে ড্যাশবোর্ড দেখাবে
+        getEl('loginScreen').style.display = 'none';
+        getEl('appBody').style.display = 'block';
+        if (typeof window.listenAllData === 'function') window.listenAllData();
       } else {
-        if (getEl('loginErr')) getEl('loginErr').innerText = 'ভুল আইডি বা পাসওয়ার্ড!';
+        if (getEl('loginErr')) getEl('loginErr').innerText = 'ভুল আইডি বা পাসওয়ার্ড! আইডি: nanda, পাসওয়ার্ড: 1234';
       }
     };
 
-    function unlockApp() {
-      if (getEl('loginScreen')) getEl('loginScreen').style.display = 'none';
-      if (getEl('appBody')) getEl('appBody').style.display = 'block';
-      if (typeof window.listenAllData === 'function') window.listenAllData();
-    }
-
     window.doLogout = function() {
-      localStorage.removeItem('nanda_dairy_auth');
       location.reload();
     };
 
@@ -57,7 +60,9 @@
       ['milkDate','saleDate','orderDate','expDate','brAiDate','hlthDate'].forEach(function(id) {
         if (getEl(id)) getEl(id).value = today;
       });
-      if (localStorage.getItem('nanda_dairy_auth') === 'true') unlockApp();
+      // নিশ্চিত করা যে সবসময় লগইন স্ক্রিন প্রদর্শিত থাকবে
+      if (getEl('loginScreen')) getEl('loginScreen').style.display = 'flex';
+      if (getEl('appBody')) getEl('appBody').style.display = 'none';
     };
   </script>
 
@@ -97,14 +102,16 @@
     .badge-success { background: #e8f5e9; color: #2e7d32; }
     .badge-warning { background: #fff3e0; color: #e65100; }
     .badge-danger { background: #ffebee; color: #c62828; }
-    .badge-info { background: #e1f5fe; color: #0277bd; }
     .summary-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 14px; margin-bottom: 22px; }
     .summary-card { background: white; padding: 16px; border-radius: 10px; border-left: 5px solid var(--primary); box-shadow: 0 2px 6px rgba(0,0,0,0.05); }
     .summary-card p { font-size: 11.5px; color: #666; font-weight: 600; text-transform: uppercase; }
     .summary-card h3 { font-size: 22px; color: var(--primary); margin-top: 5px; font-weight: 700; }
-    #loginScreen { position: fixed; inset: 0; background: #e8f5e9; display: flex; align-items: center; justify-content: center; z-index: 1000; padding: 20px; }
+    
+    /* লগইন স্ক্রিন সর্বদা সবার ওপরে ভেসে থাকবে */
+    #loginScreen { position: fixed; inset: 0; background: #e8f5e9; display: flex; align-items: center; justify-content: center; z-index: 99999; padding: 20px; }
     .login-box { background: white; padding: 32px; border-radius: 12px; width: 100%; max-width: 380px; box-shadow: 0 8px 24px rgba(0,0,0,0.12); text-align: center; }
     .login-box img { height: 70px; margin-bottom: 12px; }
+    
     #invoiceModal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 2000; align-items: center; justify-content: center; padding: 15px; }
     .invoice-card { background: white; max-width: 480px; width: 100%; border-radius: 8px; padding: 25px; }
     @media print { body * { visibility: hidden; } #invoicePrintArea, #invoicePrintArea * { visibility: visible; } #invoicePrintArea { position: absolute; left: 0; top: 0; width: 100%; } }
@@ -112,7 +119,7 @@
 </head>
 <body>
 
-  <!-- ১. লগইন স্ক্রিন -->
+  <!-- ১. লগইন স্ক্রিন (প্রতিবার অ্যাপ খোলার সাথে সাথেই এটি আসবে) -->
   <div id="loginScreen">
     <div class="login-box">
       <img src="https://cdn-icons-png.flaticon.com/512/2395/2395796.png" alt="Logo">
@@ -120,18 +127,18 @@
       <p style="font-size: 13px; color: #666; margin-bottom: 20px;">ফার্ম ম্যানেজমেন্ট সিস্টেমে স্বাগতম</p>
       <div style="text-align: left; margin-bottom: 14px;">
         <label style="font-size: 12px; font-weight:600;">ইউজার আইডি</label>
-        <input type="text" id="loginId" value="nanda" style="margin-top: 4px;">
+        <input type="text" id="loginId" placeholder="ইউজার আইডি দিন" autocomplete="off" style="margin-top: 4px;">
       </div>
       <div style="text-align: left; margin-bottom: 20px;">
         <label style="font-size: 12px; font-weight:600;">পাসওয়ার্ড</label>
-        <input type="password" id="loginPass" value="1234" style="margin-top: 4px;">
+        <input type="password" id="loginPass" placeholder="পাসওয়ার্ড দিন" autocomplete="off" style="margin-top: 4px;">
       </div>
       <button class="btn" style="width: 100%; padding: 11px; justify-content:center;" onclick="window.doLogin()">লগইন করুন</button>
       <p id="loginErr" style="color: red; font-size: 12px; margin-top: 10px;"></p>
     </div>
   </div>
 
-  <!-- ২. মূল অ্যাপ্লিকেশন -->
+  <!-- ২. মূল অ্যাপ্লিকেশন (লগইনের আগে এটি কোনোভাবেই দেখা যাবে না) -->
   <div id="appBody" style="display: none;">
     <header>
       <div class="header-title">
