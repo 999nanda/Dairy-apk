@@ -20,55 +20,56 @@
       --warning: #f57c00;
       --info: #0288d1;
       --dark: #212121;
-      --light: #f8f9fa;
+      --border: #dee2e6;
     }
     * { box-sizing: border-box; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 0; padding: 0; }
-    body { background-color: #f1f5f2; color: var(--dark); padding-bottom: 60px; }
+    body { background-color: #f4f7f5; color: var(--dark); padding-bottom: 60px; }
 
     /* Header */
-    header { background: linear-gradient(135deg, #1b5e20, #2e7d32); color: white; padding: 14px 20px; display: flex; align-items: center; justify-content: space-between; box-shadow: 0 3px 10px rgba(0,0,0,0.15); position: sticky; top: 0; z-index: 100; }
+    header { background: linear-gradient(135deg, #1b5e20, #2e7d32); color: white; padding: 12px 20px; display: flex; align-items: center; justify-content: space-between; box-shadow: 0 3px 10px rgba(0,0,0,0.15); position: sticky; top: 0; z-index: 100; }
     .header-title { display: flex; align-items: center; gap: 12px; }
     .header-title img { height: 42px; width: 42px; border-radius: 8px; background: white; padding: 2px; }
-    .header-title h1 { font-size: 19px; font-weight: 700; letter-spacing: 0.5px; }
-    .logout-btn { background: #b71c1c; color: white; border: none; padding: 7px 15px; border-radius: 6px; cursor: pointer; font-weight: bold; font-size: 13px; }
+    .header-title h1 { font-size: 19px; font-weight: 700; }
+    .header-right { display: flex; align-items: center; gap: 10px; }
+    .sync-badge { background: rgba(255,255,255,0.2); padding: 5px 10px; border-radius: 20px; font-size: 12px; font-weight: 600; display: flex; align-items: center; gap: 6px; }
+    .logout-btn { background: #b71c1c; color: white; border: none; padding: 6px 14px; border-radius: 6px; cursor: pointer; font-weight: bold; font-size: 13px; }
 
-    /* Navigation Bar (১৩টি মডিউল সহজে স্ক্রোল করার ব্যবস্থা) */
-    nav { display: flex; background: white; overflow-x: auto; box-shadow: 0 2px 5px rgba(0,0,0,0.06); padding: 5px 10px; scrollbar-width: thin; }
-    nav button { flex: 0 0 auto; padding: 10px 16px; border: none; background: none; font-size: 13.5px; font-weight: 600; color: #495057; cursor: pointer; border-radius: 6px; margin-right: 5px; transition: all 0.2s; white-space: nowrap; }
+    /* Navigation Bar */
+    nav { display: flex; background: white; overflow-x: auto; box-shadow: 0 2px 5px rgba(0,0,0,0.06); padding: 6px 10px; scrollbar-width: thin; }
+    nav button { flex: 0 0 auto; padding: 9px 15px; border: none; background: none; font-size: 13.5px; font-weight: 600; color: #495057; cursor: pointer; border-radius: 6px; margin-right: 5px; transition: all 0.2s; white-space: nowrap; }
     nav button:hover { background: #f0f4f1; color: var(--primary); }
     nav button.active { background: var(--secondary); color: var(--primary); font-weight: 700; border-bottom: 3px solid var(--primary); }
 
-    .container { max-width: 1100px; margin: 20px auto; padding: 0 15px; }
+    .container { max-width: 1200px; margin: 20px auto; padding: 0 15px; }
 
     /* Cards & Forms */
     .card { background: white; border-radius: 10px; padding: 20px; margin-bottom: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
     h2 { font-size: 17px; margin-bottom: 15px; color: var(--primary); border-bottom: 2px solid var(--secondary); padding-bottom: 6px; display: flex; justify-content: space-between; align-items: center; }
-    .form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; margin-bottom: 15px; }
+    .form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; margin-bottom: 15px; }
     .input-group label { display: block; font-size: 12px; font-weight: 600; margin-bottom: 5px; color: #444; }
-    input, select, textarea { width: 100%; padding: 9px 12px; border: 1px solid #ced4da; border-radius: 6px; font-size: 13.5px; outline: none; }
+    input, select, textarea { width: 100%; padding: 9px 12px; border: 1px solid var(--border); border-radius: 6px; font-size: 13.5px; outline: none; background: #fff; }
     input:focus, select:focus, textarea:focus { border-color: var(--primary); box-shadow: 0 0 0 2px rgba(27,94,32,0.15); }
     
     /* Buttons */
     .btn { background: var(--primary); color: white; border: none; padding: 9px 18px; border-radius: 6px; cursor: pointer; font-size: 13.5px; font-weight: 600; display: inline-flex; align-items: center; gap: 6px; }
     .btn:hover { background: var(--primary-light); }
     .btn-danger { background: var(--danger); color: white; }
-    .btn-warning { background: var(--warning); color: white; }
     .btn-info { background: var(--info); color: white; }
     .action-btn { padding: 4px 9px; font-size: 12px; border: none; border-radius: 4px; cursor: pointer; margin-right: 4px; font-weight: 600; }
 
-    /* Tables */
+    /* Table Styles */
     .table-container { overflow-x: auto; margin-top: 10px; }
-    table { width: 100%; border-collapse: collapse; font-size: 13px; text-align: left; }
-    th, td { padding: 11px 12px; border-bottom: 1px solid #eceff1; }
+    table { width: 100%; border-collapse: collapse; font-size: 12.5px; text-align: left; min-width: 900px; }
+    th, td { padding: 10px 12px; border-bottom: 1px solid #eceff1; white-space: nowrap; }
     th { background: #f8faf9; color: #555; font-weight: 600; }
     tr:hover { background: #fafdfb; }
 
     /* Badges */
     .badge { padding: 3px 8px; border-radius: 12px; font-size: 11px; font-weight: 600; display: inline-block; }
-    .badge-success { background: #e8f5e9; color: #2e7d32; }
-    .badge-warning { background: #fff3e0; color: #e65100; }
-    .badge-danger { background: #ffebee; color: #c62828; }
-    .badge-info { background: #e1f5fe; color: #0277bd; }
+    .badge-milking { background: #e8f5e9; color: #2e7d32; }
+    .badge-pregnant { background: #fff3e0; color: #e65100; }
+    .badge-dry { background: #efebe9; color: #5d4037; }
+    .badge-other { background: #e1f5fe; color: #0277bd; }
 
     /* Dashboard Widgets */
     .summary-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 25px; }
@@ -94,7 +95,7 @@
 </head>
 <body>
 
-  <!-- ১. লগইন স্ক্রিন -->
+  <!-- লগইন স্ক্রিন -->
   <div id="loginScreen">
     <div class="login-box">
       <img src="https://cdn-icons-png.flaticon.com/512/2395/2395796.png" alt="Logo">
@@ -113,17 +114,23 @@
     </div>
   </div>
 
-  <!-- ২. মূল অ্যাপ্লিকেশন -->
+  <!-- মূল অ্যাপ্লিকেশন -->
   <div id="appBody" style="display: none;">
     <header>
       <div class="header-title">
         <img src="https://cdn-icons-png.flaticon.com/512/2395/2395796.png" alt="Logo">
-        <h1>Nanda Dairy Agro</h1>
+        <div>
+          <h1>NANDA Dairy & Agro</h1>
+          <span style="font-size: 11px; opacity: 0.85;">Owner / Admin</span>
+        </div>
       </div>
-      <button class="logout-btn" onclick="doLogout()">লগআউট</button>
+      <div class="header-right">
+        <span class="sync-badge">🟢 Cloud Sync</span>
+        <button class="logout-btn" onclick="doLogout()">লগআউট</button>
+      </div>
     </header>
 
-    <!-- ১৩টি মডিউল ন্যাভিগেশন -->
+    <!-- ন্যাভিগেশন বার -->
     <nav>
       <button class="active" onclick="switchTab('dashboard')">📊 Dashboard</button>
       <button onclick="switchTab('cattle')">🐄 Cattle</button>
@@ -172,35 +179,80 @@
         </div>
       </div>
 
-      <!-- ২. Cattle List -->
+      <!-- ২. Cattle Register (ভিডিওর মতো হুবহু ফিল্ডসমূহ) -->
       <div id="tab-cattle" class="tab-content" style="display: none;">
         <div class="card">
-          <h2>নতুন গরু যুক্ত করুন</h2>
+          <h2>🐄 Cattle Register</h2>
           <div class="form-grid">
             <div class="input-group">
-              <label>গরুর ট্যাগ/আইডি *</label>
-              <input type="text" id="cowTag" placeholder="যেমন: C-101">
+              <label>Tag ID *</label>
+              <input type="text" id="cowTag" placeholder="যেমন: NDA-C001">
             </div>
             <div class="input-group">
-              <label>জাত (Breed)</label>
-              <input type="text" id="cowBreed" placeholder="যেমন: ফ্রিজিয়ান/শাহিওয়াল">
+              <label>Breed</label>
+              <input type="text" id="cowBreed" placeholder="যেমন: Jersey / HF">
             </div>
             <div class="input-group">
-              <label>স্ট্যাটাস</label>
-              <select id="cowStatus">
-                <option value="দুধাল (Milking)">দুধাল (Milking)</option>
-                <option value="গর্ভবতী (Pregnant)">গর্ভবতী (Pregnant)</option>
-                <option value="শুষ্ক (Dry)">শুষ্ক (Dry)</option>
-                <option value="বাছুর (Calf)">বাছুর (Calf)</option>
-                <option value="ষাঁড় (Bull)">ষাঁড় (Bull)</option>
+              <label>Breed Type</label>
+              <input type="text" id="cowBreedType" placeholder="যেমন: Jersey Cross / HF Cross">
+            </div>
+            <div class="input-group">
+              <label>Breed Composition</label>
+              <input type="text" id="cowComposition" placeholder="যেমন: Jersey 75% / HF 100%">
+            </div>
+            <div class="input-group">
+              <label>Generation</label>
+              <select id="cowGeneration">
+                <option value="F1">F1</option>
+                <option value="F2">F2</option>
+                <option value="F3">F3</option>
+                <option value="F4+">F4+</option>
+                <option value="Pure/100%">Pure/100%</option>
               </select>
             </div>
             <div class="input-group">
-              <label>দৈনিক গড় দুধ (লিটার)</label>
-              <input type="number" id="cowCapacity" placeholder="যেমন: ১২">
+              <label>DOB (জন্মতারিখ)</label>
+              <input type="date" id="cowDob">
+            </div>
+            <div class="input-group">
+              <label>Weight kg</label>
+              <input type="number" id="cowWeight" placeholder="যেমন: 500">
+            </div>
+            <div class="input-group">
+              <label>Lactation (বিয়ান)</label>
+              <input type="number" id="cowLactation" placeholder="যেমন: 2">
+            </div>
+            <div class="input-group">
+              <label>Daily Milk (লিটার/দিন)</label>
+              <input type="number" id="cowCapacity" placeholder="যেমন: 12">
+            </div>
+            <div class="input-group">
+              <label>Status</label>
+              <select id="cowStatus">
+                <option value="Milking">Milking</option>
+                <option value="Pregnant">Pregnant</option>
+                <option value="Dry">Dry</option>
+                <option value="Heat">Heat</option>
+                <option value="Heifer">Heifer</option>
+                <option value="Calf">Calf</option>
+                <option value="Sick">Sick</option>
+                <option value="Sold/Transferred">Sold/Transferred</option>
+              </select>
+            </div>
+            <div class="input-group">
+              <label>Sire / Semen</label>
+              <input type="text" id="cowSire" placeholder="যেমন: Jersey Romio / HF Maverik">
+            </div>
+            <div class="input-group">
+              <label>Dam (মায়ের ট্যাগ)</label>
+              <input type="text" id="cowDam" placeholder="মায়ের আইডি">
+            </div>
+            <div class="input-group">
+              <label>Expected Calving (সম্ভাব্য প্রসব)</label>
+              <input type="date" id="cowExpCalving">
             </div>
           </div>
-          <button class="btn" onclick="addCattle()">সংরক্ষণ করুন</button>
+          <button class="btn" onclick="addCattle()">Save Cattle</button>
         </div>
 
         <div class="card">
@@ -209,11 +261,19 @@
             <table>
               <thead>
                 <tr>
-                  <th>ট্যাগ/আইডি</th>
-                  <th>জাত</th>
-                  <th>স্ট্যাটাস</th>
-                  <th>গড় দুধ</th>
-                  <th>মুছুন</th>
+                  <th>Tag</th>
+                  <th>Breed</th>
+                  <th>Type</th>
+                  <th>Gen</th>
+                  <th>Composition</th>
+                  <th>DOB</th>
+                  <th>Weight</th>
+                  <th>Lact</th>
+                  <th>Status</th>
+                  <th>Milk/day</th>
+                  <th>Sire/Semen</th>
+                  <th>Calving</th>
+                  <th>Action</th>
                 </tr>
               </thead>
               <tbody id="cattleTableBody"></tbody>
@@ -225,7 +285,7 @@
       <!-- ৩. Breeding -->
       <div id="tab-breeding" class="tab-content" style="display: none;">
         <div class="card">
-          <h2>প্রজনন / ব্রিডিং এন্ট্রি</h2>
+          <h2>🧬 প্রজনন / ব্রিডিং এন্ট্রি</h2>
           <div class="form-grid">
             <div class="input-group">
               <label>গরুর ট্যাগ নম্বর *</label>
@@ -249,7 +309,7 @@
               </select>
             </div>
             <div class="input-group">
-              <label>সম্ভাব্য প্রসবের তারিখ (আনুমানিক)</label>
+              <label>সম্ভাব্য প্রসবের তারিখ</label>
               <input type="date" id="brCalvingDate">
             </div>
           </div>
@@ -276,10 +336,10 @@
         </div>
       </div>
 
-      <!-- ৪. Milk Records -->
+      <!-- ৪. Milk -->
       <div id="tab-milk" class="tab-content" style="display: none;">
         <div class="card">
-          <h2>দুধ উৎপাদন এন্ট্রি</h2>
+          <h2>🥛 দুধ উৎপাদন এন্ট্রি</h2>
           <div class="form-grid">
             <div class="input-group">
               <label>তারিখ *</label>
@@ -327,7 +387,7 @@
       <!-- ৫. Sales & Billing -->
       <div id="tab-sales" class="tab-content" style="display: none;">
         <div class="card">
-          <h2>পণ্য বিক্রয় ও ইনভয়েস</h2>
+          <h2>💰 পণ্য বিক্রয় ও ইনভয়েস</h2>
           <div class="form-grid">
             <div class="input-group">
               <label>তারিখ *</label>
@@ -352,7 +412,7 @@
               </select>
             </div>
             <div class="input-group">
-              <label>পরিমাণ (লিটার/কেজি)</label>
+              <label>পরিমাণ</label>
               <input type="number" id="saleQty" oninput="calcSale()" placeholder="০">
             </div>
             <div class="input-group">
@@ -396,10 +456,10 @@
         </div>
       </div>
 
-      <!-- ৬. Customer Directory -->
+      <!-- ৬. Customers -->
       <div id="tab-customers" class="tab-content" style="display: none;">
         <div class="card">
-          <h2>নতুন কাস্টমার যুক্ত করুন</h2>
+          <h2>👥 নতুন কাস্টমার যুক্ত করুন</h2>
           <div class="form-grid">
             <div class="input-group">
               <label>কাস্টমারের নাম *</label>
@@ -443,10 +503,10 @@
       <!-- ৭. Orders -->
       <div id="tab-orders" class="tab-content" style="display: none;">
         <div class="card">
-          <h2>নতুন অর্ডার গ্রহণ করুন</h2>
+          <h2>📦 নতুন অর্ডার গ্রহণ করুন</h2>
           <div class="form-grid">
             <div class="input-group">
-              <label>ডেলিভারি তারিখ *</label>
+              <label>তারিখ *</label>
               <input type="date" id="orderDate">
             </div>
             <div class="input-group">
@@ -454,7 +514,7 @@
               <input type="text" id="orderCustomer" placeholder="নাম">
             </div>
             <div class="input-group">
-              <label>আইটেম ও পরিমাণ *</label>
+              <label>আইটেম ও বিবরণ *</label>
               <input type="text" id="orderItems" placeholder="যেমন: ৫ লিটার দুধ">
             </div>
             <div class="input-group">
@@ -491,7 +551,7 @@
       <!-- ৮. Expenses -->
       <div id="tab-expenses" class="tab-content" style="display: none;">
         <div class="card">
-          <h2>নতুন খরচ এন্ট্রি</h2>
+          <h2>🧾 নতুন খরচ এন্ট্রি</h2>
           <div class="form-grid">
             <div class="input-group">
               <label>তারিখ *</label>
@@ -538,10 +598,10 @@
         </div>
       </div>
 
-      <!-- ৯. Stock / Inventory -->
+      <!-- ৯. Stock -->
       <div id="tab-stock" class="tab-content" style="display: none;">
         <div class="card">
-          <h2>খাদ্য ও পণ্য স্টক এন্ট্রি</h2>
+          <h2>🌾 খাদ্য ও পণ্য স্টক</h2>
           <div class="form-grid">
             <div class="input-group">
               <label>পণ্যের নাম *</label>
@@ -561,7 +621,7 @@
               </select>
             </div>
             <div class="input-group">
-              <label>সর্বনিম্ন সতর্কবার্তা লেভেল</label>
+              <label>সতর্কবার্তা লেভেল</label>
               <input type="number" id="stkAlert" placeholder="যেমন: ৫">
             </div>
           </div>
@@ -587,10 +647,10 @@
         </div>
       </div>
 
-      <!-- ১০. Semen/Bull Stock -->
+      <!-- ১০. Semen/Bull -->
       <div id="tab-semen" class="tab-content" style="display: none;">
         <div class="card">
-          <h2>সিমেন (Semen Straw) ও ব্রিডার ষাঁড়ের স্টক</h2>
+          <h2>💉 সিমেন (Semen Straw) ও ব্রিডার ষাঁড়ের স্টক</h2>
           <div class="form-grid">
             <div class="input-group">
               <label>স্ট্র / ব্যাচ নম্বর *</label>
@@ -598,11 +658,11 @@
             </div>
             <div class="input-group">
               <label>ষাঁড়ের জাত / নাম</label>
-              <input type="text" id="semBreed" placeholder="যেমন: ১০০% হোলস্টেইন ফ্রিজিয়ান">
+              <input type="text" id="semBreed" placeholder="যেমন: ১০০% HF">
             </div>
             <div class="input-group">
               <label>কোম্পানি / সোর্স</label>
-              <input type="text" id="semSource" placeholder="যেমন: ব্র্যাক / সরকারি">
+              <input type="text" id="semSource" placeholder="যেমন: সরকারি / ব্র্যাক">
             </div>
             <div class="input-group">
               <label>মজুদ স্ট্র সংখ্যা (পিস) *</label>
@@ -634,7 +694,7 @@
       <!-- ১১. Health -->
       <div id="tab-health" class="tab-content" style="display: none;">
         <div class="card">
-          <h2>টিকা, কৃমিনাশক ও চিকিৎসা রেকর্ড</h2>
+          <h2>🩺 টিকা, কৃমিনাশক ও চিকিৎসা রেকর্ড</h2>
           <div class="form-grid">
             <div class="input-group">
               <label>তারিখ *</label>
@@ -688,13 +748,13 @@
       <!-- ১২. Reports -->
       <div id="tab-reports" class="tab-content" style="display: none;">
         <div class="card">
-          <h2>ফার্মের সামগ্রিক রিপোর্ট ও সারসংক্ষেপ</h2>
-          <div style="line-height: 2; font-size: 15px; margin-top: 10px;">
-            <p><strong>মোট রেকর্ডকৃত দুধ উৎপাদন:</strong> <span id="rep-milk" style="color:var(--primary); font-weight:bold;">০</span> লিটার</p>
-            <p><strong>মোট সামগ্রিক বিক্রয় (Sales Revenue):</strong> <span id="rep-sales" style="color:green; font-weight:bold;">৳ ০</span></p>
-            <p><strong>মোট সামগ্রিক খরচ (Expenses):</strong> <span id="rep-expenses" style="color:red; font-weight:bold;">৳ ০</span></p>
+          <h2>📈 ফার্মের সামগ্রিক রিপোর্ট</h2>
+          <div style="line-height: 2.2; font-size: 15px; margin-top: 10px;">
+            <p><strong>মোট দুধ উৎপাদন:</strong> <span id="rep-milk" style="color:var(--primary); font-weight:bold;">০</span> লিটার</p>
+            <p><strong>মোট বিক্রয় (Sales Revenue):</strong> <span id="rep-sales" style="color:green; font-weight:bold;">৳ ০</span></p>
+            <p><strong>মোট খরচ (Expenses):</strong> <span id="rep-expenses" style="color:red; font-weight:bold;">৳ ০</span></p>
             <hr style="margin: 15px 0;">
-            <p><strong>বর্তমান লাভ / ক্ষতি (Net Cash Flow):</strong> <span id="rep-profit" style="font-size: 18px; font-weight:bold;">৳ ০</span></p>
+            <p><strong>বর্তমান লাভ / ক্ষতি (Net Flow):</strong> <span id="rep-profit" style="font-size: 19px; font-weight:bold;">৳ ০</span></p>
           </div>
         </div>
       </div>
@@ -702,9 +762,9 @@
       <!-- ১৩. Backup -->
       <div id="tab-backup" class="tab-content" style="display: none;">
         <div class="card">
-          <h2>ডাটা ব্যাকআপ ও নিরাপত্তা</h2>
+          <h2>💾 ডাটা ব্যাকআপ ও নিরাপত্তা</h2>
           <p style="font-size: 13.5px; color: #555; margin-bottom: 20px; line-height: 1.6;">
-            আপনার সমস্ত ডেটা রিয়েলটাইমে ক্লাউডে সুরক্ষিত রয়েছে। আপনি চাইলে সম্পূর্ণ ফার্মের যাবতীয় ডেটা এক ক্লিকে নিজের কম্পিউটারে ফাইল আকারে ব্যাকআপ করে রাখতে পারেন।
+            আপনার সমস্ত ডেটা রিয়েলটাইমে ক্লাউডে সুরক্ষিত রয়েছে। যেকোনো সময় ফার্মের পূর্ণাঙ্গ ডেটা এক ক্লিকে অফলাইন ব্যাকআপ করে রাখতে পারেন।
           </p>
           <button class="btn btn-info" onclick="downloadBackup()">📥 সম্পূর্ণ ফার্ম ডেটা ব্যাকআপ ডাউনলোড করুন (JSON)</button>
         </div>
@@ -732,7 +792,7 @@
     </div>
   </div>
 
-  <!-- স্ক্রিপ্ট লজিক -->
+  <!-- জাভাস্ক্রিপ্ট লজিক -->
   <script>
     function getEl(id) { return document.getElementById(id); }
 
@@ -790,25 +850,61 @@
       }
     }
 
-    // মুছে ফেলার কমন ফাংশন
     function deleteRecord(path, id) {
-      if (confirm('আপনি কি নিশ্চিতভাবে এই তথ্যটি মুছে ফেলতে চান?')) {
+      if (confirm('আপনি কি নিশ্চিতভাবে এই এন্ট্রিটি মুছে ফেলতে চান?')) {
         if (db) db.ref(path).child(id).remove();
       }
     }
 
-    // ১. Cattle
+    /* ১. Cattle Add (ভিডিও অনুযায়ী সম্পূর্ণ ডেটা সেভ) */
     function addCattle() {
       var tag = (getEl('cowTag') ? getEl('cowTag').value : '').trim();
       var breed = (getEl('cowBreed') ? getEl('cowBreed').value : '').trim();
-      var status = getEl('cowStatus') ? getEl('cowStatus').value : '';
+      var breedType = (getEl('cowBreedType') ? getEl('cowBreedType').value : '').trim();
+      var composition = (getEl('cowComposition') ? getEl('cowComposition').value : '').trim();
+      var generation = getEl('cowGeneration') ? getEl('cowGeneration').value : 'F1';
+      var dob = getEl('cowDob') ? getEl('cowDob').value : '';
+      var weight = parseFloat(getEl('cowWeight') ? getEl('cowWeight').value : 0) || 0;
+      var lactation = parseFloat(getEl('cowLactation') ? getEl('cowLactation').value : 0) || 0;
       var cap = parseFloat(getEl('cowCapacity') ? getEl('cowCapacity').value : 0) || 0;
-      if (!tag) return alert('গরুর ট্যাগ নম্বর আবশ্যক!');
-      if (db) db.ref('cattle').push({ tag: tag, breed: breed, status: status, cap: cap });
-      getEl('cowTag').value = ''; getEl('cowBreed').value = ''; getEl('cowCapacity').value = '';
+      var status = getEl('cowStatus') ? getEl('cowStatus').value : 'Milking';
+      var sire = (getEl('cowSire') ? getEl('cowSire').value : '').trim();
+      var dam = (getEl('cowDam') ? getEl('cowDam').value : '').trim();
+      var expCalving = getEl('cowExpCalving') ? getEl('cowExpCalving').value : '';
+
+      if (!tag) return alert('Tag ID অবশ্যই দিতে হবে!');
+
+      if (db) {
+        db.ref('cattle').push({
+          tag: tag,
+          breed: breed,
+          breedType: breedType,
+          composition: composition,
+          generation: generation,
+          dob: dob,
+          weight: weight,
+          lactation: lactation,
+          cap: cap,
+          status: status,
+          sire: sire,
+          dam: dam,
+          expCalving: expCalving
+        });
+      }
+
+      // ফর্ম ফাঁকা করা
+      getEl('cowTag').value = '';
+      getEl('cowBreed').value = '';
+      getEl('cowBreedType').value = '';
+      getEl('cowComposition').value = '';
+      getEl('cowWeight').value = '';
+      getEl('cowLactation').value = '';
+      getEl('cowCapacity').value = '';
+      getEl('cowSire').value = '';
+      getEl('cowDam').value = '';
     }
 
-    // ২. Breeding
+    /* ২. Breeding */
     function addBreeding() {
       var tag = (getEl('brCowTag') ? getEl('brCowTag').value : '').trim();
       var aiDate = getEl('brAiDate') ? getEl('brAiDate').value : '';
@@ -820,7 +916,7 @@
       getEl('brCowTag').value = ''; getEl('brSemenId').value = '';
     }
 
-    // ৩. Milk
+    /* ৩. Milk */
     function addMilkRecord() {
       var date = getEl('milkDate') ? getEl('milkDate').value : '';
       var cow = (getEl('milkCowTag') ? getEl('milkCowTag').value : '').trim() || 'সাধারণ';
@@ -831,7 +927,7 @@
       getEl('milkLiters').value = '';
     }
 
-    // ৪. Sales & Calc
+    /* ৪. Sales & Calc */
     function calcSale() {
       var qty = parseFloat(getEl('saleQty') ? getEl('saleQty').value : 0) || 0;
       var rate = parseFloat(getEl('saleRate') ? getEl('saleRate').value : 0) || 0;
@@ -851,7 +947,7 @@
       var total = parseFloat(getEl('saleTotal') ? getEl('saleTotal').value : 0) || 0;
       var paid = parseFloat(getEl('salePaid') ? getEl('salePaid').value : 0) || 0;
       var due = parseFloat(getEl('saleDue') ? getEl('saleDue').value : 0) || 0;
-      if (!name) return alert('কাস্টমারের নাম আবশ্যক!');
+      if (!name) return alert('কাস্টমারের নাম দিন!');
       if (db) db.ref('sales').push({ date: date, name: name, phone: phone, item: item, qty: qty, rate: rate, total: total, paid: paid, due: due });
       getEl('saleCustomer').value = ''; getEl('salePhone').value = ''; getEl('saleQty').value = ''; getEl('saleRate').value = ''; getEl('saleTotal').value = ''; getEl('salePaid').value = ''; getEl('saleDue').value = '';
     }
@@ -871,29 +967,29 @@
     }
     function closeInvoice() { if (getEl('invoiceModal')) getEl('invoiceModal').style.display = 'none'; }
 
-    // ৫. Customer
+    /* ৫. Customers */
     function addCustomer() {
       var name = (getEl('custName') ? getEl('custName').value : '').trim();
       var phone = (getEl('custPhone') ? getEl('custPhone').value : '').trim();
       var addr = (getEl('custAddress') ? getEl('custAddress').value : '').trim();
       var demand = (getEl('custDailyDemand') ? getEl('custDailyDemand').value : 0) || 0;
-      if (!name) return alert('কাস্টমারের নাম আবশ্যক!');
+      if (!name) return alert('কাস্টমারের নাম দিন!');
       if (db) db.ref('customers').push({ name: name, phone: phone, addr: addr, demand: demand });
       getEl('custName').value = ''; getEl('custPhone').value = ''; getEl('custAddress').value = ''; getEl('custDailyDemand').value = '';
     }
 
-    // ৬. Orders
+    /* ৬. Orders */
     function addOrder() {
       var date = getEl('orderDate') ? getEl('orderDate').value : '';
       var customer = (getEl('orderCustomer') ? getEl('orderCustomer').value : '').trim();
       var items = (getEl('orderItems') ? getEl('orderItems').value : '').trim();
       var status = getEl('orderStatus') ? getEl('orderStatus').value : 'পেন্ডিং';
-      if (!customer || !items) return alert('কাস্টমার ও আইটেমের নাম আবশ্যক!');
+      if (!customer || !items) return alert('কাস্টমার ও বিবরণ দিন!');
       if (db) db.ref('orders').push({ date: date, customer: customer, items: items, status: status });
       getEl('orderCustomer').value = ''; getEl('orderItems').value = '';
     }
 
-    // ৭. Expenses
+    /* ৭. Expenses */
     function addExpense() {
       var date = getEl('expDate') ? getEl('expDate').value : '';
       var category = getEl('expCategory') ? getEl('expCategory').value : '';
@@ -904,7 +1000,7 @@
       getEl('expTitle').value = ''; getEl('expAmount').value = '';
     }
 
-    // ৮. Stock
+    /* ৮. Stock */
     function addStock() {
       var name = (getEl('stkName') ? getEl('stkName').value : '').trim();
       var qty = parseFloat(getEl('stkQty') ? getEl('stkQty').value : 0) || 0;
@@ -915,7 +1011,7 @@
       getEl('stkName').value = ''; getEl('stkQty').value = ''; getEl('stkAlert').value = '';
     }
 
-    // ৯. Semen
+    /* ৯. Semen */
     function addSemen() {
       var batch = (getEl('semBatch') ? getEl('semBatch').value : '').trim();
       var breed = (getEl('semBreed') ? getEl('semBreed').value : '').trim();
@@ -926,36 +1022,36 @@
       getEl('semBatch').value = ''; getEl('semBreed').value = ''; getEl('semSource').value = ''; getEl('semCount').value = '';
     }
 
-    // ১০. Health
+    /* ১০. Health */
     function addHealth() {
       var date = getEl('hlthDate') ? getEl('hlthDate').value : '';
       var cowTag = (getEl('hlthCowTag') ? getEl('hlthCowTag').value : '').trim();
       var type = getEl('hlthType') ? getEl('hlthType').value : '';
       var desc = (getEl('hlthDesc') ? getEl('hlthDesc').value : '').trim();
       var nextDate = getEl('hlthNextDate') ? getEl('hlthNextDate').value : '';
-      if (!cowTag) return alert('গরুর ট্যাগ নম্বর আবশ্যক!');
+      if (!cowTag) return alert('গরুর ট্যাগ নম্বর দিন!');
       if (db) db.ref('health').push({ date: date, cowTag: cowTag, type: type, desc: desc, nextDate: nextDate });
       getEl('hlthCowTag').value = ''; getEl('hlthDesc').value = '';
     }
 
-    // ১১. Backup Download
+    /* ১১. Backup Download */
     function downloadBackup() {
       if (!db) return alert('ডাটাবেস কানেক্টেড নেই!');
       db.ref('/').once('value', function(snap) {
         var dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(snap.val(), null, 2));
-        var dlAnchorElem = document.createElement('a');
-        dlAnchorElem.setAttribute("href", dataStr);
-        dlAnchorElem.setAttribute("download", "Nanda_Dairy_Agro_Backup_" + new Date().toISOString().split('T')[0] + ".json");
-        dlAnchorElem.click();
+        var dl = document.createElement('a');
+        dl.setAttribute("href", dataStr);
+        dl.setAttribute("download", "Nanda_Dairy_Agro_Backup_" + new Date().toISOString().split('T')[0] + ".json");
+        dl.click();
       });
     }
 
-    // রিয়েল-টাইম সিঙ্ক লিসেনার
+    /* রিয়েল-টাইম ডেটা সিঙ্কিং */
     function listenAllData() {
       if (!db) return;
       var today = new Date().toISOString().split('T')[0];
 
-      // Cattle
+      // Cattle Table (ভিডিওর মতো হুবহু সব কলাম প্রদর্শন)
       db.ref('cattle').on('value', function(snap) {
         var body = getEl('cattleTableBody');
         if (body) body.innerHTML = '';
@@ -963,7 +1059,28 @@
         snap.forEach(function(child) {
           count++;
           var d = child.val();
-          if (body) body.innerHTML += '<tr><td><strong>' + d.tag + '</strong></td><td>' + (d.breed || '-') + '</td><td><span class="badge badge-info">' + d.status + '</span></td><td>' + d.cap + ' লি:</td><td><button class="action-btn btn-danger" onclick="deleteRecord(\'cattle\', \'' + child.key + '\')">মুছুন</button></td></tr>';
+          var badgeClass = 'badge-other';
+          if (d.status === 'Milking') badgeClass = 'badge-milking';
+          else if (d.status === 'Pregnant') badgeClass = 'badge-pregnant';
+          else if (d.status === 'Dry') badgeClass = 'badge-dry';
+
+          if (body) {
+            body.innerHTML += '<tr>' +
+              '<td><strong>' + (d.tag || '-') + '</strong></td>' +
+              '<td>' + (d.breed || '-') + '</td>' +
+              '<td>' + (d.breedType || '-') + '</td>' +
+              '<td>' + (d.generation || '-') + '</td>' +
+              '<td>' + (d.composition || '-') + '</td>' +
+              '<td>' + (d.dob || '-') + '</td>' +
+              '<td>' + (d.weight || '-') + '</td>' +
+              '<td>' + (d.lactation || '-') + '</td>' +
+              '<td><span class="badge ' + badgeClass + '">' + (d.status || '-') + '</span></td>' +
+              '<td>' + (d.cap || '0') + '</td>' +
+              '<td>' + (d.sire || '-') + '</td>' +
+              '<td>' + (d.expCalving || '-') + '</td>' +
+              '<td><button class="action-btn btn-danger" onclick="deleteRecord(\'cattle\', \'' + child.key + '\')">Delete</button></td>' +
+            '</tr>';
+          }
         });
         if (getEl('dash-cow-count')) getEl('dash-cow-count').innerText = count;
       });
@@ -974,7 +1091,7 @@
         if (body) body.innerHTML = '';
         snap.forEach(function(child) {
           var d = child.val();
-          if (body) body.innerHTML += '<tr><td><strong>' + d.tag + '</strong></td><td>' + d.aiDate + '</td><td>' + (d.semenId || '-') + '</td><td><span class="badge badge-warning">' + d.status + '</span></td><td>' + (d.calvingDate || '-') + '</td><td><button class="action-btn btn-danger" onclick="deleteRecord(\'breeding\', \'' + child.key + '\')">মুছুন</button></td></tr>';
+          if (body) body.innerHTML += '<tr><td><strong>' + d.tag + '</strong></td><td>' + d.aiDate + '</td><td>' + (d.semenId || '-') + '</td><td>' + d.status + '</td><td>' + (d.calvingDate || '-') + '</td><td><button class="action-btn btn-danger" onclick="deleteRecord(\'breeding\', \'' + child.key + '\')">মুছুন</button></td></tr>';
         });
       });
 
@@ -1029,7 +1146,7 @@
         snap.forEach(function(child) {
           var d = child.val();
           if (d.status === 'পেন্ডিং') pending++;
-          if (body) body.innerHTML += '<tr><td>' + d.date + '</td><td><strong>' + d.customer + '</strong></td><td>' + d.items + '</td><td><span class="badge ' + (d.status==='পেন্ডিং'?'badge-warning':'badge-success') + '">' + d.status + '</span></td><td><button class="action-btn btn-danger" onclick="deleteRecord(\'orders\', \'' + child.key + '\')">মুছুন</button></td></tr>';
+          if (body) body.innerHTML += '<tr><td>' + d.date + '</td><td><strong>' + d.customer + '</strong></td><td>' + d.items + '</td><td>' + d.status + '</td><td><button class="action-btn btn-danger" onclick="deleteRecord(\'orders\', \'' + child.key + '\')">মুছুন</button></td></tr>';
         });
         if (getEl('dash-pending-orders')) getEl('dash-pending-orders').innerText = pending + ' টি';
       });
@@ -1056,7 +1173,7 @@
         snap.forEach(function(child) {
           var d = child.val();
           var isLow = Number(d.qty) <= Number(d.alertLevel);
-          if (body) body.innerHTML += '<tr><td><strong>' + d.name + '</strong></td><td style="color:' + (isLow?'red':'inherit') + '; font-weight:bold;">' + d.qty + '</td><td>' + d.unit + '</td><td>' + d.alertLevel + ' ' + (isLow?'<span class="badge badge-danger">স্টক কম</span>':'') + '</td><td><button class="action-btn btn-danger" onclick="deleteRecord(\'stock\', \'' + child.key + '\')">মুছুন</button></td></tr>';
+          if (body) body.innerHTML += '<tr><td><strong>' + d.name + '</strong></td><td style="color:' + (isLow?'red':'inherit') + '; font-weight:bold;">' + d.qty + '</td><td>' + d.unit + '</td><td>' + d.alertLevel + ' ' + (isLow?'(কম)':'') + '</td><td><button class="action-btn btn-danger" onclick="deleteRecord(\'stock\', \'' + child.key + '\')">মুছুন</button></td></tr>';
         });
       });
 
@@ -1094,7 +1211,7 @@
       }
     }
 
-    // ইনিশিয়ালাইজেশন
+    // আজকের তারিখ ডিফল্ট সেট
     var todayStr = new Date().toISOString().split('T')[0];
     if (getEl('milkDate')) getEl('milkDate').value = todayStr;
     if (getEl('saleDate')) getEl('saleDate').value = todayStr;
