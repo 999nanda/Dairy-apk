@@ -422,4 +422,1337 @@
             </div>
             <div class="input-group">
               <label>দর (টাকা)</label>
-              <input type="number" id="saleRate" oninput="calcSale
+              <input type="number" id="saleRate" oninput="calcSale()" placeholder="৳">
+            </div>
+            <div class="input-group">
+              <label>মোট টাকা</label>
+              <input type="number" id="saleTotal" readonly style="background:#eee;">
+            </div>
+            <div class="input-group">
+              <label>পরিশোধ (নগদ)</label>
+              <input type="number" id="salePaid" oninput="calcSale()" placeholder="৳">
+            </div>
+            <div class="input-group">
+              <label>বাকি / বকেয়া</label>
+              <input type="number" id="saleDue" readonly style="background:#ffebee; color:red; font-weight:bold;">
+            </div>
+          </div>
+          <div style="display:flex; gap:10px;">
+            <button class="btn" id="saleSubmitBtn" onclick="saveSale()">বিক্রি সেভ করুন</button>
+            <button class="btn btn-warning" id="saleCancelBtn" style="display:none;" onclick="cancelSaleEdit()">বাতিল</button>
+          </div>
+        </div>
+
+        <div class="card">
+          <h2>বিক্রয় ও বাকি তালিকা</h2>
+          <div class="table-container">
+            <table>
+              <thead>
+                <tr>
+                  <th>তারিখ</th>
+                  <th>কাস্টমার</th>
+                  <th>পণ্য ও পরিমাণ</th>
+                  <th>মোট বিল</th>
+                  <th>পরিশোধ</th>
+                  <th>বাকি</th>
+                  <th>অ্যাকশন</th>
+                </tr>
+              </thead>
+              <tbody id="salesTableBody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- ৬. Customer Directory -->
+      <div id="tab-customers" class="tab-content" style="display: none;">
+        <div class="card">
+          <h2>👥 কাস্টমার তথ্য এন্ট্রি</h2>
+          <div class="form-grid">
+            <div class="input-group">
+              <label>কাস্টমারের নাম *</label>
+              <input type="text" id="custName" placeholder="নাম">
+            </div>
+            <div class="input-group">
+              <label>মোবাইল নম্বর *</label>
+              <input type="text" id="custPhone" placeholder="মোবাইল">
+            </div>
+            <div class="input-group">
+              <label>ঠিকানা</label>
+              <input type="text" id="custAddress" placeholder="ঠিকানা">
+            </div>
+            <div class="input-group">
+              <label>দৈনিক চাহিদা (লিটার)</label>
+              <input type="number" id="custDailyDemand" placeholder="যেমন: ২">
+            </div>
+          </div>
+          <div style="display:flex; gap:10px;">
+            <button class="btn" id="custSubmitBtn" onclick="saveCustomer()">কাস্টমার সংরক্ষণ করুন</button>
+            <button class="btn btn-warning" id="custCancelBtn" style="display:none;" onclick="cancelCustomerEdit()">বাতিল</button>
+          </div>
+        </div>
+
+        <div class="card">
+          <h2>কাস্টমার তালিকা</h2>
+          <div class="table-container">
+            <table>
+              <thead>
+                <tr>
+                  <th>নাম</th>
+                  <th>মোবাইল</th>
+                  <th>ঠিকানা</th>
+                  <th>দৈনিক চাহিদা</th>
+                  <th>অ্যাকশন</th>
+                </tr>
+              </thead>
+              <tbody id="customerTableBody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- ৭. Orders -->
+      <div id="tab-orders" class="tab-content" style="display: none;">
+        <div class="card">
+          <h2>📦 অর্ডার গ্রহণ এন্ট্রি</h2>
+          <div class="form-grid">
+            <div class="input-group">
+              <label>ডেলিভারি তারিখ *</label>
+              <input type="date" id="orderDate">
+            </div>
+            <div class="input-group">
+              <label>কাস্টমারের নাম *</label>
+              <input type="text" id="orderCustomer" placeholder="নাম">
+            </div>
+            <div class="input-group">
+              <label>আইটেম ও পরিমাণ *</label>
+              <input type="text" id="orderItems" placeholder="যেমন: ৫ লিটার দুধ">
+            </div>
+            <div class="input-group">
+              <label>স্ট্যাটাস</label>
+              <select id="orderStatus">
+                <option value="পেন্ডিং">পেন্ডিং</option>
+                <option value="ডেলিভারড">ডেলিভারড</option>
+                <option value="বাতিল">বাতিল</option>
+              </select>
+            </div>
+          </div>
+          <div style="display:flex; gap:10px;">
+            <button class="btn" id="orderSubmitBtn" onclick="saveOrder()">অর্ডার যুক্ত করুন</button>
+            <button class="btn btn-warning" id="orderCancelBtn" style="display:none;" onclick="cancelOrderEdit()">বাতিল</button>
+          </div>
+        </div>
+
+        <div class="card">
+          <h2>সকল অর্ডার তালিকা</h2>
+          <div class="table-container">
+            <table>
+              <thead>
+                <tr>
+                  <th>তারিখ</th>
+                  <th>কাস্টমার</th>
+                  <th>আইটেম</th>
+                  <th>স্ট্যাটাস</th>
+                  <th>অ্যাকশন</th>
+                </tr>
+              </thead>
+              <tbody id="ordersTableBody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- ৮. Expenses -->
+      <div id="tab-expenses" class="tab-content" style="display: none;">
+        <div class="card">
+          <h2>🧾 নতুন খরচ এন্ট্রি</h2>
+          <div class="form-grid">
+            <div class="input-group">
+              <label>তারিখ *</label>
+              <input type="date" id="expDate">
+            </div>
+            <div class="input-group">
+              <label>খরচের খাত</label>
+              <select id="expCategory">
+                <option value="খাদ্য / ভুসি / ঘাস">খাদ্য / ভুসি / ঘাস</option>
+                <option value="ওষুধ ও চিকিৎসা">ওষুধ ও চিকিৎসা</option>
+                <option value="শ্রমিক বেতন">শ্রমিক বেতন</option>
+                <option value="বিদ্যুৎ / গ্যাস বিল">বিদ্যুৎ / গ্যাস বিল</option>
+                <option value="অন্যান্য">অন্যান্য</option>
+              </select>
+            </div>
+            <div class="input-group">
+              <label>বিবরণ *</label>
+              <input type="text" id="expTitle" placeholder="খরচের বিবরণ">
+            </div>
+            <div class="input-group">
+              <label>টাকার পরিমাণ *</label>
+              <input type="number" id="expAmount" placeholder="৳">
+            </div>
+          </div>
+          <div style="display:flex; gap:10px;">
+            <button class="btn" id="expSubmitBtn" onclick="saveExpense()">খরচ সংরক্ষণ করুন</button>
+            <button class="btn btn-warning" id="expCancelBtn" style="display:none;" onclick="cancelExpenseEdit()">বাতিল</button>
+          </div>
+        </div>
+
+        <div class="card">
+          <h2>খরচের তালিকা</h2>
+          <div class="table-container">
+            <table>
+              <thead>
+                <tr>
+                  <th>তারিখ</th>
+                  <th>খাত</th>
+                  <th>বিবরণ</th>
+                  <th>টাকা</th>
+                  <th>অ্যাকশন</th>
+                </tr>
+              </thead>
+              <tbody id="expenseTableBody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- ৯. Stock -->
+      <div id="tab-stock" class="tab-content" style="display: none;">
+        <div class="card">
+          <h2>🌾 খাদ্য ও পণ্য স্টক এন্ট্রি</h2>
+          <div class="form-grid">
+            <div class="input-group">
+              <label>পণ্যের নাম *</label>
+              <input type="text" id="stkName" placeholder="যেমন: গমের ভুসি, ফিড">
+            </div>
+            <div class="input-group">
+              <label>পরিমাণ *</label>
+              <input type="number" id="stkQty" placeholder="পরিমাণ">
+            </div>
+            <div class="input-group">
+              <label>একক</label>
+              <select id="stkUnit">
+                <option value="কেজি">কেজি</option>
+                <option value="বস্তা">বস্তা</option>
+                <option value="টন">টন</option>
+                <option value="পিস">পিস</option>
+              </select>
+            </div>
+            <div class="input-group">
+              <label>সর্বনিম্ন সতর্কবার্তা লেভেল</label>
+              <input type="number" id="stkAlert" placeholder="যেমন: ৫">
+            </div>
+          </div>
+          <div style="display:flex; gap:10px;">
+            <button class="btn" id="stkSubmitBtn" onclick="saveStock()">স্টক সেভ করুন</button>
+            <button class="btn btn-warning" id="stkCancelBtn" style="display:none;" onclick="cancelStockEdit()">বাতিল</button>
+          </div>
+        </div>
+
+        <div class="card">
+          <h2>বর্তমান স্টক তালিকা</h2>
+          <div class="table-container">
+            <table>
+              <thead>
+                <tr>
+                  <th>পণ্য</th>
+                  <th>মজুদ পরিমাণ</th>
+                  <th>একক</th>
+                  <th>সতর্কবার্তা লেভেল</th>
+                  <th>অ্যাকশন</th>
+                </tr>
+              </thead>
+              <tbody id="stockTableBody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- ১০. Semen/Bull Stock -->
+      <div id="tab-semen" class="tab-content" style="display: none;">
+        <div class="card">
+          <h2>💉 সিমেন (Semen Straw) ও ব্রিডার স্টক</h2>
+          <div class="form-grid">
+            <div class="input-group">
+              <label>স্ট্র / ব্যাচ নম্বর *</label>
+              <input type="text" id="semBatch" placeholder="যেমন: HF-8902">
+            </div>
+            <div class="input-group">
+              <label>ষাঁড়ের জাত / নাম</label>
+              <input type="text" id="semBreed" placeholder="যেমন: ১০০% হোলস্টেইন ফ্রিজিয়ান">
+            </div>
+            <div class="input-group">
+              <label>কোম্পানি / সোর্স</label>
+              <input type="text" id="semSource" placeholder="যেমন: ব্র্যাক / সরকারি">
+            </div>
+            <div class="input-group">
+              <label>মজুদ স্ট্র সংখ্যা (পিস) *</label>
+              <input type="number" id="semCount" placeholder="পিস">
+            </div>
+          </div>
+          <div style="display:flex; gap:10px;">
+            <button class="btn" id="semSubmitBtn" onclick="saveSemen()">সিমেন স্টক সেভ করুন</button>
+            <button class="btn btn-warning" id="semCancelBtn" style="display:none;" onclick="cancelSemenEdit()">বাতিল</button>
+          </div>
+        </div>
+
+        <div class="card">
+          <h2>সিমেন স্টক তালিকা</h2>
+          <div class="table-container">
+            <table>
+              <thead>
+                <tr>
+                  <th>ব্যাচ নম্বর</th>
+                  <th>জাত</th>
+                  <th>সোর্স</th>
+                  <th>মজুদ সংখ্যা</th>
+                  <th>অ্যাকশন</th>
+                </tr>
+              </thead>
+              <tbody id="semenTableBody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- ১১. Health -->
+      <div id="tab-health" class="tab-content" style="display: none;">
+        <div class="card">
+          <h2>🩺 টিকা, কৃমিনাশক ও চিকিৎসা রেকর্ড</h2>
+          <div class="form-grid">
+            <div class="input-group">
+              <label>তারিখ *</label>
+              <input type="date" id="hlthDate">
+            </div>
+            <div class="input-group">
+              <label>গরুর ট্যাগ নম্বর *</label>
+              <input type="text" id="hlthCowTag" placeholder="ট্যাগ দিন">
+            </div>
+            <div class="input-group">
+              <label>ট্রিটমেন্ট টাইপ</label>
+              <select id="hlthType">
+                <option value="ভ্যাক্সিন / টিকা (FMD/Anthrax)">ভ্যাক্সিন / টিকা (FMD/Anthrax)</option>
+                <option value="কৃমিনাশক (Deworming)">কৃমিনাশক (Deworming)</option>
+                <option value="সাধারণ চিকিৎসা ও ওষুধ">সাধারণ চিকিৎসা ও ওষুধ</option>
+                <option value="ডাক্তারি পরীক্ষা">ডাক্তারি পরীক্ষা</option>
+              </select>
+            </div>
+            <div class="input-group">
+              <label>ওষুধের নাম / বিবরণ</label>
+              <input type="text" id="hlthDesc" placeholder="ওষুধের নাম">
+            </div>
+            <div class="input-group">
+              <label>পরবর্তী ডোজের তারিখ</label>
+              <input type="date" id="hlthNextDate">
+            </div>
+          </div>
+          <div style="display:flex; gap:10px;">
+            <button class="btn" id="hlthSubmitBtn" onclick="saveHealth()">স্বাস্থ্য রেকর্ড সেভ করুন</button>
+            <button class="btn btn-warning" id="hlthCancelBtn" style="display:none;" onclick="cancelHealthEdit()">বাতিল</button>
+          </div>
+        </div>
+
+        <div class="card">
+          <h2>গরুর স্বাস্থ্য রেকর্ড হিস্ট্রি</h2>
+          <div class="table-container">
+            <table>
+              <thead>
+                <tr>
+                  <th>তারিখ</th>
+                  <th>গরু ট্যাগ</th>
+                  <th>টাইপ</th>
+                  <th>বিবরণ</th>
+                  <th>পরবর্তী ডোজ</th>
+                  <th>অ্যাকশন</th>
+                </tr>
+              </thead>
+              <tbody id="healthTableBody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- ১২. Reports -->
+      <div id="tab-reports" class="tab-content" style="display: none;">
+        <div class="card">
+          <h2>ফার্মের সামগ্রিক রিপোর্ট ও সারসংক্ষেপ</h2>
+          <div style="line-height: 2.2; font-size: 15px; margin-top: 10px;">
+            <p><strong>মোট দুধ উৎপাদন:</strong> <span id="rep-milk" style="color:var(--primary); font-weight:bold;">০</span> লিটার</p>
+            <p><strong>মোট বিক্রয় (Sales Revenue):</strong> <span id="rep-sales" style="color:green; font-weight:bold;">৳ ০</span></p>
+            <p><strong>মোট খরচ (Expenses):</strong> <span id="rep-expenses" style="color:red; font-weight:bold;">৳ ০</span></p>
+            <hr style="margin: 15px 0;">
+            <p><strong>বর্তমান নিট ক্যাশ ফ্লো (Profit / Loss):</strong> <span id="rep-profit" style="font-size: 19px; font-weight:bold;">৳ ০</span></p>
+          </div>
+        </div>
+      </div>
+
+      <!-- ১৩. Backup -->
+      <div id="tab-backup" class="tab-content" style="display: none;">
+        <div class="card">
+          <h2>ডাটা ব্যাকআপ ও নিরাপত্তা</h2>
+          <p style="font-size: 13.5px; color: #555; margin-bottom: 20px; line-height: 1.6;">
+            আপনার সমস্ত ডেটা রিয়েলটাইমে ক্লাউডে সুরক্ষিত রয়েছে। আপনি চাইলে সম্পূর্ণ ফার্মের যাবতীয় ডেটা এক ক্লিকে নিজের কম্পিউটারে ফাইল আকারে ব্যাকআপ করে রাখতে পারেন।
+          </p>
+          <button class="btn btn-info" onclick="downloadBackup()">📥 সম্পূর্ণ ফার্ম ডেটা ব্যাকআপ ডাউনলোড করুন (JSON)</button>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ইনভয়েস প্রিন্ট মোডাল -->
+  <div id="invoiceModal">
+    <div class="invoice-card">
+      <div id="invoicePrintArea">
+        <div style="text-align: center; border-bottom: 2px dashed #888; padding-bottom: 12px; margin-bottom: 15px;">
+          <h2 style="margin: 0; color: #1b5e20; justify-content:center;">Nanda Dairy Agro</h2>
+          <p style="font-size: 12px; color: #555;">দুধের মান নিশ্চিত, সেবাই আমাদের লক্ষ্য</p>
+          <p style="font-size: 13px; font-weight: bold; margin-top: 5px;">ক্যাশ মেমো / রসিদ</p>
+        </div>
+        <div id="invoiceDetails" style="font-size: 14px; line-height: 1.8;"></div>
+        <p style="text-align: center; font-size: 11px; margin-top: 25px; color: #666;">ধন্যবাদ, আবার আসবেন!</p>
+      </div>
+      <div style="display: flex; gap: 10px; margin-top: 20px;">
+        <button class="btn btn-info" style="flex: 1;" onclick="window.print()">প্রিন্ট করুন</button>
+        <button class="btn btn-danger" style="flex: 1;" onclick="closeInvoice()">বন্ধ করুন</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- স্ক্রিপ্ট লজিক -->
+  <script>
+    function getEl(id) { return document.getElementById(id); }
+
+    var firebaseConfig = {
+      apiKey: "AIzaSyAtmDkYLV6rh4jfJT2OPJZ5_R4c99S8-t4",
+      authDomain: "nanda-dairy-agro-b5888.firebaseapp.com",
+      databaseURL: "https://nanda-dairy-agro-b5888-default-rtdb.firebaseio.com",
+      projectId: "nanda-dairy-agro-b5888",
+      storageBucket: "nanda-dairy-agro-b5888.firebasestorage.app",
+      messagingSenderId: "284932687587",
+      appId: "1:284932687587:web:1613d832d65dabfb5f67d6"
+    };
+
+    var db = null;
+    try {
+      if (window.firebase && !firebase.apps.length) {
+        firebase.initializeApp(firebaseConfig);
+      }
+      if (window.firebase) {
+        db = firebase.database();
+      }
+    } catch(e) {
+      console.log("Firebase Init:", e);
+    }
+
+    // লোকাল ক্যাশ স্টোর (যাতে এডিট করার সময় কোনো স্ট্রিং বা কোটেশন ব্রেক না হয়)
+    var farmStore = {
+      cattle: {}, breeding: {}, milk: {}, sales: {},
+      customers: {}, orders: {}, expenses: {}, stock: {}, semen: {}, health: {}
+    };
+
+    function doLogin() {
+      var u = (getEl('loginId') ? getEl('loginId').value : '').trim().toLowerCase();
+      var p = (getEl('loginPass') ? getEl('loginPass').value : '').trim();
+      if (u === 'nanda' && p === '1234') {
+        localStorage.setItem('nanda_dairy_auth', 'true');
+        unlockApp();
+      } else {
+        if (getEl('loginErr')) getEl('loginErr').innerText = 'ভুল আইডি বা পাসওয়ার্ড!';
+      }
+    }
+
+    function unlockApp() {
+      if (getEl('loginScreen')) getEl('loginScreen').style.display = 'none';
+      if (getEl('appBody')) getEl('appBody').style.display = 'block';
+      listenAllData();
+    }
+
+    function doLogout() {
+      localStorage.removeItem('nanda_dairy_auth');
+      location.reload();
+    }
+
+    function switchTab(tab) {
+      document.querySelectorAll('.tab-content').forEach(function(el) { el.style.display = 'none'; });
+      document.querySelectorAll('nav button').forEach(function(el) { el.classList.remove('active'); });
+      var target = getEl('tab-' + tab);
+      if (target) target.style.display = 'block';
+      if (window.event && window.event.target) {
+        window.event.target.classList.add('active');
+      }
+    }
+
+    function deleteRecord(path, id) {
+      if (confirm('আপনি কি নিশ্চিতভাবে এই তথ্যটি মুছে ফেলতে চান?')) {
+        if (db) db.ref(path).child(id).remove();
+      }
+    }
+
+    // ==========================================
+    // ১. CATTLE (Edit & Save)
+    // ==========================================
+    var editingCattleKey = null;
+    function editCattle(key) {
+      var d = farmStore.cattle[key];
+      if (!d) return;
+      editingCattleKey = key;
+      getEl('cowTag').value = d.tag || '';
+      getEl('cowBreed').value = d.breed || '';
+      getEl('cowBreedType').value = d.breedType || '';
+      getEl('cowGeneration').value = d.generation || 'F1';
+      getEl('cowDob').value = d.dob || '';
+      getEl('cowWeight').value = d.weight || '';
+      getEl('cowLactation').value = d.lactation || '';
+      getEl('cowStatus').value = d.status || 'Milking';
+      getEl('cowMilkDay').value = d.milkDay || '';
+      getEl('cowSire').value = d.sire || '';
+      getEl('cowDam').value = d.dam || '';
+      getEl('cowExpCalving').value = d.expCalving || '';
+
+      getEl('cowSubmitBtn').innerText = 'আপডেট করুন (Update)';
+      getEl('cowCancelBtn').style.display = 'inline-flex';
+      getEl('cowTag').scrollIntoView({ behavior: 'smooth' });
+    }
+
+    function cancelCattleEdit() {
+      editingCattleKey = null;
+      getEl('cowTag').value = ''; getEl('cowBreed').value = ''; getEl('cowBreedType').value = '';
+      getEl('cowDob').value = ''; getEl('cowWeight').value = ''; getEl('cowLactation').value = '';
+      getEl('cowMilkDay').value = ''; getEl('cowSire').value = ''; getEl('cowDam').value = '';
+      getEl('cowExpCalving').value = '';
+      getEl('cowSubmitBtn').innerText = 'Save Cattle';
+      getEl('cowCancelBtn').style.display = 'none';
+    }
+
+    function saveCattle() {
+      var tag = (getEl('cowTag') ? getEl('cowTag').value : '').trim();
+      if (!tag) return alert('Tag ID অবশ্যই দিতে হবে!');
+      var data = {
+        tag: tag,
+        breed: (getEl('cowBreed').value || '').trim(),
+        breedType: (getEl('cowBreedType').value || '').trim(),
+        generation: getEl('cowGeneration').value,
+        dob: getEl('cowDob').value,
+        weight: parseFloat(getEl('cowWeight').value) || 0,
+        lactation: parseFloat(getEl('cowLactation').value) || 0,
+        status: getEl('cowStatus').value,
+        milkDay: parseFloat(getEl('cowMilkDay').value) || 0,
+        sire: (getEl('cowSire').value || '').trim(),
+        dam: (getEl('cowDam').value || '').trim(),
+        expCalving: getEl('cowExpCalving').value
+      };
+      if (db) {
+        if (editingCattleKey) {
+          db.ref('cattle/' + editingCattleKey).update(data);
+        } else {
+          db.ref('cattle').push(data);
+        }
+      }
+      cancelCattleEdit();
+    }
+
+    // ==========================================
+    // ২. BREEDING (Edit & Save)
+    // ==========================================
+    var editingBreedingKey = null;
+    function editBreeding(key) {
+      var d = farmStore.breeding[key];
+      if (!d) return;
+      editingBreedingKey = key;
+      getEl('brCowTag').value = d.tag || '';
+      getEl('brAiDate').value = d.aiDate || '';
+      getEl('brSemenId').value = d.semenId || '';
+      getEl('brStatus').value = d.status || 'পেন্ডিং / চেক বাকি';
+      getEl('brCalvingDate').value = d.calvingDate || '';
+
+      getEl('brSubmitBtn').innerText = 'আপডেট করুন (Update)';
+      getEl('brCancelBtn').style.display = 'inline-flex';
+      getEl('brCowTag').scrollIntoView({ behavior: 'smooth' });
+    }
+
+    function cancelBreedingEdit() {
+      editingBreedingKey = null;
+      getEl('brCowTag').value = '';
+      getEl('brAiDate').value = new Date().toISOString().split('T')[0];
+      getEl('brSemenId').value = ''; getEl('brCalvingDate').value = '';
+      getEl('brStatus').value = 'পেন্ডিং / চেক বাকি';
+      getEl('brSubmitBtn').innerText = 'ব্রিডিং রেকর্ড সেভ করুন';
+      getEl('brCancelBtn').style.display = 'none';
+    }
+
+    function saveBreeding() {
+      var tag = (getEl('brCowTag').value || '').trim();
+      var aiDate = getEl('brAiDate').value;
+      if (!tag || !aiDate) return alert('গরুর ট্যাগ ও AI তারিখ আবশ্যক!');
+      var data = {
+        tag: tag,
+        aiDate: aiDate,
+        semenId: (getEl('brSemenId').value || '').trim(),
+        status: getEl('brStatus').value,
+        calvingDate: getEl('brCalvingDate').value
+      };
+      if (db) {
+        if (editingBreedingKey) {
+          db.ref('breeding/' + editingBreedingKey).update(data);
+        } else {
+          db.ref('breeding').push(data);
+        }
+      }
+      cancelBreedingEdit();
+    }
+
+    // ==========================================
+    // ৩. MILK (Edit & Save)
+    // ==========================================
+    var editingMilkKey = null;
+    function editMilk(key) {
+      var d = farmStore.milk[key];
+      if (!d) return;
+      editingMilkKey = key;
+      getEl('milkDate').value = d.date || '';
+      getEl('milkCowTag').value = d.cow || '';
+      getEl('milkSession').value = d.session || 'সকাল';
+      getEl('milkLiters').value = d.liters || '';
+
+      getEl('milkSubmitBtn').innerText = 'আপডেট করুন (Update)';
+      getEl('milkCancelBtn').style.display = 'inline-flex';
+      getEl('milkDate').scrollIntoView({ behavior: 'smooth' });
+    }
+
+    function cancelMilkEdit() {
+      editingMilkKey = null;
+      getEl('milkDate').value = new Date().toISOString().split('T')[0];
+      getEl('milkCowTag').value = '';
+      getEl('milkSession').value = 'সকাল';
+      getEl('milkLiters').value = '';
+      getEl('milkSubmitBtn').innerText = 'দুধের রেকর্ড সেভ করুন';
+      getEl('milkCancelBtn').style.display = 'none';
+    }
+
+    function saveMilk() {
+      var liters = parseFloat(getEl('milkLiters').value) || 0;
+      if (!liters) return alert('দুধের পরিমাণ দিন!');
+      var data = {
+        date: getEl('milkDate').value,
+        cow: (getEl('milkCowTag').value || '').trim() || 'সাধারণ',
+        session: getEl('milkSession').value,
+        liters: liters
+      };
+      if (db) {
+        if (editingMilkKey) {
+          db.ref('milk/' + editingMilkKey).update(data);
+        } else {
+          db.ref('milk').push(data);
+        }
+      }
+      cancelMilkEdit();
+    }
+
+    // ==========================================
+    // ৪. SALES (Edit & Save)
+    // ==========================================
+    var editingSaleKey = null;
+    function calcSale() {
+      var qty = parseFloat(getEl('saleQty').value) || 0;
+      var rate = parseFloat(getEl('saleRate').value) || 0;
+      var total = qty * rate;
+      getEl('saleTotal').value = total;
+      var paid = parseFloat(getEl('salePaid').value) || 0;
+      getEl('saleDue').value = total - paid;
+    }
+
+    function editSale(key) {
+      var d = farmStore.sales[key];
+      if (!d) return;
+      editingSaleKey = key;
+      getEl('saleDate').value = d.date || '';
+      getEl('saleCustomer').value = d.name || '';
+      getEl('salePhone').value = d.phone || '';
+      getEl('saleItem').value = d.item || 'তরল দুধ';
+      getEl('saleQty').value = d.qty || '';
+      getEl('saleRate').value = d.rate || '';
+      getEl('saleTotal').value = d.total || '';
+      getEl('salePaid').value = d.paid || '';
+      getEl('saleDue').value = d.due || '';
+
+      getEl('saleSubmitBtn').innerText = 'আপডেট করুন (Update)';
+      getEl('saleCancelBtn').style.display = 'inline-flex';
+      getEl('saleDate').scrollIntoView({ behavior: 'smooth' });
+    }
+
+    function cancelSaleEdit() {
+      editingSaleKey = null;
+      getEl('saleDate').value = new Date().toISOString().split('T')[0];
+      getEl('saleCustomer').value = ''; getEl('salePhone').value = '';
+      getEl('saleQty').value = ''; getEl('saleRate').value = '';
+      getEl('saleTotal').value = ''; getEl('salePaid').value = ''; getEl('saleDue').value = '';
+      getEl('saleSubmitBtn').innerText = 'বিক্রি সেভ করুন';
+      getEl('saleCancelBtn').style.display = 'none';
+    }
+
+    function saveSale() {
+      var name = (getEl('saleCustomer').value || '').trim();
+      if (!name) return alert('কাস্টমারের নাম আবশ্যক!');
+      var data = {
+        date: getEl('saleDate').value,
+        name: name,
+        phone: (getEl('salePhone').value || '').trim(),
+        item: getEl('saleItem').value,
+        qty: parseFloat(getEl('saleQty').value) || 0,
+        rate: parseFloat(getEl('saleRate').value) || 0,
+        total: parseFloat(getEl('saleTotal').value) || 0,
+        paid: parseFloat(getEl('salePaid').value) || 0,
+        due: parseFloat(getEl('saleDue').value) || 0
+      };
+      if (db) {
+        if (editingSaleKey) {
+          db.ref('sales/' + editingSaleKey).update(data);
+        } else {
+          db.ref('sales').push(data);
+        }
+      }
+      cancelSaleEdit();
+    }
+
+    function showInvoice(key) {
+      var d = farmStore.sales[key];
+      if (!d) return;
+      var html = '<p><strong>তারিখ:</strong> ' + d.date + '</p>' +
+                 '<p><strong>কাস্টমার:</strong> ' + d.name + '</p>' +
+                 '<p><strong>মোবাইল:</strong> ' + (d.phone || '-') + '</p>' +
+                 '<hr style="margin: 8px 0; border: none; border-top: 1px solid #ddd;">' +
+                 '<p>পণ্য: ' + d.item + ' (' + d.qty + ')</p>' +
+                 '<p>দর: ৳' + d.rate + '</p>' +
+                 '<p><strong>মোট বিল:</strong> ৳' + d.total + '</p>' +
+                 '<p style="color: green;"><strong>পরিশোধ:</strong> ৳' + d.paid + '</p>' +
+                 '<p style="color: red;"><strong>বকেয়া / বাকি:</strong> ৳' + d.due + '</p>';
+      if (getEl('invoiceDetails')) getEl('invoiceDetails').innerHTML = html;
+      if (getEl('invoiceModal')) getEl('invoiceModal').style.display = 'flex';
+    }
+    function closeInvoice() { if (getEl('invoiceModal')) getEl('invoiceModal').style.display = 'none'; }
+
+    // ==========================================
+    // ৫. CUSTOMERS (Edit & Save)
+    // ==========================================
+    var editingCustomerKey = null;
+    function editCustomer(key) {
+      var d = farmStore.customers[key];
+      if (!d) return;
+      editingCustomerKey = key;
+      getEl('custName').value = d.name || '';
+      getEl('custPhone').value = d.phone || '';
+      getEl('custAddress').value = d.addr || '';
+      getEl('custDailyDemand').value = d.demand || '';
+
+      getEl('custSubmitBtn').innerText = 'আপডেট করুন (Update)';
+      getEl('custCancelBtn').style.display = 'inline-flex';
+      getEl('custName').scrollIntoView({ behavior: 'smooth' });
+    }
+
+    function cancelCustomerEdit() {
+      editingCustomerKey = null;
+      getEl('custName').value = ''; getEl('custPhone').value = '';
+      getEl('custAddress').value = ''; getEl('custDailyDemand').value = '';
+      getEl('custSubmitBtn').innerText = 'কাস্টমার সংরক্ষণ করুন';
+      getEl('custCancelBtn').style.display = 'none';
+    }
+
+    function saveCustomer() {
+      var name = (getEl('custName').value || '').trim();
+      if (!name) return alert('কাস্টমারের নাম আবশ্যক!');
+      var data = {
+        name: name,
+        phone: (getEl('custPhone').value || '').trim(),
+        addr: (getEl('custAddress').value || '').trim(),
+        demand: parseFloat(getEl('custDailyDemand').value) || 0
+      };
+      if (db) {
+        if (editingCustomerKey) {
+          db.ref('customers/' + editingCustomerKey).update(data);
+        } else {
+          db.ref('customers').push(data);
+        }
+      }
+      cancelCustomerEdit();
+    }
+
+    // ==========================================
+    // ৬. ORDERS (Edit & Save)
+    // ==========================================
+    var editingOrderKey = null;
+    function editOrder(key) {
+      var d = farmStore.orders[key];
+      if (!d) return;
+      editingOrderKey = key;
+      getEl('orderDate').value = d.date || '';
+      getEl('orderCustomer').value = d.customer || '';
+      getEl('orderItems').value = d.items || '';
+      getEl('orderStatus').value = d.status || 'পেন্ডিং';
+
+      getEl('orderSubmitBtn').innerText = 'আপডেট করুন (Update)';
+      getEl('orderCancelBtn').style.display = 'inline-flex';
+      getEl('orderDate').scrollIntoView({ behavior: 'smooth' });
+    }
+
+    function cancelOrderEdit() {
+      editingOrderKey = null;
+      getEl('orderDate').value = new Date().toISOString().split('T')[0];
+      getEl('orderCustomer').value = ''; getEl('orderItems').value = '';
+      getEl('orderStatus').value = 'পেন্ডিং';
+      getEl('orderSubmitBtn').innerText = 'অর্ডার যুক্ত করুন';
+      getEl('orderCancelBtn').style.display = 'none';
+    }
+
+    function saveOrder() {
+      var customer = (getEl('orderCustomer').value || '').trim();
+      var items = (getEl('orderItems').value || '').trim();
+      if (!customer || !items) return alert('কাস্টমার ও আইটেমের নাম আবশ্যক!');
+      var data = {
+        date: getEl('orderDate').value,
+        customer: customer,
+        items: items,
+        status: getEl('orderStatus').value
+      };
+      if (db) {
+        if (editingOrderKey) {
+          db.ref('orders/' + editingOrderKey).update(data);
+        } else {
+          db.ref('orders').push(data);
+        }
+      }
+      cancelOrderEdit();
+    }
+
+    // ==========================================
+    // ৭. EXPENSES (Edit & Save)
+    // ==========================================
+    var editingExpenseKey = null;
+    function editExpense(key) {
+      var d = farmStore.expenses[key];
+      if (!d) return;
+      editingExpenseKey = key;
+      getEl('expDate').value = d.date || '';
+      getEl('expCategory').value = d.category || 'খাদ্য / ভুসি / ঘাস';
+      getEl('expTitle').value = d.title || '';
+      getEl('expAmount').value = d.amount || '';
+
+      getEl('expSubmitBtn').innerText = 'আপডেট করুন (Update)';
+      getEl('expCancelBtn').style.display = 'inline-flex';
+      getEl('expDate').scrollIntoView({ behavior: 'smooth' });
+    }
+
+    function cancelExpenseEdit() {
+      editingExpenseKey = null;
+      getEl('expDate').value = new Date().toISOString().split('T')[0];
+      getEl('expTitle').value = ''; getEl('expAmount').value = '';
+      getEl('expCategory').value = 'খাদ্য / ভুসি / ঘাস';
+      getEl('expSubmitBtn').innerText = 'খরচ সংরক্ষণ করুন';
+      getEl('expCancelBtn').style.display = 'none';
+    }
+
+    function saveExpense() {
+      var title = (getEl('expTitle').value || '').trim();
+      var amount = parseFloat(getEl('expAmount').value) || 0;
+      if (!title || !amount) return alert('বিবরণ ও টাকার পরিমাণ দিন!');
+      var data = {
+        date: getEl('expDate').value,
+        category: getEl('expCategory').value,
+        title: title,
+        amount: amount
+      };
+      if (db) {
+        if (editingExpenseKey) {
+          db.ref('expenses/' + editingExpenseKey).update(data);
+        } else {
+          db.ref('expenses').push(data);
+        }
+      }
+      cancelExpenseEdit();
+    }
+
+    // ==========================================
+    // ৮. STOCK (Edit & Save)
+    // ==========================================
+    var editingStockKey = null;
+    function editStock(key) {
+      var d = farmStore.stock[key];
+      if (!d) return;
+      editingStockKey = key;
+      getEl('stkName').value = d.name || '';
+      getEl('stkQty').value = d.qty || '';
+      getEl('stkUnit').value = d.unit || 'কেজি';
+      getEl('stkAlert').value = d.alertLevel || '';
+
+      getEl('stkSubmitBtn').innerText = 'আপডেট করুন (Update)';
+      getEl('stkCancelBtn').style.display = 'inline-flex';
+      getEl('stkName').scrollIntoView({ behavior: 'smooth' });
+    }
+
+    function cancelStockEdit() {
+      editingStockKey = null;
+      getEl('stkName').value = ''; getEl('stkQty').value = '';
+      getEl('stkUnit').value = 'কেজি'; getEl('stkAlert').value = '';
+      getEl('stkSubmitBtn').innerText = 'স্টক সেভ করুন';
+      getEl('stkCancelBtn').style.display = 'none';
+    }
+
+    function saveStock() {
+      var name = (getEl('stkName').value || '').trim();
+      if (!name) return alert('পণ্যের নাম দিন!');
+      var data = {
+        name: name,
+        qty: parseFloat(getEl('stkQty').value) || 0,
+        unit: getEl('stkUnit').value,
+        alertLevel: parseFloat(getEl('stkAlert').value) || 0
+      };
+      if (db) {
+        if (editingStockKey) {
+          db.ref('stock/' + editingStockKey).update(data);
+        } else {
+          db.ref('stock').push(data);
+        }
+      }
+      cancelStockEdit();
+    }
+
+    // ==========================================
+    // ৯. SEMEN (Edit & Save)
+    // ==========================================
+    var editingSemenKey = null;
+    function editSemen(key) {
+      var d = farmStore.semen[key];
+      if (!d) return;
+      editingSemenKey = key;
+      getEl('semBatch').value = d.batch || '';
+      getEl('semBreed').value = d.breed || '';
+      getEl('semSource').value = d.source || '';
+      getEl('semCount').value = d.count || '';
+
+      getEl('semSubmitBtn').innerText = 'আপডেট করুন (Update)';
+      getEl('semCancelBtn').style.display = 'inline-flex';
+      getEl('semBatch').scrollIntoView({ behavior: 'smooth' });
+    }
+
+    function cancelSemenEdit() {
+      editingSemenKey = null;
+      getEl('semBatch').value = ''; getEl('semBreed').value = '';
+      getEl('semSource').value = ''; getEl('semCount').value = '';
+      getEl('semSubmitBtn').innerText = 'সিমেন স্টক সেভ করুন';
+      getEl('semCancelBtn').style.display = 'none';
+    }
+
+    function saveSemen() {
+      var batch = (getEl('semBatch').value || '').trim();
+      if (!batch) return alert('স্ট্র বা ব্যাচ নম্বর দিন!');
+      var data = {
+        batch: batch,
+        breed: (getEl('semBreed').value || '').trim(),
+        source: (getEl('semSource').value || '').trim(),
+        count: parseFloat(getEl('semCount').value) || 0
+      };
+      if (db) {
+        if (editingSemenKey) {
+          db.ref('semen/' + editingSemenKey).update(data);
+        } else {
+          db.ref('semen').push(data);
+        }
+      }
+      cancelSemenEdit();
+    }
+
+    // ==========================================
+    // ১০. HEALTH (Edit & Save)
+    // ==========================================
+    var editingHealthKey = null;
+    function editHealth(key) {
+      var d = farmStore.health[key];
+      if (!d) return;
+      editingHealthKey = key;
+      getEl('hlthDate').value = d.date || '';
+      getEl('hlthCowTag').value = d.cowTag || '';
+      getEl('hlthType').value = d.type || 'ভ্যাক্সিন / টিকা (FMD/Anthrax)';
+      getEl('hlthDesc').value = d.desc || '';
+      getEl('hlthNextDate').value = d.nextDate || '';
+
+      getEl('hlthSubmitBtn').innerText = 'আপডেট করুন (Update)';
+      getEl('hlthCancelBtn').style.display = 'inline-flex';
+      getEl('hlthDate').scrollIntoView({ behavior: 'smooth' });
+    }
+
+    function cancelHealthEdit() {
+      editingHealthKey = null;
+      getEl('hlthDate').value = new Date().toISOString().split('T')[0];
+      getEl('hlthCowTag').value = ''; getEl('hlthDesc').value = '';
+      getEl('hlthNextDate').value = '';
+      getEl('hlthType').value = 'ভ্যাক্সিন / টিকা (FMD/Anthrax)';
+      getEl('hlthSubmitBtn').innerText = 'স্বাস্থ্য রেকর্ড সেভ করুন';
+      getEl('hlthCancelBtn').style.display = 'none';
+    }
+
+    function saveHealth() {
+      var cowTag = (getEl('hlthCowTag').value || '').trim();
+      if (!cowTag) return alert('গরুর ট্যাগ নম্বর আবশ্যক!');
+      var data = {
+        date: getEl('hlthDate').value,
+        cowTag: cowTag,
+        type: getEl('hlthType').value,
+        desc: (getEl('hlthDesc').value || '').trim(),
+        nextDate: getEl('hlthNextDate').value
+      };
+      if (db) {
+        if (editingHealthKey) {
+          db.ref('health/' + editingHealthKey).update(data);
+        } else {
+          db.ref('health').push(data);
+        }
+      }
+      cancelHealthEdit();
+    }
+
+    // ==========================================
+    // ১১. BACKUP DOWNLOAD
+    // ==========================================
+    function downloadBackup() {
+      if (!db) return alert('ডাটাবেস কানেক্টেড নেই!');
+      db.ref('/').once('value', function(snap) {
+        var dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(snap.val(), null, 2));
+        var dlAnchorElem = document.createElement('a');
+        dlAnchorElem.setAttribute("href", dataStr);
+        dlAnchorElem.setAttribute("download", "Nanda_Dairy_Agro_Backup_" + new Date().toISOString().split('T')[0] + ".json");
+        dlAnchorElem.click();
+      });
+    }
+
+    // ==========================================
+    // রিয়েল-টাইম ডাটাবেস লিসেনার
+    // ==========================================
+    function listenAllData() {
+      if (!db) return;
+      var today = new Date().toISOString().split('T')[0];
+
+      // ১. Cattle Table
+      db.ref('cattle').on('value', function(snap) {
+        farmStore.cattle = {};
+        var body = getEl('cattleTableBody');
+        if (body) body.innerHTML = '';
+        var count = 0;
+        snap.forEach(function(child) {
+          count++;
+          var d = child.val();
+          var k = child.key;
+          farmStore.cattle[k] = d;
+
+          var statusClass = 'badge-success';
+          if (d.status === 'Pregnant') statusClass = 'badge-warning';
+          if (d.status === 'Sick') statusClass = 'badge-danger';
+          if (d.status === 'Dry') statusClass = 'badge-info';
+
+          if (body) {
+            body.innerHTML += '<tr>' +
+              '<td><strong>' + (d.tag || '-') + '</strong></td>' +
+              '<td>' + (d.breed || '-') + '</td>' +
+              '<td>' + (d.breedType || '-') + '</td>' +
+              '<td>' + (d.generation || '-') + '</td>' +
+              '<td>' + (d.dob || '-') + '</td>' +
+              '<td>' + (d.weight || '0') + ' kg</td>' +
+              '<td>' + (d.lactation || '0') + '</td>' +
+              '<td><span class="badge ' + statusClass + '">' + (d.status || '-') + '</span></td>' +
+              '<td>' + (d.milkDay || '0') + ' L</td>' +
+              '<td>' + (d.sire || '-') + '</td>' +
+              '<td>' + (d.expCalving || '-') + '</td>' +
+              '<td>' +
+                '<button class="action-btn btn-info" onclick="editCattle(\'' + k + '\')">Edit</button>' +
+                '<button class="action-btn btn-danger" onclick="deleteRecord(\'cattle\', \'' + k + '\')">Delete</button>' +
+              '</td>' +
+            '</tr>';
+          }
+        });
+        if (getEl('dash-cow-count')) getEl('dash-cow-count').innerText = count;
+      });
+
+      // ২. Breeding Table
+      db.ref('breeding').on('value', function(snap) {
+        farmStore.breeding = {};
+        var body = getEl('breedingTableBody');
+        if (body) body.innerHTML = '';
+        snap.forEach(function(child) {
+          var d = child.val();
+          var k = child.key;
+          farmStore.breeding[k] = d;
+
+          if (body) {
+            body.innerHTML += '<tr>' +
+              '<td><strong>' + d.tag + '</strong></td>' +
+              '<td>' + d.aiDate + '</td>' +
+              '<td>' + (d.semenId || '-') + '</td>' +
+              '<td><span class="badge badge-warning">' + d.status + '</span></td>' +
+              '<td>' + (d.calvingDate || '-') + '</td>' +
+              '<td>' +
+                '<button class="action-btn btn-info" onclick="editBreeding(\'' + k + '\')">এডিট</button>' +
+                '<button class="action-btn btn-danger" onclick="deleteRecord(\'breeding\', \'' + k + '\')">মুছুন</button>' +
+              '</td>' +
+            '</tr>';
+          }
+        });
+      });
+
+      // ৩. Milk Table
+      db.ref('milk').on('value', function(snap) {
+        farmStore.milk = {};
+        var body = getEl('milkTableBody');
+        if (body) body.innerHTML = '';
+        var todayMilk = 0; var totalMilk = 0;
+        snap.forEach(function(child) {
+          var d = child.val();
+          var k = child.key;
+          farmStore.milk[k] = d;
+
+          var lit = Number(d.liters) || 0;
+          totalMilk += lit;
+          if (d.date === today) todayMilk += lit;
+
+          if (body) {
+            body.innerHTML += '<tr>' +
+              '<td>' + d.date + '</td>' +
+              '<td>' + d.cow + '</td>' +
+              '<td>' + d.session + '</td>' +
+              '<td><strong>' + lit + ' লি:</strong></td>' +
+              '<td>' +
+                '<button class="action-btn btn-info" onclick="editMilk(\'' + k + '\')">এডিট</button>' +
+                '<button class="action-btn btn-danger" onclick="deleteRecord(\'milk\', \'' + k + '\')">মুছুন</button>' +
+              '</td>' +
+            '</tr>';
+          }
+        });
+        if (getEl('dash-milk-today')) getEl('dash-milk-today').innerText = todayMilk.toFixed(1) + ' লি:';
+        if (getEl('rep-milk')) getEl('rep-milk').innerText = totalMilk.toFixed(1);
+      });
+
+      // ৪. Sales Table
+      db.ref('sales').on('value', function(snap) {
+        farmStore.sales = {};
+        var body = getEl('salesTableBody');
+        if (body) body.innerHTML = '';
+        var totalSales = 0; var totalDue = 0;
+        snap.forEach(function(child) {
+          var d = child.val();
+          var k = child.key;
+          farmStore.sales[k] = d;
+
+          totalSales += Number(d.total) || 0;
+          totalDue += Number(d.due) || 0;
+
+          if (body) {
+            body.innerHTML += '<tr>' +
+              '<td>' + d.date + '</td>' +
+              '<td><strong>' + d.name + '</strong></td>' +
+              '<td>' + d.item + ' (' + d.qty + ')</td>' +
+              '<td>৳' + d.total + '</td>' +
+              '<td>৳' + d.paid + '</td>' +
+              '<td style="color:red; font-weight:bold;">৳' + d.due + '</td>' +
+              '<td>' +
+                '<button class="action-btn btn-info" onclick="showInvoice(\'' + k + '\')">রসিদ</button>' +
+                '<button class="action-btn btn-warning" onclick="editSale(\'' + k + '\')">এডিট</button>' +
+                '<button class="action-btn btn-danger" onclick="deleteRecord(\'sales\', \'' + k + '\')">মুছুন</button>' +
+              '</td>' +
+            '</tr>';
+          }
+        });
+        if (getEl('dash-total-sales')) getEl('dash-total-sales').innerText = '৳ ' + totalSales.toLocaleString();
+        if (getEl('dash-total-due')) getEl('dash-total-due').innerText = '৳ ' + totalDue.toLocaleString();
+        if (getEl('rep-sales')) getEl('rep-sales').innerText = '৳ ' + totalSales.toLocaleString();
+        updateNetFlow();
+      });
+
+      // ৫. Customers Table
+      db.ref('customers').on('value', function(snap) {
+        farmStore.customers = {};
+        var body = getEl('customerTableBody');
+        if (body) body.innerHTML = '';
+        snap.forEach(function(child) {
+          var d = child.val();
+          var k = child.key;
+          farmStore.customers[k] = d;
+
+          if (body) {
+            body.innerHTML += '<tr>' +
+              '<td><strong>' + d.name + '</strong></td>' +
+              '<td>' + (d.phone || '-') + '</td>' +
+              '<td>' + (d.addr || '-') + '</td>' +
+              '<td>' + (d.demand || 0) + ' লি:</td>' +
+              '<td>' +
+                '<button class="action-btn btn-info" onclick="editCustomer(\'' + k + '\')">এডিট</button>' +
+                '<button class="action-btn btn-danger" onclick="deleteRecord(\'customers\', \'' + k + '\')">মুছুন</button>' +
+              '</td>' +
+            '</tr>';
+          }
+        });
+      });
+
+      // ৬. Orders Table
+      db.ref('orders').on('value', function(snap) {
+        farmStore.orders = {};
+        var body = getEl('ordersTableBody');
+        if (body) body.innerHTML = '';
+        var pending = 0;
+        snap.forEach(function(child) {
+          var d = child.val();
+          var k = child.key;
+          farmStore.orders[k] = d;
+
+          if (d.status === 'পেন্ডিং') pending++;
+
+          if (body) {
+            body.innerHTML += '<tr>' +
+              '<td>' + d.date + '</td>' +
+              '<td><strong>' + d.customer + '</strong></td>' +
+              '<td>' + d.items + '</td>' +
+              '<td><span class="badge ' + (d.status==='পেন্ডিং'?'badge-warning':'badge-success') + '">' + d.status + '</span></td>' +
+              '<td>' +
+                '<button class="action-btn btn-info" onclick="editOrder(\'' + k + '\')">এডিট</button>' +
+                '<button class="action-btn btn-danger" onclick="deleteRecord(\'orders\', \'' + k + '\')">মুছুন</button>' +
+              '</td>' +
+            '</tr>';
+          }
+        });
+        if (getEl('dash-pending-orders')) getEl('dash-pending-orders').innerText = pending + ' টি';
+      });
+
+      // ৭. Expenses Table
+      db.ref('expenses').on('value', function(snap) {
+        farmStore.expenses = {};
+        var body = getEl('expenseTableBody');
+        if (body) body.innerHTML = '';
+        var totalExp = 0;
+        snap.forEach(function(child) {
+          var d = child.val();
+          var k = child.key;
+          farmStore.expenses[k] = d;
+
+          totalExp += Number(d.amount) || 0;
+
+          if (body) {
+            body.innerHTML += '<tr>' +
+              '<td>' + d.date + '</td>' +
+              '<td>' + d.category + '</td>' +
+              '<td>' + d.title + '</td>' +
+              '<td>৳' + d.amount + '</td>' +
+              '<td>' +
+                '<button class="action-btn btn-info" onclick="editExpense(\'' + k + '\')">এডিট</button>' +
+                '<button class="action-btn btn-danger" onclick="deleteRecord(\'expenses\', \'' + k + '\')">মুছুন</button>' +
+              '</td>' +
+            '</tr>';
+          }
+        });
+        if (getEl('dash-total-exp')) getEl('dash-total-exp').innerText = '৳ ' + totalExp.toLocaleString();
+        if (getEl('rep-expenses')) getEl('rep-expenses').innerText = '৳ ' + totalExp.toLocaleString();
+        updateNetFlow();
+      });
+
+      // ৮. Stock Table
+      db.ref('stock').on('value', function(snap) {
+        farmStore.stock = {};
+        var body = getEl('stockTableBody');
+        if (body) body.innerHTML = '';
+        snap.forEach(function(child) {
+          var d = child.val();
+          var k = child.key;
+          farmStore.stock[k] = d;
+
+          var isLow = Number(d.qty) <= Number(d.alertLevel);
+
+          if (body) {
+            body.innerHTML += '<tr>' +
+              '<td><strong>' + d.name + '</strong></td>' +
+              '<td style="color:' + (isLow?'red':'inherit') + '; font-weight:bold;">' + d.qty + '</td>' +
+              '<td>' + d.unit + '</td>' +
+              '<td>' + d.alertLevel + ' ' + (isLow?'<span class="badge badge-danger">স্টক কম</span>':'') + '</td>' +
+              '<td>' +
+                '<button class="action-btn btn-info" onclick="editStock(\'' + k + '\')">এডিট</button>' +
+                '<button class="action-btn btn-danger" onclick="deleteRecord(\'stock\', \'' + k + '\')">মুছুন</button>' +
+              '</td>' +
+            '</tr>';
+          }
+        });
+      });
+
+      // ৯. Semen Table
+      db.ref('semen').on('value', function(snap) {
+        farmStore.semen = {};
+        var body = getEl('semenTableBody');
+        if (body) body.innerHTML = '';
+        snap.forEach(function(child) {
+          var d = child.val();
+          var k = child.key;
+          farmStore.semen[k] = d;
+
+          if (body) {
+            body.innerHTML += '<tr>' +
+              '<td><strong>' + d.batch + '</strong></td>' +
+              '<td>' + (d.breed || '-') + '</td>' +
+              '<td>' + (d.source || '-') + '</td>' +
+              '<td><strong>' + d.count + ' স্ট্র</strong></td>' +
+              '<td>' +
+                '<button class="action-btn btn-info" onclick="editSemen(\'' + k + '\')">এডিট</button>' +
+                '<button class="action-btn btn-danger" onclick="deleteRecord(\'semen\', \'' + k + '\')">মুছুন</button>' +
+              '</td>' +
+            '</tr>';
+          }
+        });
+      });
+
+      // ১০. Health Table
+      db.ref('health').on('value', function(snap) {
+        farmStore.health = {};
+        var body = getEl('healthTableBody');
+        if (body) body.innerHTML = '';
+        snap.forEach(function(child) {
+          var d = child.val();
+          var k = child.key;
+          farmStore.health[k] = d;
+
+          if (body) {
+            body.innerHTML += '<tr>' +
+              '<td>' + d.date + '</td>' +
+              '<td><strong>' + d.cowTag + '</strong></td>' +
+              '<td>' + d.type + '</td>' +
+              '<td>' + (d.desc || '-') + '</td>' +
+              '<td>' + (d.nextDate || '-') + '</td>' +
+              '<td>' +
+                '<button class="action-btn btn-info" onclick="editHealth(\'' + k + '\')">এডিট</button>' +
+                '<button class="action-btn btn-danger" onclick="deleteRecord(\'health\', \'' + k + '\')">মুছুন</button>' +
+              '</td>' +
+            '</tr>';
+          }
+        });
+      });
+    }
+
+    function updateNetFlow() {
+      var sText = getEl('rep-sales') ? getEl('rep-sales').innerText.replace(/[^0-9.-]+/g,"") : "0";
+      var eText = getEl('rep-expenses') ? getEl('rep-expenses').innerText.replace(/[^0-9.-]+/g,"") : "0";
+      var sales = parseFloat(sText) || 0;
+      var expenses = parseFloat(eText) || 0;
+      var net = sales - expenses;
+      var profitEl = getEl('rep-profit');
+      if (profitEl) {
+        profitEl.innerText = '৳ ' + net.toLocaleString();
+        profitEl.style.color = net >= 0 ? 'green' : 'red';
+      }
+    }
+
+    // ডিফল্ট ডেট সেট
+    var todayStr = new Date().toISOString().split('T')[0];
+    if (getEl('milkDate')) getEl('milkDate').value = todayStr;
+    if (getEl('saleDate')) getEl('saleDate').value = todayStr;
+    if (getEl('orderDate')) getEl('orderDate').value = todayStr;
+    if (getEl('expDate')) getEl('expDate').value = todayStr;
+    if (getEl('brAiDate')) getEl('brAiDate').value = todayStr;
+    if (getEl('hlthDate')) getEl('hlthDate').value = todayStr;
+
+    if (localStorage.getItem('nanda_dairy_auth') === 'true') {
+      unlockApp();
+    }
+  </script>
+</body>
+</html>
