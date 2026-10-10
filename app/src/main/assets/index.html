@@ -68,7 +68,6 @@
         if (getEl(id)) getEl(id).value = today;
       });
 
-      // পেজ রিলোড করলেও লগইন বহাল রাখার যুক্তি
       if (localStorage.getItem('nanda_auth_status') === 'logged_in') {
         if (getEl('loginScreen')) getEl('loginScreen').style.display = 'none';
         if (getEl('appBody')) getEl('appBody').style.display = 'block';
@@ -139,8 +138,10 @@
 </head>
 <body>
 
-  <!-- গরু ট্যাগ অটো-সাজেশনের জন্য কেন্দ্রীয় ডেটালিস্ট -->
+  <!-- কেন্দ্রীয় ডেটালিস্টসমূহ -->
   <datalist id="cattleTagList"></datalist>
+  <datalist id="customerNameList"></datalist>
+  <datalist id="customerAreaList"></datalist>
 
   <!-- ১. লগইন স্ক্রিন -->
   <div id="loginScreen">
@@ -302,7 +303,7 @@
         </div>
       </div>
 
-      <!-- ৪. Milk (তারিখ অনুযায়ী গ্রুপ ও কলাপ্সিবল ভিউ) -->
+      <!-- ৪. Milk -->
       <div id="tab-milk" class="tab-content" style="display: none;">
         <div class="card">
           <h2>🥛 Milk Production Entry</h2>
@@ -339,14 +340,22 @@
         </div>
       </div>
 
-      <!-- ৫. Sales -->
+      <!-- ৫. Sales & Billing (ঠিকানা, এরিয়া, ৩৫+ দিন ওভারডিউ ও সার্চসহ আপগ্রেডেড) -->
       <div id="tab-sales" class="tab-content" style="display: none;">
         <div class="card">
           <h2>💰 Sales & Billing</h2>
           <div class="form-grid">
             <div class="input-group"><label>Date (তারিখ) *</label><input type="date" id="saleDate"></div>
-            <div class="input-group"><label>Customer Name (কাস্টমার) *</label><input type="text" id="saleCustomer" placeholder="নাম"></div>
-            <div class="input-group"><label>Phone (মোবাইল নম্বর)</label><input type="text" id="salePhone" placeholder="মোবাইল"></div>
+            <div class="input-group">
+              <label>Customer Name (কাস্টমার) *</label>
+              <input type="text" id="saleCustomer" list="customerNameList" oninput="onSaleCustomerInput()" placeholder="নাম লিখুন বা সিলেক্ট করুন">
+            </div>
+            <div class="input-group"><label>Phone (মোবাইল নম্বর)</label><input type="text" id="salePhone" placeholder="মোবাইল নম্বর"></div>
+            <div class="input-group">
+              <label>Area / Route (এলাকা / রুট)</label>
+              <input type="text" id="saleArea" list="customerAreaList" placeholder="যেমন: চকবাজার / রুট-১">
+            </div>
+            <div class="input-group"><label>Address (ঠিকানা)</label><input type="text" id="saleAddr" placeholder="গ্রাম / পাড়া / বাড়ি"></div>
             <div class="input-group"><label>Item (পণ্য)</label><select id="saleItem"><option value="Liquid Milk">Liquid Milk (তরল দুধ)</option><option value="Ghee">Ghee (ঘি)</option><option value="Butter">Butter (মাখন)</option><option value="Paneer">Paneer (ছানা/পনির)</option><option value="Manure">Manure (গোবর সার)</option></select></div>
             <div class="input-group"><label>Quantity (পরিমাণ)</label><input type="number" id="saleQty" oninput="calcSale()" placeholder="০"></div>
             <div class="input-group"><label>Rate (দর ₹)</label><input type="number" id="saleRate" oninput="calcSale()" placeholder="₹"></div>
@@ -359,19 +368,53 @@
             <button class="btn btn-warning" id="saleCancelBtn" style="display:none;" onclick="cancelSaleEdit()">Cancel (বাতিল)</button>
           </div>
         </div>
+
         <div class="card">
-          <h2>বিক্রয় ও বাকি তালিকা (Sales Ledger)</h2>
-          <div class="table-container"><table><thead><tr><th>Date</th><th>Customer</th><th>Product & Qty</th><th>Total</th><th>Paid</th><th>Due</th><th>Action</th></tr></thead><tbody id="salesTableBody"></tbody></table></div>
+          <div style="display:flex; flex-wrap:wrap; justify-content:space-between; align-items:center; gap:12px; margin-bottom:14px;">
+            <h2 style="margin:0; border:none; padding:0;">বিক্রয় ও বাকি তালিকা (Sales Ledger)</h2>
+            
+            <!-- সার্চ ও এরিয়া ফিল্টার বার -->
+            <div style="display:flex; flex-wrap:wrap; gap:8px; align-items:center;">
+              <input type="text" id="saleSearchInput" oninput="renderSalesTable()" placeholder="🔍 নাম বা মোবাইল দিয়ে খুঁজুন..." style="width:230px; padding:7px 11px; font-size:12.5px;">
+              <select id="saleAreaFilter" onchange="renderSalesTable()" style="width:170px; padding:7px 11px; font-size:12.5px;">
+                <option value="">সকল এলাকা (All Areas)</option>
+              </select>
+            </div>
+          </div>
+
+          <div style="background:#fff3e0; border-left:4px solid #f57c00; padding:8px 12px; border-radius:6px; font-size:12px; margin-bottom:12px; color:#e65100;">
+            ⚠️ <strong>লক্ষ্য করুন:</strong> যেসব গ্রাহকের বকেয়া ৩৫ দিন বা তার বেশি পার হয়েছে, তাদের তালিকা সবার ওপরে লাল হাইলাইট হয়ে স্বয়ংক্রিয়ভাবে প্রদর্শিত হচ্ছে।
+          </div>
+
+          <div class="table-container">
+            <table>
+              <thead>
+                <tr>
+                  <th>Date</th>
+                  <th>Customer (মোবাইলসহ)</th>
+                  <th>Area & Address</th>
+                  <th>Product & Qty</th>
+                  <th>Total</th>
+                  <th>Paid</th>
+                  <th>Due</th>
+                  <th>Action</th>
+                </tr>
+              </thead>
+              <tbody id="salesTableBody"></tbody>
+            </table>
+          </div>
+          <p id="salesNoData" style="text-align: center; color: #777; font-size: 13px; margin-top: 15px; display: none;">কোনো বিক্রয় রেকর্ড পাওয়া যায়নি।</p>
         </div>
       </div>
 
-      <!-- ৬. Customer -->
+      <!-- ৬. Customer (এরিয়া ফিল্ডসহ আপগ্রেডেড) -->
       <div id="tab-customers" class="tab-content" style="display: none;">
         <div class="card">
           <h2>👥 Customer Directory</h2>
           <div class="form-grid">
             <div class="input-group"><label>Customer Name (নাম) *</label><input type="text" id="custName" placeholder="নাম"></div>
             <div class="input-group"><label>Phone Number (মোবাইল) *</label><input type="text" id="custPhone" placeholder="মোবাইল"></div>
+            <div class="input-group"><label>Area / Route (এলাকা / রুট)</label><input type="text" id="custArea" list="customerAreaList" placeholder="যেমন: চকবাজার / রুট-১"></div>
             <div class="input-group"><label>Address (ঠিকানা)</label><input type="text" id="custAddress" placeholder="ঠিকানা"></div>
             <div class="input-group"><label>Daily Demand L (দৈনিক চাহিদা)</label><input type="number" id="custDailyDemand" placeholder="২.০"></div>
           </div>
@@ -382,7 +425,7 @@
         </div>
         <div class="card">
           <h2>কাস্টমার তালিকা (Customer List)</h2>
-          <div class="table-container"><table><thead><tr><th>Name</th><th>Phone</th><th>Address</th><th>Daily Demand</th><th>Action</th></tr></thead><tbody id="customerTableBody"></tbody></table></div>
+          <div class="table-container"><table><thead><tr><th>Name</th><th>Phone</th><th>Area</th><th>Address</th><th>Daily Demand</th><th>Action</th></tr></thead><tbody id="customerTableBody"></tbody></table></div>
         </div>
       </div>
 
@@ -392,7 +435,7 @@
           <h2>📦 Orders Management</h2>
           <div class="form-grid">
             <div class="input-group"><label>Delivery Date (তারিখ) *</label><input type="date" id="orderDate"></div>
-            <div class="input-group"><label>Customer Name *</label><input type="text" id="orderCustomer" placeholder="নাম"></div>
+            <div class="input-group"><label>Customer Name *</label><input type="text" id="orderCustomer" list="customerNameList" placeholder="নাম"></div>
             <div class="input-group"><label>Items & Quantity (বিবরণ) *</label><input type="text" id="orderItems" placeholder="যেমন: ৫ লিটার দুধ"></div>
             <div class="input-group"><label>Status (স্ট্যাটাস)</label><select id="orderStatus"><option value="Pending">Pending (পেন্ডিং)</option><option value="Delivered">Delivered (ডেলিভারড)</option><option value="Cancelled">Cancelled (বাতিল)</option></select></div>
           </div>
@@ -545,6 +588,21 @@
       }
     }
 
+    // কাস্টমার নাম টাইপ করলে ফোন, এলাকা ও ঠিকানা অটো-ফিল হওয়া
+    function onSaleCustomerInput() {
+      var val = (getEl('saleCustomer').value || '').trim().toLowerCase();
+      if (!val) return;
+      for (var k in farmStore.customers) {
+        var c = farmStore.customers[k];
+        if ((c.name || '').trim().toLowerCase() === val) {
+          if (c.phone) getEl('salePhone').value = c.phone;
+          if (c.area) getEl('saleArea').value = c.area;
+          if (c.addr) getEl('saleAddr').value = c.addr;
+          break;
+        }
+      }
+    }
+
     // প্রতি গরুর মোট দুধ ও মোট দিনের হিসাব
     function getMilkStatsByTag() {
       var stats = {};
@@ -552,18 +610,13 @@
         var m = farmStore.milk[k];
         var tagKey = (m.cow || '').trim().toUpperCase();
         if (!tagKey) continue;
-        if (!stats[tagKey]) {
-          stats[tagKey] = { total: 0, daysSet: {} };
-        }
+        if (!stats[tagKey]) stats[tagKey] = { total: 0, daysSet: {} };
         stats[tagKey].total += (Number(m.liters) || 0);
         if (m.date) stats[tagKey].daysSet[m.date] = true;
       }
       var res = {};
       for (var t in stats) {
-        res[t] = {
-          total: stats[t].total,
-          days: Object.keys(stats[t].daysSet).length
-        };
+        res[t] = { total: stats[t].total, days: Object.keys(stats[t].daysSet).length };
       }
       return res;
     }
@@ -572,9 +625,7 @@
     function renderCattleTable() {
       var milkStats = getMilkStatsByTag();
       var list = [];
-      for (var k in farmStore.cattle) {
-        list.push({ key: k, data: farmStore.cattle[k] });
-      }
+      for (var k in farmStore.cattle) list.push({ key: k, data: farmStore.cattle[k] });
 
       list.sort(function(a, b) {
         var tagA = (a.data.tag || '').toString();
@@ -634,7 +685,7 @@
       renderBreedSummary();
     }
 
-    // দুধের তারিখ বিস্তারিত টগল
+    // দুধের বিস্তারিত টগল
     window.toggleMilkDate = function(safeDt) {
       var row = getEl('milk-det-' + safeDt);
       var btn = getEl('milk-btn-' + safeDt);
@@ -666,9 +717,7 @@
         totalMilkAll += lit;
         if (dt === today) todayTotal += lit;
 
-        if (!dateGroups[dt]) {
-          dateGroups[dt] = { date: dt, total: 0, cows: {}, items: [] };
-        }
+        if (!dateGroups[dt]) dateGroups[dt] = { date: dt, total: 0, cows: {}, items: [] };
         dateGroups[dt].total += lit;
         if (m.cow) dateGroups[dt].cows[m.cow.trim().toUpperCase()] = true;
         dateGroups[dt].items.push({ key: k, data: m });
@@ -677,9 +726,7 @@
       if (getEl('dash-milk-today')) getEl('dash-milk-today').innerText = todayTotal.toFixed(1) + ' L';
       if (getEl('rep-milk')) getEl('rep-milk').innerText = totalMilkAll.toFixed(1);
 
-      var sortedDates = Object.keys(dateGroups).sort(function(a, b) {
-        return b.localeCompare(a);
-      });
+      var sortedDates = Object.keys(dateGroups).sort(function(a, b) { return b.localeCompare(a); });
 
       if (sortedDates.length === 0) {
         body.innerHTML = '';
@@ -702,7 +749,6 @@
           '<td><button class="action-btn btn-info" id="milk-btn-' + safeDt + '" onclick="event.stopPropagation(); toggleMilkDate(\'' + safeDt + '\')">বিস্তারিত দেখুন ▼</button></td>' +
         '</tr>';
 
-        // বিস্তারিত সাব-রো
         html += '<tr id="milk-det-' + safeDt + '" style="display:none; background:#f4fbf5;">' +
           '<td colspan="5" style="padding:12px 18px;">' +
             '<div style="background:white; border:1px solid #c8e6c9; border-radius:8px; padding:12px; box-shadow:0 1px 4px rgba(0,0,0,0.05);">' +
@@ -729,6 +775,132 @@
         });
 
         html += '</tbody></table></div></td></tr>';
+      });
+
+      body.innerHTML = html;
+    }
+
+    // ৫. SALES & BILLING রেন্ডার (৩৫+ দিন বকেয়া ওপরে রাখা, এরিয়া ফিল্টার ও মোবাইল নম্বরসহ)
+    function renderSalesTable() {
+      var body = getEl('salesTableBody');
+      if (!body) return;
+
+      var searchQ = (getEl('saleSearchInput') ? getEl('saleSearchInput').value : '').trim().toLowerCase();
+      var areaFilter = (getEl('saleAreaFilter') ? getEl('saleAreaFilter').value : '').trim().toLowerCase();
+
+      var list = [];
+      var tS = 0, tD = 0;
+      var todayDate = new Date();
+
+      // এলাকা তালিকা রিফ্রেশ করা
+      var uniqueAreas = {};
+
+      for (var k in farmStore.sales) {
+        var d = farmStore.sales[k];
+        var total = Number(d.total) || 0;
+        var paid = Number(d.paid) || 0;
+        var due = Number(d.due) || 0;
+        tS += total;
+        tD += due;
+
+        var areaStr = (d.area || '').trim();
+        if (areaStr) uniqueAreas[areaStr] = true;
+
+        // ৩৫+ দিন বকেয়া গণনা
+        var isOverdue35 = false;
+        var diffDays = 0;
+        if (due > 0 && d.date) {
+          var billDate = new Date(d.date);
+          var diffTime = todayDate.getTime() - billDate.getTime();
+          diffDays = Math.floor(diffTime / (1000 * 3600 * 24));
+          if (diffDays >= 35) {
+            isOverdue35 = true;
+          }
+        }
+
+        list.push({ key: k, data: d, isOverdue: isOverdue35, diffDays: diffDays });
+      }
+
+      if (getEl('dash-total-sales')) getEl('dash-total-sales').innerText = '₹ ' + tS.toLocaleString();
+      if (getEl('dash-total-due')) getEl('dash-total-due').innerText = '₹ ' + tD.toLocaleString();
+      if (getEl('rep-sales')) getEl('rep-sales').innerText = '₹ ' + tS.toLocaleString();
+      calcNet();
+
+      // এরিয়া ফিল্টার ড্রপডাউন প্রস্তুত
+      var areaSelect = getEl('saleAreaFilter');
+      if (areaSelect) {
+        var currVal = areaSelect.value;
+        var optH = '<option value="">সকল এলাকা (All Areas)</option>';
+        Object.keys(uniqueAreas).sort().forEach(function(a) {
+          optH += '<option value="' + a + '" ' + (currVal.toLowerCase() === a.toLowerCase() ? 'selected' : '') + '>' + a + '</option>';
+        });
+        areaSelect.innerHTML = optH;
+      }
+
+      // ফিল্টারিং (সার্চ ও এরিয়া)
+      var filtered = list.filter(function(item) {
+        var d = item.data;
+        var nameMatch = (d.name || '').toLowerCase().includes(searchQ);
+        var phoneMatch = (d.phone || '').toLowerCase().includes(searchQ);
+        var matchesSearch = !searchQ || nameMatch || phoneMatch;
+
+        var matchesArea = !areaFilter || ((d.area || '').toLowerCase() === areaFilter);
+        return matchesSearch && matchesArea;
+      });
+
+      // সর্টিং: ৩৫+ দিন ওভারডিউ সবার ওপরে, তারপর নতুন তারিখ অনুযায়ী
+      filtered.sort(function(a, b) {
+        if (a.isOverdue && !b.isOverdue) return -1;
+        if (!a.isOverdue && b.isOverdue) return 1;
+        var dtA = (a.data.date || '').toString();
+        var dtB = (b.data.date || '').toString();
+        return dtB.localeCompare(dtA);
+      });
+
+      if (filtered.length === 0) {
+        body.innerHTML = '';
+        if (getEl('salesNoData')) getEl('salesNoData').style.display = 'block';
+        return;
+      }
+      if (getEl('salesNoData')) getEl('salesNoData').style.display = 'none';
+
+      var html = '';
+      filtered.forEach(function(item) {
+        var k = item.key;
+        var d = item.data;
+        var isOv = item.isOverdue;
+        var dueVal = Number(d.due) || 0;
+
+        var rowStyle = isOv ? 'background:#fff3f3; border-left:5px solid #d32f2f;' : '';
+        var dueBadge = '';
+        if (isOv) {
+          dueBadge = '<span class="badge badge-danger">₹ ' + dueVal + ' (⚠️ ' + item.diffDays + ' দিন বাকি)</span>';
+        } else if (dueVal > 0) {
+          dueBadge = '<span style="color:red; font-weight:bold;">₹ ' + dueVal + '</span>';
+        } else {
+          dueBadge = '<span class="badge badge-success">পরিশোধ</span>';
+        }
+
+        html += '<tr style="' + rowStyle + '">' +
+          '<td>' + (d.date || '-') + '</td>' +
+          '<td>' +
+            '<strong>' + (d.name || '-') + '</strong>' +
+            (d.phone ? '<br><span style="font-size:11.5px; color:#455a64;">📞 ' + d.phone + '</span>' : '') +
+          '</td>' +
+          '<td>' +
+            (d.area ? '<span class="badge badge-warning" style="margin-bottom:3px;">' + d.area + '</span><br>' : '') +
+            '<span style="font-size:11.5px; color:#555;">' + (d.addr || '-') + '</span>' +
+          '</td>' +
+          '<td>' + (d.item || '-') + ' (' + (d.qty || 0) + ')</td>' +
+          '<td>₹ ' + (d.total || 0) + '</td>' +
+          '<td style="color:green; font-weight:600;">₹ ' + (d.paid || 0) + '</td>' +
+          '<td>' + dueBadge + '</td>' +
+          '<td>' +
+            '<button class="action-btn btn-info" onclick="showInvoice(\'' + k + '\')">Invoice</button>' +
+            '<button class="action-btn btn-warning" onclick="editSale(\'' + k + '\')">Edit</button>' +
+            '<button class="action-btn btn-danger" onclick="deleteRecord(\'sales\',\'' + k + '\')">Delete</button>' +
+          '</td>' +
+        '</tr>';
       });
 
       body.innerHTML = html;
@@ -761,42 +933,20 @@
     var eBrKey = null;
     function editBreeding(k) {
       var d = farmStore.breeding[k]; if(!d) return; eBrKey = k;
-      getEl('brCowTag').value = d.tag||''; 
-      getEl('brAiDate').value = d.aiDate||''; 
-      getEl('brSemenId').value = d.semenId||'';
-      getEl('brCompany').value = d.company||'';
-      getEl('brAiCost').value = d.aiCost||'';
-      getEl('brPdDate').value = d.pdDate||'';
-      getEl('brStatus').value = d.status||'Pending'; 
-      getEl('brExpCalvingDate').value = d.expCalvingDate||d.calvingDate||'';
-      getEl('brActCalvingDate').value = d.actCalvingDate||'';
-      getEl('brSubmitBtn').innerText = 'Update Breeding'; 
-      getEl('brCancelBtn').style.display = 'inline-flex';
-      getEl('brCowTag').scrollIntoView({ behavior: 'smooth' });
+      getEl('brCowTag').value = d.tag||''; getEl('brAiDate').value = d.aiDate||''; getEl('brSemenId').value = d.semenId||'';
+      getEl('brCompany').value = d.company||''; getEl('brAiCost').value = d.aiCost||''; getEl('brPdDate').value = d.pdDate||'';
+      getEl('brStatus').value = d.status||'Pending'; getEl('brExpCalvingDate').value = d.expCalvingDate||d.calvingDate||'';
+      getEl('brActCalvingDate').value = d.actCalvingDate||''; getEl('brSubmitBtn').innerText = 'Update Breeding'; 
+      getEl('brCancelBtn').style.display = 'inline-flex'; getEl('brCowTag').scrollIntoView({ behavior: 'smooth' });
     }
     function cancelBreedingEdit() {
       eBrKey = null; 
-      ['brCowTag','brSemenId','brCompany','brAiCost','brPdDate','brExpCalvingDate','brActCalvingDate'].forEach(function(id) {
-        if (getEl(id)) getEl(id).value = '';
-      });
-      getEl('brStatus').value = 'Pending';
-      getEl('brSubmitBtn').innerText = 'Save Breeding Record'; 
-      getEl('brCancelBtn').style.display = 'none';
+      ['brCowTag','brSemenId','brCompany','brAiCost','brPdDate','brExpCalvingDate','brActCalvingDate'].forEach(function(id) { if (getEl(id)) getEl(id).value = ''; });
+      getEl('brStatus').value = 'Pending'; getEl('brSubmitBtn').innerText = 'Save Breeding Record'; getEl('brCancelBtn').style.display = 'none';
     }
     function saveBreeding() {
-      var tag = (getEl('brCowTag').value||'').trim(); 
-      if(!tag) return alert('Cattle ID দিন!');
-      var data = { 
-        tag: tag, 
-        aiDate: getEl('brAiDate').value, 
-        semenId: getEl('brSemenId').value, 
-        company: getEl('brCompany').value,
-        aiCost: parseFloat(getEl('brAiCost').value)||0,
-        pdDate: getEl('brPdDate').value,
-        status: getEl('brStatus').value, 
-        expCalvingDate: getEl('brExpCalvingDate').value,
-        actCalvingDate: getEl('brActCalvingDate').value
-      };
+      var tag = (getEl('brCowTag').value||'').trim(); if(!tag) return alert('Cattle ID দিন!');
+      var data = { tag: tag, aiDate: getEl('brAiDate').value, semenId: getEl('brSemenId').value, company: getEl('brCompany').value, aiCost: parseFloat(getEl('brAiCost').value)||0, pdDate: getEl('brPdDate').value, status: getEl('brStatus').value, expCalvingDate: getEl('brExpCalvingDate').value, actCalvingDate: getEl('brActCalvingDate').value };
       if(db) eBrKey ? db.ref('breeding/'+eBrKey).update(data) : db.ref('breeding').push(data);
       cancelBreedingEdit();
     }
@@ -805,20 +955,11 @@
     var eMlkKey = null;
     function editMilk(k) {
       var d = farmStore.milk[k]; if(!d) return; eMlkKey = k;
-      getEl('milkDate').value = d.date||''; 
-      getEl('milkCowTag').value = d.cow||''; 
-      getEl('milkSession').value = d.session||'Morning'; 
-      getEl('milkLiters').value = d.liters||'';
-      getEl('milkSubmitBtn').innerText = 'Update Milk'; 
-      getEl('milkCancelBtn').style.display = 'inline-flex';
-      getEl('milkDate').scrollIntoView({ behavior: 'smooth' });
+      getEl('milkDate').value = d.date||''; getEl('milkCowTag').value = d.cow||''; getEl('milkSession').value = d.session||'Morning'; getEl('milkLiters').value = d.liters||'';
+      getEl('milkSubmitBtn').innerText = 'Update Milk'; getEl('milkCancelBtn').style.display = 'inline-flex'; getEl('milkDate').scrollIntoView({ behavior: 'smooth' });
     }
     function cancelMilkEdit() { 
-      eMlkKey = null; 
-      getEl('milkCowTag').value = ''; 
-      getEl('milkLiters').value = ''; 
-      getEl('milkSubmitBtn').innerText = 'Save Milk Record'; 
-      getEl('milkCancelBtn').style.display = 'none'; 
+      eMlkKey = null; getEl('milkCowTag').value = ''; getEl('milkLiters').value = ''; getEl('milkSubmitBtn').innerText = 'Save Milk Record'; getEl('milkCancelBtn').style.display = 'none'; 
     }
     function saveMilk() {
       var lit = parseFloat(getEl('milkLiters').value)||0; if(!lit) return alert('দুধের পরিমাণ দিন!');
@@ -828,7 +969,7 @@
       cancelMilkEdit();
     }
 
-    // ৪. SALES
+    // ৪. SALES ক্যালকুলেশন, এডিট ও সেভ
     var eSaleKey = null;
     function calcSale() {
       var q = parseFloat(getEl('saleQty').value)||0, r = parseFloat(getEl('saleRate').value)||0, t = q*r;
@@ -837,38 +978,75 @@
     function editSale(k) {
       var d = farmStore.sales[k]; if(!d) return; eSaleKey = k;
       getEl('saleDate').value = d.date||''; getEl('saleCustomer').value = d.name||''; getEl('salePhone').value = d.phone||'';
+      getEl('saleArea').value = d.area||''; getEl('saleAddr').value = d.addr||'';
       getEl('saleItem').value = d.item||'Liquid Milk'; getEl('saleQty').value = d.qty||''; getEl('saleRate').value = d.rate||'';
       getEl('saleTotal').value = d.total||''; getEl('salePaid').value = d.paid||''; getEl('saleDue').value = d.due||'';
       getEl('saleSubmitBtn').innerText = 'Update Sale'; getEl('saleCancelBtn').style.display = 'inline-flex';
+      getEl('saleDate').scrollIntoView({ behavior: 'smooth' });
     }
     function cancelSaleEdit() {
-      eSaleKey = null; ['saleCustomer','salePhone','saleQty','saleRate','saleTotal','salePaid','saleDue'].forEach(function(i){ getEl(i).value=''; });
+      eSaleKey = null; 
+      ['saleCustomer','salePhone','saleArea','saleAddr','saleQty','saleRate','saleTotal','salePaid','saleDue'].forEach(function(i){ getEl(i).value=''; });
       getEl('saleSubmitBtn').innerText = 'Save Sale'; getEl('saleCancelBtn').style.display = 'none';
     }
     function saveSale() {
       var name = (getEl('saleCustomer').value||'').trim(); if(!name) return alert('Customer Name দিন!');
-      var data = { date:getEl('saleDate').value, name:name, phone:getEl('salePhone').value, item:getEl('saleItem').value, qty:parseFloat(getEl('saleQty').value)||0, rate:parseFloat(getEl('saleRate').value)||0, total:parseFloat(getEl('saleTotal').value)||0, paid:parseFloat(getEl('salePaid').value)||0, due:parseFloat(getEl('saleDue').value)||0 };
+      var data = { 
+        date: getEl('saleDate').value, 
+        name: name, 
+        phone: (getEl('salePhone').value||'').trim(),
+        area: (getEl('saleArea').value||'').trim(),
+        addr: (getEl('saleAddr').value||'').trim(),
+        item: getEl('saleItem').value, 
+        qty: parseFloat(getEl('saleQty').value)||0, 
+        rate: parseFloat(getEl('saleRate').value)||0, 
+        total: parseFloat(getEl('saleTotal').value)||0, 
+        paid: parseFloat(getEl('salePaid').value)||0, 
+        due: parseFloat(getEl('saleDue').value)||0 
+      };
       if(db) eSaleKey ? db.ref('sales/'+eSaleKey).update(data) : db.ref('sales').push(data);
       cancelSaleEdit();
     }
     function showInvoice(k) {
       var d = farmStore.sales[k]; if(!d) return;
-      getEl('invoiceDetails').innerHTML = '<p><strong>Date:</strong> '+d.date+'</p><p><strong>Customer:</strong> '+d.name+'</p><p><strong>Product:</strong> '+d.item+' ('+d.qty+')</p><p><strong>Rate:</strong> ₹'+d.rate+'</p><p><strong>Total Bill:</strong> ₹'+d.total+'</p><p style="color:green;"><strong>Paid:</strong> ₹'+d.paid+'</p><p style="color:red;"><strong>Due:</strong> ₹'+d.due+'</p>';
+      getEl('invoiceDetails').innerHTML = 
+        '<p><strong>Date:</strong> '+d.date+'</p>' +
+        '<p><strong>Customer:</strong> '+d.name+' '+(d.phone ? '('+d.phone+')' : '')+'</p>' +
+        (d.area ? '<p><strong>Area:</strong> '+d.area+'</p>' : '') +
+        (d.addr ? '<p><strong>Address:</strong> '+d.addr+'</p>' : '') +
+        '<hr style="margin:8px 0; border:none; border-top:1px dashed #ccc;">' +
+        '<p><strong>Product:</strong> '+d.item+' ('+d.qty+')</p>' +
+        '<p><strong>Rate:</strong> ₹'+d.rate+'</p>' +
+        '<p><strong>Total Bill:</strong> ₹'+d.total+'</p>' +
+        '<p style="color:green;"><strong>Paid:</strong> ₹'+d.paid+'</p>' +
+        '<p style="color:red;"><strong>Due:</strong> ₹'+d.due+'</p>';
       getEl('invoiceModal').style.display = 'flex';
     }
     function closeInvoice() { getEl('invoiceModal').style.display = 'none'; }
 
-    // ৫. CUSTOMERS
+    // ৫. CUSTOMERS এডিট ও সেভ
     var eCustKey = null;
     function editCustomer(k) {
       var d = farmStore.customers[k]; if(!d) return; eCustKey = k;
-      getEl('custName').value = d.name||''; getEl('custPhone').value = d.phone||''; getEl('custAddress').value = d.addr||''; getEl('custDailyDemand').value = d.demand||'';
+      getEl('custName').value = d.name||''; getEl('custPhone').value = d.phone||''; 
+      getEl('custArea').value = d.area||''; getEl('custAddress').value = d.addr||''; getEl('custDailyDemand').value = d.demand||'';
       getEl('custSubmitBtn').innerText = 'Update Customer'; getEl('custCancelBtn').style.display = 'inline-flex';
+      getEl('custName').scrollIntoView({ behavior: 'smooth' });
     }
-    function cancelCustomerEdit() { eCustKey = null; ['custName','custPhone','custAddress','custDailyDemand'].forEach(function(i){ getEl(i).value=''; }); getEl('custSubmitBtn').innerText = 'Save Customer'; getEl('custCancelBtn').style.display = 'none'; }
+    function cancelCustomerEdit() { 
+      eCustKey = null; 
+      ['custName','custPhone','custArea','custAddress','custDailyDemand'].forEach(function(i){ getEl(i).value=''; }); 
+      getEl('custSubmitBtn').innerText = 'Save Customer'; getEl('custCancelBtn').style.display = 'none'; 
+    }
     function saveCustomer() {
       var name = (getEl('custName').value||'').trim(); if(!name) return alert('নাম দিন!');
-      var data = { name:name, phone:getEl('custPhone').value, addr:getEl('custAddress').value, demand:parseFloat(getEl('custDailyDemand').value)||0 };
+      var data = { 
+        name: name, 
+        phone: (getEl('custPhone').value||'').trim(), 
+        area: (getEl('custArea').value||'').trim(),
+        addr: (getEl('custAddress').value||'').trim(), 
+        demand: parseFloat(getEl('custDailyDemand').value)||0 
+      };
       if(db) eCustKey ? db.ref('customers/'+eCustKey).update(data) : db.ref('customers').push(data);
       cancelCustomerEdit();
     }
@@ -882,8 +1060,7 @@
     }
     function cancelOrderEdit() { eOrdKey = null; getEl('orderCustomer').value = ''; getEl('orderItems').value = ''; getEl('orderSubmitBtn').innerText = 'Save Order'; getEl('orderCancelBtn').style.display = 'none'; }
     function saveOrder() {
-      var cust = (getEl('orderCustomer').value||'').trim();
-      if(!cust) return alert('Customer Name দিন!');
+      var cust = (getEl('orderCustomer').value||'').trim(); if(!cust) return alert('Customer Name দিন!');
       var data = { date:getEl('orderDate').value, customer:cust, items:getEl('orderItems').value, status:getEl('orderStatus').value };
       if(db) eOrdKey ? db.ref('orders/'+eOrdKey).update(data) : db.ref('orders').push(data);
       cancelOrderEdit();
@@ -990,18 +1167,14 @@
       // ১. Cattle Listener
       db.ref('cattle').on('value', function(snap) {
         farmStore.cattle = {}; 
-        snap.forEach(function(c) {
-          farmStore.cattle[c.key] = c.val();
-        });
+        snap.forEach(function(c) { farmStore.cattle[c.key] = c.val(); });
         renderCattleTable();
       });
 
-      // ২. Milk Listener (তারিখ অনুযায়ী স্বয়ংক্রিয় গ্রুপ)
+      // ২. Milk Listener
       db.ref('milk').on('value', function(snap) {
         farmStore.milk = {}; 
-        snap.forEach(function(c) {
-          farmStore.milk[c.key] = c.val();
-        });
+        snap.forEach(function(c) { farmStore.milk[c.key] = c.val(); });
         renderGroupedMilkTable();
         renderCattleTable();
       });
@@ -1035,24 +1208,40 @@
 
       // ৪. Sales Listener
       db.ref('sales').on('value', function(snap) {
-        farmStore.sales = {}; var body = getEl('salesTableBody'); if(body) body.innerHTML = ''; var tS=0, tD=0;
-        snap.forEach(function(c) {
-          var d = c.val(), k = c.key; farmStore.sales[k] = d; tS+=Number(d.total)||0; tD+=Number(d.due)||0;
-          if(body) body.innerHTML += '<tr><td>'+d.date+'</td><td><strong>'+d.name+'</strong></td><td>'+d.item+'</td><td>₹'+d.total+'</td><td>₹'+d.paid+'</td><td style="color:red;font-weight:bold;">₹'+d.due+'</td><td><button class="action-btn btn-info" onclick="showInvoice(\''+k+'\')">Invoice</button><button class="action-btn btn-warning" onclick="editSale(\''+k+'\')">Edit</button><button class="action-btn btn-danger" onclick="deleteRecord(\'sales\',\''+k+'\')">Delete</button></td></tr>';
-        });
-        if(getEl('dash-total-sales')) getEl('dash-total-sales').innerText = '₹ '+tS.toLocaleString();
-        if(getEl('dash-total-due')) getEl('dash-total-due').innerText = '₹ '+tD.toLocaleString();
-        if(getEl('rep-sales')) getEl('rep-sales').innerText = '₹ '+tS.toLocaleString();
-        calcNet();
+        farmStore.sales = {}; 
+        snap.forEach(function(c) { farmStore.sales[c.key] = c.val(); });
+        renderSalesTable();
       });
 
-      // ৫. Customers Listener
+      // ৫. Customers Listener (ডাটালিস্ট আপডেট ও কাস্টমার তালিকা রেন্ডার)
       db.ref('customers').on('value', function(snap) {
-        farmStore.customers = {}; var body = getEl('customerTableBody'); if(body) body.innerHTML = '';
+        farmStore.customers = {}; 
+        var body = getEl('customerTableBody'); 
+        if(body) body.innerHTML = '';
+
+        var nameOpt = '', areaOpt = '';
+        var areaSet = {};
+
         snap.forEach(function(c) {
-          var d = c.val(), k = c.key; farmStore.customers[k] = d;
-          if(body) body.innerHTML += '<tr><td><strong>'+d.name+'</strong></td><td>'+(d.phone||'-')+'</td><td>'+(d.addr||'-')+'</td><td>'+(d.demand||0)+' L</td><td><button class="action-btn btn-info" onclick="editCustomer(\''+k+'\')">Edit</button><button class="action-btn btn-danger" onclick="deleteRecord(\'customers\',\''+k+'\')">Delete</button></td></tr>';
+          var d = c.val(), k = c.key; 
+          farmStore.customers[k] = d;
+          if (d.name) nameOpt += '<option value="' + d.name + '">' + (d.phone ? d.name + ' (' + d.phone + ')' : d.name) + '</option>';
+          if (d.area && !areaSet[d.area]) { areaSet[d.area] = true; areaOpt += '<option value="' + d.area + '">'; }
+
+          if(body) {
+            body.innerHTML += '<tr>' +
+              '<td><strong>' + (d.name||'-') + '</strong></td>' +
+              '<td>' + (d.phone||'-') + '</td>' +
+              '<td>' + (d.area ? '<span class="badge badge-warning">' + d.area + '</span>' : '-') + '</td>' +
+              '<td>' + (d.addr||'-') + '</td>' +
+              '<td>' + (d.demand||0) + ' L</td>' +
+              '<td><button class="action-btn btn-info" onclick="editCustomer(\''+k+'\')">Edit</button><button class="action-btn btn-danger" onclick="deleteRecord(\'customers\',\''+k+'\')">Delete</button></td>' +
+            '</tr>';
+          }
         });
+
+        if (getEl('customerNameList')) getEl('customerNameList').innerHTML = nameOpt;
+        if (getEl('customerAreaList')) getEl('customerAreaList').innerHTML = areaOpt;
       });
 
       // ৬. Orders Listener
