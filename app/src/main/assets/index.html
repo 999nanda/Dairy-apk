@@ -42,7 +42,7 @@
       }
     };
 
-    // স্থায়ী লগইন হ্যান্ডলার
+    // স্থায়ী লগইন
     window.doLogin = function() {
       var u = (getEl('loginId') ? getEl('loginId').value : '').trim().toLowerCase();
       var p = (getEl('loginPass') ? getEl('loginPass').value : '').trim();
@@ -131,9 +131,23 @@
     #loginScreen { position: fixed; inset: 0; background: #e8f5e9; display: flex; align-items: center; justify-content: center; z-index: 99999; padding: 20px; }
     .login-box { background: white; padding: 32px; border-radius: 16px; width: 100%; max-width: 380px; box-shadow: 0 8px 24px rgba(0,0,0,0.12); text-align: center; }
     .login-box img { height: 95px; width: 95px; border-radius: 50%; object-fit: cover; margin-bottom: 14px; box-shadow: 0 3px 10px rgba(0,0,0,0.15); border: 2px solid var(--secondary); }
-    #invoiceModal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 2000; align-items: center; justify-content: center; padding: 15px; }
-    .invoice-card { background: white; max-width: 480px; width: 100%; border-radius: 8px; padding: 25px; }
-    @media print { body * { visibility: hidden; } #invoicePrintArea, #invoicePrintArea * { visibility: visible; } #invoicePrintArea { position: absolute; left: 0; top: 0; width: 100%; } }
+    
+    /* ইনভয়েস ও লেজার মোডাল */
+    #invoiceModal, #ledgerModal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.65); z-index: 2000; align-items: center; justify-content: center; padding: 15px; }
+    .invoice-card { background: white; max-width: 520px; width: 100%; border-radius: 12px; padding: 26px; position: relative; box-shadow: 0 10px 30px rgba(0,0,0,0.25); max-height: 95vh; overflow-y: auto; }
+    .ledger-card { background: white; max-width: 760px; width: 100%; border-radius: 12px; padding: 24px; max-height: 90vh; overflow-y: auto; }
+
+    /* ইনভয়েস ওয়াটারমার্ক */
+    .invoice-watermark { position: absolute; top: 48%; left: 50%; transform: translate(-50%, -50%); width: 230px; height: 230px; opacity: 0.08; pointer-events: none; z-index: 0; }
+    .invoice-content { position: relative; z-index: 1; }
+
+    @media print {
+      body * { visibility: hidden; }
+      #invoicePrintArea, #invoicePrintArea *, #ledgerPrintArea, #ledgerPrintArea * { visibility: visible; }
+      #invoicePrintArea, #ledgerPrintArea { position: absolute; left: 0; top: 0; width: 100%; }
+      .no-print { display: none !important; }
+      * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+    }
   </style>
 </head>
 <body>
@@ -340,7 +354,7 @@
         </div>
       </div>
 
-      <!-- ৫. Sales & Billing (ঠিকানা, এরিয়া, ৩৫+ দিন ওভারডিউ ও সার্চসহ আপগ্রেডেড) -->
+      <!-- ৫. Sales & Billing (কাস্টমার স্টেটমেন্ট ও প্রিমিয়াম ইনভয়েস সহ) -->
       <div id="tab-sales" class="tab-content" style="display: none;">
         <div class="card">
           <h2>💰 Sales & Billing</h2>
@@ -373,7 +387,6 @@
           <div style="display:flex; flex-wrap:wrap; justify-content:space-between; align-items:center; gap:12px; margin-bottom:14px;">
             <h2 style="margin:0; border:none; padding:0;">বিক্রয় ও বাকি তালিকা (Sales Ledger)</h2>
             
-            <!-- সার্চ ও এরিয়া ফিল্টার বার -->
             <div style="display:flex; flex-wrap:wrap; gap:8px; align-items:center;">
               <input type="text" id="saleSearchInput" oninput="renderSalesTable()" placeholder="🔍 নাম বা মোবাইল দিয়ে খুঁজুন..." style="width:230px; padding:7px 11px; font-size:12.5px;">
               <select id="saleAreaFilter" onchange="renderSalesTable()" style="width:170px; padding:7px 11px; font-size:12.5px;">
@@ -407,7 +420,7 @@
         </div>
       </div>
 
-      <!-- ৬. Customer (এরিয়া ফিল্ডসহ আপগ্রেডেড) -->
+      <!-- ৬. Customer -->
       <div id="tab-customers" class="tab-content" style="display: none;">
         <div class="card">
           <h2>👥 Customer Directory</h2>
@@ -560,20 +573,112 @@
     </div>
   </div>
 
-  <!-- ইনভয়েস মোডাল -->
+  <!-- ১. প্রিমিয়াম ইনভয়েস মোডাল (Watermark, Verified Stamp ও Bibhas Munshi ডিজিটাল সই সহ) -->
   <div id="invoiceModal">
     <div class="invoice-card">
-      <div id="invoicePrintArea">
-        <div style="text-align: center; border-bottom: 2px dashed #888; padding-bottom: 12px; margin-bottom: 15px;">
-          <h2 style="margin: 0; color: #1b5e20;">Nanda Dairy Agro</h2>
-          <p style="font-size: 12px; color: #555;">Cash Memo / Invoice (ক্যাশ মেমো)</p>
+      <img src="logo.png" class="invoice-watermark" alt="Watermark" onerror="this.onerror=null; this.src='https://cdn-icons-png.flaticon.com/512/2395/2395796.png';">
+      <div class="invoice-content" id="invoicePrintArea">
+        <div style="display:flex; justify-content:space-between; align-items:center; border-bottom: 2px solid #1b5e20; padding-bottom: 12px; margin-bottom: 14px;">
+          <div style="display:flex; align-items:center; gap:10px;">
+            <img src="logo.png" style="height:48px; width:48px; border-radius:50%; object-fit:cover;" onerror="this.onerror=null; this.src='https://cdn-icons-png.flaticon.com/512/2395/2395796.png';">
+            <div>
+              <h2 style="margin: 0; color: #1b5e20; font-size:18px; border:none; padding:0;">NANDA Dairy & Agro</h2>
+              <p style="font-size: 11px; color: #555; margin:0;">Enterprise Farm Management • Cash Invoice</p>
+            </div>
+          </div>
+          <div style="text-align:right;">
+            <div style="border: 2px dashed #2e7d32; color: #2e7d32; font-weight: 800; font-size: 11px; padding: 3px 8px; border-radius: 6px; text-transform: uppercase; display: inline-block; transform: rotate(-5deg); letter-spacing: 0.5px;">
+              ✔ VERIFIED INVOICE
+            </div>
+          </div>
         </div>
-        <div id="invoiceDetails" style="font-size: 14px; line-height: 1.8;"></div>
-        <p style="text-align: center; font-size: 11px; margin-top: 25px; color: #666;">ধন্যবাদ, আবার আসবেন!</p>
+
+        <div id="invoiceDetails" style="font-size: 13px; line-height: 1.8;"></div>
+
+        <!-- ডিজিটাল সই ও ভেরিফিকেশন সেকশন -->
+        <div style="display:flex; justify-content:space-between; align-items:flex-end; margin-top: 30px; border-top: 1px dashed #bbb; padding-top: 15px;">
+          <div>
+            <span style="font-size:11px; color:#666;">Generated By: Nanda Farm ERP</span><br>
+            <span style="font-size:10px; color:#888;">System Authenticated Copy</span>
+          </div>
+          <div style="text-align: right;">
+            <div style="font-family:'Brush Script MT', cursive, sans-serif; font-size: 24px; color: #1b5e20; line-height: 1; font-weight: normal;">Bibhas Munshi</div>
+            <div style="border-top: 1.5px solid #212121; padding-top: 3px; margin-top: 4px; display: inline-block;">
+              <strong style="font-size: 11px; color: #333;">Bibhas Munshi</strong><br>
+              <span style="font-size: 10px; color: #666;">Authorized Signatory • Nanda Dairy</span>
+            </div>
+          </div>
+        </div>
+
+        <p style="text-align: center; font-size: 11px; margin-top: 18px; color: #777;">দুধ ও দুগ্ধজাত পণ্যের জন্য ধন্যবাদ, সুস্থ থাকুন!</p>
       </div>
-      <div style="display: flex; gap: 10px; margin-top: 20px;">
-        <button class="btn btn-info" style="flex: 1;" onclick="window.print()">Print</button>
-        <button class="btn btn-danger" style="flex: 1;" onclick="closeInvoice()">Close</button>
+
+      <div class="no-print" style="display: flex; gap: 10px; margin-top: 20px;">
+        <button class="btn btn-info" style="flex: 1;" onclick="window.print()">🖨️ প্রিন্ট করুন (Print)</button>
+        <button class="btn btn-danger" style="flex: 1;" onclick="closeInvoice()">বন্ধ করুন</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ২. কাস্টমার লেজার / খাতা মোডাল (Customer Statement) -->
+  <div id="ledgerModal">
+    <div class="ledger-card">
+      <div id="ledgerPrintArea">
+        <div style="display:flex; justify-content:space-between; align-items:center; border-bottom: 2px solid #1b5e20; padding-bottom: 10px; margin-bottom: 12px;">
+          <div>
+            <h2 style="margin:0; color:#1b5e20; font-size:18px; border:none; padding:0;">গ্রাহক খাতা ও বিলিং স্টেটমেন্ট (Customer Ledger)</h2>
+            <p id="ledgerCustSub" style="font-size:12px; color:#555; margin:0;"></p>
+          </div>
+          <div style="text-align:right;">
+            <span class="badge badge-success" style="font-size:11.5px;">Nanda Dairy & Agro</span>
+          </div>
+        </div>
+
+        <!-- কাস্টমার আর্থিক সামারি -->
+        <div style="display:grid; grid-template-columns:repeat(3, 1fr); gap:10px; margin-bottom:15px; text-align:center;">
+          <div style="background:#e8f5e9; padding:10px; border-radius:8px;">
+            <span style="font-size:11px; color:#555;">সর্বমোট কেনাকাটা</span>
+            <h3 id="ledgerTotalBill" style="color:#1b5e20; font-size:17px; margin-top:3px;">₹ 0</h3>
+          </div>
+          <div style="background:#e3f2fd; padding:10px; border-radius:8px;">
+            <span style="font-size:11px; color:#555;">মোট পরিশোধ</span>
+            <h3 id="ledgerTotalPaid" style="color:#0288d1; font-size:17px; margin-top:3px;">₹ 0</h3>
+          </div>
+          <div style="background:#ffebee; padding:10px; border-radius:8px;">
+            <span style="font-size:11px; color:#555;">মোট বকেয়া</span>
+            <h3 id="ledgerTotalDue" style="color:#c62828; font-size:17px; margin-top:3px;">₹ 0</h3>
+          </div>
+        </div>
+
+        <div class="table-container" style="max-height:340px; overflow-y:auto;">
+          <table style="font-size:12px; min-width:600px;">
+            <thead>
+              <tr style="background:#f1f5f2;">
+                <th>তারিখ</th>
+                <th>পণ্য ও পরিমাণ</th>
+                <th>দর (Rate)</th>
+                <th>মোট বিল</th>
+                <th>পরিশোধ</th>
+                <th>বাকি</th>
+                <th>স্ট্যাটাস</th>
+              </tr>
+            </thead>
+            <tbody id="ledgerTableBody"></tbody>
+          </table>
+        </div>
+
+        <div style="display:flex; justify-content:space-between; align-items:flex-end; margin-top:20px; border-top:1px dashed #ccc; padding-top:10px;">
+          <span style="font-size:10px; color:#777;">Nanda Dairy & Agro • Verified Statement</span>
+          <div style="text-align:right;">
+            <div style="font-family:'Brush Script MT', cursive, sans-serif; font-size: 20px; color: #1b5e20; line-height: 1;">Bibhas Munshi</div>
+            <strong style="font-size:10.5px; border-top:1px solid #333; display:inline-block; padding-top:2px;">Bibhas Munshi (Authorized)</strong>
+          </div>
+        </div>
+      </div>
+
+      <div class="no-print" style="display:flex; gap:10px; margin-top:18px;">
+        <button class="btn btn-info" style="flex:1;" onclick="window.print()">🖨️ খাতা প্রিন্ট করুন (Print Statement)</button>
+        <button class="btn btn-danger" style="flex:1;" onclick="closeLedger()">বন্ধ করুন</button>
       </div>
     </div>
   </div>
@@ -588,7 +693,6 @@
       }
     }
 
-    // কাস্টমার নাম টাইপ করলে ফোন, এলাকা ও ঠিকানা অটো-ফিল হওয়া
     function onSaleCustomerInput() {
       var val = (getEl('saleCustomer').value || '').trim().toLowerCase();
       if (!val) return;
@@ -780,7 +884,7 @@
       body.innerHTML = html;
     }
 
-    // ৫. SALES & BILLING রেন্ডার (৩৫+ দিন বকেয়া ওপরে রাখা, এরিয়া ফিল্টার ও মোবাইল নম্বরসহ)
+    // ৫. SALES & BILLING রেন্ডার (খাতা বাটন সহ)
     function renderSalesTable() {
       var body = getEl('salesTableBody');
       if (!body) return;
@@ -791,8 +895,6 @@
       var list = [];
       var tS = 0, tD = 0;
       var todayDate = new Date();
-
-      // এলাকা তালিকা রিফ্রেশ করা
       var uniqueAreas = {};
 
       for (var k in farmStore.sales) {
@@ -806,16 +908,13 @@
         var areaStr = (d.area || '').trim();
         if (areaStr) uniqueAreas[areaStr] = true;
 
-        // ৩৫+ দিন বকেয়া গণনা
         var isOverdue35 = false;
         var diffDays = 0;
         if (due > 0 && d.date) {
           var billDate = new Date(d.date);
           var diffTime = todayDate.getTime() - billDate.getTime();
           diffDays = Math.floor(diffTime / (1000 * 3600 * 24));
-          if (diffDays >= 35) {
-            isOverdue35 = true;
-          }
+          if (diffDays >= 35) isOverdue35 = true;
         }
 
         list.push({ key: k, data: d, isOverdue: isOverdue35, diffDays: diffDays });
@@ -826,7 +925,6 @@
       if (getEl('rep-sales')) getEl('rep-sales').innerText = '₹ ' + tS.toLocaleString();
       calcNet();
 
-      // এরিয়া ফিল্টার ড্রপডাউন প্রস্তুত
       var areaSelect = getEl('saleAreaFilter');
       if (areaSelect) {
         var currVal = areaSelect.value;
@@ -837,18 +935,15 @@
         areaSelect.innerHTML = optH;
       }
 
-      // ফিল্টারিং (সার্চ ও এরিয়া)
       var filtered = list.filter(function(item) {
         var d = item.data;
         var nameMatch = (d.name || '').toLowerCase().includes(searchQ);
         var phoneMatch = (d.phone || '').toLowerCase().includes(searchQ);
         var matchesSearch = !searchQ || nameMatch || phoneMatch;
-
         var matchesArea = !areaFilter || ((d.area || '').toLowerCase() === areaFilter);
         return matchesSearch && matchesArea;
       });
 
-      // সর্টিং: ৩৫+ দিন ওভারডিউ সবার ওপরে, তারপর নতুন তারিখ অনুযায়ী
       filtered.sort(function(a, b) {
         if (a.isOverdue && !b.isOverdue) return -1;
         if (!a.isOverdue && b.isOverdue) return 1;
@@ -884,7 +979,7 @@
         html += '<tr style="' + rowStyle + '">' +
           '<td>' + (d.date || '-') + '</td>' +
           '<td>' +
-            '<strong>' + (d.name || '-') + '</strong>' +
+            '<a href="javascript:void(0)" onclick="showCustomerLedger(\'' + encodeURIComponent(d.name) + '\')" style="color:var(--primary); font-weight:bold; text-decoration:underline;">' + (d.name || '-') + '</a>' +
             (d.phone ? '<br><span style="font-size:11.5px; color:#455a64;">📞 ' + d.phone + '</span>' : '') +
           '</td>' +
           '<td>' +
@@ -896,6 +991,7 @@
           '<td style="color:green; font-weight:600;">₹ ' + (d.paid || 0) + '</td>' +
           '<td>' + dueBadge + '</td>' +
           '<td>' +
+            '<button class="action-btn" style="background:#455a64; color:white;" onclick="showCustomerLedger(\'' + encodeURIComponent(d.name) + '\')">খাতা</button>' +
             '<button class="action-btn btn-info" onclick="showInvoice(\'' + k + '\')">Invoice</button>' +
             '<button class="action-btn btn-warning" onclick="editSale(\'' + k + '\')">Edit</button>' +
             '<button class="action-btn btn-danger" onclick="deleteRecord(\'sales\',\'' + k + '\')">Delete</button>' +
@@ -906,7 +1002,111 @@
       body.innerHTML = html;
     }
 
-    // ১. CATTLE এডিট ও সেভ
+    // কাস্টমার খাতা / স্টেটমেন্ট প্রদর্শনী
+    window.showCustomerLedger = function(encName) {
+      var custName = decodeURIComponent(encName).trim();
+      var custLower = custName.toLowerCase();
+      var bills = [];
+      var tBill = 0, tPaid = 0, tDue = 0;
+      var cPhone = '', cArea = '', cAddr = '';
+
+      for (var k in farmStore.sales) {
+        var s = farmStore.sales[k];
+        if ((s.name || '').trim().toLowerCase() === custLower) {
+          var tot = Number(s.total) || 0;
+          var pd = Number(s.paid) || 0;
+          var du = Number(s.due) || 0;
+          tBill += tot; tPaid += pd; tDue += du;
+          if (s.phone) cPhone = s.phone;
+          if (s.area) cArea = s.area;
+          if (s.addr) cAddr = s.addr;
+          bills.push({ key: k, data: s });
+        }
+      }
+
+      bills.sort(function(a,b) { return (b.data.date||'').localeCompare(a.data.date||''); });
+
+      getEl('ledgerCustSub').innerHTML = 'গ্রাহক: <strong>' + custName + '</strong> ' + (cPhone ? '| 📞 ' + cPhone : '') + (cArea ? ' | এরিয়া: ' + cArea : '');
+      getEl('ledgerTotalBill').innerText = '₹ ' + tBill.toLocaleString();
+      getEl('ledgerTotalPaid').innerText = '₹ ' + tPaid.toLocaleString();
+      getEl('ledgerTotalDue').innerText = '₹ ' + tDue.toLocaleString();
+
+      var tbody = getEl('ledgerTableBody');
+      if (bills.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; color:#888;">কোনো অতীত রেকর্ড পাওয়া যায়নি।</td></tr>';
+      } else {
+        var html = '';
+        bills.forEach(function(item) {
+          var d = item.data;
+          var du = Number(d.due) || 0;
+          var statusBadge = du > 0 ? '<span class="badge badge-danger">বাকি</span>' : '<span class="badge badge-success">পরিশোধ</span>';
+          html += '<tr>' +
+            '<td>' + (d.date || '-') + '</td>' +
+            '<td><strong>' + (d.item || '-') + '</strong> (' + (d.qty || 0) + ')</td>' +
+            '<td>₹ ' + (d.rate || 0) + '</td>' +
+            '<td>₹ ' + (d.total || 0) + '</td>' +
+            '<td style="color:green; font-weight:600;">₹ ' + (d.paid || 0) + '</td>' +
+            '<td style="color:red; font-weight:600;">₹ ' + du + '</td>' +
+            '<td>' + statusBadge + '</td>' +
+          '</tr>';
+        });
+        tbody.innerHTML = html;
+      }
+
+      getEl('ledgerModal').style.display = 'flex';
+    };
+
+    window.closeLedger = function() {
+      getEl('ledgerModal').style.display = 'none';
+    };
+
+    // প্রিমিয়াম ইনভয়েস পপ-আপ
+    function showInvoice(k) {
+      var d = farmStore.sales[k]; if(!d) return;
+      var dueAmt = Number(d.due) || 0;
+      var paymentStatus = dueAmt <= 0 ? 
+        '<span style="color:#2e7d32; font-weight:bold; background:#e8f5e9; padding:2px 8px; border-radius:4px;">● সম্পূর্ণ পরিশোধ (PAID)</span>' : 
+        '<span style="color:#c62828; font-weight:bold; background:#ffebee; padding:2px 8px; border-radius:4px;">● বকেয়া চালান (UNPAID/DUE)</span>';
+
+      getEl('invoiceDetails').innerHTML = 
+        '<div style="display:flex; justify-content:space-between; margin-bottom:8px;">' +
+          '<div>' +
+            '<strong>বিল প্রাপক (Customer):</strong><br>' +
+            '<span style="font-size:15px; font-weight:bold; color:#1b5e20;">' + d.name + '</span><br>' +
+            (d.phone ? '<span>মোবাইল: ' + d.phone + '</span><br>' : '') +
+            (d.area ? '<span>এলাকা: ' + d.area + '</span><br>' : '') +
+            (d.addr ? '<span>ঠিকানা: ' + d.addr + '</span>' : '') +
+          '</div>' +
+          '<div style="text-align:right;">' +
+            '<strong>চালান বিবরণ:</strong><br>' +
+            'তারিখ: ' + d.date + '<br>' +
+            'ইনভয়েস নং: #' + k.substring(1, 7).toUpperCase() + '<br>' +
+            paymentStatus +
+          '</div>' +
+        '</div>' +
+        '<table style="width:100%; min-width:auto; border-collapse:collapse; margin:14px 0; border:1px solid #ddd;">' +
+          '<thead><tr style="background:#e8f5e9; border-bottom:2px solid #c8e6c9;"><th style="padding:8px;">পণ্য (Item)</th><th style="padding:8px; text-align:center;">পরিমাণ</th><th style="padding:8px; text-align:right;">দর (Rate)</th><th style="padding:8px; text-align:right;">মোট (Total)</th></tr></thead>' +
+          '<tbody>' +
+            '<tr>' +
+              '<td style="padding:8px; border-bottom:1px solid #eee;"><strong>' + d.item + '</strong></td>' +
+              '<td style="padding:8px; text-align:center; border-bottom:1px solid #eee;">' + d.qty + '</td>' +
+              '<td style="padding:8px; text-align:right; border-bottom:1px solid #eee;">₹ ' + d.rate + '</td>' +
+              '<td style="padding:8px; text-align:right; border-bottom:1px solid #eee; font-weight:bold;">₹ ' + d.total + '</td>' +
+            '</tr>' +
+          '</tbody>' +
+        '</table>' +
+        '<div style="text-align:right; font-size:13px; line-height:1.9;">' +
+          '<div>সর্বমোট বিল: <strong>₹ ' + d.total + '</strong></div>' +
+          '<div style="color:green;">জমা / পরিশোধ: <strong>₹ ' + d.paid + '</strong></div>' +
+          '<div style="color:red; font-size:14px; border-top:1px dashed #ccc; padding-top:4px;">বর্তমান বাকি: <strong>₹ ' + d.due + '</strong></div>' +
+        '</div>';
+
+      getEl('invoiceModal').style.display = 'flex';
+    }
+
+    function closeInvoice() { getEl('invoiceModal').style.display = 'none'; }
+
+    // ১. CATTLE
     var eCatKey = null;
     function editCattle(k) {
       var d = farmStore.cattle[k]; if(!d) return; eCatKey = k;
@@ -929,7 +1129,7 @@
       cancelCattleEdit();
     }
 
-    // ২. BREEDING এডিট ও সেভ
+    // ২. BREEDING
     var eBrKey = null;
     function editBreeding(k) {
       var d = farmStore.breeding[k]; if(!d) return; eBrKey = k;
@@ -951,7 +1151,7 @@
       cancelBreedingEdit();
     }
 
-    // ৩. MILK এডিট ও সেভ
+    // ৩. MILK
     var eMlkKey = null;
     function editMilk(k) {
       var d = farmStore.milk[k]; if(!d) return; eMlkKey = k;
@@ -969,7 +1169,7 @@
       cancelMilkEdit();
     }
 
-    // ৪. SALES ক্যালকুলেশন, এডিট ও সেভ
+    // ৪. SALES
     var eSaleKey = null;
     function calcSale() {
       var q = parseFloat(getEl('saleQty').value)||0, r = parseFloat(getEl('saleRate').value)||0, t = q*r;
@@ -1007,24 +1207,8 @@
       if(db) eSaleKey ? db.ref('sales/'+eSaleKey).update(data) : db.ref('sales').push(data);
       cancelSaleEdit();
     }
-    function showInvoice(k) {
-      var d = farmStore.sales[k]; if(!d) return;
-      getEl('invoiceDetails').innerHTML = 
-        '<p><strong>Date:</strong> '+d.date+'</p>' +
-        '<p><strong>Customer:</strong> '+d.name+' '+(d.phone ? '('+d.phone+')' : '')+'</p>' +
-        (d.area ? '<p><strong>Area:</strong> '+d.area+'</p>' : '') +
-        (d.addr ? '<p><strong>Address:</strong> '+d.addr+'</p>' : '') +
-        '<hr style="margin:8px 0; border:none; border-top:1px dashed #ccc;">' +
-        '<p><strong>Product:</strong> '+d.item+' ('+d.qty+')</p>' +
-        '<p><strong>Rate:</strong> ₹'+d.rate+'</p>' +
-        '<p><strong>Total Bill:</strong> ₹'+d.total+'</p>' +
-        '<p style="color:green;"><strong>Paid:</strong> ₹'+d.paid+'</p>' +
-        '<p style="color:red;"><strong>Due:</strong> ₹'+d.due+'</p>';
-      getEl('invoiceModal').style.display = 'flex';
-    }
-    function closeInvoice() { getEl('invoiceModal').style.display = 'none'; }
 
-    // ৫. CUSTOMERS এডিট ও সেভ
+    // ৫. CUSTOMERS
     var eCustKey = null;
     function editCustomer(k) {
       var d = farmStore.customers[k]; if(!d) return; eCustKey = k;
@@ -1108,7 +1292,7 @@
       var b = (getEl('semBatch').value||'').trim(); if(!b) return alert('Batch No দিন!');
       var data = { batch:b, breed:getEl('semBreed').value, source:getEl('semSource').value, count:parseFloat(getEl('semCount').value)||0 };
       if(db) eSemKey ? db.ref('semen/'+eSemKey).update(data) : db.ref('semen').push(data);
-      cancelSemenEdit();
+      cancelSemEdit();
     }
 
     // ১০. HEALTH
@@ -1213,7 +1397,7 @@
         renderSalesTable();
       });
 
-      // ৫. Customers Listener (ডাটালিস্ট আপডেট ও কাস্টমার তালিকা রেন্ডার)
+      // ৫. Customers Listener
       db.ref('customers').on('value', function(snap) {
         farmStore.customers = {}; 
         var body = getEl('customerTableBody'); 
