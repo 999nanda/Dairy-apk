@@ -59,7 +59,6 @@
       if (getEl('appBody')) getEl('appBody').style.display = 'none';
     };
 
-    // AI তারিখ দিলে সম্ভাব্য প্রসব তারিখ (২৮০ দিন) অটো বের করা
     function autoCalcExpectedCalving() {
       var aiVal = getEl('brAiDate').value;
       if (aiVal) {
@@ -185,12 +184,12 @@
         </div>
       </div>
 
-      <!-- ২. Cattle -->
+      <!-- ২. Cattle (সিরিয়াল ও ন্যাচারাল সর্টিং সহ) -->
       <div id="tab-cattle" class="tab-content" style="display: none;">
         <div class="card">
           <h2>🐄 Cattle Register</h2>
           <div class="form-grid">
-            <div class="input-group"><label>Tag ID *</label><input type="text" id="cowTag" placeholder="NDA-C001"></div>
+            <div class="input-group"><label>Tag ID *</label><input type="text" id="cowTag" placeholder="NDA-001"></div>
             <div class="input-group"><label>Breed</label><input type="text" id="cowBreed" placeholder="Jersey / HF"></div>
             <div class="input-group"><label>Breed Type</label><input type="text" id="cowBreedType" placeholder="Jersey Cross"></div>
             <div class="input-group"><label>Generation</label><select id="cowGeneration"><option value="F1">F1</option><option value="F2">F2</option><option value="F3">F3</option><option value="F4+">F4+</option><option value="Pure/100%">Pure/100%</option></select></div>
@@ -212,19 +211,19 @@
           <h2>সকল গরুর তালিকা (Cattle List)</h2>
           <div class="table-container">
             <table>
-              <thead><tr><th>Tag</th><th>Breed</th><th>Type</th><th>Gen</th><th>DOB</th><th>Weight</th><th>Lact</th><th>Status</th><th>Milk/day</th><th>Sire/Semen</th><th>Calving</th><th>Action</th></tr></thead>
+              <thead><tr><th>#</th><th>Tag</th><th>Breed</th><th>Type</th><th>Gen</th><th>DOB</th><th>Weight</th><th>Lact</th><th>Status</th><th>Milk/day</th><th>Sire/Semen</th><th>Calving</th><th>Action</th></tr></thead>
               <tbody id="cattleTableBody"></tbody>
             </table>
           </div>
         </div>
       </div>
 
-      <!-- ৩. Breeding (ভিডিও অনুযায়ী সম্পূর্ণ আপগ্রেডেড) -->
+      <!-- ৩. Breeding -->
       <div id="tab-breeding" class="tab-content" style="display: none;">
         <div class="card">
           <h2>🧬 AI • Pregnancy • Calving • Pedigree</h2>
           <div class="form-grid">
-            <div class="input-group"><label>Cattle ID *</label><input type="text" id="brCowTag" placeholder="যেমন: NDA-C001"></div>
+            <div class="input-group"><label>Cattle ID *</label><input type="text" id="brCowTag" placeholder="যেমন: NDA-001"></div>
             <div class="input-group"><label>AI Date *</label><input type="date" id="brAiDate" onchange="autoCalcExpectedCalving()"></div>
             <div class="input-group"><label>Semen/Bull</label><input type="text" id="brSemenId" placeholder="ষাঁড় বা সিমেন আইডি"></div>
             <div class="input-group"><label>Company</label><input type="text" id="brCompany" placeholder="কোম্পানির নাম (যেমন: ABS / BRAC)"></div>
@@ -272,7 +271,6 @@
           <p id="breedingNoData" style="text-align: center; color: #777; font-size: 13px; margin-top: 15px; display: none;">কোনো record নেই।</p>
         </div>
 
-        <!-- Generation / Breed Summary (ভিডিওর মতো স্বয়ংক্রিয় সামারি) -->
         <div class="card" style="background: #fafcfb;">
           <h2 style="font-size: 15px; border-bottom: none; margin-bottom: 10px;">Generation / Breed Summary</h2>
           <div id="breedSummaryBadges" style="display: flex; flex-wrap: wrap; gap: 8px;">
@@ -539,7 +537,7 @@
       cancelCattleEdit();
     }
 
-    // ২. BREEDING (আপগ্রেডেড)
+    // ২. BREEDING
     var eBrKey = null;
     function editBreeding(k) {
       var d = farmStore.breeding[k]; if(!d) return; eBrKey = k;
@@ -729,7 +727,6 @@
       });
     }
 
-    // ব্রিড ও জেনারেশন সামারি কার্ড রেন্ডার
     function renderBreedSummary() {
       var summaryEl = getEl('breedSummaryBadges');
       if (!summaryEl) return;
@@ -758,17 +755,53 @@
       if (!db) return;
       var today = new Date().toISOString().split('T')[0];
 
+      // ১. Cattle Listener (স্বয়ংক্রিয় ন্যাচারাল সর্টিং ও সিরিয়াল নম্বর সহ)
       db.ref('cattle').on('value', function(snap) {
-        farmStore.cattle = {}; var body = getEl('cattleTableBody'); if(body) body.innerHTML = ''; var count = 0;
+        farmStore.cattle = {}; 
+        var list = [];
         snap.forEach(function(c) {
-          count++; var d = c.val(), k = c.key; farmStore.cattle[k] = d;
-          if(body) body.innerHTML += '<tr><td><strong>'+(d.tag||'-')+'</strong></td><td>'+(d.breed||'-')+'</td><td>'+(d.breedType||'-')+'</td><td>'+(d.generation||'-')+'</td><td>'+(d.dob||'-')+'</td><td>'+(d.weight||0)+' kg</td><td>'+(d.lactation||0)+'</td><td><span class="badge badge-success">'+(d.status||'-')+'</span></td><td>'+(d.milkDay||0)+' L</td><td>'+(d.sire||'-')+'</td><td>'+(d.expCalving||'-')+'</td><td><button class="action-btn btn-info" onclick="editCattle(\''+k+'\')">Edit</button><button class="action-btn btn-danger" onclick="deleteRecord(\'cattle\',\''+k+'\')">Delete</button></td></tr>';
+          var d = c.val(), k = c.key; 
+          farmStore.cattle[k] = d;
+          list.push({ key: k, data: d });
         });
-        if(getEl('dash-cow-count')) getEl('dash-cow-count').innerText = count;
+
+        // ট্যাগ অনুযায়ী ন্যাচারাল নাম্বার সর্টিং (NDA-001, NDA-002, NDA-003...)
+        list.sort(function(a, b) {
+          var tagA = (a.data.tag || '').toString();
+          var tagB = (b.data.tag || '').toString();
+          return tagA.localeCompare(tagB, undefined, { numeric: true, sensitivity: 'base' });
+        });
+
+        var body = getEl('cattleTableBody'); 
+        if(body) {
+          body.innerHTML = '';
+          list.forEach(function(item, index) {
+            var d = item.data, k = item.key;
+            body.innerHTML += '<tr>' +
+              '<td><strong>' + (index + 1) + '</strong></td>' +
+              '<td><strong>' + (d.tag || '-') + '</strong></td>' +
+              '<td>' + (d.breed || '-') + '</td>' +
+              '<td>' + (d.breedType || '-') + '</td>' +
+              '<td>' + (d.generation || '-') + '</td>' +
+              '<td>' + (d.dob || '-') + '</td>' +
+              '<td>' + (d.weight || 0) + ' kg</td>' +
+              '<td>' + (d.lactation || 0) + '</td>' +
+              '<td><span class="badge badge-success">' + (d.status || '-') + '</span></td>' +
+              '<td>' + (d.milkDay || 0) + ' L</td>' +
+              '<td>' + (d.sire || '-') + '</td>' +
+              '<td>' + (d.expCalving || '-') + '</td>' +
+              '<td>' +
+                '<button class="action-btn btn-info" onclick="editCattle(\'' + k + '\')">Edit</button>' +
+                '<button class="action-btn btn-danger" onclick="deleteRecord(\'cattle\',\'' + k + '\')">Delete</button>' +
+              '</td>' +
+            '</tr>';
+          });
+        }
+        if(getEl('dash-cow-count')) getEl('dash-cow-count').innerText = list.length;
         renderBreedSummary();
       });
 
-      // ব্রিডিং তালিকা সিঙ্ক
+      // ২. Breeding Listener
       db.ref('breeding').on('value', function(snap) {
         farmStore.breeding = {}; var body = getEl('breedingTableBody'); if(body) body.innerHTML = ''; var count = 0;
         snap.forEach(function(c) {
@@ -795,6 +828,7 @@
         if(getEl('breedingNoData')) getEl('breedingNoData').style.display = count === 0 ? 'block' : 'none';
       });
 
+      // ৩. Milk Listener
       db.ref('milk').on('value', function(snap) {
         farmStore.milk = {}; var body = getEl('milkTableBody'); if(body) body.innerHTML = ''; var tM=0, allM=0;
         snap.forEach(function(c) {
@@ -805,6 +839,7 @@
         if(getEl('rep-milk')) getEl('rep-milk').innerText = allM.toFixed(1);
       });
 
+      // ৪. Sales Listener
       db.ref('sales').on('value', function(snap) {
         farmStore.sales = {}; var body = getEl('salesTableBody'); if(body) body.innerHTML = ''; var tS=0, tD=0;
         snap.forEach(function(c) {
@@ -817,6 +852,7 @@
         calcNet();
       });
 
+      // ৫. Customers Listener
       db.ref('customers').on('value', function(snap) {
         farmStore.customers = {}; var body = getEl('customerTableBody'); if(body) body.innerHTML = '';
         snap.forEach(function(c) {
@@ -825,6 +861,7 @@
         });
       });
 
+      // ৬. Orders Listener
       db.ref('orders').on('value', function(snap) {
         farmStore.orders = {}; var body = getEl('ordersTableBody'); if(body) body.innerHTML = ''; var pend=0;
         snap.forEach(function(c) {
@@ -834,6 +871,7 @@
         if(getEl('dash-pending-orders')) getEl('dash-pending-orders').innerText = pend;
       });
 
+      // ৭. Expenses Listener
       db.ref('expenses').on('value', function(snap) {
         farmStore.expenses = {}; var body = getEl('expenseTableBody'); if(body) body.innerHTML = ''; var tE=0;
         snap.forEach(function(c) {
@@ -845,6 +883,7 @@
         calcNet();
       });
 
+      // ৮. Stock Listener
       db.ref('stock').on('value', function(snap) {
         farmStore.stock = {}; var body = getEl('stockTableBody'); if(body) body.innerHTML = '';
         snap.forEach(function(c) {
@@ -853,6 +892,7 @@
         });
       });
 
+      // ৯. Semen Listener
       db.ref('semen').on('value', function(snap) {
         farmStore.semen = {}; var body = getEl('semenTableBody'); if(body) body.innerHTML = '';
         snap.forEach(function(c) {
@@ -861,6 +901,7 @@
         });
       });
 
+      // ১০. Health Listener
       db.ref('health').on('value', function(snap) {
         farmStore.health = {}; var body = getEl('healthTableBody'); if(body) body.innerHTML = '';
         snap.forEach(function(c) {
