@@ -58,6 +58,16 @@
       if (getEl('loginScreen')) getEl('loginScreen').style.display = 'flex';
       if (getEl('appBody')) getEl('appBody').style.display = 'none';
     };
+
+    // AI তারিখ দিলে সম্ভাব্য প্রসব তারিখ (২৮০ দিন) অটো বের করা
+    function autoCalcExpectedCalving() {
+      var aiVal = getEl('brAiDate').value;
+      if (aiVal) {
+        var d = new Date(aiVal);
+        d.setDate(d.getDate() + 280);
+        getEl('brExpCalvingDate').value = d.toISOString().split('T')[0];
+      }
+    }
   </script>
 
   <style>
@@ -110,7 +120,7 @@
 </head>
 <body>
 
-  <!-- লগইন স্ক্রিন -->
+  <!-- ১. লগইন স্ক্রিন -->
   <div id="loginScreen">
     <div class="login-box">
       <img src="logo.png" alt="Nanda Dairy Agro" onerror="this.onerror=null; this.src='https://cdn-icons-png.flaticon.com/512/2395/2395796.png';">
@@ -129,7 +139,7 @@
     </div>
   </div>
 
-  <!-- মূল অ্যাপ -->
+  <!-- ২. মূল অ্যাপ্লিকেশন -->
   <div id="appBody" style="display: none;">
     <header>
       <div class="header-title">
@@ -209,26 +219,64 @@
         </div>
       </div>
 
-      <!-- ৩. Breeding -->
+      <!-- ৩. Breeding (ভিডিও অনুযায়ী সম্পূর্ণ আপগ্রেডেড) -->
       <div id="tab-breeding" class="tab-content" style="display: none;">
         <div class="card">
-          <h2>🧬 Breeding Register</h2>
+          <h2>🧬 AI • Pregnancy • Calving • Pedigree</h2>
           <div class="form-grid">
-            <div class="input-group"><label>Tag ID (গরুর ট্যাগ) *</label><input type="text" id="brCowTag" placeholder="Tag ID দিন"></div>
-            <div class="input-group"><label>AI Date (ইনসেমিনেশন তারিখ) *</label><input type="date" id="brAiDate"></div>
-            <div class="input-group"><label>Semen / Bull ID</label><input type="text" id="brSemenId" placeholder="HF-802"></div>
-            <div class="input-group"><label>Status (স্ট্যাটাস)</label><select id="brStatus"><option value="Pending">Pending (চেক বাকি)</option><option value="Pregnant">Pregnant (গর্ভবতী)</option><option value="Failed">Failed (ব্যর্থ)</option><option value="Calved">Calved (প্রসব সম্পন্ন)</option></select></div>
-            <div class="input-group"><label>Expected Calving (সম্ভাব্য প্রসব)</label><input type="date" id="brCalvingDate"></div>
+            <div class="input-group"><label>Cattle ID *</label><input type="text" id="brCowTag" placeholder="যেমন: NDA-C001"></div>
+            <div class="input-group"><label>AI Date *</label><input type="date" id="brAiDate" onchange="autoCalcExpectedCalving()"></div>
+            <div class="input-group"><label>Semen/Bull</label><input type="text" id="brSemenId" placeholder="ষাঁড় বা সিমেন আইডি"></div>
+            <div class="input-group"><label>Company</label><input type="text" id="brCompany" placeholder="কোম্পানির নাম (যেমন: ABS / BRAC)"></div>
+            <div class="input-group"><label>AI Cost ₹</label><input type="number" id="brAiCost" placeholder="এআই খরচ (₹)"></div>
+            <div class="input-group"><label>Pregnancy Test (তারিখ)</label><input type="date" id="brPdDate"></div>
+            <div class="input-group">
+              <label>Result</label>
+              <select id="brStatus">
+                <option value="Pending">Pending</option>
+                <option value="Pregnant">Pregnant</option>
+                <option value="Failed">Failed</option>
+                <option value="Calved">Calved</option>
+              </select>
+            </div>
+            <div class="input-group"><label>Expected Calving (সম্ভাব্য প্রসব)</label><input type="date" id="brExpCalvingDate"></div>
+            <div class="input-group"><label>Actual Calving (প্রকৃত প্রসব)</label><input type="date" id="brActCalvingDate"></div>
           </div>
           <div style="display:flex; gap:10px;">
-            <button class="btn" id="brSubmitBtn" onclick="saveBreeding()">Save Breeding</button>
+            <button class="btn" id="brSubmitBtn" onclick="saveBreeding()">Save Breeding Record</button>
             <button class="btn btn-warning" id="brCancelBtn" style="display:none;" onclick="cancelBreedingEdit()">Cancel (বাতিল)</button>
           </div>
         </div>
+
         <div class="card">
-          <h2>প্রজনন রেকর্ড তালিকা (Breeding List)</h2>
+          <h2>প্রজনন রেকর্ড তালিকা (Breeding Ledger)</h2>
           <div class="table-container">
-            <table><thead><tr><th>Tag ID</th><th>AI Date</th><th>Semen ID</th><th>Status</th><th>Expected Calving</th><th>Action</th></tr></thead><tbody id="breedingTableBody"></tbody></table>
+            <table>
+              <thead>
+                <tr>
+                  <th>Cattle ID</th>
+                  <th>AI Date</th>
+                  <th>Semen/Bull</th>
+                  <th>Company</th>
+                  <th>AI Cost</th>
+                  <th>Pregnancy Test</th>
+                  <th>Result</th>
+                  <th>Exp. Calving</th>
+                  <th>Actual Calving</th>
+                  <th>Action</th>
+                </tr>
+              </thead>
+              <tbody id="breedingTableBody"></tbody>
+            </table>
+          </div>
+          <p id="breedingNoData" style="text-align: center; color: #777; font-size: 13px; margin-top: 15px; display: none;">কোনো record নেই।</p>
+        </div>
+
+        <!-- Generation / Breed Summary (ভিডিওর মতো স্বয়ংক্রিয় সামারি) -->
+        <div class="card" style="background: #fafcfb;">
+          <h2 style="font-size: 15px; border-bottom: none; margin-bottom: 10px;">Generation / Breed Summary</h2>
+          <div id="breedSummaryBadges" style="display: flex; flex-wrap: wrap; gap: 8px;">
+            <span style="font-size:12px; color:#777;">লোড হচ্ছে...</span>
           </div>
         </div>
       </div>
@@ -491,22 +539,46 @@
       cancelCattleEdit();
     }
 
-    // ২. BREEDING
+    // ২. BREEDING (আপগ্রেডেড)
     var eBrKey = null;
     function editBreeding(k) {
       var d = farmStore.breeding[k]; if(!d) return; eBrKey = k;
-      getEl('brCowTag').value = d.tag||''; getEl('brAiDate').value = d.aiDate||''; getEl('brSemenId').value = d.semenId||'';
-      getEl('brStatus').value = d.status||'Pending'; getEl('brCalvingDate').value = d.calvingDate||'';
-      getEl('brSubmitBtn').innerText = 'Update Breeding'; getEl('brCancelBtn').style.display = 'inline-flex';
+      getEl('brCowTag').value = d.tag||''; 
+      getEl('brAiDate').value = d.aiDate||''; 
+      getEl('brSemenId').value = d.semenId||'';
+      getEl('brCompany').value = d.company||'';
+      getEl('brAiCost').value = d.aiCost||'';
+      getEl('brPdDate').value = d.pdDate||'';
+      getEl('brStatus').value = d.status||'Pending'; 
+      getEl('brExpCalvingDate').value = d.expCalvingDate||d.calvingDate||'';
+      getEl('brActCalvingDate').value = d.actCalvingDate||'';
+      getEl('brSubmitBtn').innerText = 'Update Breeding'; 
+      getEl('brCancelBtn').style.display = 'inline-flex';
       getEl('brCowTag').scrollIntoView({ behavior: 'smooth' });
     }
     function cancelBreedingEdit() {
-      eBrKey = null; getEl('brCowTag').value = ''; getEl('brSemenId').value = ''; getEl('brCalvingDate').value = '';
-      getEl('brSubmitBtn').innerText = 'Save Breeding'; getEl('brCancelBtn').style.display = 'none';
+      eBrKey = null; 
+      ['brCowTag','brSemenId','brCompany','brAiCost','brPdDate','brExpCalvingDate','brActCalvingDate'].forEach(function(id) {
+        if (getEl(id)) getEl(id).value = '';
+      });
+      getEl('brStatus').value = 'Pending';
+      getEl('brSubmitBtn').innerText = 'Save Breeding Record'; 
+      getEl('brCancelBtn').style.display = 'none';
     }
     function saveBreeding() {
-      var tag = (getEl('brCowTag').value||'').trim(); if(!tag) return alert('Tag ID দিন!');
-      var data = { tag:tag, aiDate:getEl('brAiDate').value, semenId:getEl('brSemenId').value, status:getEl('brStatus').value, calvingDate:getEl('brCalvingDate').value };
+      var tag = (getEl('brCowTag').value||'').trim(); 
+      if(!tag) return alert('Cattle ID দিন!');
+      var data = { 
+        tag: tag, 
+        aiDate: getEl('brAiDate').value, 
+        semenId: getEl('brSemenId').value, 
+        company: getEl('brCompany').value,
+        aiCost: parseFloat(getEl('brAiCost').value)||0,
+        pdDate: getEl('brPdDate').value,
+        status: getEl('brStatus').value, 
+        expCalvingDate: getEl('brExpCalvingDate').value,
+        actCalvingDate: getEl('brActCalvingDate').value
+      };
       if(db) eBrKey ? db.ref('breeding/'+eBrKey).update(data) : db.ref('breeding').push(data);
       cancelBreedingEdit();
     }
@@ -657,6 +729,30 @@
       });
     }
 
+    // ব্রিড ও জেনারেশন সামারি কার্ড রেন্ডার
+    function renderBreedSummary() {
+      var summaryEl = getEl('breedSummaryBadges');
+      if (!summaryEl) return;
+      var counts = {};
+      for (var k in farmStore.cattle) {
+        var c = farmStore.cattle[k];
+        var breed = (c.breed || 'Jersey').trim();
+        var gen = (c.generation || 'F1').trim();
+        var key = breed + ' : ' + gen;
+        counts[key] = (counts[key] || 0) + 1;
+      }
+      var keys = Object.keys(counts);
+      if (keys.length === 0) {
+        summaryEl.innerHTML = '<span style="font-size:12px; color:#777;">কোনো ক্যাটল রেকর্ড যুক্ত করা হয়নি।</span>';
+        return;
+      }
+      var html = '';
+      keys.forEach(function(k) {
+        html += '<span style="background:#e8f5e9; color:#1b5e20; border:1px solid #c8e6c9; padding:6px 14px; border-radius:20px; font-size:12px; font-weight:700;">' + k + ' : ' + counts[k] + '</span>';
+      });
+      summaryEl.innerHTML = html;
+    }
+
     // রিয়েলটাইম সিঙ্ক
     window.listenAllData = function() {
       if (!db) return;
@@ -669,14 +765,34 @@
           if(body) body.innerHTML += '<tr><td><strong>'+(d.tag||'-')+'</strong></td><td>'+(d.breed||'-')+'</td><td>'+(d.breedType||'-')+'</td><td>'+(d.generation||'-')+'</td><td>'+(d.dob||'-')+'</td><td>'+(d.weight||0)+' kg</td><td>'+(d.lactation||0)+'</td><td><span class="badge badge-success">'+(d.status||'-')+'</span></td><td>'+(d.milkDay||0)+' L</td><td>'+(d.sire||'-')+'</td><td>'+(d.expCalving||'-')+'</td><td><button class="action-btn btn-info" onclick="editCattle(\''+k+'\')">Edit</button><button class="action-btn btn-danger" onclick="deleteRecord(\'cattle\',\''+k+'\')">Delete</button></td></tr>';
         });
         if(getEl('dash-cow-count')) getEl('dash-cow-count').innerText = count;
+        renderBreedSummary();
       });
 
+      // ব্রিডিং তালিকা সিঙ্ক
       db.ref('breeding').on('value', function(snap) {
-        farmStore.breeding = {}; var body = getEl('breedingTableBody'); if(body) body.innerHTML = '';
+        farmStore.breeding = {}; var body = getEl('breedingTableBody'); if(body) body.innerHTML = ''; var count = 0;
         snap.forEach(function(c) {
-          var d = c.val(), k = c.key; farmStore.breeding[k] = d;
-          if(body) body.innerHTML += '<tr><td><strong>'+d.tag+'</strong></td><td>'+d.aiDate+'</td><td>'+(d.semenId||'-')+'</td><td><span class="badge badge-warning">'+d.status+'</span></td><td>'+(d.calvingDate||'-')+'</td><td><button class="action-btn btn-info" onclick="editBreeding(\''+k+'\')">Edit</button><button class="action-btn btn-danger" onclick="deleteRecord(\'breeding\',\''+k+'\')">Delete</button></td></tr>';
+          count++; var d = c.val(), k = c.key; farmStore.breeding[k] = d;
+          var badgeClass = d.status === 'Pregnant' ? 'badge-success' : (d.status === 'Failed' ? 'badge-danger' : 'badge-warning');
+          if(body) {
+            body.innerHTML += '<tr>' +
+              '<td><strong>' + (d.tag||'-') + '</strong></td>' +
+              '<td>' + (d.aiDate||'-') + '</td>' +
+              '<td>' + (d.semenId||'-') + '</td>' +
+              '<td>' + (d.company||'-') + '</td>' +
+              '<td>₹ ' + (d.aiCost||0) + '</td>' +
+              '<td>' + (d.pdDate||'-') + '</td>' +
+              '<td><span class="badge ' + badgeClass + '">' + (d.status||'Pending') + '</span></td>' +
+              '<td>' + (d.expCalvingDate||d.calvingDate||'-') + '</td>' +
+              '<td>' + (d.actCalvingDate||'-') + '</td>' +
+              '<td>' +
+                '<button class="action-btn btn-info" onclick="editBreeding(\''+k+'\')">Edit</button>' +
+                '<button class="action-btn btn-danger" onclick="deleteRecord(\'breeding\',\''+k+'\')">Delete</button>' +
+              '</td>' +
+            '</tr>';
+          }
         });
+        if(getEl('breedingNoData')) getEl('breedingNoData').style.display = count === 0 ? 'block' : 'none';
       });
 
       db.ref('milk').on('value', function(snap) {
