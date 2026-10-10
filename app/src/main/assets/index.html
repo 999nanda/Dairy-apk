@@ -119,6 +119,9 @@
 </head>
 <body>
 
+  <!-- গরু ট্যাগ অটো-সাজেশনের জন্য কেন্দ্রীয় ডেটালিস্ট -->
+  <datalist id="cattleTagList"></datalist>
+
   <!-- ১. লগইন স্ক্রিন -->
   <div id="loginScreen">
     <div class="login-box">
@@ -184,7 +187,7 @@
         </div>
       </div>
 
-      <!-- ২. Cattle (সিরিয়াল ও ন্যাচারাল সর্টিং সহ) -->
+      <!-- ২. Cattle -->
       <div id="tab-cattle" class="tab-content" style="display: none;">
         <div class="card">
           <h2>🐄 Cattle Register</h2>
@@ -218,12 +221,12 @@
         </div>
       </div>
 
-      <!-- ৩. Breeding -->
+      <!-- ৩. Breeding (অটো সাজেস্ট Tag ID সহ) -->
       <div id="tab-breeding" class="tab-content" style="display: none;">
         <div class="card">
           <h2>🧬 AI • Pregnancy • Calving • Pedigree</h2>
           <div class="form-grid">
-            <div class="input-group"><label>Cattle ID *</label><input type="text" id="brCowTag" placeholder="যেমন: NDA-001"></div>
+            <div class="input-group"><label>Cattle ID *</label><input type="text" id="brCowTag" list="cattleTagList" placeholder="Tag সিলেক্ট বা টাইপ করুন"></div>
             <div class="input-group"><label>AI Date *</label><input type="date" id="brAiDate" onchange="autoCalcExpectedCalving()"></div>
             <div class="input-group"><label>Semen/Bull</label><input type="text" id="brSemenId" placeholder="ষাঁড় বা সিমেন আইডি"></div>
             <div class="input-group"><label>Company</label><input type="text" id="brCompany" placeholder="কোম্পানির নাম (যেমন: ABS / BRAC)"></div>
@@ -279,13 +282,13 @@
         </div>
       </div>
 
-      <!-- ৪. Milk -->
+      <!-- ৪. Milk (অটো সাজেস্ট Tag ID সহ) -->
       <div id="tab-milk" class="tab-content" style="display: none;">
         <div class="card">
           <h2>🥛 Milk Production Entry</h2>
           <div class="form-grid">
             <div class="input-group"><label>Date (তারিখ) *</label><input type="date" id="milkDate"></div>
-            <div class="input-group"><label>Tag ID (গরু আইডি)</label><input type="text" id="milkCowTag" placeholder="Tag ID দিন"></div>
+            <div class="input-group"><label>Tag ID (গরু আইডি)</label><input type="text" id="milkCowTag" list="cattleTagList" placeholder="Tag সিলেক্ট বা টাইপ করুন"></div>
             <div class="input-group"><label>Session (সেশন)</label><select id="milkSession"><option value="Morning">Morning (সকাল)</option><option value="Evening">Evening (বিকাল)</option><option value="Noon">Noon (দুপুর)</option></select></div>
             <div class="input-group"><label>Quantity Liters (দুধের পরিমাণ L) *</label><input type="number" id="milkLiters" step="0.1" placeholder="০.০"></div>
           </div>
@@ -431,13 +434,13 @@
         </div>
       </div>
 
-      <!-- ১১. Health -->
+      <!-- ১১. Health (অটো সাজেস্ট Tag ID সহ) -->
       <div id="tab-health" class="tab-content" style="display: none;">
         <div class="card">
           <h2>🩺 Health & Vaccination Register</h2>
           <div class="form-grid">
             <div class="input-group"><label>Date (তারিখ) *</label><input type="date" id="hlthDate"></div>
-            <div class="input-group"><label>Tag ID (গরুর ট্যাগ) *</label><input type="text" id="hlthCowTag" placeholder="Tag ID দিন"></div>
+            <div class="input-group"><label>Tag ID (গরুর ট্যাগ) *</label><input type="text" id="hlthCowTag" list="cattleTagList" placeholder="Tag সিলেক্ট বা টাইপ করুন"></div>
             <div class="input-group"><label>Treatment Type</label><select id="hlthType"><option value="Vaccination">Vaccination (টিকা - FMD/Anthrax)</option><option value="Deworming">Deworming (কৃমিনাশক)</option><option value="General Treatment">General Treatment (সাধারণ চিকিৎসা)</option><option value="Doctor Checkup">Doctor Checkup (ডাক্তারি পরীক্ষা)</option></select></div>
             <div class="input-group"><label>Description / Medicine</label><input type="text" id="hlthDesc" placeholder="ওষুধের নাম / বিবরণ"></div>
             <div class="input-group"><label>Next Dose Date (পরবর্তী তারিখ)</label><input type="date" id="hlthNextDate"></div>
@@ -650,7 +653,7 @@
     }
     function cancelOrderEdit() { eOrdKey = null; getEl('orderCustomer').value = ''; getEl('orderItems').value = ''; getEl('orderSubmitBtn').innerText = 'Save Order'; getEl('orderCancelBtn').style.display = 'none'; }
     function saveOrder() {
-      var cust = (getEl('orderCustomer').value||'').trim(); if(!cust) return alert('Customer Name দিন!');
+      var cust = (getEl('orderCustomer').value||'').trim(); if(!cmd=cust) return alert('Customer Name দিন!');
       var data = { date:getEl('orderDate').value, customer:cust, items:getEl('orderItems').value, status:getEl('orderStatus').value };
       if(db) eOrdKey ? db.ref('orders/'+eOrdKey).update(data) : db.ref('orders').push(data);
       cancelOrderEdit();
@@ -755,7 +758,7 @@
       if (!db) return;
       var today = new Date().toISOString().split('T')[0];
 
-      // ১. Cattle Listener (স্বয়ংক্রিয় ন্যাচারাল সর্টিং ও সিরিয়াল নম্বর সহ)
+      // ১. Cattle Listener (স্বয়ংক্রিয় সর্টিং ও অটো-সাজেস্ট ড্রপডাউন সহ)
       db.ref('cattle').on('value', function(snap) {
         farmStore.cattle = {}; 
         var list = [];
@@ -765,12 +768,26 @@
           list.push({ key: k, data: d });
         });
 
-        // ট্যাগ অনুযায়ী ন্যাচারাল নাম্বার সর্টিং (NDA-001, NDA-002, NDA-003...)
+        // ট্যাগ অনুযায়ী ন্যাচারাল নাম্বার সর্টিং
         list.sort(function(a, b) {
           var tagA = (a.data.tag || '').toString();
           var tagB = (b.data.tag || '').toString();
           return tagA.localeCompare(tagB, undefined, { numeric: true, sensitivity: 'base' });
         });
+
+        // মিল্ক, ব্রিডিং ও হেলথ ফিল্ডে অটো-সাজেশন দেওয়ার জন্য datalist তৈরি
+        var dl = getEl('cattleTagList');
+        if (dl) {
+          var optHtml = '';
+          list.forEach(function(item) {
+            var t = (item.data.tag || '').trim();
+            var b = (item.data.breed || '').trim();
+            if (t) {
+              optHtml += '<option value="' + t + '">' + (b ? t + ' (' + b + ')' : t) + '</option>';
+            }
+          });
+          dl.innerHTML = optHtml;
+        }
 
         var body = getEl('cattleTableBody'); 
         if(body) {
