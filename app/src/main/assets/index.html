@@ -14,11 +14,6 @@
   <script>
     function getEl(id) { return document.getElementById(id); }
 
-    try {
-      localStorage.clear();
-      sessionStorage.clear();
-    } catch(e) {}
-
     var firebaseConfig = {
       apiKey: "AIzaSyAtmDkYLV6rh4jfJT2OPJZ5_R4c99S8-t4",
       authDomain: "nanda-dairy-agro-b5888.firebaseapp.com",
@@ -47,11 +42,13 @@
       }
     };
 
+    // স্থায়ী লগইন হ্যান্ডলার
     window.doLogin = function() {
       var u = (getEl('loginId') ? getEl('loginId').value : '').trim().toLowerCase();
       var p = (getEl('loginPass') ? getEl('loginPass').value : '').trim();
       
       if (u === 'nanda' && p === '1234') {
+        localStorage.setItem('nanda_auth_status', 'logged_in');
         getEl('loginScreen').style.display = 'none';
         getEl('appBody').style.display = 'block';
         if (typeof window.listenAllData === 'function') window.listenAllData();
@@ -60,15 +57,26 @@
       }
     };
 
-    window.doLogout = function() { location.reload(); };
+    window.doLogout = function() {
+      localStorage.removeItem('nanda_auth_status');
+      location.reload();
+    };
 
     window.onload = function() {
       var today = new Date().toISOString().split('T')[0];
       ['milkDate','saleDate','orderDate','expDate','brAiDate','hlthDate'].forEach(function(id) {
         if (getEl(id)) getEl(id).value = today;
       });
-      if (getEl('loginScreen')) getEl('loginScreen').style.display = 'flex';
-      if (getEl('appBody')) getEl('appBody').style.display = 'none';
+
+      // পেজ রিলোড করলেও লগইন বহাল রাখার যুক্তি
+      if (localStorage.getItem('nanda_auth_status') === 'logged_in') {
+        if (getEl('loginScreen')) getEl('loginScreen').style.display = 'none';
+        if (getEl('appBody')) getEl('appBody').style.display = 'block';
+        if (typeof window.listenAllData === 'function') window.listenAllData();
+      } else {
+        if (getEl('loginScreen')) getEl('loginScreen').style.display = 'flex';
+        if (getEl('appBody')) getEl('appBody').style.display = 'none';
+      }
     };
 
     function autoCalcExpectedCalving() {
@@ -199,7 +207,7 @@
         </div>
       </div>
 
-      <!-- ২. Cattle (অটো মিল্ক ও দিন ট্র্যাকার সহ) -->
+      <!-- ২. Cattle -->
       <div id="tab-cattle" class="tab-content" style="display: none;">
         <div class="card">
           <h2>🐄 Cattle Register</h2>
@@ -294,7 +302,7 @@
         </div>
       </div>
 
-      <!-- ৪. Milk -->
+      <!-- ৪. Milk (তারিখ অনুযায়ী গ্রুপ ও কলাপ্সিবল ভিউ) -->
       <div id="tab-milk" class="tab-content" style="display: none;">
         <div class="card">
           <h2>🥛 Milk Production Entry</h2>
@@ -309,9 +317,25 @@
             <button class="btn btn-warning" id="milkCancelBtn" style="display:none;" onclick="cancelMilkEdit()">Cancel (বাতিল)</button>
           </div>
         </div>
+
         <div class="card">
-          <h2>দুধ উৎপাদন তালিকা (Milk Production List)</h2>
-          <div class="table-container"><table><thead><tr><th>Date</th><th>Tag ID</th><th>Session</th><th>Quantity (L)</th><th>Action</th></tr></thead><tbody id="milkTableBody"></tbody></table></div>
+          <h2>দুধ উৎপাদন খাতা (দৈনিক সারসংক্ষেপ)</h2>
+          <p style="font-size:12px; color:#666; margin-bottom:12px;">💡 যে-কোনো তারিখের লাইনে ক্লিক করলে সেই দিনে কোন কোন গরু কত দুধ দিয়েছে তার বিস্তারিত তালিকা খুলে যাবে।</p>
+          <div class="table-container">
+            <table>
+              <thead>
+                <tr>
+                  <th>তারিখ (Date)</th>
+                  <th>মোট দুধ (Total Milk)</th>
+                  <th>গাভীর সংখ্যা (Cows Milked)</th>
+                  <th>মোট সেশন (Entries)</th>
+                  <th>বিস্তারিত (Action)</th>
+                </tr>
+              </thead>
+              <tbody id="milkGroupTableBody"></tbody>
+            </table>
+          </div>
+          <p id="milkNoData" style="text-align: center; color: #777; font-size: 13px; margin-top: 15px; display: none;">কোনো দুধের রেকর্ড পাওয়া যায়নি।</p>
         </div>
       </div>
 
@@ -521,7 +545,7 @@
       }
     }
 
-    // প্রতি গরুর মোট দুধ ও মোট দিনের হিসাব বের করার স্বয়ংক্রিয় ইঞ্জিন
+    // প্রতি গরুর মোট দুধ ও মোট দিনের হিসাব
     function getMilkStatsByTag() {
       var stats = {};
       for (var k in farmStore.milk) {
@@ -532,9 +556,7 @@
           stats[tagKey] = { total: 0, daysSet: {} };
         }
         stats[tagKey].total += (Number(m.liters) || 0);
-        if (m.date) {
-          stats[tagKey].daysSet[m.date] = true;
-        }
+        if (m.date) stats[tagKey].daysSet[m.date] = true;
       }
       var res = {};
       for (var t in stats) {
@@ -546,7 +568,7 @@
       return res;
     }
 
-    // ক্যাটল টেবিল রেন্ডারার (লাইভ সর্টিং ও স্বয়ংক্রিয় মিল্ক ট্র্যাকার সহ)
+    // ক্যাটল টেবিল রেন্ডার
     function renderCattleTable() {
       var milkStats = getMilkStatsByTag();
       var list = [];
@@ -554,23 +576,19 @@
         list.push({ key: k, data: farmStore.cattle[k] });
       }
 
-      // ট্যাগ অনুযায়ী ন্যাচারাল নাম্বার সর্টিং
       list.sort(function(a, b) {
         var tagA = (a.data.tag || '').toString();
         var tagB = (b.data.tag || '').toString();
         return tagA.localeCompare(tagB, undefined, { numeric: true, sensitivity: 'base' });
       });
 
-      // ডাটালিস্ট আপডেট (মিল্ক এন্ট্রির ড্রপডাউনে সাজেশনের জন্য)
       var dl = getEl('cattleTagList');
       if (dl) {
         var optHtml = '';
         list.forEach(function(item) {
           var t = (item.data.tag || '').trim();
           var b = (item.data.breed || '').trim();
-          if (t) {
-            optHtml += '<option value="' + t + '">' + (b ? t + ' (' + b + ')' : t) + '</option>';
-          }
+          if (t) optHtml += '<option value="' + t + '">' + (b ? t + ' (' + b + ')' : t) + '</option>';
         });
         dl.innerHTML = optHtml;
       }
@@ -614,6 +632,106 @@
       }
       if(getEl('dash-cow-count')) getEl('dash-cow-count').innerText = list.length;
       renderBreedSummary();
+    }
+
+    // দুধের তারিখ বিস্তারিত টগল
+    window.toggleMilkDate = function(safeDt) {
+      var row = getEl('milk-det-' + safeDt);
+      var btn = getEl('milk-btn-' + safeDt);
+      if (row) {
+        if (row.style.display === 'none' || !row.style.display) {
+          row.style.display = 'table-row';
+          if (btn) btn.innerText = 'সংকুচিত করুন ▲';
+        } else {
+          row.style.display = 'none';
+          if (btn) btn.innerText = 'বিস্তারিত দেখুন ▼';
+        }
+      }
+    };
+
+    // দুধের গ্রুপভিত্তিক টেবিল রেন্ডার
+    function renderGroupedMilkTable() {
+      var body = getEl('milkGroupTableBody');
+      if (!body) return;
+
+      var dateGroups = {};
+      var totalMilkAll = 0;
+      var today = new Date().toISOString().split('T')[0];
+      var todayTotal = 0;
+
+      for (var k in farmStore.milk) {
+        var m = farmStore.milk[k];
+        var dt = m.date || 'Unknown';
+        var lit = Number(m.liters) || 0;
+        totalMilkAll += lit;
+        if (dt === today) todayTotal += lit;
+
+        if (!dateGroups[dt]) {
+          dateGroups[dt] = { date: dt, total: 0, cows: {}, items: [] };
+        }
+        dateGroups[dt].total += lit;
+        if (m.cow) dateGroups[dt].cows[m.cow.trim().toUpperCase()] = true;
+        dateGroups[dt].items.push({ key: k, data: m });
+      }
+
+      if (getEl('dash-milk-today')) getEl('dash-milk-today').innerText = todayTotal.toFixed(1) + ' L';
+      if (getEl('rep-milk')) getEl('rep-milk').innerText = totalMilkAll.toFixed(1);
+
+      var sortedDates = Object.keys(dateGroups).sort(function(a, b) {
+        return b.localeCompare(a);
+      });
+
+      if (sortedDates.length === 0) {
+        body.innerHTML = '';
+        if (getEl('milkNoData')) getEl('milkNoData').style.display = 'block';
+        return;
+      }
+      if (getEl('milkNoData')) getEl('milkNoData').style.display = 'none';
+
+      var html = '';
+      sortedDates.forEach(function(dt) {
+        var group = dateGroups[dt];
+        var safeDt = dt.replace(/[^a-zA-Z0-9]/g, '_');
+        var cowCount = Object.keys(group.cows).length;
+
+        html += '<tr style="background:#fff; cursor:pointer;" onclick="toggleMilkDate(\'' + safeDt + '\')">' +
+          '<td><strong>📅 ' + dt + '</strong></td>' +
+          '<td><strong style="color:var(--primary); font-size:14px;">' + group.total.toFixed(1) + ' L</strong></td>' +
+          '<td><span class="badge badge-success">' + cowCount + ' টি গরু</span></td>' +
+          '<td>' + group.items.length + ' টি এন্ট্রি</td>' +
+          '<td><button class="action-btn btn-info" id="milk-btn-' + safeDt + '" onclick="event.stopPropagation(); toggleMilkDate(\'' + safeDt + '\')">বিস্তারিত দেখুন ▼</button></td>' +
+        '</tr>';
+
+        // বিস্তারিত সাব-রো
+        html += '<tr id="milk-det-' + safeDt + '" style="display:none; background:#f4fbf5;">' +
+          '<td colspan="5" style="padding:12px 18px;">' +
+            '<div style="background:white; border:1px solid #c8e6c9; border-radius:8px; padding:12px; box-shadow:0 1px 4px rgba(0,0,0,0.05);">' +
+              '<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">' +
+                '<strong style="color:#1b5e20; font-size:13px;">' + dt + ' তারিখের পৃথক গাভীর দুধ বিবরণী</strong>' +
+                '<span style="font-size:12px; color:#555;">মোট ' + group.total.toFixed(1) + ' L</span>' +
+              '</div>' +
+              '<table style="width:100%; min-width:auto; font-size:12px;">' +
+                '<thead><tr style="background:#e8f5e9;"><th>গরুর ট্যাগ (Tag ID)</th><th>সেশন (Session)</th><th>দুধের পরিমাণ</th><th>অ্যাকশন</th></tr></thead>' +
+                '<tbody>';
+
+        group.items.forEach(function(item) {
+          var id = item.key;
+          var d = item.data;
+          html += '<tr>' +
+            '<td><strong>' + (d.cow || '-') + '</strong></td>' +
+            '<td>' + (d.session || '-') + '</td>' +
+            '<td><strong style="color:var(--primary);">' + (d.liters || 0) + ' L</strong></td>' +
+            '<td>' +
+              '<button class="action-btn btn-info" onclick="editMilk(\'' + id + '\')">Edit</button>' +
+              '<button class="action-btn btn-danger" onclick="deleteRecord(\'milk\',\'' + id + '\')">Delete</button>' +
+            '</td>' +
+          '</tr>';
+        });
+
+        html += '</tbody></table></div></td></tr>';
+      });
+
+      body.innerHTML = html;
     }
 
     // ১. CATTLE এডিট ও সেভ
@@ -687,10 +805,21 @@
     var eMlkKey = null;
     function editMilk(k) {
       var d = farmStore.milk[k]; if(!d) return; eMlkKey = k;
-      getEl('milkDate').value = d.date||''; getEl('milkCowTag').value = d.cow||''; getEl('milkSession').value = d.session||'Morning'; getEl('milkLiters').value = d.liters||'';
-      getEl('milkSubmitBtn').innerText = 'Update Milk'; getEl('milkCancelBtn').style.display = 'inline-flex';
+      getEl('milkDate').value = d.date||''; 
+      getEl('milkCowTag').value = d.cow||''; 
+      getEl('milkSession').value = d.session||'Morning'; 
+      getEl('milkLiters').value = d.liters||'';
+      getEl('milkSubmitBtn').innerText = 'Update Milk'; 
+      getEl('milkCancelBtn').style.display = 'inline-flex';
+      getEl('milkDate').scrollIntoView({ behavior: 'smooth' });
     }
-    function cancelMilkEdit() { eMlkKey = null; getEl('milkCowTag').value = ''; getEl('milkLiters').value = ''; getEl('milkSubmitBtn').innerText = 'Save Milk Record'; getEl('milkCancelBtn').style.display = 'none'; }
+    function cancelMilkEdit() { 
+      eMlkKey = null; 
+      getEl('milkCowTag').value = ''; 
+      getEl('milkLiters').value = ''; 
+      getEl('milkSubmitBtn').innerText = 'Save Milk Record'; 
+      getEl('milkCancelBtn').style.display = 'none'; 
+    }
     function saveMilk() {
       var lit = parseFloat(getEl('milkLiters').value)||0; if(!lit) return alert('দুধের পরিমাণ দিন!');
       var cowTag = (getEl('milkCowTag').value||'').trim(); if(!cowTag) return alert('Tag ID দিন!');
@@ -857,7 +986,6 @@
     // রিয়েলটাইম সিঙ্ক
     window.listenAllData = function() {
       if (!db) return;
-      var today = new Date().toISOString().split('T')[0];
 
       // ১. Cattle Listener
       db.ref('cattle').on('value', function(snap) {
@@ -868,15 +996,13 @@
         renderCattleTable();
       });
 
-      // ২. Milk Listener (মিল্ক যোগ/মুছলে সাথে সাথে ক্যাটল টেবিলের টোটাল আপডেট হবে)
+      // ২. Milk Listener (তারিখ অনুযায়ী স্বয়ংক্রিয় গ্রুপ)
       db.ref('milk').on('value', function(snap) {
-        farmStore.milk = {}; var body = getEl('milkTableBody'); if(body) body.innerHTML = ''; var tM=0, allM=0;
+        farmStore.milk = {}; 
         snap.forEach(function(c) {
-          var d = c.val(), k = c.key; farmStore.milk[k] = d; var lit = Number(d.liters)||0; allM+=lit; if(d.date===today) tM+=lit;
-          if(body) body.innerHTML += '<tr><td>'+d.date+'</td><td>'+d.cow+'</td><td>'+d.session+'</td><td><strong>'+lit+' L</strong></td><td><button class="action-btn btn-info" onclick="editMilk(\''+k+'\')">Edit</button><button class="action-btn btn-danger" onclick="deleteRecord(\'milk\',\''+k+'\')">Delete</button></td></tr>';
+          farmStore.milk[c.key] = c.val();
         });
-        if(getEl('dash-milk-today')) getEl('dash-milk-today').innerText = tM.toFixed(1)+' L';
-        if(getEl('rep-milk')) getEl('rep-milk').innerText = allM.toFixed(1);
+        renderGroupedMilkTable();
         renderCattleTable();
       });
 
