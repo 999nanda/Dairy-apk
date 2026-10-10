@@ -35,6 +35,18 @@
       if (window.firebase) db = firebase.database();
     } catch(e) { console.log(e); }
 
+    window.switchTab = function(tab, btn) {
+      document.querySelectorAll('.tab-content').forEach(function(el) { el.style.display = 'none'; });
+      document.querySelectorAll('nav button').forEach(function(el) { el.classList.remove('active'); });
+      var target = getEl('tab-' + tab);
+      if (target) target.style.display = 'block';
+      if (btn) {
+        btn.classList.add('active');
+      } else if (window.event && window.event.target) {
+        window.event.target.classList.add('active');
+      }
+    };
+
     window.doLogin = function() {
       var u = (getEl('loginId') ? getEl('loginId').value : '').trim().toLowerCase();
       var p = (getEl('loginPass') ? getEl('loginPass').value : '').trim();
@@ -158,19 +170,19 @@
     </header>
 
     <nav>
-      <button class="active" onclick="switchTab('dashboard')">📊 Dashboard</button>
-      <button onclick="switchTab('cattle')">🐄 Cattle</button>
-      <button onclick="switchTab('breeding')">🧬 Breeding</button>
-      <button onclick="switchTab('milk')">🥛 Milk</button>
-      <button onclick="switchTab('sales')">💰 Sales</button>
-      <button onclick="switchTab('customers')">👥 Customer</button>
-      <button onclick="switchTab('orders')">📦 Orders</button>
-      <button onclick="switchTab('expenses')">🧾 Expenses</button>
-      <button onclick="switchTab('stock')">🌾 Stock</button>
-      <button onclick="switchTab('semen')">💉 Semen/Bull</button>
-      <button onclick="switchTab('health')">🩺 Health</button>
-      <button onclick="switchTab('reports')">📈 Reports</button>
-      <button onclick="switchTab('backup')">💾 Backup</button>
+      <button class="active" onclick="switchTab('dashboard', this)">📊 Dashboard</button>
+      <button onclick="switchTab('cattle', this)">🐄 Cattle</button>
+      <button onclick="switchTab('breeding', this)">🧬 Breeding</button>
+      <button onclick="switchTab('milk', this)">🥛 Milk</button>
+      <button onclick="switchTab('sales', this)">💰 Sales</button>
+      <button onclick="switchTab('customers', this)">👥 Customer</button>
+      <button onclick="switchTab('orders', this)">📦 Orders</button>
+      <button onclick="switchTab('expenses', this)">🧾 Expenses</button>
+      <button onclick="switchTab('stock', this)">🌾 Stock</button>
+      <button onclick="switchTab('semen', this)">💉 Semen/Bull</button>
+      <button onclick="switchTab('health', this)">🩺 Health</button>
+      <button onclick="switchTab('reports', this)">📈 Reports</button>
+      <button onclick="switchTab('backup', this)">💾 Backup</button>
     </nav>
 
     <div class="container">
@@ -221,7 +233,7 @@
         </div>
       </div>
 
-      <!-- ৩. Breeding (অটো সাজেস্ট Tag ID সহ) -->
+      <!-- ৩. Breeding -->
       <div id="tab-breeding" class="tab-content" style="display: none;">
         <div class="card">
           <h2>🧬 AI • Pregnancy • Calving • Pedigree</h2>
@@ -282,7 +294,7 @@
         </div>
       </div>
 
-      <!-- ৪. Milk (অটো সাজেস্ট Tag ID সহ) -->
+      <!-- ৪. Milk -->
       <div id="tab-milk" class="tab-content" style="display: none;">
         <div class="card">
           <h2>🥛 Milk Production Entry</h2>
@@ -434,7 +446,7 @@
         </div>
       </div>
 
-      <!-- ১১. Health (অটো সাজেস্ট Tag ID সহ) -->
+      <!-- ১১. Health -->
       <div id="tab-health" class="tab-content" style="display: none;">
         <div class="card">
           <h2>🩺 Health & Vaccination Register</h2>
@@ -502,14 +514,6 @@
   <!-- মূল ফাংশন ও ডাটাবেস হ্যান্ডলার -->
   <script>
     var farmStore = { cattle:{}, breeding:{}, milk:{}, sales:{}, customers:{}, orders:{}, expenses:{}, stock:{}, semen:{}, health:{} };
-
-    function switchTab(tab) {
-      document.querySelectorAll('.tab-content').forEach(function(el) { el.style.display = 'none'; });
-      document.querySelectorAll('nav button').forEach(function(el) { el.classList.remove('active'); });
-      var target = getEl('tab-' + tab);
-      if (target) target.style.display = 'block';
-      if (window.event && window.event.target) window.event.target.classList.add('active');
-    }
 
     function deleteRecord(path, id) {
       if (confirm('আপনি কি নিশ্চিতভাবে এই তথ্যটি মুছে ফেলতে চান? (Delete record?)')) {
@@ -653,7 +657,8 @@
     }
     function cancelOrderEdit() { eOrdKey = null; getEl('orderCustomer').value = ''; getEl('orderItems').value = ''; getEl('orderSubmitBtn').innerText = 'Save Order'; getEl('orderCancelBtn').style.display = 'none'; }
     function saveOrder() {
-      var cust = (getEl('orderCustomer').value||'').trim(); if(!cmd=cust) return alert('Customer Name দিন!');
+      var cust = (getEl('orderCustomer').value||'').trim();
+      if(!cust) return alert('Customer Name দিন!');
       var data = { date:getEl('orderDate').value, customer:cust, items:getEl('orderItems').value, status:getEl('orderStatus').value };
       if(db) eOrdKey ? db.ref('orders/'+eOrdKey).update(data) : db.ref('orders').push(data);
       cancelOrderEdit();
@@ -758,7 +763,7 @@
       if (!db) return;
       var today = new Date().toISOString().split('T')[0];
 
-      // ১. Cattle Listener (স্বয়ংক্রিয় সর্টিং ও অটো-সাজেস্ট ড্রপডাউন সহ)
+      // ১. Cattle Listener (সর্টিং ও অটো-সাজেস্ট ড্রপডাউন সহ)
       db.ref('cattle').on('value', function(snap) {
         farmStore.cattle = {}; 
         var list = [];
@@ -768,14 +773,12 @@
           list.push({ key: k, data: d });
         });
 
-        // ট্যাগ অনুযায়ী ন্যাচারাল নাম্বার সর্টিং
         list.sort(function(a, b) {
           var tagA = (a.data.tag || '').toString();
           var tagB = (b.data.tag || '').toString();
           return tagA.localeCompare(tagB, undefined, { numeric: true, sensitivity: 'base' });
         });
 
-        // মিল্ক, ব্রিডিং ও হেলথ ফিল্ডে অটো-সাজেশন দেওয়ার জন্য datalist তৈরি
         var dl = getEl('cattleTagList');
         if (dl) {
           var optHtml = '';
