@@ -166,12 +166,12 @@
       <!-- ১. Dashboard -->
       <div id="tab-dashboard" class="tab-content">
         <div class="summary-grid">
-          <div class="summary-card"><p>Total Cattle (মোট গরু)</p><h3 id="dash-cow-count">০</h3></div>
-          <div class="summary-card" style="border-left-color: var(--info);"><p>Today's Milk (আজকের দুধ)</p><h3 id="dash-milk-today">০.০ L</h3></div>
-          <div class="summary-card" style="border-left-color: #7b1fa2;"><p>Total Due (মোট বকেয়া)</p><h3 id="dash-total-due">৳ ০</h3></div>
-          <div class="summary-card" style="border-left-color: var(--warning);"><p>Total Sales (মোট বিক্রয়)</p><h3 id="dash-total-sales">৳ ০</h3></div>
-          <div class="summary-card" style="border-left-color: var(--danger);"><p>Total Expense (মোট খরচ)</p><h3 id="dash-total-exp">৳ ০</h3></div>
-          <div class="summary-card" style="border-left-color: #00897b;"><p>Pending Orders (অর্ডার)</p><h3 id="dash-pending-orders">০</h3></div>
+          <div class="summary-card"><p>TOTAL CATTLE (মোট গরু)</p><h3 id="dash-cow-count">০</h3></div>
+          <div class="summary-card" style="border-left-color: var(--info);"><p>TODAY'S MILK (আজকের দুধ)</p><h3 id="dash-milk-today">0.0 L</h3></div>
+          <div class="summary-card" style="border-left-color: #7b1fa2;"><p>TOTAL DUE (মোট বকেয়া)</p><h3 id="dash-total-due">₹ 0</h3></div>
+          <div class="summary-card" style="border-left-color: var(--warning);"><p>TOTAL SALES (মোট বিক্রয়)</p><h3 id="dash-total-sales">₹ 0</h3></div>
+          <div class="summary-card" style="border-left-color: var(--danger);"><p>TOTAL EXPENSE (মোট খরচ)</p><h3 id="dash-total-exp">₹ 0</h3></div>
+          <div class="summary-card" style="border-left-color: #00897b;"><p>PENDING ORDERS (অর্ডার)</p><h3 id="dash-pending-orders">0</h3></div>
         </div>
       </div>
 
@@ -264,10 +264,10 @@
             <div class="input-group"><label>Phone (মোবাইল নম্বর)</label><input type="text" id="salePhone" placeholder="মোবাইল"></div>
             <div class="input-group"><label>Item (পণ্য)</label><select id="saleItem"><option value="Liquid Milk">Liquid Milk (তরল দুধ)</option><option value="Ghee">Ghee (ঘি)</option><option value="Butter">Butter (মাখন)</option><option value="Paneer">Paneer (ছানা/পনির)</option><option value="Manure">Manure (গোবর সার)</option></select></div>
             <div class="input-group"><label>Quantity (পরিমাণ)</label><input type="number" id="saleQty" oninput="calcSale()" placeholder="০"></div>
-            <div class="input-group"><label>Rate (দর টাকা)</label><input type="number" id="saleRate" oninput="calcSale()" placeholder="৳"></div>
+            <div class="input-group"><label>Rate (দর ₹)</label><input type="number" id="saleRate" oninput="calcSale()" placeholder="₹"></div>
             <div class="input-group"><label>Total Bill (মোট টাকা)</label><input type="number" id="saleTotal" readonly style="background:#eee;"></div>
-            <div class="input-group"><label>Paid Amount (পরিশোধ)</label><input type="number" id="salePaid" oninput="calcSale()" placeholder="৳"></div>
-            <div class="input-group"><label>Due Amount (বাকি)</label><input type="number" id="saleDue" readonly style="background:#ffebee; color:red; font-weight:bold;"></div>
+            <div class="input-group"><label>Paid Amount (পরিশোধ ₹)</label><input type="number" id="salePaid" oninput="calcSale()" placeholder="₹"></div>
+            <div class="input-group"><label>Due Amount (বাকি ₹)</label><input type="number" id="saleDue" readonly style="background:#ffebee; color:red; font-weight:bold;"></div>
           </div>
           <div style="display:flex; gap:10px;">
             <button class="btn" id="saleSubmitBtn" onclick="saveSale()">Save Sale</button>
@@ -330,7 +330,7 @@
             <div class="input-group"><label>Date (তারিখ) *</label><input type="date" id="expDate"></div>
             <div class="input-group"><label>Expense Category (খাত)</label><select id="expCategory"><option value="Feed & Fodder">Feed & Fodder (খাদ্য/ঘাস)</option><option value="Medicine & Health">Medicine & Health (ওষুধ/চিকিৎসা)</option><option value="Labour Salary">Labour Salary (শ্রমিক বেতন)</option><option value="Electricity / Utilities">Electricity / Utilities (বিদ্যুৎ বিল)</option><option value="Other">Other (অন্যান্য)</option></select></div>
             <div class="input-group"><label>Description (বিবরণ) *</label><input type="text" id="expTitle" placeholder="খরচের বিবরণ"></div>
-            <div class="input-group"><label>Amount ৳ (টাকা) *</label><input type="number" id="expAmount" placeholder="৳"></div>
+            <div class="input-group"><label>Amount ₹ (টাকা) *</label><input type="number" id="expAmount" placeholder="₹"></div>
           </div>
           <div style="display:flex; gap:10px;">
             <button class="btn" id="expSubmitBtn" onclick="saveExpense()">Save Expense</button>
@@ -339,7 +339,7 @@
         </div>
         <div class="card">
           <h2>খরচের তালিকা (Expense List)</h2>
-          <div class="table-container"><table><thead><tr><th>Date</th><th>Category</th><th>Description</th><th>Amount (৳)</th><th>Action</th></tr></thead><tbody id="expenseTableBody"></tbody></table></div>
+          <div class="table-container"><table><thead><tr><th>Date</th><th>Category</th><th>Description</th><th>Amount (₹)</th><th>Action</th></tr></thead><tbody id="expenseTableBody"></tbody></table></div>
         </div>
       </div>
 
@@ -412,11 +412,11 @@
         <div class="card">
           <h2>📈 Overall Farm Reports</h2>
           <div style="line-height: 2.2; font-size: 15px; margin-top: 10px;">
-            <p><strong>Total Milk Produced (মোট দুধ):</strong> <span id="rep-milk" style="color:var(--primary); font-weight:bold;">০</span> L</p>
-            <p><strong>Total Sales Revenue (মোট বিক্রয়):</strong> <span id="rep-sales" style="color:green; font-weight:bold;">৳ ০</span></p>
-            <p><strong>Total Expenses (মোট খরচ):</strong> <span id="rep-expenses" style="color:red; font-weight:bold;">৳ ০</span></p>
+            <p><strong>Total Milk Produced (মোট দুধ):</strong> <span id="rep-milk" style="color:var(--primary); font-weight:bold;">0</span> L</p>
+            <p><strong>Total Sales Revenue (মোট বিক্রয়):</strong> <span id="rep-sales" style="color:green; font-weight:bold;">₹ 0</span></p>
+            <p><strong>Total Expenses (মোট খরচ):</strong> <span id="rep-expenses" style="color:red; font-weight:bold;">₹ 0</span></p>
             <hr style="margin: 15px 0;">
-            <p><strong>Net Cash Flow / Profit (লাভ / ক্ষতি):</strong> <span id="rep-profit" style="font-size: 19px; font-weight:bold;">৳ ০</span></p>
+            <p><strong>Net Cash Flow / Profit (লাভ / ক্ষতি):</strong> <span id="rep-profit" style="font-size: 19px; font-weight:bold;">₹ 0</span></p>
           </div>
         </div>
       </div>
@@ -551,7 +551,7 @@
     }
     function showInvoice(k) {
       var d = farmStore.sales[k]; if(!d) return;
-      getEl('invoiceDetails').innerHTML = '<p><strong>Date:</strong> '+d.date+'</p><p><strong>Customer:</strong> '+d.name+'</p><p><strong>Product:</strong> '+d.item+' ('+d.qty+')</p><p><strong>Rate:</strong> ৳'+d.rate+'</p><p><strong>Total Bill:</strong> ৳'+d.total+'</p><p style="color:green;"><strong>Paid:</strong> ৳'+d.paid+'</p><p style="color:red;"><strong>Due:</strong> ৳'+d.due+'</p>';
+      getEl('invoiceDetails').innerHTML = '<p><strong>Date:</strong> '+d.date+'</p><p><strong>Customer:</strong> '+d.name+'</p><p><strong>Product:</strong> '+d.item+' ('+d.qty+')</p><p><strong>Rate:</strong> ₹'+d.rate+'</p><p><strong>Total Bill:</strong> ₹'+d.total+'</p><p style="color:green;"><strong>Paid:</strong> ₹'+d.paid+'</p><p style="color:red;"><strong>Due:</strong> ₹'+d.due+'</p>';
       getEl('invoiceModal').style.display = 'flex';
     }
     function closeInvoice() { getEl('invoiceModal').style.display = 'none'; }
@@ -693,11 +693,11 @@
         farmStore.sales = {}; var body = getEl('salesTableBody'); if(body) body.innerHTML = ''; var tS=0, tD=0;
         snap.forEach(function(c) {
           var d = c.val(), k = c.key; farmStore.sales[k] = d; tS+=Number(d.total)||0; tD+=Number(d.due)||0;
-          if(body) body.innerHTML += '<tr><td>'+d.date+'</td><td><strong>'+d.name+'</strong></td><td>'+d.item+'</td><td>৳'+d.total+'</td><td>৳'+d.paid+'</td><td style="color:red;font-weight:bold;">৳'+d.due+'</td><td><button class="action-btn btn-info" onclick="showInvoice(\''+k+'\')">Invoice</button><button class="action-btn btn-warning" onclick="editSale(\''+k+'\')">Edit</button><button class="action-btn btn-danger" onclick="deleteRecord(\'sales\',\''+k+'\')">Delete</button></td></tr>';
+          if(body) body.innerHTML += '<tr><td>'+d.date+'</td><td><strong>'+d.name+'</strong></td><td>'+d.item+'</td><td>₹'+d.total+'</td><td>₹'+d.paid+'</td><td style="color:red;font-weight:bold;">₹'+d.due+'</td><td><button class="action-btn btn-info" onclick="showInvoice(\''+k+'\')">Invoice</button><button class="action-btn btn-warning" onclick="editSale(\''+k+'\')">Edit</button><button class="action-btn btn-danger" onclick="deleteRecord(\'sales\',\''+k+'\')">Delete</button></td></tr>';
         });
-        if(getEl('dash-total-sales')) getEl('dash-total-sales').innerText = '৳ '+tS.toLocaleString();
-        if(getEl('dash-total-due')) getEl('dash-total-due').innerText = '৳ '+tD.toLocaleString();
-        if(getEl('rep-sales')) getEl('rep-sales').innerText = '৳ '+tS.toLocaleString();
+        if(getEl('dash-total-sales')) getEl('dash-total-sales').innerText = '₹ '+tS.toLocaleString();
+        if(getEl('dash-total-due')) getEl('dash-total-due').innerText = '₹ '+tD.toLocaleString();
+        if(getEl('rep-sales')) getEl('rep-sales').innerText = '₹ '+tS.toLocaleString();
         calcNet();
       });
 
@@ -722,10 +722,10 @@
         farmStore.expenses = {}; var body = getEl('expenseTableBody'); if(body) body.innerHTML = ''; var tE=0;
         snap.forEach(function(c) {
           var d = c.val(), k = c.key; farmStore.expenses[k] = d; tE+=Number(d.amount)||0;
-          if(body) body.innerHTML += '<tr><td>'+d.date+'</td><td>'+d.category+'</td><td>'+d.title+'</td><td>৳'+d.amount+'</td><td><button class="action-btn btn-info" onclick="editExpense(\''+k+'\')">Edit</button><button class="action-btn btn-danger" onclick="deleteRecord(\'expenses\',\''+k+'\')">Delete</button></td></tr>';
+          if(body) body.innerHTML += '<tr><td>'+d.date+'</td><td>'+d.category+'</td><td>'+d.title+'</td><td>₹'+d.amount+'</td><td><button class="action-btn btn-info" onclick="editExpense(\''+k+'\')">Edit</button><button class="action-btn btn-danger" onclick="deleteRecord(\'expenses\',\''+k+'\')">Delete</button></td></tr>';
         });
-        if(getEl('dash-total-exp')) getEl('dash-total-exp').innerText = '৳ '+tE.toLocaleString();
-        if(getEl('rep-expenses')) getEl('rep-expenses').innerText = '৳ '+tE.toLocaleString();
+        if(getEl('dash-total-exp')) getEl('dash-total-exp').innerText = '₹ '+tE.toLocaleString();
+        if(getEl('rep-expenses')) getEl('rep-expenses').innerText = '₹ '+tE.toLocaleString();
         calcNet();
       });
 
@@ -758,7 +758,7 @@
       var s = parseFloat((getEl('rep-sales')?getEl('rep-sales').innerText:'0').replace(/[^0-9.-]+/g,""))||0;
       var e = parseFloat((getEl('rep-expenses')?getEl('rep-expenses').innerText:'0').replace(/[^0-9.-]+/g,""))||0;
       var net = s - e; var pEl = getEl('rep-profit');
-      if(pEl) { pEl.innerText = '৳ '+net.toLocaleString(); pEl.style.color = net>=0 ? 'green':'red'; }
+      if(pEl) { pEl.innerText = '₹ '+net.toLocaleString(); pEl.style.color = net>=0 ? 'green':'red'; }
     }
   </script>
 </body>
