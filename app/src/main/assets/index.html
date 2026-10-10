@@ -134,18 +134,48 @@
     
     /* ইনভয়েস ও লেজার মোডাল */
     #invoiceModal, #ledgerModal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.65); z-index: 2000; align-items: center; justify-content: center; padding: 15px; }
-    .invoice-card { background: white; max-width: 520px; width: 100%; border-radius: 12px; padding: 26px; position: relative; box-shadow: 0 10px 30px rgba(0,0,0,0.25); max-height: 95vh; overflow-y: auto; }
-    .ledger-card { background: white; max-width: 760px; width: 100%; border-radius: 12px; padding: 24px; max-height: 90vh; overflow-y: auto; }
+    .invoice-card { background: white; max-width: 530px; width: 100%; border-radius: 12px; padding: 26px; position: relative; box-shadow: 0 10px 30px rgba(0,0,0,0.25); max-height: 95vh; overflow-y: auto; }
+    .ledger-card { background: white; max-width: 820px; width: 100%; border-radius: 12px; padding: 24px; max-height: 90vh; overflow-y: auto; position: relative; }
 
-    /* ইনভয়েস ওয়াটারমার্ক */
-    .invoice-watermark { position: absolute; top: 48%; left: 50%; transform: translate(-50%, -50%); width: 230px; height: 230px; opacity: 0.08; pointer-events: none; z-index: 0; }
+    /* স্পষ্ট ও পরিচ্ছন্ন লোগো ওয়াটারমার্ক */
+    .invoice-watermark {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 250px;
+      height: 250px;
+      opacity: 0.12;
+      pointer-events: none;
+      z-index: 0;
+      -webkit-print-color-adjust: exact !important;
+      print-color-adjust: exact !important;
+    }
     .invoice-content { position: relative; z-index: 1; }
 
+    /* প্রিন্ট সেটিংস: ব্রাউজারের নিজস্ব হেডার ও টেক্সট বন্ধ রাখা */
+    @page {
+      size: auto;
+      margin: 8mm 10mm;
+    }
     @media print {
-      body * { visibility: hidden; }
-      #invoicePrintArea, #invoicePrintArea *, #ledgerPrintArea, #ledgerPrintArea * { visibility: visible; }
-      #invoicePrintArea, #ledgerPrintArea { position: absolute; left: 0; top: 0; width: 100%; }
+      body * { visibility: hidden !important; }
+      #invoicePrintArea, #invoicePrintArea *, #ledgerPrintArea, #ledgerPrintArea * { visibility: visible !important; }
+      #invoicePrintArea, #ledgerPrintArea {
+        position: absolute !important;
+        left: 0 !important;
+        top: 0 !important;
+        width: 100% !important;
+        margin: 0 !important;
+        padding: 10px !important;
+      }
       .no-print { display: none !important; }
+      .invoice-watermark {
+        display: block !important;
+        opacity: 0.12 !important;
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+      }
       * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
     }
   </style>
@@ -354,7 +384,7 @@
         </div>
       </div>
 
-      <!-- ৫. Sales & Billing (কাস্টমার স্টেটমেন্ট ও প্রিমিয়াম ইনভয়েস সহ) -->
+      <!-- ৫. Sales & Billing -->
       <div id="tab-sales" class="tab-content" style="display: none;">
         <div class="card">
           <h2>💰 Sales & Billing</h2>
@@ -573,21 +603,23 @@
     </div>
   </div>
 
-  <!-- ১. প্রিমিয়াম ইনভয়েস মোডাল (Watermark, Verified Stamp ও Bibhas Munshi ডিজিটাল সই সহ) -->
+  <!-- ১. প্রিমিয়াম ইনভয়েস মোডাল (শীর্ষ টেক্সটমুক্ত, পরিষ্কার ওয়াটারমার্ক ও Bibhas Munshi সই সহ) -->
   <div id="invoiceModal">
     <div class="invoice-card">
-      <img src="logo.png" class="invoice-watermark" alt="Watermark" onerror="this.onerror=null; this.src='https://cdn-icons-png.flaticon.com/512/2395/2395796.png';">
+      <!-- লোগো ওয়াটারমার্ক -->
+      <img src="logo.png" class="invoice-watermark" alt="Logo Watermark" onerror="this.onerror=null; this.src='https://cdn-icons-png.flaticon.com/512/2395/2395796.png';">
+      
       <div class="invoice-content" id="invoicePrintArea">
-        <div style="display:flex; justify-content:space-between; align-items:center; border-bottom: 2px solid #1b5e20; padding-bottom: 12px; margin-bottom: 14px;">
-          <div style="display:flex; align-items:center; gap:10px;">
-            <img src="logo.png" style="height:48px; width:48px; border-radius:50%; object-fit:cover;" onerror="this.onerror=null; this.src='https://cdn-icons-png.flaticon.com/512/2395/2395796.png';">
+        <div style="display:flex; justify-content:space-between; align-items:center; border-bottom: 2.5px solid #1b5e20; padding-bottom: 12px; margin-bottom: 14px;">
+          <div style="display:flex; align-items:center; gap:12px;">
+            <img src="logo.png" style="height:54px; width:54px; border-radius:50%; object-fit:cover;" onerror="this.onerror=null; this.src='https://cdn-icons-png.flaticon.com/512/2395/2395796.png';">
             <div>
-              <h2 style="margin: 0; color: #1b5e20; font-size:18px; border:none; padding:0;">NANDA Dairy & Agro</h2>
-              <p style="font-size: 11px; color: #555; margin:0;">Enterprise Farm Management • Cash Invoice</p>
+              <h2 style="margin:0; color:#1b5e20; font-size:20px; font-weight:800; border:none; padding:0; letter-spacing:0.5px;">NANDA DAIRY & AGRO</h2>
+              <p style="font-size:11.5px; color:#333; margin:2px 0 0 0; font-weight:600;">ক্যাশ মেমো / CASH MEMO</p>
             </div>
           </div>
           <div style="text-align:right;">
-            <div style="border: 2px dashed #2e7d32; color: #2e7d32; font-weight: 800; font-size: 11px; padding: 3px 8px; border-radius: 6px; text-transform: uppercase; display: inline-block; transform: rotate(-5deg); letter-spacing: 0.5px;">
+            <div style="border: 2px dashed #2e7d32; color: #2e7d32; font-weight: 800; font-size: 11px; padding: 4px 9px; border-radius: 6px; text-transform: uppercase; display: inline-block; transform: rotate(-4deg); letter-spacing: 0.5px;">
               ✔ VERIFIED INVOICE
             </div>
           </div>
@@ -595,39 +627,39 @@
 
         <div id="invoiceDetails" style="font-size: 13px; line-height: 1.8;"></div>
 
-        <!-- ডিজিটাল সই ও ভেরিফিকেশন সেকশন -->
-        <div style="display:flex; justify-content:space-between; align-items:flex-end; margin-top: 30px; border-top: 1px dashed #bbb; padding-top: 15px;">
+        <!-- ডিজিটাল স্বাক্ষর ও সিল -->
+        <div style="display:flex; justify-content:space-between; align-items:flex-end; margin-top: 32px; border-top: 1px dashed #aaa; padding-top: 14px;">
           <div>
-            <span style="font-size:11px; color:#666;">Generated By: Nanda Farm ERP</span><br>
-            <span style="font-size:10px; color:#888;">System Authenticated Copy</span>
+            <span style="font-size:11px; color:#555;">সিস্টেম জেনারেটেড মূল কপি</span><br>
+            <span style="font-size:10px; color:#777;">অফিসিয়াল ফার্ম রেকর্ডস দ্বারা সংরক্ষিত</span>
           </div>
           <div style="text-align: right;">
-            <div style="font-family:'Brush Script MT', cursive, sans-serif; font-size: 24px; color: #1b5e20; line-height: 1; font-weight: normal;">Bibhas Munshi</div>
-            <div style="border-top: 1.5px solid #212121; padding-top: 3px; margin-top: 4px; display: inline-block;">
-              <strong style="font-size: 11px; color: #333;">Bibhas Munshi</strong><br>
-              <span style="font-size: 10px; color: #666;">Authorized Signatory • Nanda Dairy</span>
+            <div style="font-family:'Brush Script MT', cursive, sans-serif; font-size: 26px; color: #1b5e20; line-height: 1; font-weight: normal; margin-bottom: 2px;">Bibhas Munshi</div>
+            <div style="border-top: 1.5px solid #222; padding-top: 3px; display: inline-block;">
+              <strong style="font-size: 11.5px; color: #222;">Bibhas Munshi</strong><br>
+              <span style="font-size: 10px; color: #555;">Authorized Signatory • Nanda Dairy & Agro</span>
             </div>
           </div>
         </div>
 
-        <p style="text-align: center; font-size: 11px; margin-top: 18px; color: #777;">দুধ ও দুগ্ধজাত পণ্যের জন্য ধন্যবাদ, সুস্থ থাকুন!</p>
+        <p style="text-align: center; font-size: 11px; margin-top: 18px; color: #666;">দুধ ও কৃষি পণ্যের নির্ভরযোগ্য প্রতিষ্ঠান। ধন্যবাদ, সুস্থ থাকুন!</p>
       </div>
 
       <div class="no-print" style="display: flex; gap: 10px; margin-top: 20px;">
-        <button class="btn btn-info" style="flex: 1;" onclick="window.print()">🖨️ প্রিন্ট করুন (Print)</button>
+        <button class="btn btn-info" style="flex: 1;" onclick="printCleanInvoice()">🖨️ প্রিন্ট করুন (Print)</button>
         <button class="btn btn-danger" style="flex: 1;" onclick="closeInvoice()">বন্ধ করুন</button>
       </div>
     </div>
   </div>
 
-  <!-- ২. কাস্টমার লেজার / খাতা মোডাল (Customer Statement) -->
+  <!-- ২. কাস্টমার খাতা / স্টেটমেন্ট মোডাল (প্রতি পেমেন্টের পর আপডেট ও ইনভয়েস বাটনসহ) -->
   <div id="ledgerModal">
     <div class="ledger-card">
       <div id="ledgerPrintArea">
         <div style="display:flex; justify-content:space-between; align-items:center; border-bottom: 2px solid #1b5e20; padding-bottom: 10px; margin-bottom: 12px;">
           <div>
-            <h2 style="margin:0; color:#1b5e20; font-size:18px; border:none; padding:0;">গ্রাহক খাতা ও বিলিং স্টেটমেন্ট (Customer Ledger)</h2>
-            <p id="ledgerCustSub" style="font-size:12px; color:#555; margin:0;"></p>
+            <h2 style="margin:0; color:#1b5e20; font-size:18px; border:none; padding:0;">গ্রাহক খাতা ও লেনদেন বিবরণী (Customer Ledger)</h2>
+            <p id="ledgerCustSub" style="font-size:12px; color:#555; margin:3px 0 0 0;"></p>
           </div>
           <div style="text-align:right;">
             <span class="badge badge-success" style="font-size:11.5px;">Nanda Dairy & Agro</span>
@@ -645,22 +677,22 @@
             <h3 id="ledgerTotalPaid" style="color:#0288d1; font-size:17px; margin-top:3px;">₹ 0</h3>
           </div>
           <div style="background:#ffebee; padding:10px; border-radius:8px;">
-            <span style="font-size:11px; color:#555;">মোট বকেয়া</span>
+            <span style="font-size:11px; color:#555;">বর্তমান মোট বকেয়া</span>
             <h3 id="ledgerTotalDue" style="color:#c62828; font-size:17px; margin-top:3px;">₹ 0</h3>
           </div>
         </div>
 
-        <div class="table-container" style="max-height:340px; overflow-y:auto;">
-          <table style="font-size:12px; min-width:600px;">
+        <div class="table-container" style="max-height:360px; overflow-y:auto;">
+          <table style="font-size:12px; min-width:650px;">
             <thead>
               <tr style="background:#f1f5f2;">
                 <th>তারিখ</th>
                 <th>পণ্য ও পরিমাণ</th>
-                <th>দর (Rate)</th>
                 <th>মোট বিল</th>
-                <th>পরিশোধ</th>
-                <th>বাকি</th>
-                <th>স্ট্যাটাস</th>
+                <th>পরিশোধ (জমা)</th>
+                <th>এই বিলের বাকি</th>
+                <th style="background:#fff3e0; color:#e65100;">মোট অবশিষ্ট বাকি</th>
+                <th>রসিদ (Invoice)</th>
               </tr>
             </thead>
             <tbody id="ledgerTableBody"></tbody>
@@ -677,7 +709,7 @@
       </div>
 
       <div class="no-print" style="display:flex; gap:10px; margin-top:18px;">
-        <button class="btn btn-info" style="flex:1;" onclick="window.print()">🖨️ খাতা প্রিন্ট করুন (Print Statement)</button>
+        <button class="btn btn-info" style="flex:1;" onclick="printCleanInvoice()">🖨️ খাতা প্রিন্ট করুন (Print Statement)</button>
         <button class="btn btn-danger" style="flex:1;" onclick="closeLedger()">বন্ধ করুন</button>
       </div>
     </div>
@@ -692,6 +724,14 @@
         if (db) db.ref(path).child(id).remove();
       }
     }
+
+    // প্রিন্ট করার সময় ওপরের অপ্রয়োজনীয় টাইটেল ও হেডার বন্ধ রাখার কৌশল
+    window.printCleanInvoice = function() {
+      var origTitle = document.title;
+      document.title = ""; // টাইটেল সাময়িকভাবে খালি করে দিলে ক্রোম প্রিন্ট হেডার সাদা রাখে
+      window.print();
+      document.title = origTitle;
+    };
 
     function onSaleCustomerInput() {
       var val = (getEl('saleCustomer').value || '').trim().toLowerCase();
@@ -884,7 +924,7 @@
       body.innerHTML = html;
     }
 
-    // ৫. SALES & BILLING রেন্ডার (খাতা বাটন সহ)
+    // ৫. SALES & BILLING রেন্ডার (খাতা বাটন ও ওভারডিউ ট্র্যাকিং)
     function renderSalesTable() {
       var body = getEl('salesTableBody');
       if (!body) return;
@@ -1002,7 +1042,7 @@
       body.innerHTML = html;
     }
 
-    // কাস্টমার খাতা / স্টেটমেন্ট প্রদর্শনী
+    // কাস্টমার খাতা / স্টেটমেন্ট (প্রতি পেমেন্টের পর ব্যালেন্স ও ইনভয়েস বাটনসহ)
     window.showCustomerLedger = function(encName) {
       var custName = decodeURIComponent(encName).trim();
       var custLower = custName.toLowerCase();
@@ -1024,7 +1064,20 @@
         }
       }
 
-      bills.sort(function(a,b) { return (b.data.date||'').localeCompare(a.data.date||''); });
+      // তারিখ অনুযায়ী প্রথম থেকে সাজিয়ে রানিং ব্যালেন্স গণনা
+      bills.sort(function(a, b) {
+        return (a.data.date || '').localeCompare(b.data.date || '');
+      });
+
+      var runningBalance = 0;
+      bills.forEach(function(item) {
+        var bDue = Number(item.data.due) || 0;
+        runningBalance += bDue;
+        item.cumDue = runningBalance;
+      });
+
+      // প্রদর্শনের জন্য নতুন তারিখ ওপরে
+      bills.reverse();
 
       getEl('ledgerCustSub').innerHTML = 'গ্রাহক: <strong>' + custName + '</strong> ' + (cPhone ? '| 📞 ' + cPhone : '') + (cArea ? ' | এরিয়া: ' + cArea : '');
       getEl('ledgerTotalBill').innerText = '₹ ' + tBill.toLocaleString();
@@ -1039,15 +1092,14 @@
         bills.forEach(function(item) {
           var d = item.data;
           var du = Number(d.due) || 0;
-          var statusBadge = du > 0 ? '<span class="badge badge-danger">বাকি</span>' : '<span class="badge badge-success">পরিশোধ</span>';
           html += '<tr>' +
             '<td>' + (d.date || '-') + '</td>' +
             '<td><strong>' + (d.item || '-') + '</strong> (' + (d.qty || 0) + ')</td>' +
-            '<td>₹ ' + (d.rate || 0) + '</td>' +
             '<td>₹ ' + (d.total || 0) + '</td>' +
             '<td style="color:green; font-weight:600;">₹ ' + (d.paid || 0) + '</td>' +
-            '<td style="color:red; font-weight:600;">₹ ' + du + '</td>' +
-            '<td>' + statusBadge + '</td>' +
+            '<td style="color:' + (du > 0 ? 'red' : 'inherit') + '; font-weight:bold;">₹ ' + du + '</td>' +
+            '<td style="color:#e65100; font-weight:bold; background:#fff8e1;">₹ ' + item.cumDue + '</td>' +
+            '<td><button class="action-btn btn-info" onclick="showInvoice(\'' + item.key + '\')">📄 Invoice</button></td>' +
           '</tr>';
         });
         tbody.innerHTML = html;
@@ -1065,22 +1117,22 @@
       var d = farmStore.sales[k]; if(!d) return;
       var dueAmt = Number(d.due) || 0;
       var paymentStatus = dueAmt <= 0 ? 
-        '<span style="color:#2e7d32; font-weight:bold; background:#e8f5e9; padding:2px 8px; border-radius:4px;">● সম্পূর্ণ পরিশোধ (PAID)</span>' : 
-        '<span style="color:#c62828; font-weight:bold; background:#ffebee; padding:2px 8px; border-radius:4px;">● বকেয়া চালান (UNPAID/DUE)</span>';
+        '<span style="color:#2e7d32; font-weight:bold; background:#e8f5e9; padding:3px 9px; border-radius:4px; font-size:12px;">● সম্পূর্ণ পরিশোধ (PAID)</span>' : 
+        '<span style="color:#c62828; font-weight:bold; background:#ffebee; padding:3px 9px; border-radius:4px; font-size:12px;">● বকেয়া চালান (UNPAID/DUE)</span>';
 
       getEl('invoiceDetails').innerHTML = 
-        '<div style="display:flex; justify-content:space-between; margin-bottom:8px;">' +
+        '<div style="display:flex; justify-content:space-between; margin-bottom:12px;">' +
           '<div>' +
-            '<strong>বিল প্রাপক (Customer):</strong><br>' +
-            '<span style="font-size:15px; font-weight:bold; color:#1b5e20;">' + d.name + '</span><br>' +
+            '<strong style="color:#555;">গ্রাহকের তথ্য (Customer Info):</strong><br>' +
+            '<span style="font-size:16px; font-weight:bold; color:#1b5e20;">' + d.name + '</span><br>' +
             (d.phone ? '<span>মোবাইল: ' + d.phone + '</span><br>' : '') +
             (d.area ? '<span>এলাকা: ' + d.area + '</span><br>' : '') +
             (d.addr ? '<span>ঠিকানা: ' + d.addr + '</span>' : '') +
           '</div>' +
           '<div style="text-align:right;">' +
-            '<strong>চালান বিবরণ:</strong><br>' +
+            '<strong style="color:#555;">চালান বিবরণ:</strong><br>' +
             'তারিখ: ' + d.date + '<br>' +
-            'ইনভয়েস নং: #' + k.substring(1, 7).toUpperCase() + '<br>' +
+            'চালান নং: #NDA-' + k.substring(1, 7).toUpperCase() + '<br>' +
             paymentStatus +
           '</div>' +
         '</div>' +
@@ -1095,10 +1147,10 @@
             '</tr>' +
           '</tbody>' +
         '</table>' +
-        '<div style="text-align:right; font-size:13px; line-height:1.9;">' +
-          '<div>সর্বমোট বিল: <strong>₹ ' + d.total + '</strong></div>' +
+        '<div style="text-align:right; font-size:13px; line-height:2.0;">' +
+          '<div>মোট বিল: <strong>₹ ' + d.total + '</strong></div>' +
           '<div style="color:green;">জমা / পরিশোধ: <strong>₹ ' + d.paid + '</strong></div>' +
-          '<div style="color:red; font-size:14px; border-top:1px dashed #ccc; padding-top:4px;">বর্তমান বাকি: <strong>₹ ' + d.due + '</strong></div>' +
+          '<div style="color:red; font-size:15px; border-top:1px dashed #ccc; padding-top:4px;">বর্তমান বাকি: <strong>₹ ' + d.due + '</strong></div>' +
         '</div>';
 
       getEl('invoiceModal').style.display = 'flex';
@@ -1292,7 +1344,7 @@
       var b = (getEl('semBatch').value||'').trim(); if(!b) return alert('Batch No দিন!');
       var data = { batch:b, breed:getEl('semBreed').value, source:getEl('semSource').value, count:parseFloat(getEl('semCount').value)||0 };
       if(db) eSemKey ? db.ref('semen/'+eSemKey).update(data) : db.ref('semen').push(data);
-      cancelSemEdit();
+      cancelSemenEdit();
     }
 
     // ১০. HEALTH
