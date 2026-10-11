@@ -449,8 +449,8 @@
       border: 2px solid var(--secondary);
     }
 
-    /* মোডাল স্টাইল */
-    #invoiceModal, #ledgerModal {
+    /* মোডাল স্টাইল: ইনভয়েসের প্রায়োরিটি লেজারের চেয়ে বেশি রাখা হয়েছে */
+    #ledgerModal {
       display: none;
       position: fixed;
       inset: 0;
@@ -461,16 +461,29 @@
       padding: 15px;
     }
 
+    #invoiceModal {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.75);
+      z-index: 2500;
+      align-items: center;
+      justify-content: center;
+      padding: 15px;
+    }
+
     .invoice-card {
       background: white;
       max-width: 530px;
       width: 100%;
       border-radius: 12px;
-      padding: 26px;
+      padding: 24px;
       position: relative;
-      box-shadow: 0 10px 30px rgba(0,0,0,0.25);
+      box-shadow: 0 10px 30px rgba(0,0,0,0.3);
       max-height: 95vh;
       overflow-y: auto;
+      overflow-x: hidden;
+      box-sizing: border-box;
     }
 
     .ledger-card {
@@ -484,12 +497,33 @@
       position: relative;
     }
 
+    /* ইনভয়েস টেবিল: ফিক্সড লেআউট যাতে কোনো কলাম স্ক্রিনের বাইরে না যায় */
+    .invoice-table {
+      width: 100% !important;
+      min-width: 100% !important;
+      max-width: 100% !important;
+      table-layout: fixed !important;
+      border-collapse: collapse !important;
+      margin: 14px 0 !important;
+      box-sizing: border-box !important;
+    }
+
+    .invoice-table th,
+    .invoice-table td {
+      white-space: normal !important;
+      word-break: break-word !important;
+      padding: 8px 6px !important;
+      box-sizing: border-box !important;
+      font-size: 12.5px !important;
+    }
+
     /* প্রিন্ট এরিয়ায় লোগো ওয়াটারমার্ক */
     #invoicePrintArea {
       position: relative;
-      overflow: hidden;
       background: white;
-      padding: 6px;
+      padding: 4px;
+      width: 100%;
+      box-sizing: border-box;
     }
 
     .invoice-watermark {
@@ -511,7 +545,7 @@
       z-index: 1;
     }
 
-    /* প্রিন্ট সেটিংস: ব্রাউজারের অটো হেডার-ফুটার ও টাইটেল সম্পূর্ণ বন্ধ */
+    /* প্রিন্ট সেটিংস: স্মার্ট টার্গেটিং যাতে ইনভয়েস ও খাতা কখনোই একসাথে প্রিন্ট না হয় */
     @page {
       margin: 0mm !important;
       size: auto;
@@ -519,26 +553,83 @@
 
     @media print {
       body {
-        margin: 10mm !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        background: white !important;
       }
       body * {
         visibility: hidden !important;
       }
-      #invoicePrintArea, #invoicePrintArea *, #ledgerPrintArea, #ledgerPrintArea * {
+      .no-print {
+        display: none !important;
+      }
+
+      /* ১. যখন ইনভয়েস প্রিন্ট হবে */
+      body[data-print="invoice"] #ledgerModal,
+      body[data-print="invoice"] #ledgerPrintArea {
+        display: none !important;
+        visibility: hidden !important;
+      }
+      body[data-print="invoice"] #invoiceModal {
+        display: block !important;
+        position: static !important;
+        background: transparent !important;
+        padding: 0 !important;
+      }
+      body[data-print="invoice"] .invoice-card {
+        max-width: 100% !important;
+        box-shadow: none !important;
+        padding: 0 !important;
+        margin: 0 !important;
+      }
+      body[data-print="invoice"] #invoicePrintArea,
+      body[data-print="invoice"] #invoicePrintArea * {
         visibility: visible !important;
       }
-      #invoicePrintArea, #ledgerPrintArea {
+      body[data-print="invoice"] #invoicePrintArea {
         position: absolute !important;
         left: 0 !important;
         top: 0 !important;
         width: 100% !important;
         margin: 0 !important;
-        padding: 12mm !important;
+        padding: 10mm 12mm !important;
         box-sizing: border-box !important;
+        display: block !important;
       }
-      .no-print {
+
+      /* ২. যখন খাতা প্রিন্ট হবে */
+      body[data-print="ledger"] #invoiceModal,
+      body[data-print="ledger"] #invoicePrintArea {
         display: none !important;
+        visibility: hidden !important;
       }
+      body[data-print="ledger"] #ledgerModal {
+        display: block !important;
+        position: static !important;
+        background: transparent !important;
+        padding: 0 !important;
+      }
+      body[data-print="ledger"] .ledger-card {
+        max-width: 100% !important;
+        box-shadow: none !important;
+        padding: 0 !important;
+        margin: 0 !important;
+      }
+      body[data-print="ledger"] #ledgerPrintArea,
+      body[data-print="ledger"] #ledgerPrintArea * {
+        visibility: visible !important;
+      }
+      body[data-print="ledger"] #ledgerPrintArea {
+        position: absolute !important;
+        left: 0 !important;
+        top: 0 !important;
+        width: 100% !important;
+        margin: 0 !important;
+        padding: 10mm 12mm !important;
+        box-sizing: border-box !important;
+        display: block !important;
+      }
+
       .invoice-watermark {
         display: block !important;
         opacity: 0.12 !important;
@@ -1358,13 +1449,13 @@
       </div>
 
       <div class="no-print" style="display: flex; gap: 10px; margin-top: 20px;">
-        <button class="btn btn-info" style="flex: 1;" onclick="printCleanInvoice()">🖨️ প্রিন্ট করুন (Print)</button>
+        <button class="btn btn-info" style="flex: 1;" onclick="printSpecificModal('invoice')">🖨️ প্রিন্ট করুন (Print)</button>
         <button class="btn btn-danger" style="flex: 1;" onclick="closeInvoice()">বন্ধ করুন</button>
       </div>
     </div>
   </div>
 
-  <!-- ২. কাস্টমার খাতা / স্টেটমেন্ট মোডাল (প্রতিটি লাইনে ইউনিফর্ম Invoice বাটনসহ) -->
+  <!-- ২. কাস্টমার খাতা / স্টেটমেন্ট মোডাল -->
   <div id="ledgerModal">
     <div class="ledger-card">
       <div id="ledgerPrintArea">
@@ -1442,7 +1533,7 @@
       </div>
 
       <div class="no-print" style="display:flex; gap:10px; margin-top:18px;">
-        <button class="btn btn-info" style="flex:1;" onclick="printCleanInvoice()">🖨️ খাতা প্রিন্ট করুন (Print Statement)</button>
+        <button class="btn btn-info" style="flex:1;" onclick="printSpecificModal('ledger')">🖨️ খাতা প্রিন্ট করুন (Print Statement)</button>
         <button class="btn btn-danger" style="flex:1;" onclick="closeLedger()">বন্ধ করুন</button>
       </div>
     </div>
@@ -1473,13 +1564,21 @@
       }
     }
 
-    // ব্রাউজারের অটো হেডার বন্ধ করে প্রিন্ট করার ফাংশন
-    window.printCleanInvoice = function() {
+    // নির্দিষ্ট মোডাল সুনির্দিষ্টভাবে প্রিন্ট করার ফাংশন
+    window.printSpecificModal = function(target) {
+      document.body.setAttribute('data-print', target);
       var origTitle = document.title;
       document.title = " ";
       window.print();
       setTimeout(function() {
         document.title = origTitle;
+        if (getEl('invoiceModal') && getEl('invoiceModal').style.display === 'flex') {
+          document.body.setAttribute('data-print', 'invoice');
+        } else if (getEl('ledgerModal') && getEl('ledgerModal').style.display === 'flex') {
+          document.body.setAttribute('data-print', 'ledger');
+        } else {
+          document.body.removeAttribute('data-print');
+        }
       }, 1000);
     };
 
@@ -1834,6 +1933,8 @@
     window.showCustomerLedger = function(encName) {
       var custName = decodeURIComponent(encName).trim();
       window.activeLedgerCustomerName = custName;
+      document.body.setAttribute('data-print', 'ledger');
+      
       var custLower = custName.toLowerCase();
       var cPhone = '';
       var cArea = '';
@@ -1957,6 +2058,7 @@
     window.closeLedger = function() {
       getEl('ledgerModal').style.display = 'none';
       window.activeLedgerCustomerName = '';
+      document.body.removeAttribute('data-print');
     };
 
     window.saveCustomerPayment = function() {
@@ -1972,9 +2074,7 @@
         var s = farmStore.sales[k];
         if ((s.name || '').trim().toLowerCase() === custName.toLowerCase()) {
           var curDue = Number(s.due) || 0;
-          if (curDue > 0) {
-            unpaidSales.push({ key: k, data: s });
-          }
+          if (curDue > 0) unpaidSales.push({ key: k, data: s });
         }
       }
 
@@ -2044,8 +2144,9 @@
       }, 300);
     };
 
-    // নির্দিষ্ট পেমেন্টের জন্য সমন্বিত ইনভয়েস মোডাল
+    // নির্দিষ্ট পেমেন্টের জন্য সমন্বিত ইনভয়েস মোডাল (টাকার পুরো অংক স্পষ্ট দেখাবে)
     window.showPaymentInvoice = function(pDate, pAmt, pNote, custName, cPhone, cArea, cAddr, balAfter, pId) {
+      document.body.setAttribute('data-print', 'invoice');
       if (getEl('invMainDocTitle')) {
         getEl('invMainDocTitle').innerText = 'ইনভয়েস / INVOICE (পেমেন্ট বিল)';
       }
@@ -2066,13 +2167,19 @@
             '<span style="color:#2e7d32; font-weight:bold; background:#e8f5e9; padding:3px 9px; border-radius:4px; font-size:12px;">● অর্থ গ্রহণ সম্পন্ন (PAID)</span>' +
           '</div>' +
         '</div>' +
-        '<table style="width:100%; min-width:auto; border-collapse:collapse; margin:14px 0; border:1px solid #ddd;">' +
-          '<thead><tr style="background:#e8f5e9; border-bottom:2px solid #c8e6c9;"><th style="padding:8px; text-align:left;">বিবরণ (Item/Description)</th><th style="padding:8px; text-align:center;">পদ্ধতি (Method)</th><th style="padding:8px; text-align:right;">আদায়কৃত অর্থ (Amount)</th></tr></thead>' +
+        '<table class="invoice-table" style="border:1px solid #ddd;">' +
+          '<thead>' +
+            '<tr style="background:#e8f5e9; border-bottom:2px solid #c8e6c9;">' +
+              '<th style="text-align:left; width:48%;">বিবরণ (Payment Description)</th>' +
+              '<th style="text-align:center; width:22%;">পদ্ধতি</th>' +
+              '<th style="text-align:right; width:30%; padding-right:10px;">আদায়কৃত অর্থ (₹)</th>' +
+            '</tr>' +
+          '</thead>' +
           '<tbody>' +
             '<tr>' +
-              '<td style="padding:8px; border-bottom:1px solid #eee;"><strong>বকেয়া আদায় / Payment Received</strong></td>' +
-              '<td style="padding:8px; text-align:center; border-bottom:1px solid #eee;">' + (pNote || 'ক্যাশ') + '</td>' +
-              '<td style="padding:8px; text-align:right; border-bottom:1px solid #eee; font-weight:bold; color:green; font-size:14px;">₹ ' + pAmt + '</td>' +
+              '<td style="border-bottom:1px solid #eee;"><strong>বকেয়া আদায় / Payment Received</strong></td>' +
+              '<td style="text-align:center; border-bottom:1px solid #eee;">' + (pNote || 'ক্যাশ') + '</td>' +
+              '<td style="text-align:right; padding-right:10px; border-bottom:1px solid #eee; font-weight:bold; color:green; font-size:14.5px; white-space:nowrap;">₹ ' + pAmt + '</td>' +
             '</tr>' +
           '</tbody>' +
         '</table>' +
@@ -2084,10 +2191,11 @@
       getEl('invoiceModal').style.display = 'flex';
     };
 
-    // সাধারণ বিক্রয় ইনভয়েস মোডাল
+    // সাধারণ বিক্রয় ইনভয়েস মোডাল (টাকার পুরো অংক স্পষ্ট দেখাবে)
     function showInvoice(k) {
       var d = farmStore.sales[k];
       if (!d) return;
+      document.body.setAttribute('data-print', 'invoice');
       if (getEl('invMainDocTitle')) {
         getEl('invMainDocTitle').innerText = 'ইনভয়েস / INVOICE (ক্যাশ মেমো)';
       }
@@ -2112,14 +2220,21 @@
             paymentStatus +
           '</div>' +
         '</div>' +
-        '<table style="width:100%; min-width:auto; border-collapse:collapse; margin:14px 0; border:1px solid #ddd;">' +
-          '<thead><tr style="background:#e8f5e9; border-bottom:2px solid #c8e6c9;"><th style="padding:8px;">পণ্য (Item)</th><th style="padding:8px; text-align:center;">পরিমাণ</th><th style="padding:8px; text-align:right;">দর (Rate)</th><th style="padding:8px; text-align:right;">মোট (Total)</th></tr></thead>' +
+        '<table class="invoice-table" style="border:1px solid #ddd;">' +
+          '<thead>' +
+            '<tr style="background:#e8f5e9; border-bottom:2px solid #c8e6c9;">' +
+              '<th style="text-align:left; width:44%;">পণ্য (Item)</th>' +
+              '<th style="text-align:center; width:18%;">পরিমাণ</th>' +
+              '<th style="text-align:right; width:18%;">দর (Rate)</th>' +
+              '<th style="text-align:right; width:20%; padding-right:10px;">মোট (Total)</th>' +
+            '</tr>' +
+          '</thead>' +
           '<tbody>' +
             '<tr>' +
-              '<td style="padding:8px; border-bottom:1px solid #eee;"><strong>' + d.item + '</strong></td>' +
-              '<td style="padding:8px; text-align:center; border-bottom:1px solid #eee;">' + d.qty + '</td>' +
-              '<td style="padding:8px; text-align:right; border-bottom:1px solid #eee;">₹ ' + d.rate + '</td>' +
-              '<td style="padding:8px; text-align:right; border-bottom:1px solid #eee; font-weight:bold;">₹ ' + d.total + '</td>' +
+              '<td style="border-bottom:1px solid #eee;"><strong>' + d.item + '</strong></td>' +
+              '<td style="text-align:center; border-bottom:1px solid #eee;">' + d.qty + '</td>' +
+              '<td style="text-align:right; border-bottom:1px solid #eee;">₹ ' + d.rate + '</td>' +
+              '<td style="text-align:right; padding-right:10px; border-bottom:1px solid #eee; font-weight:bold; white-space:nowrap;">₹ ' + d.total + '</td>' +
             '</tr>' +
           '</tbody>' +
         '</table>' +
@@ -2134,6 +2249,11 @@
 
     function closeInvoice() {
       getEl('invoiceModal').style.display = 'none';
+      if (getEl('ledgerModal') && getEl('ledgerModal').style.display === 'flex') {
+        document.body.setAttribute('data-print', 'ledger');
+      } else {
+        document.body.removeAttribute('data-print');
+      }
     }
 
     // ১. CATTLE
