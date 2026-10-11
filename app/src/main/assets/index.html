@@ -141,7 +141,7 @@
     #invoicePrintArea { position: relative; overflow: hidden; background: white; padding: 6px; }
     .invoice-watermark {
       position: absolute;
-      top: 52%;
+      top: 50%;
       left: 50%;
       transform: translate(-50%, -50%);
       width: 250px;
@@ -655,7 +655,7 @@
     </div>
   </div>
 
-  <!-- ২. কাস্টমার খাতা / স্টেটমেন্ট মোডাল (নতুন পেমেন্ট নেওয়া, রানিং ব্যালেন্স ও পৃথক Invoice বাটনসহ) -->
+  <!-- ২. কাস্টমার খাতা / স্টেটমেন্ট মোডাল (সরাসরি পেমেন্ট নেওয়া, রানিং ব্যালেন্স ও প্রতিটি রসিদ প্রিন্ট সহ) -->
   <div id="ledgerModal">
     <div class="ledger-card">
       <div id="ledgerPrintArea">
@@ -669,7 +669,6 @@
           </div>
         </div>
 
-        <!-- কাস্টমার আর্থিক সামারি -->
         <div style="display:grid; grid-template-columns:repeat(3, 1fr); gap:10px; margin-bottom:15px; text-align:center;">
           <div style="background:#e8f5e9; padding:10px; border-radius:8px;">
             <span style="font-size:11px; color:#555;">সর্বমোট কেনাকাটা</span>
@@ -685,7 +684,7 @@
           </div>
         </div>
 
-        <!-- খাতার ভেতর সরাসরি নতুন পেমেন্ট জমার ফর্ম -->
+        <!-- সরাসরি পেমেন্ট গ্রহণের ইনপুট ফর্ম -->
         <div style="background:#f4fbf5; border:1px solid #c8e6c9; border-radius:8px; padding:12px 14px; margin-bottom:15px;" class="no-print">
           <strong style="color:#1b5e20; font-size:13px; display:block; margin-bottom:8px;">💳 বকেয়া টাকা জমা নিন (Receive Payment)</strong>
           <div style="display:flex; flex-wrap:wrap; gap:10px; align-items:flex-end;">
@@ -698,7 +697,7 @@
               <input type="number" id="ledgerPayAmount" placeholder="টাকার অংক লিখুন" style="padding:7px 10px; font-size:12px; margin-top:2px;">
             </div>
             <div style="flex:1.5; min-width:160px;">
-              <label style="font-size:11px; font-weight:600; color:#444;">পদ্ধতি / নোট (ঐচ্ছিক)</label>
+              <label style="font-size:11px; font-weight:600; color:#444;">পদ্ধতি / বিবরণ (ঐচ্ছিক)</label>
               <input type="text" id="ledgerPayNote" placeholder="যেমন: নগদ ক্যাশ / UPI" style="padding:7px 10px; font-size:12px; margin-top:2px;">
             </div>
             <div>
@@ -946,6 +945,7 @@
       body.innerHTML = html;
     }
 
+    // ৫. SALES & BILLING রেন্ডার (স্বয়ংক্রিয় লাইভ বকেয়া ডিসপ্লে সহ)
     function renderSalesTable() {
       var body = getEl('salesTableBody');
       if (!body) return;
@@ -960,11 +960,15 @@
 
       for (var k in farmStore.sales) {
         var d = farmStore.sales[k];
+        
+        // যদি এটি শুধু একটি পেমেন্ট রসিদ হয় তবে সেলস লেজারের মূল টেবিল পরিচ্ছন্ন রাখতে আলাদা রাখা হয়
+        if (d.isPayment && Number(d.total) === 0) continue;
+
         var total = Number(d.total) || 0;
         var paid = Number(d.paid) || 0;
         var due = Number(d.due) || 0;
         tS += total;
-        tD += due;
+        tD += Math.max(0, due);
 
         var areaStr = (d.area || '').trim();
         if (areaStr) uniqueAreas[areaStr] = true;
@@ -1029,10 +1033,10 @@
 
         var rowStyle = isOv ? 'background:#fff3f3; border-left:5px solid #d32f2f;' : '';
         var dueBadge = '';
-        if (isOv) {
+        if (isOv && dueVal > 0) {
           dueBadge = '<span class="badge badge-danger">₹ ' + dueVal + ' (⚠️ ' + item.diffDays + ' দিন বাকি)</span>';
         } else if (dueVal > 0) {
-          dueBadge = '<span style="color:red; font-weight:bold;">₹ ' + dueVal + '</span>';
+          dueBadge = '<strong style="color:red; font-size:13.5px;">₹ ' + dueVal + '</strong>';
         } else {
           dueBadge = '<span class="badge badge-success">পরিশোধ</span>';
         }
@@ -1047,7 +1051,7 @@
             (d.area ? '<span class="badge badge-warning" style="margin-bottom:3px;">' + d.area + '</span><br>' : '') +
             '<span style="font-size:11.5px; color:#555;">' + (d.addr || '-') + '</span>' +
           '</td>' +
-          '<td>' + (d.item || '-') + (d.total > 0 ? ' (' + (d.qty || 0) + ')' : '') + '</td>' +
+          '<td>' + (d.item || '-') + ' (' + (d.qty || 0) + ')</td>' +
           '<td>₹ ' + (d.total || 0) + '</td>' +
           '<td style="color:green; font-weight:600;">₹ ' + (d.paid || 0) + '</td>' +
           '<td>' + dueBadge + '</td>' +
@@ -1063,71 +1067,113 @@
       body.innerHTML = html;
     }
 
-    // কাস্টমার খাতা / স্টেটমেন্ট (রানিং ব্যালেন্স ও পেমেন্ট হিস্ট্রি সহ)
+    // কাস্টমার খাতা / স্টেটমেন্ট
     window.showCustomerLedger = function(encName) {
       var custName = decodeURIComponent(encName).trim();
       window.activeLedgerCustomerName = custName;
       var custLower = custName.toLowerCase();
-      var bills = [];
-      var tBill = 0, tPaid = 0, tDue = 0;
       var cPhone = '', cArea = '', cAddr = '';
+      var events = [];
+      var totalBillAmount = 0;
+      var totalPaidAmount = 0;
 
       for (var k in farmStore.sales) {
         var s = farmStore.sales[k];
         if ((s.name || '').trim().toLowerCase() === custLower) {
-          var tot = Number(s.total) || 0;
-          var pd = Number(s.paid) || 0;
-          var du = Number(s.due) || 0;
-          tBill += tot; tPaid += pd; tDue += du;
           if (s.phone) cPhone = s.phone;
           if (s.area) cArea = s.area;
           if (s.addr) cAddr = s.addr;
-          bills.push({ key: k, data: s });
+
+          var bTot = Number(s.total) || 0;
+          var bCurPaid = Number(s.paid) || 0;
+          var pList = s.payments || [];
+          var subsequentSum = 0;
+          pList.forEach(function(p) { subsequentSum += (Number(p.amount) || 0); });
+          var initialPaid = Math.max(0, bCurPaid - subsequentSum);
+
+          if (bTot > 0) {
+            totalBillAmount += bTot;
+            totalPaidAmount += initialPaid;
+            events.push({
+              date: s.date || '',
+              desc: (s.item || 'পণ্য') + (s.qty ? ' (' + s.qty + ')' : ''),
+              bill: bTot,
+              paid: initialPaid,
+              netDiff: bTot - initialPaid,
+              isSale: true,
+              saleKey: k,
+              timestamp: new Date(s.date || '2000-01-01').getTime()
+            });
+          }
+
+          pList.forEach(function(p, pIdx) {
+            var pAmt = Number(p.amount) || 0;
+            totalPaidAmount += pAmt;
+            events.push({
+              date: p.date || s.date || '',
+              desc: '💳 বকেয়া জমা (' + (p.note || 'ক্যাশ') + ')',
+              bill: 0,
+              paid: pAmt,
+              netDiff: -pAmt,
+              isPayment: true,
+              payObj: p,
+              saleKey: k,
+              timestamp: new Date(p.date || s.date || '2000-01-01').getTime() + (pIdx + 1)
+            });
+          });
         }
       }
 
-      // তারিখ অনুযায়ী প্রথম থেকে সাজিয়ে রানিং ব্যালেন্স গণনা
-      bills.sort(function(a, b) {
-        return (a.data.date || '').localeCompare(b.data.date || '');
-      });
+      // তারিখ অনুযায়ী প্রথম থেকে সাজিয়ে রানিং ব্যালেন্স হিসাব
+      events.sort(function(a, b) { return a.timestamp - b.timestamp; });
 
       var runningBalance = 0;
-      bills.forEach(function(item) {
-        var tot = Number(item.data.total) || 0;
-        var pd = Number(item.data.paid) || 0;
-        runningBalance += (tot - pd);
-        item.cumDue = runningBalance;
+      events.forEach(function(ev) {
+        runningBalance += ev.netDiff;
+        ev.cumDue = Math.max(0, runningBalance);
       });
 
-      // নতুন লেনদেন সবার ওপরে প্রদর্শনের জন্য রিভার্স
-      bills.reverse();
+      // প্রদর্শনের জন্য নতুন তারিখ সবার ওপরে
+      events.reverse();
 
+      var overallCurrentDue = Math.max(0, totalBillAmount - totalPaidAmount);
       getEl('ledgerCustSub').innerHTML = 'গ্রাহক: <strong>' + custName + '</strong> ' + (cPhone ? '| 📞 ' + cPhone : '') + (cArea ? ' | এরিয়া: ' + cArea : '');
-      getEl('ledgerTotalBill').innerText = '₹ ' + tBill.toLocaleString();
-      getEl('ledgerTotalPaid').innerText = '₹ ' + tPaid.toLocaleString();
-      getEl('ledgerTotalDue').innerText = '₹ ' + tDue.toLocaleString();
+      getEl('ledgerTotalBill').innerText = '₹ ' + totalBillAmount.toLocaleString();
+      getEl('ledgerTotalPaid').innerText = '₹ ' + totalPaidAmount.toLocaleString();
+      getEl('ledgerTotalDue').innerText = '₹ ' + overallCurrentDue.toLocaleString();
 
       if (getEl('ledgerPayDate')) getEl('ledgerPayDate').value = new Date().toISOString().split('T')[0];
       if (getEl('ledgerPayAmount')) getEl('ledgerPayAmount').value = '';
       if (getEl('ledgerPayNote')) getEl('ledgerPayNote').value = '';
 
       var tbody = getEl('ledgerTableBody');
-      if (bills.length === 0) {
+      if (events.length === 0) {
         tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; color:#888;">কোনো অতীত রেকর্ড পাওয়া যায়নি।</td></tr>';
       } else {
         var html = '';
-        bills.forEach(function(item) {
-          var d = item.data;
-          var du = Number(d.due) || 0;
-          html += '<tr>' +
-            '<td>' + (d.date || '-') + '</td>' +
-            '<td><strong>' + (d.item || '-') + '</strong>' + (d.total > 0 ? ' (' + (d.qty || 0) + ')' : '') + '</td>' +
-            '<td>₹ ' + (d.total || 0) + '</td>' +
-            '<td style="color:green; font-weight:600;">₹ ' + (d.paid || 0) + '</td>' +
-            '<td style="color:' + (du > 0 ? 'red' : (du < 0 ? 'green' : 'inherit')) + '; font-weight:bold;">₹ ' + du + '</td>' +
-            '<td style="color:#e65100; font-weight:bold; background:#fff8e1;">₹ ' + item.cumDue + '</td>' +
-            '<td><button class="action-btn btn-info" onclick="showInvoice(\'' + item.key + '\')">📄 Invoice</button></td>' +
-          '</tr>';
+        events.forEach(function(ev) {
+          if (ev.isSale) {
+            html += '<tr>' +
+              '<td>' + (ev.date || '-') + '</td>' +
+              '<td><strong>' + ev.desc + '</strong></td>' +
+              '<td>₹ ' + ev.bill + '</td>' +
+              '<td style="color:green; font-weight:600;">₹ ' + ev.paid + '</td>' +
+              '<td style="color:red; font-weight:bold;">₹ ' + ev.netDiff + '</td>' +
+              '<td style="color:#e65100; font-weight:bold; background:#fff8e1;">₹ ' + ev.cumDue + '</td>' +
+              '<td><button class="action-btn btn-info" onclick="showInvoice(\'' + ev.saleKey + '\')">📄 Invoice</button></td>' +
+            '</tr>';
+          } else {
+            var safeNote = (ev.payObj.note || 'ক্যাশ').replace(/'/g, "");
+            html += '<tr style="background:#f9fdfa;">' +
+              '<td>' + (ev.date || '-') + '</td>' +
+              '<td><strong style="color:#1b5e20;">' + ev.desc + '</strong></td>' +
+              '<td>-</td>' +
+              '<td style="color:green; font-weight:700; font-size:13px;">₹ ' + ev.paid + '</td>' +
+              '<td>-</td>' +
+              '<td style="color:#e65100; font-weight:bold; background:#fff8e1;">₹ ' + ev.cumDue + '</td>' +
+              '<td><button class="action-btn" style="background:#2e7d32; color:white;" onclick="showPaymentReceipt(\'' + ev.date + '\', ' + ev.paid + ', \'' + safeNote + '\', \'' + custName + '\', \'' + cPhone + '\', \'' + cArea + '\', \'' + cAddr + '\', ' + ev.cumDue + ', \'' + (ev.payObj.id || '') + '\')">📄 Receipt</button></td>' +
+            '</tr>';
+          }
         });
         tbody.innerHTML = html;
       }
@@ -1140,79 +1186,139 @@
       window.activeLedgerCustomerName = '';
     };
 
-    // সরাসরি খাতার ভেতর থেকে নতুন টাকা জমা নেওয়ার ফাংশন
+    // সরাসরি খাতার ভেতর থেকে টাকা জমা এবং মূল সেলস লেজারের Due স্বয়ংক্রিয়ভাবে আপডেট করা
     window.saveCustomerPayment = function() {
       var amt = parseFloat(getEl('ledgerPayAmount').value) || 0;
       if (amt <= 0) return alert('অনুগ্রহ করে জমার সঠিক পরিমাণ (টাকা) লিখুন!');
       var pDate = getEl('ledgerPayDate').value || new Date().toISOString().split('T')[0];
-      var pNote = (getEl('ledgerPayNote').value || 'বকেয়া পরিশোধ').trim();
+      var pNote = (getEl('ledgerPayNote').value || 'নগদ জমা').trim();
       var custName = window.activeLedgerCustomerName;
       if (!custName) return alert('গ্রাহকের নাম পাওয়া যায়নি!');
 
-      var cPhone = '', cArea = '', cAddr = '';
+      // বকেয়া থাকা সব বিল বের করা (পুরোনো বিল আগে পরিশোধ হবে)
+      var unpaidSales = [];
       for (var k in farmStore.sales) {
         var s = farmStore.sales[k];
         if ((s.name || '').trim().toLowerCase() === custName.toLowerCase()) {
-          if (s.phone) cPhone = s.phone;
-          if (s.area) cArea = s.area;
-          if (s.addr) cAddr = s.addr;
-          break;
+          var curDue = Number(s.due) || 0;
+          if (curDue > 0) {
+            unpaidSales.push({ key: k, data: s });
+          }
         }
       }
 
-      var paymentRecord = {
-        date: pDate,
-        name: custName,
-        phone: cPhone,
-        area: cArea,
-        addr: cAddr,
-        item: 'বকেয়া পরিশোধ (' + pNote + ')',
-        qty: 1,
-        rate: 0,
-        total: 0,
-        paid: amt,
-        due: -amt,
-        isPayment: true
-      };
+      unpaidSales.sort(function(a, b) {
+        return (a.data.date || '').localeCompare(b.data.date || '');
+      });
 
-      if (db) {
-        db.ref('sales').push(paymentRecord);
-        alert('পেমেন্ট সফলভাবে জমা হয়েছে এবং খাতা স্বয়ংক্রিয়ভাবে আপডেট হয়েছে!');
-        setTimeout(function() {
-          showCustomerLedger(encodeURIComponent(custName));
-        }, 400);
+      var paymentId = 'PAY-' + Date.now();
+      var rem = amt;
+
+      if (unpaidSales.length > 0) {
+        unpaidSales.forEach(function(item) {
+          if (rem <= 0) return;
+          var curDue = Number(item.data.due) || 0;
+          var curPaid = Number(item.data.paid) || 0;
+          var payAmount = Math.min(rem, curDue);
+
+          var newPaid = curPaid + payAmount;
+          var newDue = curDue - payAmount;
+          rem -= payAmount;
+
+          var pList = item.data.payments || [];
+          pList.push({
+            id: paymentId,
+            date: pDate,
+            amount: payAmount,
+            totalPayment: amt,
+            note: pNote
+          });
+
+          // ফায়ারবেসে ওই নির্দিষ্ট বিলটির Paid এবং Due সরাসরি আপডেট
+          if (db) {
+            db.ref('sales/' + item.key).update({
+              paid: newPaid,
+              due: newDue,
+              payments: pList
+            });
+          }
+        });
       }
+
+      // যদি গ্রাহক অতিরিক্ত বা অগ্রিম টাকা জমা দেন
+      if (rem > 0) {
+        var advRecord = {
+          date: pDate,
+          name: custName,
+          phone: '',
+          area: '',
+          addr: '',
+          item: 'অগ্রিম জমা (' + pNote + ')',
+          qty: 1,
+          rate: 0,
+          total: 0,
+          paid: rem,
+          due: 0,
+          isPayment: true,
+          payments: [{ id: paymentId, date: pDate, amount: rem, totalPayment: amt, note: pNote }]
+        };
+        if (db) db.ref('sales').push(advRecord);
+      }
+
+      alert('পেমেন্ট সফলভাবে জমা হয়েছে! সেলস লেজারের Due স্বয়ংক্রিয়ভাবে আপডেট হয়ে গেছে।');
+      getEl('ledgerPayAmount').value = '';
+      getEl('ledgerPayNote').value = '';
+      setTimeout(function() {
+        showCustomerLedger(encodeURIComponent(custName));
+      }, 300);
     };
 
-    // প্রিমিয়াম ইনভয়েস পপ-আপ
+    // নির্দিষ্ট পেমেন্টের মানি রিসিট মোডাল
+    window.showPaymentReceipt = function(pDate, pAmt, pNote, custName, cPhone, cArea, cAddr, balAfter, pId) {
+      if (getEl('invMainDocTitle')) getEl('invMainDocTitle').innerText = 'মানি রিসিট / PAYMENT RECEIPT';
+
+      getEl('invoiceDetails').innerHTML = 
+        '<div style="display:flex; justify-content:space-between; margin-bottom:12px;">' +
+          '<div>' +
+            '<strong style="color:#555;">গ্রাহকের তথ্য (Customer Info):</strong><br>' +
+            '<span style="font-size:16px; font-weight:bold; color:#1b5e20;">' + custName + '</span><br>' +
+            (cPhone ? '<span>মোবাইল: ' + cPhone + '</span><br>' : '') +
+            (cArea ? '<span>এলাকা: ' + cArea + '</span><br>' : '') +
+            (cAddr ? '<span>ঠিকানা: ' + cAddr + '</span>' : '') +
+          '</div>' +
+          '<div style="text-align:right;">' +
+            '<strong style="color:#555;">রসিদ বিবরণ:</strong><br>' +
+            'তারিখ: ' + pDate + '<br>' +
+            'রসিদ নং: #' + (pId ? pId.substring(0, 10) : 'REC-' + Date.now().toString().slice(-6)) + '<br>' +
+            '<span style="color:#2e7d32; font-weight:bold; background:#e8f5e9; padding:3px 9px; border-radius:4px; font-size:12px;">● অর্থ গ্রহণ সম্পন্ন (RECEIVED)</span>' +
+          '</div>' +
+        '</div>' +
+        '<table style="width:100%; min-width:auto; border-collapse:collapse; margin:14px 0; border:1px solid #ddd;">' +
+          '<thead><tr style="background:#e8f5e9; border-bottom:2px solid #c8e6c9;"><th style="padding:8px; text-align:left;">বিবরণ (Payment Description)</th><th style="padding:8px; text-align:center;">পদ্ধতি (Method)</th><th style="padding:8px; text-align:right;">আদায়কৃত অর্থ (Amount)</th></tr></thead>' +
+          '<tbody>' +
+            '<tr>' +
+              '<td style="padding:8px; border-bottom:1px solid #eee;"><strong>বকেয়া আদায় / Payment Received</strong></td>' +
+              '<td style="padding:8px; text-align:center; border-bottom:1px solid #eee;">' + (pNote || 'ক্যাশ') + '</td>' +
+              '<td style="padding:8px; text-align:right; border-bottom:1px solid #eee; font-weight:bold; color:green; font-size:14px;">₹ ' + pAmt + '</td>' +
+            '</tr>' +
+          '</tbody>' +
+        '</table>' +
+        '<div style="text-align:right; font-size:13px; line-height:2.0;">' +
+          '<div style="color:green; font-size:15px;">মোট আদায়কৃত অর্থ: <strong>₹ ' + pAmt + '</strong></div>' +
+          '<div style="color:red; font-size:14px; border-top:1px dashed #ccc; padding-top:4px;">বর্তমান মোট বকেয়া: <strong>₹ ' + balAfter + '</strong></div>' +
+        '</div>';
+
+      getEl('invoiceModal').style.display = 'flex';
+    };
+
+    // বিল ক্যাশ মেমো মোডাল
     function showInvoice(k) {
       var d = farmStore.sales[k]; if(!d) return;
+      if (getEl('invMainDocTitle')) getEl('invMainDocTitle').innerText = 'ক্যাশ মেমো / CASH MEMO';
       var dueAmt = Number(d.due) || 0;
-      var isPayDoc = d.isPayment || (d.total === 0 && d.paid > 0);
-
-      var docTitle = isPayDoc ? 'মানি রিসিট / PAYMENT RECEIPT' : 'ক্যাশ মেমো / CASH MEMO';
-      if (getEl('invMainDocTitle')) getEl('invMainDocTitle').innerText = docTitle;
-
       var paymentStatus = dueAmt <= 0 ? 
         '<span style="color:#2e7d32; font-weight:bold; background:#e8f5e9; padding:3px 9px; border-radius:4px; font-size:12px;">● সম্পূর্ণ পরিশোধ (PAID)</span>' : 
         '<span style="color:#c62828; font-weight:bold; background:#ffebee; padding:3px 9px; border-radius:4px; font-size:12px;">● বকেয়া চালান (UNPAID/DUE)</span>';
-
-      var tableRows = '';
-      if (isPayDoc) {
-        tableRows = '<tr>' +
-          '<td style="padding:8px; border-bottom:1px solid #eee;"><strong>' + d.item + '</strong></td>' +
-          '<td style="padding:8px; text-align:center; border-bottom:1px solid #eee;">১</td>' +
-          '<td style="padding:8px; text-align:right; border-bottom:1px solid #eee;">-</td>' +
-          '<td style="padding:8px; text-align:right; border-bottom:1px solid #eee; font-weight:bold; color:green;">₹ ' + d.paid + '</td>' +
-        '</tr>';
-      } else {
-        tableRows = '<tr>' +
-          '<td style="padding:8px; border-bottom:1px solid #eee;"><strong>' + d.item + '</strong></td>' +
-          '<td style="padding:8px; text-align:center; border-bottom:1px solid #eee;">' + d.qty + '</td>' +
-          '<td style="padding:8px; text-align:right; border-bottom:1px solid #eee;">₹ ' + d.rate + '</td>' +
-          '<td style="padding:8px; text-align:right; border-bottom:1px solid #eee; font-weight:bold;">₹ ' + d.total + '</td>' +
-        '</tr>';
-      }
 
       getEl('invoiceDetails').innerHTML = 
         '<div style="display:flex; justify-content:space-between; margin-bottom:12px;">' +
@@ -1226,18 +1332,25 @@
           '<div style="text-align:right;">' +
             '<strong style="color:#555;">চালান বিবরণ:</strong><br>' +
             'তারিখ: ' + d.date + '<br>' +
-            'রসিদ নং: #NDA-' + k.substring(1, 7).toUpperCase() + '<br>' +
+            'চালান নং: #NDA-' + k.substring(1, 7).toUpperCase() + '<br>' +
             paymentStatus +
           '</div>' +
         '</div>' +
         '<table style="width:100%; min-width:auto; border-collapse:collapse; margin:14px 0; border:1px solid #ddd;">' +
-          '<thead><tr style="background:#e8f5e9; border-bottom:2px solid #c8e6c9;"><th style="padding:8px;">বিবরণ (Item/Description)</th><th style="padding:8px; text-align:center;">পরিমাণ</th><th style="padding:8px; text-align:right;">দর (Rate)</th><th style="padding:8px; text-align:right;">টাকা (Amount)</th></tr></thead>' +
-          '<tbody>' + tableRows + '</tbody>' +
+          '<thead><tr style="background:#e8f5e9; border-bottom:2px solid #c8e6c9;"><th style="padding:8px;">পণ্য (Item)</th><th style="padding:8px; text-align:center;">পরিমাণ</th><th style="padding:8px; text-align:right;">দর (Rate)</th><th style="padding:8px; text-align:right;">মোট (Total)</th></tr></thead>' +
+          '<tbody>' +
+            '<tr>' +
+              '<td style="padding:8px; border-bottom:1px solid #eee;"><strong>' + d.item + '</strong></td>' +
+              '<td style="padding:8px; text-align:center; border-bottom:1px solid #eee;">' + d.qty + '</td>' +
+              '<td style="padding:8px; text-align:right; border-bottom:1px solid #eee;">₹ ' + d.rate + '</td>' +
+              '<td style="padding:8px; text-align:right; border-bottom:1px solid #eee; font-weight:bold;">₹ ' + d.total + '</td>' +
+            '</tr>' +
+          '</tbody>' +
         '</table>' +
         '<div style="text-align:right; font-size:13px; line-height:2.0;">' +
-          (isPayDoc ? 
-            '<div style="color:green; font-size:15px;">মোট আদায়কৃত অর্থ: <strong>₹ ' + d.paid + '</strong></div>' : 
-            '<div>মোট বিল: <strong>₹ ' + d.total + '</strong></div><div style="color:green;">জমা / পরিশোধ: <strong>₹ ' + d.paid + '</strong></div><div style="color:red; font-size:15px; border-top:1px dashed #ccc; padding-top:4px;">বর্তমান বাকি: <strong>₹ ' + d.due + '</strong></div>') +
+          '<div>মোট বিল: <strong>₹ ' + d.total + '</strong></div>' +
+          '<div style="color:green;">জমা / পরিশোধ: <strong>₹ ' + d.paid + '</strong></div>' +
+          '<div style="color:red; font-size:15px; border-top:1px dashed #ccc; padding-top:4px;">বর্তমান বাকি: <strong>₹ ' + d.due + '</strong></div>' +
         '</div>';
 
       getEl('invoiceModal').style.display = 'flex';
@@ -1341,7 +1454,8 @@
         rate: parseFloat(getEl('saleRate').value)||0, 
         total: parseFloat(getEl('saleTotal').value)||0, 
         paid: parseFloat(getEl('salePaid').value)||0, 
-        due: parseFloat(getEl('saleDue').value)||0 
+        due: parseFloat(getEl('saleDue').value)||0,
+        payments: []
       };
       if(db) eSaleKey ? db.ref('sales/'+eSaleKey).update(data) : db.ref('sales').push(data);
       cancelSaleEdit();
