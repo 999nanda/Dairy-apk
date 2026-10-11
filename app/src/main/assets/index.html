@@ -497,11 +497,11 @@
       position: relative;
     }
 
-    /* ইনভয়েস টেবিল */
     .invoice-table {
       width: 100% !important;
       min-width: 100% !important;
       max-width: 100% !important;
+      table-layout: fixed !important;
       border-collapse: collapse !important;
       margin: 14px 0 !important;
       box-sizing: border-box !important;
@@ -511,11 +511,11 @@
     .invoice-table td {
       white-space: normal !important;
       word-break: break-word !important;
+      padding: 8px 6px !important;
       box-sizing: border-box !important;
-      font-size: 13px !important;
+      font-size: 12.5px !important;
     }
 
-    /* প্রিন্ট এরিয়ায় লোগো ওয়াটারমার্ক */
     #invoicePrintArea {
       position: relative;
       background: white;
@@ -543,105 +543,88 @@
       z-index: 1;
     }
 
-    /* প্রিন্ট সেটিংস: কোনো ব্ল্যাঙ্ক পেজ ছাড়া সরাসরি নির্ভুল প্রিন্ট */
     @page {
       margin: 0mm !important;
       size: auto;
     }
 
     @media print {
-      html, body {
-        width: 100% !important;
-        height: auto !important;
+      body {
         margin: 0 !important;
         padding: 0 !important;
-        background: #fff !important;
-        color: #000 !important;
-        overflow: visible !important;
+        background: white !important;
       }
-
-      /* পেছনের ড্যাশবোর্ড সম্পূর্ণ হাইড */
-      #appBody,
-      #loginScreen,
-      header,
-      nav,
-      .container,
+      body * {
+        visibility: hidden !important;
+      }
       .no-print {
         display: none !important;
       }
 
-      /* ১. যখন ইনভয়েস প্রিন্ট হবে */
-      body[data-print="invoice"] #ledgerModal {
+      /* ইনভয়েস প্রিন্ট মোড */
+      body[data-print="invoice"] #ledgerModal,
+      body[data-print="invoice"] #ledgerPrintArea {
         display: none !important;
+        visibility: hidden !important;
       }
       body[data-print="invoice"] #invoiceModal {
         display: block !important;
         position: static !important;
         background: transparent !important;
         padding: 0 !important;
-        margin: 0 !important;
-        width: 100% !important;
-        height: auto !important;
-        overflow: visible !important;
       }
       body[data-print="invoice"] .invoice-card {
-        display: block !important;
-        position: static !important;
-        width: 100% !important;
         max-width: 100% !important;
-        height: auto !important;
-        max-height: none !important;
+        box-shadow: none !important;
         padding: 0 !important;
         margin: 0 !important;
-        border: none !important;
-        box-shadow: none !important;
-        overflow: visible !important;
+      }
+      body[data-print="invoice"] #invoicePrintArea,
+      body[data-print="invoice"] #invoicePrintArea * {
+        visibility: visible !important;
       }
       body[data-print="invoice"] #invoicePrintArea {
-        display: block !important;
-        position: relative !important;
+        position: absolute !important;
+        left: 0 !important;
+        top: 0 !important;
         width: 100% !important;
-        padding: 8mm 12mm !important;
-        margin: 0 auto !important;
+        margin: 0 !important;
+        padding: 10mm 12mm !important;
         box-sizing: border-box !important;
-        overflow: visible !important;
+        display: block !important;
       }
 
-      /* ২. যখন খাতা প্রিন্ট হবে */
-      body[data-print="ledger"] #invoiceModal {
+      /* খাতা প্রিন্ট মোড */
+      body[data-print="ledger"] #invoiceModal,
+      body[data-print="ledger"] #invoicePrintArea {
         display: none !important;
+        visibility: hidden !important;
       }
       body[data-print="ledger"] #ledgerModal {
         display: block !important;
         position: static !important;
         background: transparent !important;
         padding: 0 !important;
-        margin: 0 !important;
-        width: 100% !important;
-        height: auto !important;
-        overflow: visible !important;
       }
       body[data-print="ledger"] .ledger-card {
-        display: block !important;
-        position: static !important;
-        width: 100% !important;
         max-width: 100% !important;
-        height: auto !important;
-        max-height: none !important;
+        box-shadow: none !important;
         padding: 0 !important;
         margin: 0 !important;
-        border: none !important;
-        box-shadow: none !important;
-        overflow: visible !important;
+      }
+      body[data-print="ledger"] #ledgerPrintArea,
+      body[data-print="ledger"] #ledgerPrintArea * {
+        visibility: visible !important;
       }
       body[data-print="ledger"] #ledgerPrintArea {
-        display: block !important;
-        position: relative !important;
+        position: absolute !important;
+        left: 0 !important;
+        top: 0 !important;
         width: 100% !important;
-        padding: 8mm 12mm !important;
-        margin: 0 auto !important;
+        margin: 0 !important;
+        padding: 10mm 12mm !important;
         box-sizing: border-box !important;
-        overflow: visible !important;
+        display: block !important;
       }
 
       .invoice-watermark {
@@ -755,29 +738,97 @@
         <div class="card">
           <h2>🐄 Cattle Register</h2>
           <div class="form-grid">
-            <div class="input-group"><label>Tag ID *</label><input type="text" id="cowTag" placeholder="NDA-001"></div>
-            <div class="input-group"><label>Breed</label><input type="text" id="cowBreed" placeholder="Jersey / HF"></div>
-            <div class="input-group"><label>Breed Type</label><input type="text" id="cowBreedType" placeholder="Jersey Cross"></div>
-            <div class="input-group"><label>Generation</label><select id="cowGeneration"><option value="F1">F1</option><option value="F2">F2</option><option value="F3">F3</option><option value="F4+">F4+</option><option value="Pure/100%">Pure/100%</option></select></div>
-            <div class="input-group"><label>DOB (জন্মতারিখ)</label><input type="date" id="cowDob"></div>
-            <div class="input-group"><label>Weight kg (ওজন)</label><input type="number" id="cowWeight" placeholder="450"></div>
-            <div class="input-group"><label>Lactation (বিয়ান)</label><input type="number" id="cowLactation" placeholder="2"></div>
-            <div class="input-group"><label>Status</label><select id="cowStatus"><option value="Milking">Milking</option><option value="Pregnant">Pregnant</option><option value="Dry">Dry</option><option value="Heat">Heat</option><option value="Heifer">Heifer</option><option value="Calf">Calf</option><option value="Sick">Sick</option><option value="Sold/Transferred">Sold/Transferred</option></select></div>
-            <div class="input-group"><label>Daily Est. Milk (লিটার/দিন)</label><input type="number" step="0.1" id="cowMilkDay" placeholder="12.5"></div>
-            <div class="input-group"><label>Sire / Semen</label><input type="text" id="cowSire" placeholder="Romio"></div>
-            <div class="input-group"><label>Dam (মা)</label><input type="text" id="cowDam" placeholder="মায়ের আইডি"></div>
-            <div class="input-group"><label>Expected Calving</label><input type="date" id="cowExpCalving"></div>
+            <div class="input-group">
+              <label>Tag ID *</label>
+              <input type="text" id="cowTag" placeholder="NDA-001">
+            </div>
+            <div class="input-group">
+              <label>Breed</label>
+              <input type="text" id="cowBreed" placeholder="Jersey / HF">
+            </div>
+            <div class="input-group">
+              <label>Breed Type</label>
+              <input type="text" id="cowBreedType" placeholder="Jersey Cross">
+            </div>
+            <div class="input-group">
+              <label>Generation</label>
+              <select id="cowGeneration">
+                <option value="F1">F1</option>
+                <option value="F2">F2</option>
+                <option value="F3">F3</option>
+                <option value="F4+">F4+</option>
+                <option value="Pure/100%">Pure/100%</option>
+              </select>
+            </div>
+            <div class="input-group">
+              <label>DOB (জন্মতারিখ)</label>
+              <input type="date" id="cowDob">
+            </div>
+            <div class="input-group">
+              <label>Weight kg (ওজন)</label>
+              <input type="number" id="cowWeight" placeholder="450">
+            </div>
+            <div class="input-group">
+              <label>Lactation (বিয়ান)</label>
+              <input type="number" id="cowLactation" placeholder="2">
+            </div>
+            <div class="input-group">
+              <label>Status</label>
+              <select id="cowStatus">
+                <option value="Milking">Milking</option>
+                <option value="Pregnant">Pregnant</option>
+                <option value="Dry">Dry</option>
+                <option value="Heat">Heat</option>
+                <option value="Heifer">Heifer</option>
+                <option value="Calf">Calf</option>
+                <option value="Sick">Sick</option>
+                <option value="Sold/Transferred">Sold/Transferred</option>
+              </select>
+            </div>
+            <div class="input-group">
+              <label>Daily Est. Milk (লিটার/দিন)</label>
+              <input type="number" step="0.1" id="cowMilkDay" placeholder="12.5">
+            </div>
+            <div class="input-group">
+              <label>Sire / Semen</label>
+              <input type="text" id="cowSire" placeholder="Romio">
+            </div>
+            <div class="input-group">
+              <label>Dam (মা)</label>
+              <input type="text" id="cowDam" placeholder="মায়ের আইডি">
+            </div>
+            <div class="input-group">
+              <label>Expected Calving</label>
+              <input type="date" id="cowExpCalving">
+            </div>
           </div>
           <div style="display:flex; gap:10px;">
             <button class="btn" id="cowSubmitBtn" onclick="saveCattle()">Save Cattle</button>
             <button class="btn btn-warning" id="cowCancelBtn" style="display:none;" onclick="cancelCattleEdit()">Cancel (বাতিল)</button>
           </div>
         </div>
+        
         <div class="card">
           <h2>সকল গরুর তালিকা (Cattle List)</h2>
           <div class="table-container">
             <table>
-              <thead><tr><th>#</th><th>Tag</th><th>Breed</th><th>Type</th><th>Gen</th><th>DOB</th><th>Weight</th><th>Lact</th><th>Status</th><th style="background:#e8f5e9; color:#1b5e20;">Total Milk (Days)</th><th>Sire/Semen</th><th>Calving</th><th>Action</th></tr></thead>
+              <thead>
+                <tr>
+                  <th>#</th>
+                  <th>Tag</th>
+                  <th>Breed</th>
+                  <th>Type</th>
+                  <th>Gen</th>
+                  <th>DOB</th>
+                  <th>Weight</th>
+                  <th>Lact</th>
+                  <th>Status</th>
+                  <th style="background:#e8f5e9; color:#1b5e20;">Total Milk (Days)</th>
+                  <th>Sire/Semen</th>
+                  <th>Calving</th>
+                  <th>Action</th>
+                </tr>
+              </thead>
               <tbody id="cattleTableBody"></tbody>
             </table>
           </div>
@@ -789,31 +840,83 @@
         <div class="card">
           <h2>🧬 AI • Pregnancy • Calving • Pedigree</h2>
           <div class="form-grid">
-            <div class="input-group"><label>Cattle ID *</label><input type="text" id="brCowTag" list="cattleTagList" placeholder="Tag সিলেক্ট বা টাইপ করুন"></div>
-            <div class="input-group"><label>AI Date *</label><input type="date" id="brAiDate" onchange="autoCalcExpectedCalving()"></div>
-            <div class="input-group"><label>Semen/Bull</label><input type="text" id="brSemenId" placeholder="ষাঁড় বা সিমেন আইডি"></div>
-            <div class="input-group"><label>Company</label><input type="text" id="brCompany" placeholder="কোম্পানির নাম (যেমন: ABS / BRAC)"></div>
-            <div class="input-group"><label>AI Cost ₹</label><input type="number" id="brAiCost" placeholder="এআই খরচ (₹)"></div>
-            <div class="input-group"><label>Pregnancy Test (তারিখ)</label><input type="date" id="brPdDate"></div>
-            <div class="input-group"><label>Result</label><select id="brStatus"><option value="Pending">Pending</option><option value="Pregnant">Pregnant</option><option value="Failed">Failed</option><option value="Calved">Calved</option></select></div>
-            <div class="input-group"><label>Expected Calving (সম্ভাব্য প্রসব)</label><input type="date" id="brExpCalvingDate"></div>
-            <div class="input-group"><label>Actual Calving (প্রকৃত প্রসব)</label><input type="date" id="brActCalvingDate"></div>
+            <div class="input-group">
+              <label>Cattle ID *</label>
+              <input type="text" id="brCowTag" list="cattleTagList" placeholder="Tag সিলেক্ট বা টাইপ করুন">
+            </div>
+            <div class="input-group">
+              <label>AI Date *</label>
+              <input type="date" id="brAiDate" onchange="autoCalcExpectedCalving()">
+            </div>
+            <div class="input-group">
+              <label>Semen/Bull</label>
+              <input type="text" id="brSemenId" placeholder="ষাঁড় বা সিমেন আইডি">
+            </div>
+            <div class="input-group">
+              <label>Company</label>
+              <input type="text" id="brCompany" placeholder="কোম্পানির নাম (যেমন: ABS / BRAC)">
+            </div>
+            <div class="input-group">
+              <label>AI Cost ₹</label>
+              <input type="number" id="brAiCost" placeholder="এআই খরচ (₹)">
+            </div>
+            <div class="input-group">
+              <label>Pregnancy Test (তারিখ)</label>
+              <input type="date" id="brPdDate">
+            </div>
+            <div class="input-group">
+              <label>Result</label>
+              <select id="brStatus">
+                <option value="Pending">Pending</option>
+                <option value="Pregnant">Pregnant</option>
+                <option value="Failed">Failed</option>
+                <option value="Calved">Calved</option>
+              </select>
+            </div>
+            <div class="input-group">
+              <label>Expected Calving (সম্ভাব্য প্রসব)</label>
+              <input type="date" id="brExpCalvingDate">
+            </div>
+            <div class="input-group">
+              <label>Actual Calving (প্রকৃত প্রসব)</label>
+              <input type="date" id="brActCalvingDate">
+            </div>
           </div>
           <div style="display:flex; gap:10px;">
             <button class="btn" id="brSubmitBtn" onclick="saveBreeding()">Save Breeding Record</button>
             <button class="btn btn-warning" id="brCancelBtn" style="display:none;" onclick="cancelBreedingEdit()">Cancel (বাতিল)</button>
           </div>
         </div>
+
         <div class="card">
           <h2>প্রজনন রেকর্ড তালিকা (Breeding Ledger)</h2>
           <div class="table-container">
-            <table><thead><tr><th>Cattle ID</th><th>AI Date</th><th>Semen/Bull</th><th>Company</th><th>AI Cost</th><th>Pregnancy Test</th><th>Result</th><th>Exp. Calving</th><th>Actual Calving</th><th>Action</th></tr></thead><tbody id="breedingTableBody"></tbody></table>
+            <table>
+              <thead>
+                <tr>
+                  <th>Cattle ID</th>
+                  <th>AI Date</th>
+                  <th>Semen/Bull</th>
+                  <th>Company</th>
+                  <th>AI Cost</th>
+                  <th>Pregnancy Test</th>
+                  <th>Result</th>
+                  <th>Exp. Calving</th>
+                  <th>Actual Calving</th>
+                  <th>Action</th>
+                </tr>
+              </thead>
+              <tbody id="breedingTableBody"></tbody>
+            </table>
           </div>
           <p id="breedingNoData" style="text-align: center; color: #777; font-size: 13px; margin-top: 15px; display: none;">কোনো record নেই।</p>
         </div>
+
         <div class="card" style="background: #fafcfb;">
           <h2 style="font-size: 15px; border-bottom: none; margin-bottom: 10px;">Generation / Breed Summary</h2>
-          <div id="breedSummaryBadges" style="display: flex; flex-wrap: wrap; gap: 8px;"><span style="font-size:12px; color:#777;">লোড হচ্ছে...</span></div>
+          <div id="breedSummaryBadges" style="display: flex; flex-wrap: wrap; gap: 8px;">
+            <span style="font-size:12px; color:#777;">লোড হচ্ছে...</span>
+          </div>
         </div>
       </div>
 
@@ -822,42 +925,109 @@
         <div class="card">
           <h2>🥛 Milk Production Entry</h2>
           <div class="form-grid">
-            <div class="input-group"><label>Date (তারিখ) *</label><input type="date" id="milkDate"></div>
-            <div class="input-group"><label>Tag ID (গরু আইডি) *</label><input type="text" id="milkCowTag" list="cattleTagList" placeholder="Tag সিলেক্ট বা টাইপ করুন"></div>
-            <div class="input-group"><label>Session (সেশন)</label><select id="milkSession"><option value="Morning">Morning (সকাল)</option><option value="Evening">Evening (বিকাল)</option><option value="Noon">Noon (দুপুর)</option></select></div>
-            <div class="input-group"><label>Quantity Liters (দুধের পরিমাণ L) *</label><input type="number" id="milkLiters" step="0.1" placeholder="০.০"></div>
+            <div class="input-group">
+              <label>Date (তারিখ) *</label>
+              <input type="date" id="milkDate">
+            </div>
+            <div class="input-group">
+              <label>Tag ID (গরু আইডি) *</label>
+              <input type="text" id="milkCowTag" list="cattleTagList" placeholder="Tag সিলেক্ট বা টাইপ করুন">
+            </div>
+            <div class="input-group">
+              <label>Session (সেশন)</label>
+              <select id="milkSession">
+                <option value="Morning">Morning (সকাল)</option>
+                <option value="Evening">Evening (বিকাল)</option>
+                <option value="Noon">Noon (দুপুর)</option>
+              </select>
+            </div>
+            <div class="input-group">
+              <label>Quantity Liters (দুধের পরিমাণ L) *</label>
+              <input type="number" id="milkLiters" step="0.1" placeholder="০.০">
+            </div>
           </div>
           <div style="display:flex; gap:10px;">
             <button class="btn" id="milkSubmitBtn" onclick="saveMilk()">Save Milk Record</button>
             <button class="btn btn-warning" id="milkCancelBtn" style="display:none;" onclick="cancelMilkEdit()">Cancel (বাতিল)</button>
           </div>
         </div>
+
         <div class="card">
           <h2>দুধ উৎপাদন খাতা (দৈনিক সারসংক্ষেপ)</h2>
           <p style="font-size:12px; color:#666; margin-bottom:12px;">💡 যে-কোনো তারিখের লাইনে ক্লিক করলে সেই দিনে কোন কোন গরু কত দুধ দিয়েছে তার বিস্তারিত তালিকা খুলে যাবে।</p>
           <div class="table-container">
-            <table><thead><tr><th>তারিখ (Date)</th><th>মোট দুধ (Total Milk)</th><th>গাভীর সংখ্যা (Cows Milked)</th><th>মোট সেশন (Entries)</th><th>বিস্তারিত (Action)</th></tr></thead><tbody id="milkGroupTableBody"></tbody></table>
+            <table>
+              <thead>
+                <tr>
+                  <th>তারিখ (Date)</th>
+                  <th>মোট দুধ (Total Milk)</th>
+                  <th>গাভীর সংখ্যা (Cows Milked)</th>
+                  <th>মোট সেশন (Entries)</th>
+                  <th>বিস্তারিত (Action)</th>
+                </tr>
+              </thead>
+              <tbody id="milkGroupTableBody"></tbody>
+            </table>
           </div>
           <p id="milkNoData" style="text-align: center; color: #777; font-size: 13px; margin-top: 15px; display: none;">কোনো দুধের রেকর্ড পাওয়া যায়নি।</p>
         </div>
       </div>
 
-      <!-- ৫. Sales & Billing (ইউনিক গ্রাহক প্রতি ১টি সারি) -->
+      <!-- ৫. Sales & Billing -->
       <div id="tab-sales" class="tab-content" style="display: none;">
         <div class="card">
           <h2>💰 Sales & Billing</h2>
           <div class="form-grid">
-            <div class="input-group"><label>Date (তারিখ) *</label><input type="date" id="saleDate"></div>
-            <div class="input-group"><label>Customer Name (কাস্টমার) *</label><input type="text" id="saleCustomer" list="customerNameList" oninput="onSaleCustomerInput()" placeholder="নাম লিখুন বা সিলেক্ট করুন"></div>
-            <div class="input-group"><label>Phone (মোবাইল নম্বর)</label><input type="text" id="salePhone" placeholder="মোবাইল নম্বর"></div>
-            <div class="input-group"><label>Area / Route (এলাকা / রুট)</label><input type="text" id="saleArea" list="customerAreaList" placeholder="যেমন: চকবাজার / রুট-১"></div>
-            <div class="input-group"><label>Address (ঠিকানা)</label><input type="text" id="saleAddr" placeholder="গ্রাম / পাড়া / বাড়ি"></div>
-            <div class="input-group"><label>Item (পণ্য)</label><select id="saleItem"><option value="Liquid Milk">Liquid Milk (তরল দুধ)</option><option value="Ghee">Ghee (ঘি)</option><option value="Butter">Butter (মাখন)</option><option value="Paneer">Paneer (ছানা/পনির)</option><option value="Manure">Manure (গোবর সার)</option></select></div>
-            <div class="input-group"><label>Quantity (পরিমাণ)</label><input type="number" id="saleQty" oninput="calcSale()" placeholder="০"></div>
-            <div class="input-group"><label>Rate (দর ₹)</label><input type="number" id="saleRate" oninput="calcSale()" placeholder="₹"></div>
-            <div class="input-group"><label>Total Bill (মোট টাকা)</label><input type="number" id="saleTotal" readonly style="background:#eee;"></div>
-            <div class="input-group"><label>Paid Amount (পরিশোধ ₹)</label><input type="number" id="salePaid" oninput="calcSale()" placeholder="₹"></div>
-            <div class="input-group"><label>Due Amount (বাকি ₹)</label><input type="number" id="saleDue" readonly style="background:#ffebee; color:red; font-weight:bold;"></div>
+            <div class="input-group">
+              <label>Date (তারিখ) *</label>
+              <input type="date" id="saleDate">
+            </div>
+            <div class="input-group">
+              <label>Customer Name (কাস্টমার) *</label>
+              <input type="text" id="saleCustomer" list="customerNameList" oninput="onSaleCustomerInput()" placeholder="নাম লিখুন বা সিলেক্ট করুন">
+            </div>
+            <div class="input-group">
+              <label>Phone (মোবাইল নম্বর)</label>
+              <input type="text" id="salePhone" placeholder="মোবাইল নম্বর">
+            </div>
+            <div class="input-group">
+              <label>Area / Route (এলাকা / রুট)</label>
+              <input type="text" id="saleArea" list="customerAreaList" placeholder="যেমন: চকবাজার / রুট-১">
+            </div>
+            <div class="input-group">
+              <label>Address (ঠিকানা)</label>
+              <input type="text" id="saleAddr" placeholder="গ্রাম / পাড়া / বাড়ি">
+            </div>
+            <div class="input-group">
+              <label>Item (পণ্য)</label>
+              <select id="saleItem">
+                <option value="Liquid Milk">Liquid Milk (তরল দুধ)</option>
+                <option value="Ghee">Ghee (ঘি)</option>
+                <option value="Butter">Butter (মাখন)</option>
+                <option value="Paneer">Paneer (ছানা/পনির)</option>
+                <option value="Manure">Manure (গোবর সার)</option>
+              </select>
+            </div>
+            <div class="input-group">
+              <label>Quantity (পরিমাণ)</label>
+              <input type="number" id="saleQty" oninput="calcSale()" placeholder="০">
+            </div>
+            <div class="input-group">
+              <label>Rate (দর ₹)</label>
+              <input type="number" id="saleRate" oninput="calcSale()" placeholder="₹">
+            </div>
+            <div class="input-group">
+              <label>Total Bill (মোট টাকা)</label>
+              <input type="number" id="saleTotal" readonly style="background:#eee;">
+            </div>
+            <div class="input-group">
+              <label>Paid Amount (পরিশোধ ₹)</label>
+              <input type="number" id="salePaid" oninput="calcSale()" placeholder="₹">
+            </div>
+            <div class="input-group">
+              <label>Due Amount (বাকি ₹)</label>
+              <input type="number" id="saleDue" readonly style="background:#ffebee; color:red; font-weight:bold;">
+            </div>
           </div>
           <div style="display:flex; gap:10px;">
             <button class="btn" id="saleSubmitBtn" onclick="saveSale()">Save Sale</button>
@@ -870,7 +1040,9 @@
             <h2 style="margin:0; border:none; padding:0;">বিক্রয় ও বাকি তালিকা (Sales Ledger)</h2>
             <div style="display:flex; flex-wrap:wrap; gap:8px; align-items:center;">
               <input type="text" id="saleSearchInput" oninput="renderSalesTable()" placeholder="🔍 নাম বা মোবাইল দিয়ে খুঁজুন..." style="width:230px; padding:7px 11px; font-size:12.5px;">
-              <select id="saleAreaFilter" onchange="renderSalesTable()" style="width:170px; padding:7px 11px; font-size:12.5px;"><option value="">সকল এলাকা (All Areas)</option></select>
+              <select id="saleAreaFilter" onchange="renderSalesTable()" style="width:170px; padding:7px 11px; font-size:12.5px;">
+                <option value="">সকল এলাকা (All Areas)</option>
+              </select>
             </div>
           </div>
           <div style="background:#fff3e0; border-left:4px solid #f57c00; padding:8px 12px; border-radius:6px; font-size:12px; margin-bottom:12px; color:#e65100;">
@@ -880,8 +1052,8 @@
             <table>
               <thead>
                 <tr>
-                  <th>তারিখ</th>
-                  <th>Customer (মোবাইল ও শেষ ক্রয়)</th>
+                  <th>Date</th>
+                  <th>Customer (মোবাইলসহ)</th>
                   <th>Area & Address</th>
                   <th>Product & Qty</th>
                   <th>Total</th>
@@ -902,11 +1074,26 @@
         <div class="card">
           <h2>👥 Customer Directory</h2>
           <div class="form-grid">
-            <div class="input-group"><label>Customer Name (নাম) *</label><input type="text" id="custName" placeholder="নাম"></div>
-            <div class="input-group"><label>Phone Number (মোবাইল) *</label><input type="text" id="custPhone" placeholder="মোবাইল"></div>
-            <div class="input-group"><label>Area / Route (এলাকা / রুট)</label><input type="text" id="custArea" list="customerAreaList" placeholder="যেমন: চকবাজার / রুট-১"></div>
-            <div class="input-group"><label>Address (ঠিকানা)</label><input type="text" id="custAddress" placeholder="ঠিকানা"></div>
-            <div class="input-group"><label>Daily Demand L (দৈনিক চাহিদা)</label><input type="number" id="custDailyDemand" placeholder="২.০"></div>
+            <div class="input-group">
+              <label>Customer Name (নাম) *</label>
+              <input type="text" id="custName" placeholder="নাম">
+            </div>
+            <div class="input-group">
+              <label>Phone Number (মোবাইল) *</label>
+              <input type="text" id="custPhone" placeholder="মোবাইল">
+            </div>
+            <div class="input-group">
+              <label>Area / Route (এলাকা / রুট)</label>
+              <input type="text" id="custArea" list="customerAreaList" placeholder="যেমন: চকবাজার / রুট-১">
+            </div>
+            <div class="input-group">
+              <label>Address (ঠিকানা)</label>
+              <input type="text" id="custAddress" placeholder="ঠিকানা">
+            </div>
+            <div class="input-group">
+              <label>Daily Demand L (দৈনিক চাহিদা)</label>
+              <input type="number" id="custDailyDemand" placeholder="২.০">
+            </div>
           </div>
           <div style="display:flex; gap:10px;">
             <button class="btn" id="custSubmitBtn" onclick="saveCustomer()">Save Customer</button>
@@ -915,7 +1102,21 @@
         </div>
         <div class="card">
           <h2>কাস্টমার তালিকা (Customer List)</h2>
-          <div class="table-container"><table><thead><tr><th>Name</th><th>Phone</th><th>Area</th><th>Address</th><th>Daily Demand</th><th>Action</th></tr></thead><tbody id="customerTableBody"></tbody></table></div>
+          <div class="table-container">
+            <table>
+              <thead>
+                <tr>
+                  <th>Name</th>
+                  <th>Phone</th>
+                  <th>Area</th>
+                  <th>Address</th>
+                  <th>Daily Demand</th>
+                  <th>Action</th>
+                </tr>
+              </thead>
+              <tbody id="customerTableBody"></tbody>
+            </table>
+          </div>
         </div>
       </div>
 
@@ -924,10 +1125,26 @@
         <div class="card">
           <h2>📦 Orders Management</h2>
           <div class="form-grid">
-            <div class="input-group"><label>Delivery Date (তারিখ) *</label><input type="date" id="orderDate"></div>
-            <div class="input-group"><label>Customer Name *</label><input type="text" id="orderCustomer" list="customerNameList" placeholder="নাম"></div>
-            <div class="input-group"><label>Items & Quantity (বিবরণ) *</label><input type="text" id="orderItems" placeholder="যেমন: ৫ লিটার দুধ"></div>
-            <div class="input-group"><label>Status (স্ট্যাটাস)</label><select id="orderStatus"><option value="Pending">Pending (পেন্ডিং)</option><option value="Delivered">Delivered (ডেলিভারড)</option><option value="Cancelled">Cancelled (বাতিল)</option></select></div>
+            <div class="input-group">
+              <label>Delivery Date (তারিখ) *</label>
+              <input type="date" id="orderDate">
+            </div>
+            <div class="input-group">
+              <label>Customer Name *</label>
+              <input type="text" id="orderCustomer" list="customerNameList" placeholder="নাম">
+            </div>
+            <div class="input-group">
+              <label>Items & Quantity (বিবরণ) *</label>
+              <input type="text" id="orderItems" placeholder="যেমন: ৫ লিটার দুধ">
+            </div>
+            <div class="input-group">
+              <label>Status (স্ট্যাটাস)</label>
+              <select id="orderStatus">
+                <option value="Pending">Pending (পেন্ডিং)</option>
+                <option value="Delivered">Delivered (ডেলিভারড)</option>
+                <option value="Cancelled">Cancelled (বাতিল)</option>
+              </select>
+            </div>
           </div>
           <div style="display:flex; gap:10px;">
             <button class="btn" id="orderSubmitBtn" onclick="saveOrder()">Save Order</button>
@@ -936,7 +1153,20 @@
         </div>
         <div class="card">
           <h2>অর্ডার তালিকা (Order List)</h2>
-          <div class="table-container"><table><thead><tr><th>Date</th><th>Customer</th><th>Items</th><th>Status</th><th>Action</th></tr></thead><tbody id="ordersTableBody"></tbody></table></div>
+          <div class="table-container">
+            <table>
+              <thead>
+                <tr>
+                  <th>Date</th>
+                  <th>Customer</th>
+                  <th>Items</th>
+                  <th>Status</th>
+                  <th>Action</th>
+                </tr>
+              </thead>
+              <tbody id="ordersTableBody"></tbody>
+            </table>
+          </div>
         </div>
       </div>
 
@@ -945,10 +1175,28 @@
         <div class="card">
           <h2>🧾 Expense Ledger</h2>
           <div class="form-grid">
-            <div class="input-group"><label>Date (তারিখ) *</label><input type="date" id="expDate"></div>
-            <div class="input-group"><label>Expense Category (খাত)</label><select id="expCategory"><option value="Feed & Fodder">Feed & Fodder (খাদ্য/ঘাস)</option><option value="Medicine & Health">Medicine & Health (ওষুধ/চিকিৎসা)</option><option value="Labour Salary">Labour Salary (শ্রমিক বেতন)</option><option value="Electricity / Utilities">Electricity / Utilities (বিদ্যুৎ বিল)</option><option value="Other">Other (অন্যান্য)</option></select></div>
-            <div class="input-group"><label>Description (বিবরণ) *</label><input type="text" id="expTitle" placeholder="খরচের বিবরণ"></div>
-            <div class="input-group"><label>Amount ₹ (টাকা) *</label><input type="number" id="expAmount" placeholder="₹"></div>
+            <div class="input-group">
+              <label>Date (তারিখ) *</label>
+              <input type="date" id="expDate">
+            </div>
+            <div class="input-group">
+              <label>Expense Category (খাত)</label>
+              <select id="expCategory">
+                <option value="Feed & Fodder">Feed & Fodder (খাদ্য/ঘাস)</option>
+                <option value="Medicine & Health">Medicine & Health (ওষুধ/চিকিৎসা)</option>
+                <option value="Labour Salary">Labour Salary (শ্রমিক বেতন)</option>
+                <option value="Electricity / Utilities">Electricity / Utilities (বিদ্যুৎ বিল)</option>
+                <option value="Other">Other (অন্যান্য)</option>
+              </select>
+            </div>
+            <div class="input-group">
+              <label>Description (বিবরণ) *</label>
+              <input type="text" id="expTitle" placeholder="খরচের বিবরণ">
+            </div>
+            <div class="input-group">
+              <label>Amount ₹ (টাকা) *</label>
+              <input type="number" id="expAmount" placeholder="₹">
+            </div>
           </div>
           <div style="display:flex; gap:10px;">
             <button class="btn" id="expSubmitBtn" onclick="saveExpense()">Save Expense</button>
@@ -957,7 +1205,20 @@
         </div>
         <div class="card">
           <h2>খরচের তালিকা (Expense List)</h2>
-          <div class="table-container"><table><thead><tr><th>Date</th><th>Category</th><th>Description</th><th>Amount (₹)</th><th>Action</th></tr></thead><tbody id="expenseTableBody"></tbody></table></div>
+          <div class="table-container">
+            <table>
+              <thead>
+                <tr>
+                  <th>Date</th>
+                  <th>Category</th>
+                  <th>Description</th>
+                  <th>Amount (₹)</th>
+                  <th>Action</th>
+                </tr>
+              </thead>
+              <tbody id="expenseTableBody"></tbody>
+            </table>
+          </div>
         </div>
       </div>
 
@@ -966,10 +1227,27 @@
         <div class="card">
           <h2>🌾 Stock & Inventory</h2>
           <div class="form-grid">
-            <div class="input-group"><label>Item Name (পণ্যের নাম) *</label><input type="text" id="stkName" placeholder="গমের ভুসি, ফিড"></div>
-            <div class="input-group"><label>Quantity (পরিমাণ) *</label><input type="number" id="stkQty" placeholder="পরিমাণ"></div>
-            <div class="input-group"><label>Unit (একক)</label><select id="stkUnit"><option value="kg">kg (কেজি)</option><option value="Bag">Bag (বস্তা)</option><option value="Ton">Ton (টন)</option><option value="Pcs">Pcs (পিস)</option></select></div>
-            <div class="input-group"><label>Low Stock Alert Level</label><input type="number" id="stkAlert" placeholder="৫"></div>
+            <div class="input-group">
+              <label>Item Name (পণ্যের নাম) *</label>
+              <input type="text" id="stkName" placeholder="গমের ভুসি, ফিড">
+            </div>
+            <div class="input-group">
+              <label>Quantity (পরিমাণ) *</label>
+              <input type="number" id="stkQty" placeholder="পরিমাণ">
+            </div>
+            <div class="input-group">
+              <label>Unit (একক)</label>
+              <select id="stkUnit">
+                <option value="kg">kg (কেজি)</option>
+                <option value="Bag">Bag (বস্তা)</option>
+                <option value="Ton">Ton (টন)</option>
+                <option value="Pcs">Pcs (পিস)</option>
+              </select>
+            </div>
+            <div class="input-group">
+              <label>Low Stock Alert Level</label>
+              <input type="number" id="stkAlert" placeholder="৫">
+            </div>
           </div>
           <div style="display:flex; gap:10px;">
             <button class="btn" id="stkSubmitBtn" onclick="saveStock()">Save Stock</button>
@@ -978,7 +1256,20 @@
         </div>
         <div class="card">
           <h2>বর্তমান স্টক তালিকা (Stock List)</h2>
-          <div class="table-container"><table><thead><tr><th>Item</th><th>Quantity</th><th>Unit</th><th>Alert Level</th><th>Action</th></tr></thead><tbody id="stockTableBody"></tbody></table></div>
+          <div class="table-container">
+            <table>
+              <thead>
+                <tr>
+                  <th>Item</th>
+                  <th>Quantity</th>
+                  <th>Unit</th>
+                  <th>Alert Level</th>
+                  <th>Action</th>
+                </tr>
+              </thead>
+              <tbody id="stockTableBody"></tbody>
+            </table>
+          </div>
         </div>
       </div>
 
@@ -987,10 +1278,22 @@
         <div class="card">
           <h2>💉 Semen & Bull Stock</h2>
           <div class="form-grid">
-            <div class="input-group"><label>Straw / Batch No *</label><input type="text" id="semBatch" placeholder="HF-8902"></div>
-            <div class="input-group"><label>Bull Breed (জাত)</label><input type="text" id="semBreed" placeholder="১০০% হোলস্টেইন ফ্রিজিয়ান"></div>
-            <div class="input-group"><label>Company / Source</label><input type="text" id="semSource" placeholder="ব্র্যাক / সরকারি"></div>
-            <div class="input-group"><label>Available Straws (সংখ্যা) *</label><input type="number" id="semCount" placeholder="পিস"></div>
+            <div class="input-group">
+              <label>Straw / Batch No *</label>
+              <input type="text" id="semBatch" placeholder="HF-8902">
+            </div>
+            <div class="input-group">
+              <label>Bull Breed (জাত)</label>
+              <input type="text" id="semBreed" placeholder="১০০% হোলস্টেইন ফ্রিজিয়ান">
+            </div>
+            <div class="input-group">
+              <label>Company / Source</label>
+              <input type="text" id="semSource" placeholder="ব্র্যাক / সরকারি">
+            </div>
+            <div class="input-group">
+              <label>Available Straws (সংখ্যা) *</label>
+              <input type="number" id="semCount" placeholder="পিস">
+            </div>
           </div>
           <div style="display:flex; gap:10px;">
             <button class="btn" id="semSubmitBtn" onclick="saveSemen()">Save Semen Stock</button>
@@ -999,7 +1302,20 @@
         </div>
         <div class="card">
           <h2>সিমেন স্টক তালিকা (Semen List)</h2>
-          <div class="table-container"><table><thead><tr><th>Batch No</th><th>Breed</th><th>Source</th><th>Straw Count</th><th>Action</th></tr></thead><tbody id="semenTableBody"></tbody></table></div>
+          <div class="table-container">
+            <table>
+              <thead>
+                <tr>
+                  <th>Batch No</th>
+                  <th>Breed</th>
+                  <th>Source</th>
+                  <th>Straw Count</th>
+                  <th>Action</th>
+                </tr>
+              </thead>
+              <tbody id="semenTableBody"></tbody>
+            </table>
+          </div>
         </div>
       </div>
 
@@ -1008,11 +1324,31 @@
         <div class="card">
           <h2>🩺 Health & Vaccination Register</h2>
           <div class="form-grid">
-            <div class="input-group"><label>Date (তারিখ) *</label><input type="date" id="hlthDate"></div>
-            <div class="input-group"><label>Tag ID (গরুর ট্যাগ) *</label><input type="text" id="hlthCowTag" list="cattleTagList" placeholder="Tag সিলেক্ট বা টাইপ করুন"></div>
-            <div class="input-group"><label>Treatment Type</label><select id="hlthType"><option value="Vaccination">Vaccination (টিকা - FMD/Anthrax)</option><option value="Deworming">Deworming (কৃমিনাশক)</option><option value="General Treatment">General Treatment (সাধারণ চিকিৎসা)</option><option value="Doctor Checkup">Doctor Checkup (ডাক্তারি পরীক্ষা)</option></select></div>
-            <div class="input-group"><label>Description / Medicine</label><input type="text" id="hlthDesc" placeholder="ওষুধের নাম / বিবরণ"></div>
-            <div class="input-group"><label>Next Dose Date (পরবর্তী তারিখ)</label><input type="date" id="hlthNextDate"></div>
+            <div class="input-group">
+              <label>Date (তারিখ) *</label>
+              <input type="date" id="hlthDate">
+            </div>
+            <div class="input-group">
+              <label>Tag ID (গরুর ট্যাগ) *</label>
+              <input type="text" id="hlthCowTag" list="cattleTagList" placeholder="Tag সিলেক্ট বা টাইপ করুন">
+            </div>
+            <div class="input-group">
+              <label>Treatment Type</label>
+              <select id="hlthType">
+                <option value="Vaccination">Vaccination (টিকা - FMD/Anthrax)</option>
+                <option value="Deworming">Deworming (কৃমিনাশক)</option>
+                <option value="General Treatment">General Treatment (সাধারণ চিকিৎসা)</option>
+                <option value="Doctor Checkup">Doctor Checkup (ডাক্তারি পরীক্ষা)</option>
+              </select>
+            </div>
+            <div class="input-group">
+              <label>Description / Medicine</label>
+              <input type="text" id="hlthDesc" placeholder="ওষুধের নাম / বিবরণ">
+            </div>
+            <div class="input-group">
+              <label>Next Dose Date (পরবর্তী তারিখ)</label>
+              <input type="date" id="hlthNextDate">
+            </div>
           </div>
           <div style="display:flex; gap:10px;">
             <button class="btn" id="hlthSubmitBtn" onclick="saveHealth()">Save Health Record</button>
@@ -1021,7 +1357,21 @@
         </div>
         <div class="card">
           <h2>স্বাস্থ্য রেকর্ড তালিকা (Health History)</h2>
-          <div class="table-container"><table><thead><tr><th>Date</th><th>Tag ID</th><th>Type</th><th>Description</th><th>Next Dose</th><th>Action</th></tr></thead><tbody id="healthTableBody"></tbody></table></div>
+          <div class="table-container">
+            <table>
+              <thead>
+                <tr>
+                  <th>Date</th>
+                  <th>Tag ID</th>
+                  <th>Type</th>
+                  <th>Description</th>
+                  <th>Next Dose</th>
+                  <th>Action</th>
+                </tr>
+              </thead>
+              <tbody id="healthTableBody"></tbody>
+            </table>
+          </div>
         </div>
       </div>
 
@@ -1145,7 +1495,7 @@
           </div>
         </div>
 
-        <!-- পরিচ্ছন্ন ৬-কলামের লেজার টেবিল -->
+        <!-- পরিচ্ছন্ন ৬-কলামের লেজার টেবিল: প্রতিটি লাইনে টাকার অংক ও জমার রানিং ব্যালেন্স দৃশ্যমান -->
         <div class="table-container" style="max-height:360px; overflow-y:auto;">
           <table style="font-size:12px; min-width:650px;">
             <thead>
@@ -1212,14 +1562,6 @@
           document.body.removeAttribute('data-print');
         }
       }, 1000);
-    };
-
-    window.onbeforeprint = function() {
-      if (getEl('invoiceModal') && getEl('invoiceModal').style.display === 'flex') {
-        document.body.setAttribute('data-print', 'invoice');
-      } else if (getEl('ledgerModal') && getEl('ledgerModal').style.display === 'flex') {
-        document.body.setAttribute('data-print', 'ledger');
-      }
     };
 
     function onSaleCustomerInput() {
@@ -1290,6 +1632,7 @@
           }
         }
 
+        // চালান সৃষ্টির সময়কার জমা এবং খাতার ভেতরের জমার সঠিক হিসাব
         var pList = s.payments || [];
         if (pList.length > 0) {
           var subsequentSum = 0;
@@ -1518,7 +1861,7 @@
       body.innerHTML = html;
     }
 
-    // ৫. SALES & BILLING রেন্ডার (প্রতিটি গ্রাহক মাত্র ১ বার প্রদর্শিত হবে)
+    // ৫. SALES & BILLING রেন্ডার (সঠিক লাইভ কাস্টমার বকেয়া ডিসপ্লে)
     function renderSalesTable() {
       var body = getEl('salesTableBody');
       if (!body) return;
@@ -1527,9 +1870,9 @@
       var searchQ = (getEl('saleSearchInput') ? getEl('saleSearchInput').value : '').trim().toLowerCase();
       var areaFilter = (getEl('saleAreaFilter') ? getEl('saleAreaFilter').value : '').trim().toLowerCase();
 
+      var list = [];
       var tS = 0;
       var uniqueAreas = {};
-      var customerMap = {};
 
       for (var k in farmStore.sales) {
         var d = farmStore.sales[k];
@@ -1541,43 +1884,12 @@
         var areaStr = (d.area || '').trim();
         if (areaStr) uniqueAreas[areaStr] = true;
 
-        var rawName = (d.name || '').trim();
-        if (!rawName) continue;
-        var cKey = rawName.toLowerCase();
-
-        var saleTime = parseDateToTime(d.date);
-        if (!customerMap[cKey]) {
-          customerMap[cKey] = {
-            key: k,
-            data: d,
-            latestDate: d.date || '',
-            latestTime: saleTime,
-            customerName: rawName
-          };
-        } else {
-          if (saleTime >= customerMap[cKey].latestTime) {
-            customerMap[cKey] = {
-              key: k,
-              data: d,
-              latestDate: d.date || '',
-              latestTime: saleTime,
-              customerName: rawName
-            };
-          }
-        }
-      }
-
-      var list = [];
-      for (var cKey in customerMap) {
-        var cObj = customerMap[cKey];
-        var d = cObj.data;
+        var cKey = (d.name || '').trim().toLowerCase();
         var cBal = custBalances[cKey] || { currentDue: Number(d.due) || 0, isOverdue35: false, daysWithoutPayment: 0 };
 
         list.push({
-          key: cObj.key,
+          key: k,
           data: d,
-          customerName: cObj.customerName,
-          lastProductDate: cObj.latestDate,
           liveCustomerDue: cBal.currentDue,
           isOverdue: cBal.isOverdue35,
           diffDays: cBal.daysWithoutPayment
@@ -1606,7 +1918,7 @@
 
       var filtered = list.filter(function(item) {
         var d = item.data;
-        var nameMatch = (item.customerName || d.name || '').toLowerCase().includes(searchQ);
+        var nameMatch = (d.name || '').toLowerCase().includes(searchQ);
         var phoneMatch = (d.phone || '').toLowerCase().includes(searchQ);
         var matchesSearch = !searchQ || nameMatch || phoneMatch;
         var matchesArea = !areaFilter || ((d.area || '').toLowerCase() === areaFilter);
@@ -1616,8 +1928,8 @@
       filtered.sort(function(a, b) {
         if (a.isOverdue && !b.isOverdue) return -1;
         if (!a.isOverdue && b.isOverdue) return 1;
-        var dtA = (a.lastProductDate || a.data.date || '').toString();
-        var dtB = (b.lastProductDate || b.data.date || '').toString();
+        var dtA = (a.data.date || '').toString();
+        var dtB = (b.data.date || '').toString();
         return dtB.localeCompare(dtA);
       });
 
@@ -1646,11 +1958,10 @@
         }
 
         html += '<tr style="' + rowStyle + '">' +
-          '<td>' + (item.lastProductDate || d.date || '-') + '</td>' +
+          '<td>' + (d.date || '-') + '</td>' +
           '<td>' +
-            '<a href="javascript:void(0)" onclick="showCustomerLedger(\'' + encodeURIComponent(item.customerName) + '\')" style="color:var(--primary); font-weight:bold; text-decoration:underline; font-size:13.5px;">' + (item.customerName || '-') + '</a>' +
+            '<a href="javascript:void(0)" onclick="showCustomerLedger(\'' + encodeURIComponent(d.name) + '\')" style="color:var(--primary); font-weight:bold; text-decoration:underline;">' + (d.name || '-') + '</a>' +
             (d.phone ? '<br><span style="font-size:11.5px; color:#455a64;">📞 ' + d.phone + '</span>' : '') +
-            (item.lastProductDate ? '<br><span style="font-size:11px; color:#1b5e20; font-weight:600;">📅 শেষ পণ্য: ' + item.lastProductDate + '</span>' : '') +
           '</td>' +
           '<td>' +
             (d.area ? '<span class="badge badge-warning" style="margin-bottom:3px;">' + d.area + '</span><br>' : '') +
@@ -1661,7 +1972,7 @@
           '<td style="color:green; font-weight:600;">₹ ' + (d.paid || 0) + '</td>' +
           '<td>' + dueBadge + '</td>' +
           '<td>' +
-            '<button class="action-btn" style="background:#455a64; color:white;" onclick="showCustomerLedger(\'' + encodeURIComponent(item.customerName) + '\')">খাতা</button>' +
+            '<button class="action-btn" style="background:#455a64; color:white;" onclick="showCustomerLedger(\'' + encodeURIComponent(d.name) + '\')">খাতা</button>' +
             '<button class="action-btn btn-info" onclick="showInvoice(\'' + k + '\')">Invoice</button>' +
             '<button class="action-btn btn-warning" onclick="editSale(\'' + k + '\')">Edit</button>' +
             '<button class="action-btn btn-danger" onclick="deleteRecord(\'sales\',\'' + k + '\')">Delete</button>' +
@@ -1672,7 +1983,7 @@
       body.innerHTML = html;
     }
 
-    // কাস্টমার খাতা / স্টেটমেন্ট
+    // কাস্টমার খাতা / স্টেটমেন্ট (প্রতিটি ঘরে টাকার অংক দৃশ্যমান ও বানান শুধরে দেওয়া)
     window.showCustomerLedger = function(encName) {
       var custName = decodeURIComponent(encName).trim();
       window.activeLedgerCustomerName = custName;
@@ -1871,7 +2182,7 @@
       }, 300);
     };
 
-    // নির্দিষ্ট পেমেন্টের ইনভয়েস মোডাল (টাকার অংক না কাটার শতভাগ নিশ্চয়তা সহ)
+    // নির্দিষ্ট পেমেন্টের জন্য সমন্বিত ইনভয়েস মোডাল
     window.showPaymentInvoice = function(pDate, pAmt, pNote, custName, cPhone, cArea, cAddr, balAfter, pId) {
       document.body.setAttribute('data-print', 'invoice');
       if (getEl('invMainDocTitle')) {
@@ -1894,25 +2205,25 @@
             '<span style="color:#2e7d32; font-weight:bold; background:#e8f5e9; padding:3px 9px; border-radius:4px; font-size:12px;">● অর্থ গ্রহণ সম্পন্ন (PAID)</span>' +
           '</div>' +
         '</div>' +
-        '<table class="invoice-table" style="border:1px solid #ddd; width:100%; margin:14px 0; border-collapse:collapse;">' +
+        '<table class="invoice-table" style="border:1px solid #ddd;">' +
           '<thead>' +
             '<tr style="background:#e8f5e9; border-bottom:2px solid #c8e6c9;">' +
-              '<th style="text-align:left; padding:8px 10px;">বিবরণ (Description)</th>' +
-              '<th style="text-align:center; padding:8px 10px; width:25%;">পদ্ধতি (Method)</th>' +
-              '<th style="text-align:right; padding:8px 10px; width:30%;">আদায়কৃত অর্থ</th>' +
-            </tr>' +
+              '<th style="text-align:left; width:48%;">বিবরণ (Payment Description)</th>' +
+              '<th style="text-align:center; width:22%;">পদ্ধতি</th>' +
+              '<th style="text-align:right; width:30%; padding-right:10px;">আদায়কৃত অর্থ (₹)</th>' +
+            '</tr>' +
           '</thead>' +
           '<tbody>' +
             '<tr>' +
-              '<td style="padding:10px; border-bottom:1px solid #eee;"><strong>বকেয়া আদায় / Payment Received</strong></td>' +
-              '<td style="text-align:center; padding:10px; border-bottom:1px solid #eee;">' + (pNote || 'ক্যাশ') + '</td>' +
-              '<td style="text-align:right; padding:10px; border-bottom:1px solid #eee; font-weight:bold; color:green; font-size:15px;">₹ ' + pAmt + '</td>' +
+              '<td style="border-bottom:1px solid #eee;"><strong>বকেয়া আদায় / Payment Received</strong></td>' +
+              '<td style="text-align:center; border-bottom:1px solid #eee;">' + (pNote || 'ক্যাশ') + '</td>' +
+              '<td style="text-align:right; padding-right:10px; border-bottom:1px solid #eee; font-weight:bold; color:green; font-size:14.5px; white-space:nowrap;">₹ ' + pAmt + '</td>' +
             '</tr>' +
           '</tbody>' +
         '</table>' +
-        '<div style="text-align:right; font-size:13.5px; line-height:2.0; margin-top:8px;">' +
+        '<div style="text-align:right; font-size:13px; line-height:2.0;">' +
           '<div style="color:green; font-size:15px;">মোট আদায়কৃত অর্থ: <strong>₹ ' + pAmt + '</strong></div>' +
-          '<div style="color:red; font-size:15px; border-top:1px dashed #ccc; padding-top:4px;">বর্তমান মোট বকেয়া: <strong>₹ ' + balAfter + '</strong></div>' +
+          '<div style="color:red; font-size:14px; border-top:1px dashed #ccc; padding-top:4px;">বর্তমান মোট বকেয়া: <strong>₹ ' + balAfter + '</strong></div>' +
         '</div>';
 
       getEl('invoiceModal').style.display = 'flex';
@@ -1951,25 +2262,25 @@
             paymentStatus +
           '</div>' +
         '</div>' +
-        '<table class="invoice-table" style="border:1px solid #ddd; width:100%; margin:14px 0; border-collapse:collapse;">' +
+        '<table class="invoice-table" style="border:1px solid #ddd;">' +
           '<thead>' +
             '<tr style="background:#e8f5e9; border-bottom:2px solid #c8e6c9;">' +
-              '<th style="text-align:left; padding:8px 10px;">পণ্য (Item)</th>' +
-              '<th style="text-align:center; padding:8px 10px; width:20%;">পরিমাণ</th>' +
-              '<th style="text-align:right; padding:8px 10px; width:22%;">দর (Rate)</th>' +
-              '<th style="text-align:right; padding:8px 10px; width:25%;">মোট (Total)</th>' +
+              '<th style="text-align:left; width:44%;">পণ্য (Item)</th>' +
+              '<th style="text-align:center; width:18%;">পরিমাণ</th>' +
+              '<th style="text-align:right; width:18%;">দর (Rate)</th>' +
+              '<th style="text-align:right; width:20%; padding-right:10px;">মোট (Total)</th>' +
             '</tr>' +
           '</thead>' +
           '<tbody>' +
             '<tr>' +
-              '<td style="padding:10px; border-bottom:1px solid #eee;"><strong>' + d.item + '</strong></td>' +
-              '<td style="text-align:center; padding:10px; border-bottom:1px solid #eee;">' + d.qty + '</td>' +
-              '<td style="text-align:right; padding:10px; border-bottom:1px solid #eee;">₹ ' + d.rate + '</td>' +
-              '<td style="text-align:right; padding:10px; border-bottom:1px solid #eee; font-weight:bold;">₹ ' + d.total + '</td>' +
+              '<td style="border-bottom:1px solid #eee;"><strong>' + d.item + '</strong></td>' +
+              '<td style="text-align:center; border-bottom:1px solid #eee;">' + d.qty + '</td>' +
+              '<td style="text-align:right; border-bottom:1px solid #eee;">₹ ' + d.rate + '</td>' +
+              '<td style="text-align:right; padding-right:10px; border-bottom:1px solid #eee; font-weight:bold; white-space:nowrap;">₹ ' + d.total + '</td>' +
             '</tr>' +
           '</tbody>' +
         '</table>' +
-        '<div style="text-align:right; font-size:13.5px; line-height:2.0; margin-top:8px;">' +
+        '<div style="text-align:right; font-size:13px; line-height:2.0;">' +
           '<div>চালান মূল্য: <strong>₹ ' + d.total + '</strong></div>' +
           '<div style="color:green;">এই চালানে নগদ পরিশোধ: <strong>₹ ' + d.paid + '</strong></div>' +
           '<div style="color:red; font-size:15px; border-top:1px dashed #ccc; padding-top:4px;">গ্রাহকের বর্তমান মোট বকেয়া: <strong>₹ ' + liveDue + '</strong></div>' +
