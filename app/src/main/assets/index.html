@@ -497,7 +497,6 @@
       position: relative;
     }
 
-    /* ইনভয়েস টেবিল: ফিক্সড লেআউট যাতে কোনো কলাম না কাটে */
     .invoice-table {
       width: 100% !important;
       min-width: 100% !important;
@@ -517,7 +516,6 @@
       font-size: 12.5px !important;
     }
 
-    /* প্রিন্ট এরিয়ায় লোগো ওয়াটারমার্ক */
     #invoicePrintArea {
       position: relative;
       background: white;
@@ -545,7 +543,6 @@
       z-index: 1;
     }
 
-    /* প্রিন্ট সেটিংস: স্মার্ট টার্গেটিং */
     @page {
       margin: 0mm !important;
       size: auto;
@@ -564,7 +561,7 @@
         display: none !important;
       }
 
-      /* ১. যখন ইনভয়েস প্রিন্ট হবে */
+      /* ইনভয়েস প্রিন্ট মোড */
       body[data-print="invoice"] #ledgerModal,
       body[data-print="invoice"] #ledgerPrintArea {
         display: none !important;
@@ -597,7 +594,7 @@
         display: block !important;
       }
 
-      /* ২. যখন খাতা প্রিন্ট হবে */
+      /* খাতা প্রিন্ট মোড */
       body[data-print="ledger"] #invoiceModal,
       body[data-print="ledger"] #invoicePrintArea {
         display: none !important;
@@ -1498,16 +1495,16 @@
           </div>
         </div>
 
+        <!-- পরিচ্ছন্ন ৬-কলামের লেজার টেবিল: প্রতিটি লাইনে টাকার অংক ও জমার রানিং ব্যালেন্স দৃশ্যমান -->
         <div class="table-container" style="max-height:360px; overflow-y:auto;">
-          <table style="font-size:12px; min-width:680px;">
+          <table style="font-size:12px; min-width:650px;">
             <thead>
               <tr style="background:#f1f5f2;">
                 <th>তারিখ</th>
                 <th>লেনদেনের বিবরণ</th>
                 <th>বিলের পরিমাণ</th>
                 <th>পরিশোধ (জমা)</th>
-                <th>লেনদেন পর বাকি</th>
-                <th style="background:#fff3e0; color:#e65100;">মোট অবশিষ্ট বাকি</th>
+                <th style="background:#fff3e0; color:#e65100;">লেনদেনের পর বাকি</th>
                 <th>ইনভয়েস (Invoice)</th>
               </tr>
             </thead>
@@ -1597,7 +1594,7 @@
       return isNaN(t) ? 0 : t;
     }
 
-    // ৩৫ দিন কোনো টাকা না দেওয়া গ্রাহক নির্ধারণকারী লাইভ ইঞ্জিন
+    // ৩৫ দিন কোনো টাকা না দেওয়া গ্রাহক নির্ধারণকারী লাইভ ব্যালেন্স ইঞ্জিন
     function getCustomerLiveBalances() {
       var map = {};
       var now = new Date();
@@ -1635,34 +1632,35 @@
           }
         }
 
-        // চালান সৃষ্টির সময়কার জমা
+        // চালান সৃষ্টির সময়কার জমা এবং খাতার ভেতরের জমার সঠিক হিসাব
         var pList = s.payments || [];
-        var subsequentSum = 0;
-        pList.forEach(function(p) { subsequentSum += (Number(p.amount) || 0); });
-        var initialPaid = Math.max(0, bPaid - subsequentSum);
-
-        if (initialPaid > 0 && billTime && billTime > map[cKey].lastPaymentTime) {
-          map[cKey].lastPaymentTime = billTime;
-        }
-
-        // পরবর্তীতে খাতার ভেতরের জমা
-        pList.forEach(function(p) {
-          var pAmt = Number(p.amount) || 0;
-          if (pAmt > 0 && p.date) {
-            var pTime = parseDateToTime(p.date);
-            if (pTime > map[cKey].lastPaymentTime) {
-              map[cKey].lastPaymentTime = pTime;
+        if (pList.length > 0) {
+          var subsequentSum = 0;
+          pList.forEach(function(p) {
+            var pAmt = Number(p.amount) || 0;
+            map[cKey].totalPaid += pAmt;
+            subsequentSum += pAmt;
+            if (pAmt > 0 && p.date) {
+              var pTime = parseDateToTime(p.date);
+              if (pTime > map[cKey].lastPaymentTime) {
+                map[cKey].lastPaymentTime = pTime;
+              }
             }
+          });
+          var initialPaid = Math.max(0, bPaid - subsequentSum);
+          map[cKey].totalPaid += initialPaid;
+          if (initialPaid > 0 && billTime && billTime > map[cKey].lastPaymentTime) {
+            map[cKey].lastPaymentTime = billTime;
           }
-        });
-
-        // একক পেমেন্ট রেকর্ড হিসেবে থাকলে
-        if (s.isPayment && bPaid > 0 && billTime && billTime > map[cKey].lastPaymentTime) {
-          map[cKey].lastPaymentTime = billTime;
+        } else {
+          map[cKey].totalPaid += bPaid;
+          if (bPaid > 0 && billTime && billTime > map[cKey].lastPaymentTime) {
+            map[cKey].lastPaymentTime = billTime;
+          }
         }
       }
 
-      // ওভারডিউ যাচাইকরণ
+      // ৩৫ দিন ওভারডিউ ফিল্টার
       for (var key in map) {
         var c = map[key];
         c.currentDue = Math.max(0, c.totalBilled - c.totalPaid);
@@ -1863,7 +1861,7 @@
       body.innerHTML = html;
     }
 
-    // ৫. SALES & BILLING রেন্ডার
+    // ৫. SALES & BILLING রেন্ডার (সঠিক লাইভ কাস্টমার বকেয়া ডিসপ্লে)
     function renderSalesTable() {
       var body = getEl('salesTableBody');
       if (!body) return;
@@ -1985,7 +1983,7 @@
       body.innerHTML = html;
     }
 
-    // কাস্টমার খাতা / স্টেটমেন্ট (প্রতিটি লাইনে ইউনিফর্ম Invoice বাটন)
+    // কাস্টমার খাতা / স্টেটমেন্ট (প্রতিটি ঘরে টাকার অংক দৃশ্যমান ও বানান শুধরে দেওয়া)
     window.showCustomerLedger = function(encName) {
       var custName = decodeURIComponent(encName).trim();
       window.activeLedgerCustomerName = custName;
@@ -2066,7 +2064,7 @@
 
       var tbody = getEl('ledgerTableBody');
       if (events.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; color:#888;">কোনো অতীত রেকর্ড পাওয়া যায়নি।</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; color:#888;">কোনো অতীত রেকর্ড পাওয়া যায়নি।</td></tr>';
       } else {
         var html = '';
         events.forEach(function(ev) {
@@ -2076,7 +2074,6 @@
               '<td><strong>' + ev.desc + '</strong></td>' +
               '<td>₹ ' + ev.bill + '</td>' +
               '<td style="color:green; font-weight:600;">₹ ' + ev.paid + '</td>' +
-              '<td style="color:red; font-weight:bold;">₹ ' + ev.netDiff + '</td>' +
               '<td style="color:#e65100; font-weight:bold; background:#fff8e1;">₹ ' + ev.cumDue + '</td>' +
               '<td><button class="action-btn btn-info" onclick="showInvoice(\'' + ev.saleKey + '\')">📄 Invoice</button></td>' +
             '</tr>';
@@ -2085,9 +2082,8 @@
             html += '<tr style="background:#f9fdfa;">' +
               '<td>' + (ev.date || '-') + '</td>' +
               '<td><strong style="color:#1b5e20;">' + ev.desc + '</strong></td>' +
-              '<td>-</td>' +
+              '<td style="color:#666;">₹ 0</td>' +
               '<td style="color:green; font-weight:700; font-size:13px;">₹ ' + ev.paid + '</td>' +
-              '<td>-</td>' +
               '<td style="color:#e65100; font-weight:bold; background:#fff8e1;">₹ ' + ev.cumDue + '</td>' +
               '<td><button class="action-btn btn-info" onclick="showPaymentInvoice(\'' + ev.date + '\', ' + ev.paid + ', \'' + safeNote + '\', \'' + custName + '\', \'' + cPhone + '\', \'' + cArea + '\', \'' + cAddr + '\', ' + ev.cumDue + ', \'' + (ev.payObj.id || '') + '\')">📄 Invoice</button></td>' +
             '</tr>';
@@ -2327,8 +2323,7 @@
 
     function cancelCattleEdit() {
       eCatKey = null;
-      var fields = ['cowTag','cowBreed','cowBreedType','cowDob','cowWeight','cowLactation','cowMilkDay','cowSire','cowDam','cowExpCalving'];
-      fields.forEach(function(i) {
+      ['cowTag','cowBreed','cowBreedType','cowDob','cowWeight','cowLactation','cowMilkDay','cowSire','cowDam','cowExpCalving'].forEach(function(i) {
         getEl(i).value = '';
       });
       getEl('cowSubmitBtn').innerText = 'Save Cattle';
@@ -2339,22 +2334,13 @@
       var tag = (getEl('cowTag').value || '').trim();
       if (!tag) return alert('Tag ID আবশ্যক!');
       var data = {
-        tag: tag,
-        breed: getEl('cowBreed').value,
-        breedType: getEl('cowBreedType').value,
-        generation: getEl('cowGeneration').value,
-        dob: getEl('cowDob').value,
-        weight: parseFloat(getEl('cowWeight').value) || 0,
-        lactation: parseFloat(getEl('cowLactation').value) || 0,
-        status: getEl('cowStatus').value,
-        milkDay: parseFloat(getEl('cowMilkDay').value) || 0,
-        sire: getEl('cowSire').value,
-        dam: getEl('cowDam').value,
-        expCalving: getEl('cowExpCalving').value
+        tag: tag, breed: getEl('cowBreed').value, breedType: getEl('cowBreedType').value,
+        generation: getEl('cowGeneration').value, dob: getEl('cowDob').value,
+        weight: parseFloat(getEl('cowWeight').value) || 0, lactation: parseFloat(getEl('cowLactation').value) || 0,
+        status: getEl('cowStatus').value, milkDay: parseFloat(getEl('cowMilkDay').value) || 0,
+        sire: getEl('cowSire').value, dam: getEl('cowDam').value, expCalving: getEl('cowExpCalving').value
       };
-      if (db) {
-        eCatKey ? db.ref('cattle/' + eCatKey).update(data) : db.ref('cattle').push(data);
-      }
+      if (db) eCatKey ? db.ref('cattle/' + eCatKey).update(data) : db.ref('cattle').push(data);
       cancelCattleEdit();
     }
 
@@ -2380,8 +2366,7 @@
 
     function cancelBreedingEdit() {
       eBrKey = null;
-      var fields = ['brCowTag','brSemenId','brCompany','brAiCost','brPdDate','brExpCalvingDate','brActCalvingDate'];
-      fields.forEach(function(id) {
+      ['brCowTag','brSemenId','brCompany','brAiCost','brPdDate','brExpCalvingDate','brActCalvingDate'].forEach(function(id) {
         if (getEl(id)) getEl(id).value = '';
       });
       getEl('brStatus').value = 'Pending';
@@ -2393,19 +2378,12 @@
       var tag = (getEl('brCowTag').value || '').trim();
       if (!tag) return alert('Cattle ID দিন!');
       var data = {
-        tag: tag,
-        aiDate: getEl('brAiDate').value,
-        semenId: getEl('brSemenId').value,
-        company: getEl('brCompany').value,
-        aiCost: parseFloat(getEl('brAiCost').value) || 0,
-        pdDate: getEl('brPdDate').value,
-        status: getEl('brStatus').value,
-        expCalvingDate: getEl('brExpCalvingDate').value,
-        actCalvingDate: getEl('brActCalvingDate').value
+        tag: tag, aiDate: getEl('brAiDate').value, semenId: getEl('brSemenId').value,
+        company: getEl('brCompany').value, aiCost: parseFloat(getEl('brAiCost').value) || 0,
+        pdDate: getEl('brPdDate').value, status: getEl('brStatus').value,
+        expCalvingDate: getEl('brExpCalvingDate').value, actCalvingDate: getEl('brActCalvingDate').value
       };
-      if (db) {
-        eBrKey ? db.ref('breeding/' + eBrKey).update(data) : db.ref('breeding').push(data);
-      }
+      if (db) eBrKey ? db.ref('breeding/' + eBrKey).update(data) : db.ref('breeding').push(data);
       cancelBreedingEdit();
     }
 
@@ -2437,15 +2415,8 @@
       if (!lit) return alert('দুধের পরিমাণ দিন!');
       var cowTag = (getEl('milkCowTag').value || '').trim();
       if (!cowTag) return alert('Tag ID দিন!');
-      var data = {
-        date: getEl('milkDate').value,
-        cow: cowTag,
-        session: getEl('milkSession').value,
-        liters: lit
-      };
-      if (db) {
-        eMlkKey ? db.ref('milk/' + eMlkKey).update(data) : db.ref('milk').push(data);
-      }
+      var data = { date: getEl('milkDate').value, cow: cowTag, session: getEl('milkSession').value, liters: lit };
+      if (db) eMlkKey ? db.ref('milk/' + eMlkKey).update(data) : db.ref('milk').push(data);
       cancelMilkEdit();
     }
 
@@ -2481,8 +2452,7 @@
 
     function cancelSaleEdit() {
       eSaleKey = null;
-      var fields = ['saleCustomer','salePhone','saleArea','saleAddr','saleQty','saleRate','saleTotal','salePaid','saleDue'];
-      fields.forEach(function(i) {
+      ['saleCustomer','salePhone','saleArea','saleAddr','saleQty','saleRate','saleTotal','salePaid','saleDue'].forEach(function(i) {
         getEl(i).value = '';
       });
       getEl('saleSubmitBtn').innerText = 'Save Sale';
@@ -2506,9 +2476,7 @@
         due: parseFloat(getEl('saleDue').value) || 0,
         payments: []
       };
-      if (db) {
-        eSaleKey ? db.ref('sales/' + eSaleKey).update(data) : db.ref('sales').push(data);
-      }
+      if (db) eSaleKey ? db.ref('sales/' + eSaleKey).update(data) : db.ref('sales').push(data);
       cancelSaleEdit();
     }
 
@@ -2530,8 +2498,7 @@
 
     function cancelCustomerEdit() {
       eCustKey = null;
-      var fields = ['custName','custPhone','custArea','custAddress','custDailyDemand'];
-      fields.forEach(function(i) {
+      ['custName','custPhone','custArea','custAddress','custDailyDemand'].forEach(function(i) {
         getEl(i).value = '';
       });
       getEl('custSubmitBtn').innerText = 'Save Customer';
@@ -2548,9 +2515,7 @@
         addr: (getEl('custAddress').value || '').trim(),
         demand: parseFloat(getEl('custDailyDemand').value) || 0
       };
-      if (db) {
-        eCustKey ? db.ref('customers/' + eCustKey).update(data) : db.ref('customers').push(data);
-      }
+      if (db) eCustKey ? db.ref('customers/' + eCustKey).update(data) : db.ref('customers').push(data);
       cancelCustomerEdit();
     }
 
@@ -2585,9 +2550,7 @@
         items: getEl('orderItems').value,
         status: getEl('orderStatus').value
       };
-      if (db) {
-        eOrdKey ? db.ref('orders/' + eOrdKey).update(data) : db.ref('orders').push(data);
-      }
+      if (db) eOrdKey ? db.ref('orders/' + eOrdKey).update(data) : db.ref('orders').push(data);
       cancelOrderEdit();
     }
 
@@ -2623,9 +2586,7 @@
         title: title,
         amount: amt
       };
-      if (db) {
-        eExpKey ? db.ref('expenses/' + eExpKey).update(data) : db.ref('expenses').push(data);
-      }
+      if (db) eExpKey ? db.ref('expenses/' + eExpKey).update(data) : db.ref('expenses').push(data);
       cancelExpenseEdit();
     }
 
@@ -2661,9 +2622,7 @@
         unit: getEl('stkUnit').value,
         alertLevel: parseFloat(getEl('stkAlert').value) || 0
       };
-      if (db) {
-        eStkKey ? db.ref('stock/' + eStkKey).update(data) : db.ref('stock').push(data);
-      }
+      if (db) eStkKey ? db.ref('stock/' + eStkKey).update(data) : db.ref('stock').push(data);
       cancelStockEdit();
     }
 
@@ -2700,9 +2659,7 @@
         source: getEl('semSource').value,
         count: parseFloat(getEl('semCount').value) || 0
       };
-      if (db) {
-        eSemKey ? db.ref('semen/' + eSemKey).update(data) : db.ref('semen').push(data);
-      }
+      if (db) eSemKey ? db.ref('semen/' + eSemKey).update(data) : db.ref('semen').push(data);
       cancelSemenEdit();
     }
 
@@ -2740,9 +2697,7 @@
         desc: getEl('hlthDesc').value,
         nextDate: getEl('hlthNextDate').value
       };
-      if (db) {
-        eHlthKey ? db.ref('health/' + eHlthKey).update(data) : db.ref('health').push(data);
-      }
+      if (db) eHlthKey ? db.ref('health/' + eHlthKey).update(data) : db.ref('health').push(data);
       cancelHealthEdit();
     }
 
@@ -2787,17 +2742,13 @@
 
       db.ref('cattle').on('value', function(snap) {
         farmStore.cattle = {}; 
-        snap.forEach(function(c) {
-          farmStore.cattle[c.key] = c.val();
-        });
+        snap.forEach(function(c) { farmStore.cattle[c.key] = c.val(); });
         renderCattleTable();
       });
 
       db.ref('milk').on('value', function(snap) {
         farmStore.milk = {}; 
-        snap.forEach(function(c) {
-          farmStore.milk[c.key] = c.val();
-        });
+        snap.forEach(function(c) { farmStore.milk[c.key] = c.val(); });
         renderGroupedMilkTable();
         renderCattleTable();
       });
@@ -2807,11 +2758,9 @@
         var body = getEl('breedingTableBody');
         if (body) body.innerHTML = '';
         var count = 0;
-        
         snap.forEach(function(c) {
           count++;
-          var d = c.val();
-          var k = c.key;
+          var d = c.val(), k = c.key;
           farmStore.breeding[k] = d;
           var badgeClass = d.status === 'Pregnant' ? 'badge-success' : (d.status === 'Failed' ? 'badge-danger' : 'badge-warning');
           if (body) {
@@ -2832,16 +2781,12 @@
             '</tr>';
           }
         });
-        if (getEl('breedingNoData')) {
-          getEl('breedingNoData').style.display = count === 0 ? 'block' : 'none';
-        }
+        if (getEl('breedingNoData')) getEl('breedingNoData').style.display = count === 0 ? 'block' : 'none';
       });
 
       db.ref('sales').on('value', function(snap) {
         farmStore.sales = {}; 
-        snap.forEach(function(c) {
-          farmStore.sales[c.key] = c.val();
-        });
+        snap.forEach(function(c) { farmStore.sales[c.key] = c.val(); });
         renderSalesTable();
         if (window.activeLedgerCustomerName) {
           showCustomerLedger(encodeURIComponent(window.activeLedgerCustomerName));
@@ -2852,23 +2797,16 @@
         farmStore.customers = {}; 
         var body = getEl('customerTableBody'); 
         if (body) body.innerHTML = '';
-
-        var nameOpt = '';
-        var areaOpt = '';
-        var areaSet = {};
+        var nameOpt = '', areaOpt = '', areaSet = {};
 
         snap.forEach(function(c) {
-          var d = c.val();
-          var k = c.key; 
+          var d = c.val(), k = c.key; 
           farmStore.customers[k] = d;
-          if (d.name) {
-            nameOpt += '<option value="' + d.name + '">' + (d.phone ? d.name + ' (' + d.phone + ')' : d.name) + '</option>';
-          }
+          if (d.name) nameOpt += '<option value="' + d.name + '">' + (d.phone ? d.name + ' (' + d.phone + ')' : d.name) + '</option>';
           if (d.area && !areaSet[d.area]) {
             areaSet[d.area] = true;
             areaOpt += '<option value="' + d.area + '">';
           }
-
           if (body) {
             body.innerHTML += '<tr>' +
               '<td><strong>' + (d.name || '-') + '</strong></td>' +
@@ -2890,10 +2828,8 @@
         var body = getEl('ordersTableBody');
         if (body) body.innerHTML = '';
         var pend = 0;
-        
         snap.forEach(function(c) {
-          var d = c.val();
-          var k = c.key;
+          var d = c.val(), k = c.key;
           farmStore.orders[k] = d;
           if (d.status === 'Pending') pend++;
           if (body) {
@@ -2906,9 +2842,7 @@
             '</tr>';
           }
         });
-        if (getEl('dash-pending-orders')) {
-          getEl('dash-pending-orders').innerText = pend;
-        }
+        if (getEl('dash-pending-orders')) getEl('dash-pending-orders').innerText = pend;
       });
 
       db.ref('expenses').on('value', function(snap) {
@@ -2916,10 +2850,8 @@
         var body = getEl('expenseTableBody');
         if (body) body.innerHTML = '';
         var tE = 0;
-        
         snap.forEach(function(c) {
-          var d = c.val();
-          var k = c.key;
+          var d = c.val(), k = c.key;
           farmStore.expenses[k] = d;
           tE += Number(d.amount) || 0;
           if (body) {
@@ -2932,12 +2864,8 @@
             '</tr>';
           }
         });
-        if (getEl('dash-total-exp')) {
-          getEl('dash-total-exp').innerText = '₹ ' + tE.toLocaleString();
-        }
-        if (getEl('rep-expenses')) {
-          getEl('rep-expenses').innerText = '₹ ' + tE.toLocaleString();
-        }
+        if (getEl('dash-total-exp')) getEl('dash-total-exp').innerText = '₹ ' + tE.toLocaleString();
+        if (getEl('rep-expenses')) getEl('rep-expenses').innerText = '₹ ' + tE.toLocaleString();
         calcNet();
       });
 
@@ -2945,10 +2873,8 @@
         farmStore.stock = {};
         var body = getEl('stockTableBody');
         if (body) body.innerHTML = '';
-        
         snap.forEach(function(c) {
-          var d = c.val();
-          var k = c.key;
+          var d = c.val(), k = c.key;
           farmStore.stock[k] = d;
           var isLow = Number(d.qty) <= Number(d.alertLevel);
           if (body) {
@@ -2967,10 +2893,8 @@
         farmStore.semen = {};
         var body = getEl('semenTableBody');
         if (body) body.innerHTML = '';
-        
         snap.forEach(function(c) {
-          var d = c.val();
-          var k = c.key;
+          var d = c.val(), k = c.key;
           farmStore.semen[k] = d;
           if (body) {
             body.innerHTML += '<tr>' +
@@ -2988,10 +2912,8 @@
         farmStore.health = {};
         var body = getEl('healthTableBody');
         if (body) body.innerHTML = '';
-        
         snap.forEach(function(c) {
-          var d = c.val();
-          var k = c.key;
+          var d = c.val(), k = c.key;
           farmStore.health[k] = d;
           if (body) {
             body.innerHTML += '<tr>' +
