@@ -497,12 +497,11 @@
       position: relative;
     }
 
-    /* ইনভয়েস টেবিল: ফিক্সড লেআউট */
+    /* ইনভয়েস টেবিল */
     .invoice-table {
       width: 100% !important;
       min-width: 100% !important;
       max-width: 100% !important;
-      table-layout: fixed !important;
       border-collapse: collapse !important;
       margin: 14px 0 !important;
       box-sizing: border-box !important;
@@ -512,9 +511,8 @@
     .invoice-table td {
       white-space: normal !important;
       word-break: break-word !important;
-      padding: 8px 6px !important;
       box-sizing: border-box !important;
-      font-size: 12.5px !important;
+      font-size: 13px !important;
     }
 
     /* প্রিন্ট এরিয়ায় লোগো ওয়াটারমার্ক */
@@ -545,87 +543,105 @@
       z-index: 1;
     }
 
-    /* প্রিন্ট সেটিংস: স্মার্ট টার্গেটিং */
+    /* প্রিন্ট সেটিংস: কোনো ব্ল্যাঙ্ক পেজ ছাড়া সরাসরি নির্ভুল প্রিন্ট */
     @page {
       margin: 0mm !important;
       size: auto;
     }
 
     @media print {
-      body {
+      html, body {
+        width: 100% !important;
+        height: auto !important;
         margin: 0 !important;
         padding: 0 !important;
-        background: white !important;
+        background: #fff !important;
+        color: #000 !important;
+        overflow: visible !important;
       }
-      body * {
-        visibility: hidden !important;
-      }
+
+      /* পেছনের ড্যাশবোর্ড সম্পূর্ণ হাইড */
+      #appBody,
+      #loginScreen,
+      header,
+      nav,
+      .container,
       .no-print {
         display: none !important;
       }
 
-      body[data-print="invoice"] #ledgerModal,
-      body[data-print="invoice"] #ledgerPrintArea {
+      /* ১. যখন ইনভয়েস প্রিন্ট হবে */
+      body[data-print="invoice"] #ledgerModal {
         display: none !important;
-        visibility: hidden !important;
       }
       body[data-print="invoice"] #invoiceModal {
         display: block !important;
         position: static !important;
         background: transparent !important;
         padding: 0 !important;
+        margin: 0 !important;
+        width: 100% !important;
+        height: auto !important;
+        overflow: visible !important;
       }
       body[data-print="invoice"] .invoice-card {
+        display: block !important;
+        position: static !important;
+        width: 100% !important;
         max-width: 100% !important;
-        box-shadow: none !important;
+        height: auto !important;
+        max-height: none !important;
         padding: 0 !important;
         margin: 0 !important;
-      }
-      body[data-print="invoice"] #invoicePrintArea,
-      body[data-print="invoice"] #invoicePrintArea * {
-        visibility: visible !important;
+        border: none !important;
+        box-shadow: none !important;
+        overflow: visible !important;
       }
       body[data-print="invoice"] #invoicePrintArea {
-        position: absolute !important;
-        left: 0 !important;
-        top: 0 !important;
-        width: 100% !important;
-        margin: 0 !important;
-        padding: 10mm 12mm !important;
-        box-sizing: border-box !important;
         display: block !important;
+        position: relative !important;
+        width: 100% !important;
+        padding: 8mm 12mm !important;
+        margin: 0 auto !important;
+        box-sizing: border-box !important;
+        overflow: visible !important;
       }
 
-      body[data-print="ledger"] #invoiceModal,
-      body[data-print="ledger"] #invoicePrintArea {
+      /* ২. যখন খাতা প্রিন্ট হবে */
+      body[data-print="ledger"] #invoiceModal {
         display: none !important;
-        visibility: hidden !important;
       }
       body[data-print="ledger"] #ledgerModal {
         display: block !important;
         position: static !important;
         background: transparent !important;
         padding: 0 !important;
+        margin: 0 !important;
+        width: 100% !important;
+        height: auto !important;
+        overflow: visible !important;
       }
       body[data-print="ledger"] .ledger-card {
+        display: block !important;
+        position: static !important;
+        width: 100% !important;
         max-width: 100% !important;
-        box-shadow: none !important;
+        height: auto !important;
+        max-height: none !important;
         padding: 0 !important;
         margin: 0 !important;
-      }
-      body[data-print="ledger"] #ledgerPrintArea,
-      body[data-print="ledger"] #ledgerPrintArea * {
-        visibility: visible !important;
+        border: none !important;
+        box-shadow: none !important;
+        overflow: visible !important;
       }
       body[data-print="ledger"] #ledgerPrintArea {
-        position: absolute !important;
-        left: 0 !important;
-        top: 0 !important;
-        width: 100% !important;
-        margin: 0 !important;
-        padding: 10mm 12mm !important;
-        box-sizing: border-box !important;
         display: block !important;
+        position: relative !important;
+        width: 100% !important;
+        padding: 8mm 12mm !important;
+        margin: 0 auto !important;
+        box-sizing: border-box !important;
+        overflow: visible !important;
       }
 
       .invoice-watermark {
@@ -1180,6 +1196,7 @@
       }
     }
 
+    // নির্দিষ্ট মোডাল সুনির্দিষ্টভাবে প্রিন্ট করার ফাংশন
     window.printSpecificModal = function(target) {
       document.body.setAttribute('data-print', target);
       var origTitle = document.title;
@@ -1195,6 +1212,14 @@
           document.body.removeAttribute('data-print');
         }
       }, 1000);
+    };
+
+    window.onbeforeprint = function() {
+      if (getEl('invoiceModal') && getEl('invoiceModal').style.display === 'flex') {
+        document.body.setAttribute('data-print', 'invoice');
+      } else if (getEl('ledgerModal') && getEl('ledgerModal').style.display === 'flex') {
+        document.body.setAttribute('data-print', 'ledger');
+      }
     };
 
     function onSaleCustomerInput() {
@@ -1520,7 +1545,6 @@
         if (!rawName) continue;
         var cKey = rawName.toLowerCase();
 
-        // গ্রাহকের সর্বশেষ ক্রয়কৃত চালানের তারিখ নির্ধারণ
         var saleTime = parseDateToTime(d.date);
         if (!customerMap[cKey]) {
           customerMap[cKey] = {
@@ -1589,7 +1613,6 @@
         return matchesSearch && matchesArea;
       });
 
-      // ৩৫ দিন ওভারডিউ সবার ওপরে, তারপর নতুন তারিখ অনুযায়ী সাজানো
       filtered.sort(function(a, b) {
         if (a.isOverdue && !b.isOverdue) return -1;
         if (!a.isOverdue && b.isOverdue) return 1;
@@ -1649,7 +1672,7 @@
       body.innerHTML = html;
     }
 
-    // কাস্টমার খাতা / স্টেটমেন্ট (প্রতিটি ঘরে টাকার অংক ও রানিং ব্যালেন্স দৃশ্যমান)
+    // কাস্টমার খাতা / স্টেটমেন্ট
     window.showCustomerLedger = function(encName) {
       var custName = decodeURIComponent(encName).trim();
       window.activeLedgerCustomerName = custName;
@@ -1848,7 +1871,7 @@
       }, 300);
     };
 
-    // নির্দিষ্ট পেমেন্টের জন্য সমন্বিত ইনভয়েস মোডাল
+    // নির্দিষ্ট পেমেন্টের ইনভয়েস মোডাল (টাকার অংক না কাটার শতভাগ নিশ্চয়তা সহ)
     window.showPaymentInvoice = function(pDate, pAmt, pNote, custName, cPhone, cArea, cAddr, balAfter, pId) {
       document.body.setAttribute('data-print', 'invoice');
       if (getEl('invMainDocTitle')) {
@@ -1871,25 +1894,25 @@
             '<span style="color:#2e7d32; font-weight:bold; background:#e8f5e9; padding:3px 9px; border-radius:4px; font-size:12px;">● অর্থ গ্রহণ সম্পন্ন (PAID)</span>' +
           '</div>' +
         '</div>' +
-        '<table class="invoice-table" style="border:1px solid #ddd;">' +
+        '<table class="invoice-table" style="border:1px solid #ddd; width:100%; margin:14px 0; border-collapse:collapse;">' +
           '<thead>' +
             '<tr style="background:#e8f5e9; border-bottom:2px solid #c8e6c9;">' +
-              '<th style="text-align:left; width:48%;">বিবরণ (Payment Description)</th>' +
-              '<th style="text-align:center; width:22%;">পদ্ধতি</th>' +
-              '<th style="text-align:right; width:30%; padding-right:10px;">আদায়কৃত অর্থ (₹)</th>' +
-            '</tr>' +
+              '<th style="text-align:left; padding:8px 10px;">বিবরণ (Description)</th>' +
+              '<th style="text-align:center; padding:8px 10px; width:25%;">পদ্ধতি (Method)</th>' +
+              '<th style="text-align:right; padding:8px 10px; width:30%;">আদায়কৃত অর্থ</th>' +
+            </tr>' +
           '</thead>' +
           '<tbody>' +
             '<tr>' +
-              '<td style="border-bottom:1px solid #eee;"><strong>বকেয়া আদায় / Payment Received</strong></td>' +
-              '<td style="text-align:center; border-bottom:1px solid #eee;">' + (pNote || 'ক্যাশ') + '</td>' +
-              '<td style="text-align:right; padding-right:10px; border-bottom:1px solid #eee; font-weight:bold; color:green; font-size:14.5px; white-space:nowrap;">₹ ' + pAmt + '</td>' +
+              '<td style="padding:10px; border-bottom:1px solid #eee;"><strong>বকেয়া আদায় / Payment Received</strong></td>' +
+              '<td style="text-align:center; padding:10px; border-bottom:1px solid #eee;">' + (pNote || 'ক্যাশ') + '</td>' +
+              '<td style="text-align:right; padding:10px; border-bottom:1px solid #eee; font-weight:bold; color:green; font-size:15px;">₹ ' + pAmt + '</td>' +
             '</tr>' +
           '</tbody>' +
         '</table>' +
-        '<div style="text-align:right; font-size:13px; line-height:2.0;">' +
+        '<div style="text-align:right; font-size:13.5px; line-height:2.0; margin-top:8px;">' +
           '<div style="color:green; font-size:15px;">মোট আদায়কৃত অর্থ: <strong>₹ ' + pAmt + '</strong></div>' +
-          '<div style="color:red; font-size:14px; border-top:1px dashed #ccc; padding-top:4px;">বর্তমান মোট বকেয়া: <strong>₹ ' + balAfter + '</strong></div>' +
+          '<div style="color:red; font-size:15px; border-top:1px dashed #ccc; padding-top:4px;">বর্তমান মোট বকেয়া: <strong>₹ ' + balAfter + '</strong></div>' +
         '</div>';
 
       getEl('invoiceModal').style.display = 'flex';
@@ -1928,25 +1951,25 @@
             paymentStatus +
           '</div>' +
         '</div>' +
-        '<table class="invoice-table" style="border:1px solid #ddd;">' +
+        '<table class="invoice-table" style="border:1px solid #ddd; width:100%; margin:14px 0; border-collapse:collapse;">' +
           '<thead>' +
             '<tr style="background:#e8f5e9; border-bottom:2px solid #c8e6c9;">' +
-              '<th style="text-align:left; width:44%;">পণ্য (Item)</th>' +
-              '<th style="text-align:center; width:18%;">পরিমাণ</th>' +
-              '<th style="text-align:right; width:18%;">দর (Rate)</th>' +
-              '<th style="text-align:right; width:20%; padding-right:10px;">মোট (Total)</th>' +
+              '<th style="text-align:left; padding:8px 10px;">পণ্য (Item)</th>' +
+              '<th style="text-align:center; padding:8px 10px; width:20%;">পরিমাণ</th>' +
+              '<th style="text-align:right; padding:8px 10px; width:22%;">দর (Rate)</th>' +
+              '<th style="text-align:right; padding:8px 10px; width:25%;">মোট (Total)</th>' +
             '</tr>' +
           '</thead>' +
           '<tbody>' +
             '<tr>' +
-              '<td style="border-bottom:1px solid #eee;"><strong>' + d.item + '</strong></td>' +
-              '<td style="text-align:center; border-bottom:1px solid #eee;">' + d.qty + '</td>' +
-              '<td style="text-align:right; border-bottom:1px solid #eee;">₹ ' + d.rate + '</td>' +
-              '<td style="text-align:right; padding-right:10px; border-bottom:1px solid #eee; font-weight:bold; white-space:nowrap;">₹ ' + d.total + '</td>' +
+              '<td style="padding:10px; border-bottom:1px solid #eee;"><strong>' + d.item + '</strong></td>' +
+              '<td style="text-align:center; padding:10px; border-bottom:1px solid #eee;">' + d.qty + '</td>' +
+              '<td style="text-align:right; padding:10px; border-bottom:1px solid #eee;">₹ ' + d.rate + '</td>' +
+              '<td style="text-align:right; padding:10px; border-bottom:1px solid #eee; font-weight:bold;">₹ ' + d.total + '</td>' +
             '</tr>' +
           '</tbody>' +
         '</table>' +
-        '<div style="text-align:right; font-size:13px; line-height:2.0;">' +
+        '<div style="text-align:right; font-size:13.5px; line-height:2.0; margin-top:8px;">' +
           '<div>চালান মূল্য: <strong>₹ ' + d.total + '</strong></div>' +
           '<div style="color:green;">এই চালানে নগদ পরিশোধ: <strong>₹ ' + d.paid + '</strong></div>' +
           '<div style="color:red; font-size:15px; border-top:1px dashed #ccc; padding-top:4px;">গ্রাহকের বর্তমান মোট বকেয়া: <strong>₹ ' + liveDue + '</strong></div>' +
