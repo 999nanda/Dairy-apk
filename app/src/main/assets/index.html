@@ -12,7 +12,9 @@
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
 
   <script>
-    function getEl(id) { return document.getElementById(id); }
+    function getEl(id) {
+      return document.getElementById(id);
+    }
 
     var firebaseConfig = {
       apiKey: "AIzaSyAtmDkYLV6rh4jfJT2OPJZ5_R4c99S8-t4",
@@ -26,30 +28,55 @@
 
     var db = null;
     try {
-      if (window.firebase && !firebase.apps.length) firebase.initializeApp(firebaseConfig);
-      if (window.firebase) db = firebase.database();
-    } catch (e) { console.log(e); }
+      if (window.firebase && !firebase.apps.length) {
+        firebase.initializeApp(firebaseConfig);
+      }
+      if (window.firebase) {
+        db = firebase.database();
+      }
+    } catch (e) {
+      console.log(e);
+    }
 
     window.switchTab = function(tab, btn) {
-      document.querySelectorAll('.tab-content').forEach(function(el) { el.style.display = 'none'; });
-      document.querySelectorAll('nav button').forEach(function(el) { el.classList.remove('active'); });
+      var contents = document.querySelectorAll('.tab-content');
+      for (var i = 0; i < contents.length; i++) {
+        contents[i].style.display = 'none';
+      }
+
+      var navBtns = document.querySelectorAll('nav button');
+      for (var j = 0; j < navBtns.length; j++) {
+        navBtns[j].classList.remove('active');
+      }
+
       var target = getEl('tab-' + tab);
-      if (target) target.style.display = 'block';
-      if (btn) btn.classList.add('active');
-      else if (window.event && window.event.target) window.event.target.classList.add('active');
+      if (target) {
+        target.style.display = 'block';
+      }
+
+      if (btn) {
+        btn.classList.add('active');
+      } else if (window.event && window.event.target) {
+        window.event.target.classList.add('active');
+      }
     };
 
     // স্থায়ী লগইন সিস্টেম
     window.doLogin = function() {
       var u = (getEl('loginId') ? getEl('loginId').value : '').trim().toLowerCase();
       var p = (getEl('loginPass') ? getEl('loginPass').value : '').trim();
+
       if (u === 'nanda' && p === '1234') {
         localStorage.setItem('nanda_auth_status', 'logged_in');
         getEl('loginScreen').style.display = 'none';
         getEl('appBody').style.display = 'block';
-        if (typeof window.listenAllData === 'function') window.listenAllData();
+        if (typeof window.listenAllData === 'function') {
+          window.listenAllData();
+        }
       } else {
-        if (getEl('loginErr')) getEl('loginErr').innerText = 'ভুল আইডি বা পাসওয়ার্ড! আইডি: nanda, পাসওয়ার্ড: 1234';
+        if (getEl('loginErr')) {
+          getEl('loginErr').innerText = 'ভুল আইডি বা পাসওয়ার্ড! আইডি: nanda, পাসওয়ার্ড: 1234';
+        }
       }
     };
 
@@ -60,17 +87,30 @@
 
     window.onload = function() {
       var today = new Date().toISOString().split('T')[0];
-      ['milkDate', 'saleDate', 'orderDate', 'expDate', 'brAiDate', 'hlthDate'].forEach(function(id) {
-        if (getEl(id)) getEl(id).value = today;
+      var defaultDateIds = ['milkDate', 'saleDate', 'orderDate', 'expDate', 'brAiDate', 'hlthDate'];
+      defaultDateIds.forEach(function(id) {
+        if (getEl(id)) {
+          getEl(id).value = today;
+        }
       });
 
       if (localStorage.getItem('nanda_auth_status') === 'logged_in') {
-        if (getEl('loginScreen')) getEl('loginScreen').style.display = 'none';
-        if (getEl('appBody')) getEl('appBody').style.display = 'block';
-        if (typeof window.listenAllData === 'function') window.listenAllData();
+        if (getEl('loginScreen')) {
+          getEl('loginScreen').style.display = 'none';
+        }
+        if (getEl('appBody')) {
+          getEl('appBody').style.display = 'block';
+        }
+        if (typeof window.listenAllData === 'function') {
+          window.listenAllData();
+        }
       } else {
-        if (getEl('loginScreen')) getEl('loginScreen').style.display = 'flex';
-        if (getEl('appBody')) getEl('appBody').style.display = 'none';
+        if (getEl('loginScreen')) {
+          getEl('loginScreen').style.display = 'flex';
+        }
+        if (getEl('appBody')) {
+          getEl('appBody').style.display = 'none';
+        }
       }
     };
 
@@ -94,85 +134,512 @@
       --info: #0288d1;
       --dark: #212121;
     }
-    * { box-sizing: border-box; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 0; padding: 0; }
-    body { background-color: #f1f5f2; color: var(--dark); padding-bottom: 60px; }
-    header { background: linear-gradient(135deg, #1b5e20, #2e7d32); color: white; padding: 12px 18px; display: flex; align-items: center; justify-content: space-between; box-shadow: 0 3px 10px rgba(0,0,0,0.15); position: sticky; top: 0; z-index: 100; }
-    .header-title { display: flex; align-items: center; gap: 10px; }
-    .header-title img { height: 44px; width: 44px; border-radius: 50%; object-fit: cover; background: white; padding: 2px; box-shadow: 0 2px 4px rgba(0,0,0,0.2); }
-    .header-title h1 { font-size: 18px; font-weight: 700; }
-    .header-right { display: flex; align-items: center; gap: 8px; }
-    .sync-badge { background: #2e7d32; border: 1px solid #81c784; color: white; padding: 4px 10px; border-radius: 20px; font-size: 11px; font-weight: 600; }
-    .logout-btn { background: #b71c1c; color: white; border: none; padding: 6px 14px; border-radius: 6px; cursor: pointer; font-weight: bold; font-size: 12px; }
-    nav { display: flex; background: white; overflow-x: auto; box-shadow: 0 2px 5px rgba(0,0,0,0.06); padding: 6px 10px; }
-    nav button { flex: 0 0 auto; padding: 9px 15px; border: none; background: none; font-size: 13.5px; font-weight: 600; color: #495057; cursor: pointer; border-radius: 6px; margin-right: 5px; white-space: nowrap; }
-    nav button:hover { background: #f0f4f1; color: var(--primary); }
-    nav button.active { background: var(--secondary); color: var(--primary); font-weight: 700; border-bottom: 3px solid var(--primary); }
-    .container { max-width: 1150px; margin: 18px auto; padding: 0 14px; }
-    .card { background: white; border-radius: 12px; padding: 20px; margin-bottom: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
-    h2 { font-size: 17px; margin-bottom: 15px; color: var(--primary); border-bottom: 2px solid var(--secondary); padding-bottom: 6px; font-weight: 700; }
-    .form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 14px; margin-bottom: 15px; }
-    .input-group label { display: block; font-size: 12px; font-weight: 600; margin-bottom: 5px; color: #444; }
-    input, select { width: 100%; padding: 10px 12px; border: 1px solid #ced4da; border-radius: 8px; font-size: 13.5px; outline: none; background: #fafafa; }
-    input:focus, select:focus { border-color: var(--primary); background: #fff; }
-    .btn { background: var(--primary); color: white; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer; font-size: 13.5px; font-weight: 700; display: inline-flex; align-items: center; gap: 6px; }
-    .btn:hover { background: var(--primary-light); }
-    .btn-danger { background: var(--danger); color: white; }
-    .btn-warning { background: var(--warning); color: white; }
-    .btn-info { background: var(--info); color: white; }
-    .action-btn { padding: 5px 11px; font-size: 12px; border: none; border-radius: 5px; cursor: pointer; margin-right: 4px; font-weight: 600; }
-    .table-container { overflow-x: auto; margin-top: 10px; border-radius: 8px; border: 1px solid #edf2ee; }
-    table { width: 100%; border-collapse: collapse; font-size: 12.5px; text-align: left; min-width: 900px; }
-    th, td { padding: 10px 12px; border-bottom: 1px solid #eceff1; white-space: nowrap; }
-    th { background: #f8faf9; color: #555; font-weight: 700; }
-    .badge { padding: 3px 8px; border-radius: 12px; font-size: 11px; font-weight: 600; display: inline-block; }
-    .badge-success { background: #e8f5e9; color: #2e7d32; }
-    .badge-warning { background: #fff3e0; color: #e65100; }
-    .badge-danger { background: #ffebee; color: #c62828; }
-    .summary-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 14px; margin-bottom: 22px; }
-    .summary-card { background: white; padding: 16px; border-radius: 10px; border-left: 5px solid var(--primary); box-shadow: 0 2px 6px rgba(0,0,0,0.05); }
-    .summary-card p { font-size: 11.5px; color: #666; font-weight: 600; text-transform: uppercase; }
-    .summary-card h3 { font-size: 22px; color: var(--primary); margin-top: 5px; font-weight: 700; }
 
-    #loginScreen { position: fixed; inset: 0; background: #e8f5e9; display: flex; align-items: center; justify-content: center; z-index: 99999; padding: 20px; }
-    .login-box { background: white; padding: 32px; border-radius: 16px; width: 100%; max-width: 380px; box-shadow: 0 8px 24px rgba(0,0,0,0.12); text-align: center; }
-    .login-box img { height: 95px; width: 95px; border-radius: 50%; object-fit: cover; margin-bottom: 14px; box-shadow: 0 3px 10px rgba(0,0,0,0.15); border: 2px solid var(--secondary); }
+    * {
+      box-sizing: border-box;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      background-color: #f1f5f2;
+      color: var(--dark);
+      padding-bottom: 60px;
+    }
+
+    header {
+      background: linear-gradient(135deg, #1b5e20, #2e7d32);
+      color: white;
+      padding: 12px 18px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      box-shadow: 0 3px 10px rgba(0,0,0,0.15);
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+
+    .header-title {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .header-title img {
+      height: 44px;
+      width: 44px;
+      border-radius: 50%;
+      object-fit: cover;
+      background: white;
+      padding: 2px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+    }
+
+    .header-title h1 {
+      font-size: 18px;
+      font-weight: 700;
+    }
+
+    .header-right {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .sync-badge {
+      background: #2e7d32;
+      border: 1px solid #81c784;
+      color: white;
+      padding: 4px 10px;
+      border-radius: 20px;
+      font-size: 11px;
+      font-weight: 600;
+    }
+
+    .logout-btn {
+      background: #b71c1c;
+      color: white;
+      border: none;
+      padding: 6px 14px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-weight: bold;
+      font-size: 12px;
+    }
+
+    nav {
+      display: flex;
+      background: white;
+      overflow-x: auto;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.06);
+      padding: 6px 10px;
+    }
+
+    nav button {
+      flex: 0 0 auto;
+      padding: 9px 15px;
+      border: none;
+      background: none;
+      font-size: 13.5px;
+      font-weight: 600;
+      color: #495057;
+      cursor: pointer;
+      border-radius: 6px;
+      margin-right: 5px;
+      white-space: nowrap;
+    }
+
+    nav button:hover {
+      background: #f0f4f1;
+      color: var(--primary);
+    }
+
+    nav button.active {
+      background: var(--secondary);
+      color: var(--primary);
+      font-weight: 700;
+      border-bottom: 3px solid var(--primary);
+    }
+
+    .container {
+      max-width: 1150px;
+      margin: 18px auto;
+      padding: 0 14px;
+    }
+
+    .card {
+      background: white;
+      border-radius: 12px;
+      padding: 20px;
+      margin-bottom: 20px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+    }
+
+    h2 {
+      font-size: 17px;
+      margin-bottom: 15px;
+      color: var(--primary);
+      border-bottom: 2px solid var(--secondary);
+      padding-bottom: 6px;
+      font-weight: 700;
+    }
+
+    .form-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+      gap: 14px;
+      margin-bottom: 15px;
+    }
+
+    .input-group label {
+      display: block;
+      font-size: 12px;
+      font-weight: 600;
+      margin-bottom: 5px;
+      color: #444;
+    }
+
+    input, select {
+      width: 100%;
+      padding: 10px 12px;
+      border: 1px solid #ced4da;
+      border-radius: 8px;
+      font-size: 13.5px;
+      outline: none;
+      background: #fafafa;
+    }
+
+    input:focus, select:focus {
+      border-color: var(--primary);
+      background: #fff;
+    }
+
+    .btn {
+      background: var(--primary);
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 13.5px;
+      font-weight: 700;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .btn:hover {
+      background: var(--primary-light);
+    }
+
+    .btn-danger {
+      background: var(--danger);
+      color: white;
+    }
+
+    .btn-warning {
+      background: var(--warning);
+      color: white;
+    }
+
+    .btn-info {
+      background: var(--info);
+      color: white;
+    }
+
+    .action-btn {
+      padding: 5px 11px;
+      font-size: 12px;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+      margin-right: 4px;
+      font-weight: 600;
+    }
+
+    .table-container {
+      overflow-x: auto;
+      margin-top: 10px;
+      border-radius: 8px;
+      border: 1px solid #edf2ee;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 12.5px;
+      text-align: left;
+      min-width: 900px;
+    }
+
+    th, td {
+      padding: 10px 12px;
+      border-bottom: 1px solid #eceff1;
+      white-space: nowrap;
+    }
+
+    th {
+      background: #f8faf9;
+      color: #555;
+      font-weight: 700;
+    }
+
+    .badge {
+      padding: 3px 8px;
+      border-radius: 12px;
+      font-size: 11px;
+      font-weight: 600;
+      display: inline-block;
+    }
+
+    .badge-success {
+      background: #e8f5e9;
+      color: #2e7d32;
+    }
+
+    .badge-warning {
+      background: #fff3e0;
+      color: #e65100;
+    }
+
+    .badge-danger {
+      background: #ffebee;
+      color: #c62828;
+    }
+
+    .summary-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 14px;
+      margin-bottom: 22px;
+    }
+
+    .summary-card {
+      background: white;
+      padding: 16px;
+      border-radius: 10px;
+      border-left: 5px solid var(--primary);
+      box-shadow: 0 2px 6px rgba(0,0,0,0.05);
+    }
+
+    .summary-card p {
+      font-size: 11.5px;
+      color: #666;
+      font-weight: 600;
+      text-transform: uppercase;
+    }
+
+    .summary-card h3 {
+      font-size: 22px;
+      color: var(--primary);
+      margin-top: 5px;
+      font-weight: 700;
+    }
+
+    #loginScreen {
+      position: fixed;
+      inset: 0;
+      background: #e8f5e9;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 99999;
+      padding: 20px;
+    }
+
+    .login-box {
+      background: white;
+      padding: 32px;
+      border-radius: 16px;
+      width: 100%;
+      max-width: 380px;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.12);
+      text-align: center;
+    }
+
+    .login-box img {
+      height: 95px;
+      width: 95px;
+      border-radius: 50%;
+      object-fit: cover;
+      margin-bottom: 14px;
+      box-shadow: 0 3px 10px rgba(0,0,0,0.15);
+      border: 2px solid var(--secondary);
+    }
 
     /* মোডাল স্টাইল */
-    #ledgerModal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.65); z-index: 2000; align-items: center; justify-content: center; padding: 15px; }
-    #invoiceModal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.75); z-index: 2500; align-items: center; justify-content: center; padding: 15px; }
-    .invoice-card { background: white; max-width: 530px; width: 100%; border-radius: 12px; padding: 24px; position: relative; box-shadow: 0 10px 30px rgba(0,0,0,0.3); max-height: 95vh; overflow-y: auto; overflow-x: hidden; }
-    .ledger-card { background: white; max-width: 860px; width: 100%; border-radius: 12px; padding: 24px; max-height: 92vh; overflow-y: auto; position: relative; }
+    #ledgerModal {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.65);
+      z-index: 2000;
+      align-items: center;
+      justify-content: center;
+      padding: 15px;
+    }
 
-    /* ইনভয়েস টেবিল: ফিক্সড লেআউট যাতে টাকা কেটে না যায় */
-    .invoice-table { width: 100% !important; min-width: 100% !important; max-width: 100% !important; table-layout: fixed !important; border-collapse: collapse !important; margin: 14px 0 !important; }
-    .invoice-table th, .invoice-table td { white-space: normal !important; word-break: break-word !important; padding: 8px 6px !important; font-size: 12.5px !important; }
+    #invoiceModal {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.75);
+      z-index: 2500;
+      align-items: center;
+      justify-content: center;
+      padding: 15px;
+    }
 
-    /* ওয়াটারমার্ক */
-    #invoicePrintArea { position: relative; background: white; padding: 4px; width: 100%; }
-    .invoice-watermark { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 250px; height: 250px; opacity: 0.12; pointer-events: none; z-index: 0; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
-    .invoice-content { position: relative; z-index: 1; }
+    .invoice-card {
+      background: white;
+      max-width: 530px;
+      width: 100%;
+      border-radius: 12px;
+      padding: 24px;
+      position: relative;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+      max-height: 95vh;
+      overflow-y: auto;
+      overflow-x: hidden;
+      box-sizing: border-box;
+    }
+
+    .ledger-card {
+      background: white;
+      max-width: 860px;
+      width: 100%;
+      border-radius: 12px;
+      padding: 24px;
+      max-height: 92vh;
+      overflow-y: auto;
+      position: relative;
+    }
+
+    /* ইনভয়েস টেবিল: ফিক্সড লেআউট যাতে কোনো কলাম না কাটে */
+    .invoice-table {
+      width: 100% !important;
+      min-width: 100% !important;
+      max-width: 100% !important;
+      table-layout: fixed !important;
+      border-collapse: collapse !important;
+      margin: 14px 0 !important;
+      box-sizing: border-box !important;
+    }
+
+    .invoice-table th,
+    .invoice-table td {
+      white-space: normal !important;
+      word-break: break-word !important;
+      padding: 8px 6px !important;
+      box-sizing: border-box !important;
+      font-size: 12.5px !important;
+    }
+
+    /* প্রিন্ট এরিয়ায় লোগো ওয়াটারমার্ক */
+    #invoicePrintArea {
+      position: relative;
+      background: white;
+      padding: 4px;
+      width: 100%;
+      box-sizing: border-box;
+    }
+
+    .invoice-watermark {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 250px;
+      height: 250px;
+      opacity: 0.12;
+      pointer-events: none;
+      z-index: 0;
+      -webkit-print-color-adjust: exact !important;
+      print-color-adjust: exact !important;
+    }
+
+    .invoice-content {
+      position: relative;
+      z-index: 1;
+    }
 
     /* প্রিন্ট সেটিংস: স্মার্ট টার্গেটিং */
-    @page { margin: 0mm !important; size: auto; }
+    @page {
+      margin: 0mm !important;
+      size: auto;
+    }
+
     @media print {
-      body { margin: 0 !important; padding: 0 !important; background: white !important; }
-      body * { visibility: hidden !important; }
-      .no-print { display: none !important; }
+      body {
+        margin: 0 !important;
+        padding: 0 !important;
+        background: white !important;
+      }
+      body * {
+        visibility: hidden !important;
+      }
+      .no-print {
+        display: none !important;
+      }
 
-      body[data-print="invoice"] #ledgerModal, body[data-print="invoice"] #ledgerPrintArea { display: none !important; visibility: hidden !important; }
-      body[data-print="invoice"] #invoiceModal { display: block !important; position: static !important; background: transparent !important; padding: 0 !important; }
-      body[data-print="invoice"] .invoice-card { max-width: 100% !important; box-shadow: none !important; padding: 0 !important; margin: 0 !important; }
-      body[data-print="invoice"] #invoicePrintArea, body[data-print="invoice"] #invoicePrintArea * { visibility: visible !important; }
-      body[data-print="invoice"] #invoicePrintArea { position: absolute !important; left: 0 !important; top: 0 !important; width: 100% !important; padding: 10mm 12mm !important; display: block !important; }
+      /* ১. যখন ইনভয়েস প্রিন্ট হবে */
+      body[data-print="invoice"] #ledgerModal,
+      body[data-print="invoice"] #ledgerPrintArea {
+        display: none !important;
+        visibility: hidden !important;
+      }
+      body[data-print="invoice"] #invoiceModal {
+        display: block !important;
+        position: static !important;
+        background: transparent !important;
+        padding: 0 !important;
+      }
+      body[data-print="invoice"] .invoice-card {
+        max-width: 100% !important;
+        box-shadow: none !important;
+        padding: 0 !important;
+        margin: 0 !important;
+      }
+      body[data-print="invoice"] #invoicePrintArea,
+      body[data-print="invoice"] #invoicePrintArea * {
+        visibility: visible !important;
+      }
+      body[data-print="invoice"] #invoicePrintArea {
+        position: absolute !important;
+        left: 0 !important;
+        top: 0 !important;
+        width: 100% !important;
+        margin: 0 !important;
+        padding: 10mm 12mm !important;
+        box-sizing: border-box !important;
+        display: block !important;
+      }
 
-      body[data-print="ledger"] #invoiceModal, body[data-print="ledger"] #invoicePrintArea { display: none !important; visibility: hidden !important; }
-      body[data-print="ledger"] #ledgerModal { display: block !important; position: static !important; background: transparent !important; padding: 0 !important; }
-      body[data-print="ledger"] .ledger-card { max-width: 100% !important; box-shadow: none !important; padding: 0 !important; margin: 0 !important; }
-      body[data-print="ledger"] #ledgerPrintArea, body[data-print="ledger"] #ledgerPrintArea * { visibility: visible !important; }
-      body[data-print="ledger"] #ledgerPrintArea { position: absolute !important; left: 0 !important; top: 0 !important; width: 100% !important; padding: 10mm 12mm !important; display: block !important; }
+      /* ২. যখন খাতা প্রিন্ট হবে */
+      body[data-print="ledger"] #invoiceModal,
+      body[data-print="ledger"] #invoicePrintArea {
+        display: none !important;
+        visibility: hidden !important;
+      }
+      body[data-print="ledger"] #ledgerModal {
+        display: block !important;
+        position: static !important;
+        background: transparent !important;
+        padding: 0 !important;
+      }
+      body[data-print="ledger"] .ledger-card {
+        max-width: 100% !important;
+        box-shadow: none !important;
+        padding: 0 !important;
+        margin: 0 !important;
+      }
+      body[data-print="ledger"] #ledgerPrintArea,
+      body[data-print="ledger"] #ledgerPrintArea * {
+        visibility: visible !important;
+      }
+      body[data-print="ledger"] #ledgerPrintArea {
+        position: absolute !important;
+        left: 0 !important;
+        top: 0 !important;
+        width: 100% !important;
+        margin: 0 !important;
+        padding: 10mm 12mm !important;
+        box-sizing: border-box !important;
+        display: block !important;
+      }
 
-      .invoice-watermark { display: block !important; opacity: 0.12 !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
-      * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+      .invoice-watermark {
+        display: block !important;
+        opacity: 0.12 !important;
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+      }
+      * {
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+      }
     }
   </style>
 </head>
@@ -189,14 +656,17 @@
       <img src="logo.png" alt="Nanda Dairy Agro" onerror="this.onerror=null; this.src='https://cdn-icons-png.flaticon.com/512/2395/2395796.png';">
       <h2 style="border:none; margin-bottom: 5px; justify-content:center;">Nanda Dairy Agro</h2>
       <p style="font-size: 13px; color: #666; margin-bottom: 20px;">ফার্ম ম্যানেজমেন্ট সিস্টেমে স্বাগতম</p>
+      
       <div style="text-align: left; margin-bottom: 14px;">
         <label style="font-size: 12px; font-weight:600;">User ID (ইউজার আইডি)</label>
         <input type="text" id="loginId" placeholder="ইউজার আইডি দিন" autocomplete="off" style="margin-top: 4px;">
       </div>
+      
       <div style="text-align: left; margin-bottom: 20px;">
         <label style="font-size: 12px; font-weight:600;">Password (পাসওয়ার্ড)</label>
         <input type="password" id="loginPass" placeholder="পাসওয়ার্ড দিন" autocomplete="off" style="margin-top: 4px;">
       </div>
+      
       <button class="btn" style="width: 100%; padding: 11px; justify-content:center;" onclick="window.doLogin()">লগইন করুন (Login)</button>
       <p id="loginErr" style="color: red; font-size: 12px; margin-top: 10px;"></p>
     </div>
@@ -239,12 +709,30 @@
       <!-- ১. Dashboard -->
       <div id="tab-dashboard" class="tab-content">
         <div class="summary-grid">
-          <div class="summary-card"><p>TOTAL CATTLE (মোট গরু)</p><h3 id="dash-cow-count">০</h3></div>
-          <div class="summary-card" style="border-left-color: var(--info);"><p>TODAY'S MILK (আজকের দুধ)</p><h3 id="dash-milk-today">0.0 L</h3></div>
-          <div class="summary-card" style="border-left-color: #7b1fa2;"><p>TOTAL DUE (মোট বকেয়া)</p><h3 id="dash-total-due">₹ 0</h3></div>
-          <div class="summary-card" style="border-left-color: var(--warning);"><p>TOTAL SALES (মোট বিক্রয়)</p><h3 id="dash-total-sales">₹ 0</h3></div>
-          <div class="summary-card" style="border-left-color: var(--danger);"><p>TOTAL EXPENSE (মোট খরচ)</p><h3 id="dash-total-exp">₹ 0</h3></div>
-          <div class="summary-card" style="border-left-color: #00897b;"><p>PENDING ORDERS (অর্ডার)</p><h3 id="dash-pending-orders">0</h3></div>
+          <div class="summary-card">
+            <p>TOTAL CATTLE (মোট গরু)</p>
+            <h3 id="dash-cow-count">০</h3>
+          </div>
+          <div class="summary-card" style="border-left-color: var(--info);">
+            <p>TODAY'S MILK (আজকের দুধ)</p>
+            <h3 id="dash-milk-today">0.0 L</h3>
+          </div>
+          <div class="summary-card" style="border-left-color: #7b1fa2;">
+            <p>TOTAL DUE (মোট বকেয়া)</p>
+            <h3 id="dash-total-due">₹ 0</h3>
+          </div>
+          <div class="summary-card" style="border-left-color: var(--warning);">
+            <p>TOTAL SALES (মোট বিক্রয়)</p>
+            <h3 id="dash-total-sales">₹ 0</h3>
+          </div>
+          <div class="summary-card" style="border-left-color: var(--danger);">
+            <p>TOTAL EXPENSE (মোট খরচ)</p>
+            <h3 id="dash-total-exp">₹ 0</h3>
+          </div>
+          <div class="summary-card" style="border-left-color: #00897b;">
+            <p>PENDING ORDERS (অর্ডার)</p>
+            <h3 id="dash-pending-orders">0</h3>
+          </div>
         </div>
       </div>
 
@@ -253,29 +741,97 @@
         <div class="card">
           <h2>🐄 Cattle Register</h2>
           <div class="form-grid">
-            <div class="input-group"><label>Tag ID *</label><input type="text" id="cowTag" placeholder="NDA-001"></div>
-            <div class="input-group"><label>Breed</label><input type="text" id="cowBreed" placeholder="Jersey / HF"></div>
-            <div class="input-group"><label>Breed Type</label><input type="text" id="cowBreedType" placeholder="Jersey Cross"></div>
-            <div class="input-group"><label>Generation</label><select id="cowGeneration"><option value="F1">F1</option><option value="F2">F2</option><option value="F3">F3</option><option value="F4+">F4+</option><option value="Pure/100%">Pure/100%</option></select></div>
-            <div class="input-group"><label>DOB (জন্মতারিখ)</label><input type="date" id="cowDob"></div>
-            <div class="input-group"><label>Weight kg (ওজন)</label><input type="number" id="cowWeight" placeholder="450"></div>
-            <div class="input-group"><label>Lactation (বিয়ান)</label><input type="number" id="cowLactation" placeholder="2"></div>
-            <div class="input-group"><label>Status</label><select id="cowStatus"><option value="Milking">Milking</option><option value="Pregnant">Pregnant</option><option value="Dry">Dry</option><option value="Heat">Heat</option><option value="Heifer">Heifer</option><option value="Calf">Calf</option><option value="Sick">Sick</option><option value="Sold/Transferred">Sold/Transferred</option></select></div>
-            <div class="input-group"><label>Daily Est. Milk (লিটার/দিন)</label><input type="number" step="0.1" id="cowMilkDay" placeholder="12.5"></div>
-            <div class="input-group"><label>Sire / Semen</label><input type="text" id="cowSire" placeholder="Romio"></div>
-            <div class="input-group"><label>Dam (মা)</label><input type="text" id="cowDam" placeholder="মায়ের আইডি"></div>
-            <div class="input-group"><label>Expected Calving</label><input type="date" id="cowExpCalving"></div>
+            <div class="input-group">
+              <label>Tag ID *</label>
+              <input type="text" id="cowTag" placeholder="NDA-001">
+            </div>
+            <div class="input-group">
+              <label>Breed</label>
+              <input type="text" id="cowBreed" placeholder="Jersey / HF">
+            </div>
+            <div class="input-group">
+              <label>Breed Type</label>
+              <input type="text" id="cowBreedType" placeholder="Jersey Cross">
+            </div>
+            <div class="input-group">
+              <label>Generation</label>
+              <select id="cowGeneration">
+                <option value="F1">F1</option>
+                <option value="F2">F2</option>
+                <option value="F3">F3</option>
+                <option value="F4+">F4+</option>
+                <option value="Pure/100%">Pure/100%</option>
+              </select>
+            </div>
+            <div class="input-group">
+              <label>DOB (জন্মতারিখ)</label>
+              <input type="date" id="cowDob">
+            </div>
+            <div class="input-group">
+              <label>Weight kg (ওজন)</label>
+              <input type="number" id="cowWeight" placeholder="450">
+            </div>
+            <div class="input-group">
+              <label>Lactation (বিয়ান)</label>
+              <input type="number" id="cowLactation" placeholder="2">
+            </div>
+            <div class="input-group">
+              <label>Status</label>
+              <select id="cowStatus">
+                <option value="Milking">Milking</option>
+                <option value="Pregnant">Pregnant</option>
+                <option value="Dry">Dry</option>
+                <option value="Heat">Heat</option>
+                <option value="Heifer">Heifer</option>
+                <option value="Calf">Calf</option>
+                <option value="Sick">Sick</option>
+                <option value="Sold/Transferred">Sold/Transferred</option>
+              </select>
+            </div>
+            <div class="input-group">
+              <label>Daily Est. Milk (লিটার/দিন)</label>
+              <input type="number" step="0.1" id="cowMilkDay" placeholder="12.5">
+            </div>
+            <div class="input-group">
+              <label>Sire / Semen</label>
+              <input type="text" id="cowSire" placeholder="Romio">
+            </div>
+            <div class="input-group">
+              <label>Dam (মা)</label>
+              <input type="text" id="cowDam" placeholder="মায়ের আইডি">
+            </div>
+            <div class="input-group">
+              <label>Expected Calving</label>
+              <input type="date" id="cowExpCalving">
+            </div>
           </div>
           <div style="display:flex; gap:10px;">
             <button class="btn" id="cowSubmitBtn" onclick="saveCattle()">Save Cattle</button>
             <button class="btn btn-warning" id="cowCancelBtn" style="display:none;" onclick="cancelCattleEdit()">Cancel (বাতিল)</button>
           </div>
         </div>
+        
         <div class="card">
           <h2>সকল গরুর তালিকা (Cattle List)</h2>
           <div class="table-container">
             <table>
-              <thead><tr><th>#</th><th>Tag</th><th>Breed</th><th>Type</th><th>Gen</th><th>DOB</th><th>Weight</th><th>Lact</th><th>Status</th><th style="background:#e8f5e9; color:#1b5e20;">Total Milk (Days)</th><th>Sire/Semen</th><th>Calving</th><th>Action</th></tr></thead>
+              <thead>
+                <tr>
+                  <th>#</th>
+                  <th>Tag</th>
+                  <th>Breed</th>
+                  <th>Type</th>
+                  <th>Gen</th>
+                  <th>DOB</th>
+                  <th>Weight</th>
+                  <th>Lact</th>
+                  <th>Status</th>
+                  <th style="background:#e8f5e9; color:#1b5e20;">Total Milk (Days)</th>
+                  <th>Sire/Semen</th>
+                  <th>Calving</th>
+                  <th>Action</th>
+                </tr>
+              </thead>
               <tbody id="cattleTableBody"></tbody>
             </table>
           </div>
@@ -287,31 +843,83 @@
         <div class="card">
           <h2>🧬 AI • Pregnancy • Calving • Pedigree</h2>
           <div class="form-grid">
-            <div class="input-group"><label>Cattle ID *</label><input type="text" id="brCowTag" list="cattleTagList" placeholder="Tag সিলেক্ট বা টাইপ করুন"></div>
-            <div class="input-group"><label>AI Date *</label><input type="date" id="brAiDate" onchange="autoCalcExpectedCalving()"></div>
-            <div class="input-group"><label>Semen/Bull</label><input type="text" id="brSemenId" placeholder="ষাঁড় বা সিমেন আইডি"></div>
-            <div class="input-group"><label>Company</label><input type="text" id="brCompany" placeholder="কোম্পানির নাম (যেমন: ABS / BRAC)"></div>
-            <div class="input-group"><label>AI Cost ₹</label><input type="number" id="brAiCost" placeholder="এআই খরচ (₹)"></div>
-            <div class="input-group"><label>Pregnancy Test (তারিখ)</label><input type="date" id="brPdDate"></div>
-            <div class="input-group"><label>Result</label><select id="brStatus"><option value="Pending">Pending</option><option value="Pregnant">Pregnant</option><option value="Failed">Failed</option><option value="Calved">Calved</option></select></div>
-            <div class="input-group"><label>Expected Calving (সম্ভাব্য প্রসব)</label><input type="date" id="brExpCalvingDate"></div>
-            <div class="input-group"><label>Actual Calving (প্রকৃত প্রসব)</label><input type="date" id="brActCalvingDate"></div>
+            <div class="input-group">
+              <label>Cattle ID *</label>
+              <input type="text" id="brCowTag" list="cattleTagList" placeholder="Tag সিলেক্ট বা টাইপ করুন">
+            </div>
+            <div class="input-group">
+              <label>AI Date *</label>
+              <input type="date" id="brAiDate" onchange="autoCalcExpectedCalving()">
+            </div>
+            <div class="input-group">
+              <label>Semen/Bull</label>
+              <input type="text" id="brSemenId" placeholder="ষাঁড় বা সিমেন আইডি">
+            </div>
+            <div class="input-group">
+              <label>Company</label>
+              <input type="text" id="brCompany" placeholder="কোম্পানির নাম (যেমন: ABS / BRAC)">
+            </div>
+            <div class="input-group">
+              <label>AI Cost ₹</label>
+              <input type="number" id="brAiCost" placeholder="এআই খরচ (₹)">
+            </div>
+            <div class="input-group">
+              <label>Pregnancy Test (তারিখ)</label>
+              <input type="date" id="brPdDate">
+            </div>
+            <div class="input-group">
+              <label>Result</label>
+              <select id="brStatus">
+                <option value="Pending">Pending</option>
+                <option value="Pregnant">Pregnant</option>
+                <option value="Failed">Failed</option>
+                <option value="Calved">Calved</option>
+              </select>
+            </div>
+            <div class="input-group">
+              <label>Expected Calving (সম্ভাব্য প্রসব)</label>
+              <input type="date" id="brExpCalvingDate">
+            </div>
+            <div class="input-group">
+              <label>Actual Calving (প্রকৃত প্রসব)</label>
+              <input type="date" id="brActCalvingDate">
+            </div>
           </div>
           <div style="display:flex; gap:10px;">
             <button class="btn" id="brSubmitBtn" onclick="saveBreeding()">Save Breeding Record</button>
             <button class="btn btn-warning" id="brCancelBtn" style="display:none;" onclick="cancelBreedingEdit()">Cancel (বাতিল)</button>
           </div>
         </div>
+
         <div class="card">
           <h2>প্রজনন রেকর্ড তালিকা (Breeding Ledger)</h2>
           <div class="table-container">
-            <table><thead><tr><th>Cattle ID</th><th>AI Date</th><th>Semen/Bull</th><th>Company</th><th>AI Cost</th><th>Pregnancy Test</th><th>Result</th><th>Exp. Calving</th><th>Actual Calving</th><th>Action</th></tr></thead><tbody id="breedingTableBody"></tbody></table>
+            <table>
+              <thead>
+                <tr>
+                  <th>Cattle ID</th>
+                  <th>AI Date</th>
+                  <th>Semen/Bull</th>
+                  <th>Company</th>
+                  <th>AI Cost</th>
+                  <th>Pregnancy Test</th>
+                  <th>Result</th>
+                  <th>Exp. Calving</th>
+                  <th>Actual Calving</th>
+                  <th>Action</th>
+                </tr>
+              </thead>
+              <tbody id="breedingTableBody"></tbody>
+            </table>
           </div>
           <p id="breedingNoData" style="text-align: center; color: #777; font-size: 13px; margin-top: 15px; display: none;">কোনো record নেই।</p>
         </div>
+
         <div class="card" style="background: #fafcfb;">
           <h2 style="font-size: 15px; border-bottom: none; margin-bottom: 10px;">Generation / Breed Summary</h2>
-          <div id="breedSummaryBadges" style="display: flex; flex-wrap: wrap; gap: 8px;"><span style="font-size:12px; color:#777;">লোড হচ্ছে...</span></div>
+          <div id="breedSummaryBadges" style="display: flex; flex-wrap: wrap; gap: 8px;">
+            <span style="font-size:12px; color:#777;">লোড হচ্ছে...</span>
+          </div>
         </div>
       </div>
 
@@ -320,42 +928,109 @@
         <div class="card">
           <h2>🥛 Milk Production Entry</h2>
           <div class="form-grid">
-            <div class="input-group"><label>Date (তারিখ) *</label><input type="date" id="milkDate"></div>
-            <div class="input-group"><label>Tag ID (গরু আইডি) *</label><input type="text" id="milkCowTag" list="cattleTagList" placeholder="Tag সিলেক্ট বা টাইপ করুন"></div>
-            <div class="input-group"><label>Session (সেশন)</label><select id="milkSession"><option value="Morning">Morning (সকাল)</option><option value="Evening">Evening (বিকাল)</option><option value="Noon">Noon (দুপুর)</option></select></div>
-            <div class="input-group"><label>Quantity Liters (দুধের পরিমাণ L) *</label><input type="number" id="milkLiters" step="0.1" placeholder="০.০"></div>
+            <div class="input-group">
+              <label>Date (তারিখ) *</label>
+              <input type="date" id="milkDate">
+            </div>
+            <div class="input-group">
+              <label>Tag ID (গরু আইডি) *</label>
+              <input type="text" id="milkCowTag" list="cattleTagList" placeholder="Tag সিলেক্ট বা টাইপ করুন">
+            </div>
+            <div class="input-group">
+              <label>Session (সেশন)</label>
+              <select id="milkSession">
+                <option value="Morning">Morning (সকাল)</option>
+                <option value="Evening">Evening (বিকাল)</option>
+                <option value="Noon">Noon (দুপুর)</option>
+              </select>
+            </div>
+            <div class="input-group">
+              <label>Quantity Liters (দুধের পরিমাণ L) *</label>
+              <input type="number" id="milkLiters" step="0.1" placeholder="০.০">
+            </div>
           </div>
           <div style="display:flex; gap:10px;">
             <button class="btn" id="milkSubmitBtn" onclick="saveMilk()">Save Milk Record</button>
             <button class="btn btn-warning" id="milkCancelBtn" style="display:none;" onclick="cancelMilkEdit()">Cancel (বাতিল)</button>
           </div>
         </div>
+
         <div class="card">
           <h2>দুধ উৎপাদন খাতা (দৈনিক সারসংক্ষেপ)</h2>
           <p style="font-size:12px; color:#666; margin-bottom:12px;">💡 যে-কোনো তারিখের লাইনে ক্লিক করলে সেই দিনে কোন কোন গরু কত দুধ দিয়েছে তার বিস্তারিত তালিকা খুলে যাবে।</p>
           <div class="table-container">
-            <table><thead><tr><th>তারিখ (Date)</th><th>মোট দুধ (Total Milk)</th><th>গাভীর সংখ্যা (Cows Milked)</th><th>মোট সেশন (Entries)</th><th>বিস্তারিত (Action)</th></tr></thead><tbody id="milkGroupTableBody"></tbody></table>
+            <table>
+              <thead>
+                <tr>
+                  <th>তারিখ (Date)</th>
+                  <th>মোট দুধ (Total Milk)</th>
+                  <th>গাভীর সংখ্যা (Cows Milked)</th>
+                  <th>মোট সেশন (Entries)</th>
+                  <th>বিস্তারিত (Action)</th>
+                </tr>
+              </thead>
+              <tbody id="milkGroupTableBody"></tbody>
+            </table>
           </div>
           <p id="milkNoData" style="text-align: center; color: #777; font-size: 13px; margin-top: 15px; display: none;">কোনো দুধের রেকর্ড পাওয়া যায়নি।</p>
         </div>
       </div>
 
-      <!-- ৫. Sales & Billing (লাইভ কাস্টমার মোট বকেয়া সহ) -->
+      <!-- ৫. Sales & Billing -->
       <div id="tab-sales" class="tab-content" style="display: none;">
         <div class="card">
           <h2>💰 Sales & Billing</h2>
           <div class="form-grid">
-            <div class="input-group"><label>Date (তারিখ) *</label><input type="date" id="saleDate"></div>
-            <div class="input-group"><label>Customer Name (কাস্টমার) *</label><input type="text" id="saleCustomer" list="customerNameList" oninput="onSaleCustomerInput()" placeholder="নাম লিখুন বা সিলেক্ট করুন"></div>
-            <div class="input-group"><label>Phone (মোবাইল নম্বর)</label><input type="text" id="salePhone" placeholder="মোবাইল নম্বর"></div>
-            <div class="input-group"><label>Area / Route (এলাকা / রুট)</label><input type="text" id="saleArea" list="customerAreaList" placeholder="যেমন: চকবাজার / রুট-১"></div>
-            <div class="input-group"><label>Address (ঠিকানা)</label><input type="text" id="saleAddr" placeholder="গ্রাম / পাড়া / বাড়ি"></div>
-            <div class="input-group"><label>Item (পণ্য)</label><select id="saleItem"><option value="Liquid Milk">Liquid Milk (তরল দুধ)</option><option value="Ghee">Ghee (ঘি)</option><option value="Butter">Butter (মাখন)</option><option value="Paneer">Paneer (ছানা/পনির)</option><option value="Manure">Manure (গোবর সার)</option></select></div>
-            <div class="input-group"><label>Quantity (পরিমাণ)</label><input type="number" id="saleQty" oninput="calcSale()" placeholder="০"></div>
-            <div class="input-group"><label>Rate (দর ₹)</label><input type="number" id="saleRate" oninput="calcSale()" placeholder="₹"></div>
-            <div class="input-group"><label>Total Bill (মোট টাকা)</label><input type="number" id="saleTotal" readonly style="background:#eee;"></div>
-            <div class="input-group"><label>Paid Amount (পরিশোধ ₹)</label><input type="number" id="salePaid" oninput="calcSale()" placeholder="₹"></div>
-            <div class="input-group"><label>Due Amount (বাকি ₹)</label><input type="number" id="saleDue" readonly style="background:#ffebee; color:red; font-weight:bold;"></div>
+            <div class="input-group">
+              <label>Date (তারিখ) *</label>
+              <input type="date" id="saleDate">
+            </div>
+            <div class="input-group">
+              <label>Customer Name (কাস্টমার) *</label>
+              <input type="text" id="saleCustomer" list="customerNameList" oninput="onSaleCustomerInput()" placeholder="নাম লিখুন বা সিলেক্ট করুন">
+            </div>
+            <div class="input-group">
+              <label>Phone (মোবাইল নম্বর)</label>
+              <input type="text" id="salePhone" placeholder="মোবাইল নম্বর">
+            </div>
+            <div class="input-group">
+              <label>Area / Route (এলাকা / রুট)</label>
+              <input type="text" id="saleArea" list="customerAreaList" placeholder="যেমন: চকবাজার / রুট-১">
+            </div>
+            <div class="input-group">
+              <label>Address (ঠিকানা)</label>
+              <input type="text" id="saleAddr" placeholder="গ্রাম / পাড়া / বাড়ি">
+            </div>
+            <div class="input-group">
+              <label>Item (পণ্য)</label>
+              <select id="saleItem">
+                <option value="Liquid Milk">Liquid Milk (তরল দুধ)</option>
+                <option value="Ghee">Ghee (ঘি)</option>
+                <option value="Butter">Butter (মাখন)</option>
+                <option value="Paneer">Paneer (ছানা/পনির)</option>
+                <option value="Manure">Manure (গোবর সার)</option>
+              </select>
+            </div>
+            <div class="input-group">
+              <label>Quantity (পরিমাণ)</label>
+              <input type="number" id="saleQty" oninput="calcSale()" placeholder="০">
+            </div>
+            <div class="input-group">
+              <label>Rate (দর ₹)</label>
+              <input type="number" id="saleRate" oninput="calcSale()" placeholder="₹">
+            </div>
+            <div class="input-group">
+              <label>Total Bill (মোট টাকা)</label>
+              <input type="number" id="saleTotal" readonly style="background:#eee;">
+            </div>
+            <div class="input-group">
+              <label>Paid Amount (পরিশোধ ₹)</label>
+              <input type="number" id="salePaid" oninput="calcSale()" placeholder="₹">
+            </div>
+            <div class="input-group">
+              <label>Due Amount (বাকি ₹)</label>
+              <input type="number" id="saleDue" readonly style="background:#ffebee; color:red; font-weight:bold;">
+            </div>
           </div>
           <div style="display:flex; gap:10px;">
             <button class="btn" id="saleSubmitBtn" onclick="saveSale()">Save Sale</button>
@@ -368,14 +1043,30 @@
             <h2 style="margin:0; border:none; padding:0;">বিক্রয় ও বাকি তালিকা (Sales Ledger)</h2>
             <div style="display:flex; flex-wrap:wrap; gap:8px; align-items:center;">
               <input type="text" id="saleSearchInput" oninput="renderSalesTable()" placeholder="🔍 নাম বা মোবাইল দিয়ে খুঁজুন..." style="width:230px; padding:7px 11px; font-size:12.5px;">
-              <select id="saleAreaFilter" onchange="renderSalesTable()" style="width:170px; padding:7px 11px; font-size:12.5px;"><option value="">সকল এলাকা (All Areas)</option></select>
+              <select id="saleAreaFilter" onchange="renderSalesTable()" style="width:170px; padding:7px 11px; font-size:12.5px;">
+                <option value="">সকল এলাকা (All Areas)</option>
+              </select>
             </div>
           </div>
           <div style="background:#fff3e0; border-left:4px solid #f57c00; padding:8px 12px; border-radius:6px; font-size:12px; margin-bottom:12px; color:#e65100;">
-            ⚠️ <strong>লক্ষ্য করুন:</strong> যেসব গ্রাহকের বকেয়া ৩৫ দিন বা তার বেশি পার হয়েছে, তাদের তালিকা সবার ওপরে লাল হাইলাইট হয়ে স্বয়ংক্রিয়ভাবে প্রদর্শিত হচ্ছে।
+            ⚠️ <strong>লক্ষ্য করুন:</strong> যেসব গ্রাহকের বকেয়া আছে এবং শেষ ৩৫ দিন ধরে কোনো টাকা পরিশোধ করেননি, তাদের তালিকা সবার ওপরে লাল হাইলাইট হয়ে স্বয়ংক্রিয়ভাবে প্রদর্শিত হচ্ছে।
           </div>
           <div class="table-container">
-            <table><thead><tr><th>Date</th><th>Customer (মোবাইলসহ)</th><th>Area & Address</th><th>Product & Qty</th><th>Total</th><th>Paid</th><th>গ্রাহকের মোট বকেয়া (Due)</th><th>Action</th></tr></thead><tbody id="salesTableBody"></tbody></table>
+            <table>
+              <thead>
+                <tr>
+                  <th>Date</th>
+                  <th>Customer (মোবাইলসহ)</th>
+                  <th>Area & Address</th>
+                  <th>Product & Qty</th>
+                  <th>Total</th>
+                  <th>Paid</th>
+                  <th>গ্রাহকের মোট বকেয়া (Due)</th>
+                  <th>Action</th>
+                </tr>
+              </thead>
+              <tbody id="salesTableBody"></tbody>
+            </table>
           </div>
           <p id="salesNoData" style="text-align: center; color: #777; font-size: 13px; margin-top: 15px; display: none;">কোনো বিক্রয় রেকর্ড পাওয়া যায়নি।</p>
         </div>
@@ -386,11 +1077,26 @@
         <div class="card">
           <h2>👥 Customer Directory</h2>
           <div class="form-grid">
-            <div class="input-group"><label>Customer Name (নাম) *</label><input type="text" id="custName" placeholder="নাম"></div>
-            <div class="input-group"><label>Phone Number (মোবাইল) *</label><input type="text" id="custPhone" placeholder="মোবাইল"></div>
-            <div class="input-group"><label>Area / Route (এলাকা / রুট)</label><input type="text" id="custArea" list="customerAreaList" placeholder="যেমন: চকবাজার / রুট-১"></div>
-            <div class="input-group"><label>Address (ঠিকানা)</label><input type="text" id="custAddress" placeholder="ঠিকানা"></div>
-            <div class="input-group"><label>Daily Demand L (দৈনিক চাহিদা)</label><input type="number" id="custDailyDemand" placeholder="২.০"></div>
+            <div class="input-group">
+              <label>Customer Name (নাম) *</label>
+              <input type="text" id="custName" placeholder="নাম">
+            </div>
+            <div class="input-group">
+              <label>Phone Number (মোবাইল) *</label>
+              <input type="text" id="custPhone" placeholder="মোবাইল">
+            </div>
+            <div class="input-group">
+              <label>Area / Route (এলাকা / রুট)</label>
+              <input type="text" id="custArea" list="customerAreaList" placeholder="যেমন: চকবাজার / রুট-১">
+            </div>
+            <div class="input-group">
+              <label>Address (ঠিকানা)</label>
+              <input type="text" id="custAddress" placeholder="ঠিকানা">
+            </div>
+            <div class="input-group">
+              <label>Daily Demand L (দৈনিক চাহিদা)</label>
+              <input type="number" id="custDailyDemand" placeholder="২.০">
+            </div>
           </div>
           <div style="display:flex; gap:10px;">
             <button class="btn" id="custSubmitBtn" onclick="saveCustomer()">Save Customer</button>
@@ -399,7 +1105,21 @@
         </div>
         <div class="card">
           <h2>কাস্টমার তালিকা (Customer List)</h2>
-          <div class="table-container"><table><thead><tr><th>Name</th><th>Phone</th><th>Area</th><th>Address</th><th>Daily Demand</th><th>Action</th></tr></thead><tbody id="customerTableBody"></tbody></table></div>
+          <div class="table-container">
+            <table>
+              <thead>
+                <tr>
+                  <th>Name</th>
+                  <th>Phone</th>
+                  <th>Area</th>
+                  <th>Address</th>
+                  <th>Daily Demand</th>
+                  <th>Action</th>
+                </tr>
+              </thead>
+              <tbody id="customerTableBody"></tbody>
+            </table>
+          </div>
         </div>
       </div>
 
@@ -408,10 +1128,26 @@
         <div class="card">
           <h2>📦 Orders Management</h2>
           <div class="form-grid">
-            <div class="input-group"><label>Delivery Date (তারিখ) *</label><input type="date" id="orderDate"></div>
-            <div class="input-group"><label>Customer Name *</label><input type="text" id="orderCustomer" list="customerNameList" placeholder="নাম"></div>
-            <div class="input-group"><label>Items & Quantity (বিবরণ) *</label><input type="text" id="orderItems" placeholder="যেমন: ৫ লিটার দুধ"></div>
-            <div class="input-group"><label>Status (স্ট্যাটাস)</label><select id="orderStatus"><option value="Pending">Pending (পেন্ডিং)</option><option value="Delivered">Delivered (ডেলিভারড)</option><option value="Cancelled">Cancelled (বাতিল)</option></select></div>
+            <div class="input-group">
+              <label>Delivery Date (তারিখ) *</label>
+              <input type="date" id="orderDate">
+            </div>
+            <div class="input-group">
+              <label>Customer Name *</label>
+              <input type="text" id="orderCustomer" list="customerNameList" placeholder="নাম">
+            </div>
+            <div class="input-group">
+              <label>Items & Quantity (বিবরণ) *</label>
+              <input type="text" id="orderItems" placeholder="যেমন: ৫ লিটার দুধ">
+            </div>
+            <div class="input-group">
+              <label>Status (স্ট্যাটাস)</label>
+              <select id="orderStatus">
+                <option value="Pending">Pending (পেন্ডিং)</option>
+                <option value="Delivered">Delivered (ডেলিভারড)</option>
+                <option value="Cancelled">Cancelled (বাতিল)</option>
+              </select>
+            </div>
           </div>
           <div style="display:flex; gap:10px;">
             <button class="btn" id="orderSubmitBtn" onclick="saveOrder()">Save Order</button>
@@ -420,7 +1156,20 @@
         </div>
         <div class="card">
           <h2>অর্ডার তালিকা (Order List)</h2>
-          <div class="table-container"><table><thead><tr><th>Date</th><th>Customer</th><th>Items</th><th>Status</th><th>Action</th></tr></thead><tbody id="ordersTableBody"></tbody></table></div>
+          <div class="table-container">
+            <table>
+              <thead>
+                <tr>
+                  <th>Date</th>
+                  <th>Customer</th>
+                  <th>Items</th>
+                  <th>Status</th>
+                  <th>Action</th>
+                </tr>
+              </thead>
+              <tbody id="ordersTableBody"></tbody>
+            </table>
+          </div>
         </div>
       </div>
 
@@ -429,10 +1178,28 @@
         <div class="card">
           <h2>🧾 Expense Ledger</h2>
           <div class="form-grid">
-            <div class="input-group"><label>Date (তারিখ) *</label><input type="date" id="expDate"></div>
-            <div class="input-group"><label>Expense Category (খাত)</label><select id="expCategory"><option value="Feed & Fodder">Feed & Fodder (খাদ্য/ঘাস)</option><option value="Medicine & Health">Medicine & Health (ওষুধ/চিকিৎসা)</option><option value="Labour Salary">Labour Salary (শ্রমিক বেতন)</option><option value="Electricity / Utilities">Electricity / Utilities (বিদ্যুৎ বিল)</option><option value="Other">Other (অন্যান্য)</option></select></div>
-            <div class="input-group"><label>Description (বিবরণ) *</label><input type="text" id="expTitle" placeholder="খরচের বিবরণ"></div>
-            <div class="input-group"><label>Amount ₹ (টাকা) *</label><input type="number" id="expAmount" placeholder="₹"></div>
+            <div class="input-group">
+              <label>Date (তারিখ) *</label>
+              <input type="date" id="expDate">
+            </div>
+            <div class="input-group">
+              <label>Expense Category (খাত)</label>
+              <select id="expCategory">
+                <option value="Feed & Fodder">Feed & Fodder (খাদ্য/ঘাস)</option>
+                <option value="Medicine & Health">Medicine & Health (ওষুধ/চিকিৎসা)</option>
+                <option value="Labour Salary">Labour Salary (শ্রমিক বেতন)</option>
+                <option value="Electricity / Utilities">Electricity / Utilities (বিদ্যুৎ বিল)</option>
+                <option value="Other">Other (অন্যান্য)</option>
+              </select>
+            </div>
+            <div class="input-group">
+              <label>Description (বিবরণ) *</label>
+              <input type="text" id="expTitle" placeholder="খরচের বিবরণ">
+            </div>
+            <div class="input-group">
+              <label>Amount ₹ (টাকা) *</label>
+              <input type="number" id="expAmount" placeholder="₹">
+            </div>
           </div>
           <div style="display:flex; gap:10px;">
             <button class="btn" id="expSubmitBtn" onclick="saveExpense()">Save Expense</button>
@@ -441,7 +1208,20 @@
         </div>
         <div class="card">
           <h2>খরচের তালিকা (Expense List)</h2>
-          <div class="table-container"><table><thead><tr><th>Date</th><th>Category</th><th>Description</th><th>Amount (₹)</th><th>Action</th></tr></thead><tbody id="expenseTableBody"></tbody></table></div>
+          <div class="table-container">
+            <table>
+              <thead>
+                <tr>
+                  <th>Date</th>
+                  <th>Category</th>
+                  <th>Description</th>
+                  <th>Amount (₹)</th>
+                  <th>Action</th>
+                </tr>
+              </thead>
+              <tbody id="expenseTableBody"></tbody>
+            </table>
+          </div>
         </div>
       </div>
 
@@ -450,10 +1230,27 @@
         <div class="card">
           <h2>🌾 Stock & Inventory</h2>
           <div class="form-grid">
-            <div class="input-group"><label>Item Name (পণ্যের নাম) *</label><input type="text" id="stkName" placeholder="গমের ভুসি, ফিড"></div>
-            <div class="input-group"><label>Quantity (পরিমাণ) *</label><input type="number" id="stkQty" placeholder="পরিমাণ"></div>
-            <div class="input-group"><label>Unit (একক)</label><select id="stkUnit"><option value="kg">kg (কেজি)</option><option value="Bag">Bag (বস্তা)</option><option value="Ton">Ton (টন)</option><option value="Pcs">Pcs (পিস)</option></select></div>
-            <div class="input-group"><label>Low Stock Alert Level</label><input type="number" id="stkAlert" placeholder="৫"></div>
+            <div class="input-group">
+              <label>Item Name (পণ্যের নাম) *</label>
+              <input type="text" id="stkName" placeholder="গমের ভুসি, ফিড">
+            </div>
+            <div class="input-group">
+              <label>Quantity (পরিমাণ) *</label>
+              <input type="number" id="stkQty" placeholder="পরিমাণ">
+            </div>
+            <div class="input-group">
+              <label>Unit (একক)</label>
+              <select id="stkUnit">
+                <option value="kg">kg (কেজি)</option>
+                <option value="Bag">Bag (বস্তা)</option>
+                <option value="Ton">Ton (টন)</option>
+                <option value="Pcs">Pcs (পিস)</option>
+              </select>
+            </div>
+            <div class="input-group">
+              <label>Low Stock Alert Level</label>
+              <input type="number" id="stkAlert" placeholder="৫">
+            </div>
           </div>
           <div style="display:flex; gap:10px;">
             <button class="btn" id="stkSubmitBtn" onclick="saveStock()">Save Stock</button>
@@ -462,7 +1259,20 @@
         </div>
         <div class="card">
           <h2>বর্তমান স্টক তালিকা (Stock List)</h2>
-          <div class="table-container"><table><thead><tr><th>Item</th><th>Quantity</th><th>Unit</th><th>Alert Level</th><th>Action</th></tr></thead><tbody id="stockTableBody"></tbody></table></div>
+          <div class="table-container">
+            <table>
+              <thead>
+                <tr>
+                  <th>Item</th>
+                  <th>Quantity</th>
+                  <th>Unit</th>
+                  <th>Alert Level</th>
+                  <th>Action</th>
+                </tr>
+              </thead>
+              <tbody id="stockTableBody"></tbody>
+            </table>
+          </div>
         </div>
       </div>
 
@@ -471,10 +1281,22 @@
         <div class="card">
           <h2>💉 Semen & Bull Stock</h2>
           <div class="form-grid">
-            <div class="input-group"><label>Straw / Batch No *</label><input type="text" id="semBatch" placeholder="HF-8902"></div>
-            <div class="input-group"><label>Bull Breed (জাত)</label><input type="text" id="semBreed" placeholder="১০০% হোলস্টেইন ফ্রিজিয়ান"></div>
-            <div class="input-group"><label>Company / Source</label><input type="text" id="semSource" placeholder="ব্র্যাক / সরকারি"></div>
-            <div class="input-group"><label>Available Straws (সংখ্যা) *</label><input type="number" id="semCount" placeholder="পিস"></div>
+            <div class="input-group">
+              <label>Straw / Batch No *</label>
+              <input type="text" id="semBatch" placeholder="HF-8902">
+            </div>
+            <div class="input-group">
+              <label>Bull Breed (জাত)</label>
+              <input type="text" id="semBreed" placeholder="১০০% হোলস্টেইন ফ্রিজিয়ান">
+            </div>
+            <div class="input-group">
+              <label>Company / Source</label>
+              <input type="text" id="semSource" placeholder="ব্র্যাক / সরকারি">
+            </div>
+            <div class="input-group">
+              <label>Available Straws (সংখ্যা) *</label>
+              <input type="number" id="semCount" placeholder="পিস">
+            </div>
           </div>
           <div style="display:flex; gap:10px;">
             <button class="btn" id="semSubmitBtn" onclick="saveSemen()">Save Semen Stock</button>
@@ -483,7 +1305,20 @@
         </div>
         <div class="card">
           <h2>সিমেন স্টক তালিকা (Semen List)</h2>
-          <div class="table-container"><table><thead><tr><th>Batch No</th><th>Breed</th><th>Source</th><th>Straw Count</th><th>Action</th></tr></thead><tbody id="semenTableBody"></tbody></table></div>
+          <div class="table-container">
+            <table>
+              <thead>
+                <tr>
+                  <th>Batch No</th>
+                  <th>Breed</th>
+                  <th>Source</th>
+                  <th>Straw Count</th>
+                  <th>Action</th>
+                </tr>
+              </thead>
+              <tbody id="semenTableBody"></tbody>
+            </table>
+          </div>
         </div>
       </div>
 
@@ -492,11 +1327,31 @@
         <div class="card">
           <h2>🩺 Health & Vaccination Register</h2>
           <div class="form-grid">
-            <div class="input-group"><label>Date (তারিখ) *</label><input type="date" id="hlthDate"></div>
-            <div class="input-group"><label>Tag ID (গরুর ট্যাগ) *</label><input type="text" id="hlthCowTag" list="cattleTagList" placeholder="Tag সিলেক্ট বা টাইপ করুন"></div>
-            <div class="input-group"><label>Treatment Type</label><select id="hlthType"><option value="Vaccination">Vaccination (টিকা - FMD/Anthrax)</option><option value="Deworming">Deworming (কৃমিনাশক)</option><option value="General Treatment">General Treatment (সাধারণ চিকিৎসা)</option><option value="Doctor Checkup">Doctor Checkup (ডাক্তারি পরীক্ষা)</option></select></div>
-            <div class="input-group"><label>Description / Medicine</label><input type="text" id="hlthDesc" placeholder="ওষুধের নাম / বিবরণ"></div>
-            <div class="input-group"><label>Next Dose Date (পরবর্তী তারিখ)</label><input type="date" id="hlthNextDate"></div>
+            <div class="input-group">
+              <label>Date (তারিখ) *</label>
+              <input type="date" id="hlthDate">
+            </div>
+            <div class="input-group">
+              <label>Tag ID (গরুর ট্যাগ) *</label>
+              <input type="text" id="hlthCowTag" list="cattleTagList" placeholder="Tag সিলেক্ট বা টাইপ করুন">
+            </div>
+            <div class="input-group">
+              <label>Treatment Type</label>
+              <select id="hlthType">
+                <option value="Vaccination">Vaccination (টিকা - FMD/Anthrax)</option>
+                <option value="Deworming">Deworming (কৃমিনাশক)</option>
+                <option value="General Treatment">General Treatment (সাধারণ চিকিৎসা)</option>
+                <option value="Doctor Checkup">Doctor Checkup (ডাক্তারি পরীক্ষা)</option>
+              </select>
+            </div>
+            <div class="input-group">
+              <label>Description / Medicine</label>
+              <input type="text" id="hlthDesc" placeholder="ওষুধের নাম / বিবরণ">
+            </div>
+            <div class="input-group">
+              <label>Next Dose Date (পরবর্তী তারিখ)</label>
+              <input type="date" id="hlthNextDate">
+            </div>
           </div>
           <div style="display:flex; gap:10px;">
             <button class="btn" id="hlthSubmitBtn" onclick="saveHealth()">Save Health Record</button>
@@ -505,7 +1360,21 @@
         </div>
         <div class="card">
           <h2>স্বাস্থ্য রেকর্ড তালিকা (Health History)</h2>
-          <div class="table-container"><table><thead><tr><th>Date</th><th>Tag ID</th><th>Type</th><th>Description</th><th>Next Dose</th><th>Action</th></tr></thead><tbody id="healthTableBody"></tbody></table></div>
+          <div class="table-container">
+            <table>
+              <thead>
+                <tr>
+                  <th>Date</th>
+                  <th>Tag ID</th>
+                  <th>Type</th>
+                  <th>Description</th>
+                  <th>Next Dose</th>
+                  <th>Action</th>
+                </tr>
+              </thead>
+              <tbody id="healthTableBody"></tbody>
+            </table>
+          </div>
         </div>
       </div>
 
@@ -534,7 +1403,7 @@
     </div>
   </div>
 
-  <!-- ১. প্রিমিয়াম ইনভয়েস মোডাল -->
+  <!-- ১. প্রিমিয়াম ইনভয়েস মোডাল (লোগো ওয়াটারমার্ক ও Bibhas Munshi স্বাক্ষর সহ) -->
   <div id="invoiceModal">
     <div class="invoice-card">
       <div id="invoicePrintArea">
@@ -674,7 +1543,9 @@
 
     function deleteRecord(path, id) {
       if (confirm('আপনি কি নিশ্চিতভাবে এই তথ্যটি মুছে ফেলতে চান? (Delete record?)')) {
-        if (db) db.ref(path).child(id).remove();
+        if (db) {
+          db.ref(path).child(id).remove();
+        }
       }
     }
 
@@ -710,16 +1581,44 @@
       }
     }
 
-    // প্রতি কাস্টমারের লাইভ সার্বিক আর্থিক ব্যালেন্স ক্যালকুলেটর
+    function parseDateToTime(dtStr) {
+      if (!dtStr) return 0;
+      var clean = dtStr.trim();
+      var parts = clean.split('-');
+      if (parts.length === 3) {
+        var y = parseInt(parts[0], 10);
+        var m = parseInt(parts[1], 10) - 1;
+        var d = parseInt(parts[2], 10);
+        if (!isNaN(y) && !isNaN(m) && !isNaN(d)) {
+          return new Date(y, m, d).getTime();
+        }
+      }
+      var t = new Date(clean).getTime();
+      return isNaN(t) ? 0 : t;
+    }
+
+    // ৩৫ দিন কোনো টাকা না দেওয়া গ্রাহক নির্ধারণকারী লাইভ ইঞ্জিন
     function getCustomerLiveBalances() {
       var map = {};
+      var now = new Date();
+      var todayTime = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+
       for (var k in farmStore.sales) {
         var s = farmStore.sales[k];
         var cName = (s.name || '').trim();
         if (!cName) continue;
         var cKey = cName.toLowerCase();
         if (!map[cKey]) {
-          map[cKey] = { totalBilled: 0, totalPaid: 0, currentDue: 0, oldestUnpaidDays: 0, phone: '', area: '', addr: '' };
+          map[cKey] = {
+            totalBilled: 0,
+            totalPaid: 0,
+            currentDue: 0,
+            lastPaymentTime: 0,
+            earliestBillTime: Infinity,
+            phone: '',
+            area: '',
+            addr: ''
+          };
         }
         if (s.phone) map[cKey].phone = s.phone;
         if (s.area) map[cKey].area = s.area;
@@ -727,23 +1626,65 @@
 
         var bTot = Number(s.total) || 0;
         var bPaid = Number(s.paid) || 0;
-        map[cKey].totalBilled += bTot;
-        map[cKey].totalPaid += bPaid;
-      }
+        var billTime = parseDateToTime(s.date);
 
-      var todayTime = new Date().getTime();
-      for (var key in map) {
-        map[key].currentDue = Math.max(0, map[key].totalBilled - map[key].totalPaid);
-        if (map[key].currentDue > 0) {
-          var maxDays = 0;
-          for (var sk in farmStore.sales) {
-            var item = farmStore.sales[sk];
-            if ((item.name || '').trim().toLowerCase() === key && item.date && (Number(item.total) > 0)) {
-              var diff = Math.floor((todayTime - new Date(item.date).getTime()) / (1000 * 3600 * 24));
-              if (diff > maxDays) maxDays = diff;
+        if (bTot > 0) {
+          map[cKey].totalBilled += bTot;
+          if (billTime && billTime < map[cKey].earliestBillTime) {
+            map[cKey].earliestBillTime = billTime;
+          }
+        }
+
+        // চালান সৃষ্টির সময়কার জমা
+        var pList = s.payments || [];
+        var subsequentSum = 0;
+        pList.forEach(function(p) { subsequentSum += (Number(p.amount) || 0); });
+        var initialPaid = Math.max(0, bPaid - subsequentSum);
+
+        if (initialPaid > 0 && billTime && billTime > map[cKey].lastPaymentTime) {
+          map[cKey].lastPaymentTime = billTime;
+        }
+
+        // পরবর্তীতে খাতার ভেতরের জমা
+        pList.forEach(function(p) {
+          var pAmt = Number(p.amount) || 0;
+          if (pAmt > 0 && p.date) {
+            var pTime = parseDateToTime(p.date);
+            if (pTime > map[cKey].lastPaymentTime) {
+              map[cKey].lastPaymentTime = pTime;
             }
           }
-          map[key].oldestUnpaidDays = maxDays;
+        });
+
+        // একক পেমেন্ট রেকর্ড হিসেবে থাকলে
+        if (s.isPayment && bPaid > 0 && billTime && billTime > map[cKey].lastPaymentTime) {
+          map[cKey].lastPaymentTime = billTime;
+        }
+      }
+
+      // ওভারডিউ যাচাইকরণ
+      for (var key in map) {
+        var c = map[key];
+        c.currentDue = Math.max(0, c.totalBilled - c.totalPaid);
+        c.isOverdue35 = false;
+        c.daysWithoutPayment = 0;
+
+        if (c.currentDue > 0) {
+          if (c.lastPaymentTime > 0) {
+            var daysSincePayment = Math.floor((todayTime - c.lastPaymentTime) / (1000 * 3600 * 24));
+            if (daysSincePayment >= 35) {
+              c.isOverdue35 = true;
+              c.daysWithoutPayment = daysSincePayment;
+            }
+          } else {
+            if (c.earliestBillTime !== Infinity) {
+              var daysSinceFirstBill = Math.floor((todayTime - c.earliestBillTime) / (1000 * 3600 * 24));
+              if (daysSinceFirstBill >= 35) {
+                c.isOverdue35 = true;
+                c.daysWithoutPayment = daysSinceFirstBill;
+              }
+            }
+          }
         }
       }
       return map;
@@ -922,7 +1863,7 @@
       body.innerHTML = html;
     }
 
-    // ৫. SALES & BILLING রেন্ডার (খাতার সাথে স্বয়ংক্রিয় লাইভ বকেয়া সিঙ্ক)
+    // ৫. SALES & BILLING রেন্ডার
     function renderSalesTable() {
       var body = getEl('salesTableBody');
       if (!body) return;
@@ -946,13 +1887,17 @@
         if (areaStr) uniqueAreas[areaStr] = true;
 
         var cKey = (d.name || '').trim().toLowerCase();
-        var cBal = custBalances[cKey] || { currentDue: Number(d.due) || 0, oldestUnpaidDays: 0 };
-        var isOverdue35 = (cBal.currentDue > 0 && cBal.oldestUnpaidDays >= 35);
+        var cBal = custBalances[cKey] || { currentDue: Number(d.due) || 0, isOverdue35: false, daysWithoutPayment: 0 };
 
-        list.push({ key: k, data: d, liveCustomerDue: cBal.currentDue, isOverdue: isOverdue35, diffDays: cBal.oldestUnpaidDays });
+        list.push({
+          key: k,
+          data: d,
+          liveCustomerDue: cBal.currentDue,
+          isOverdue: cBal.isOverdue35,
+          diffDays: cBal.daysWithoutPayment
+        });
       }
 
-      // ড্যাশবোর্ডে সমস্ত গ্রাহকের ইউনিক বকেয়ার মোট যোগফল দেখানো
       var totalLiveFarmDue = 0;
       for (var ck in custBalances) {
         totalLiveFarmDue += custBalances[ck].currentDue;
@@ -1007,7 +1952,7 @@
         var rowStyle = isOv ? 'background:#fff3f3; border-left:5px solid #d32f2f;' : '';
         var dueBadge = '';
         if (isOv && dueVal > 0) {
-          dueBadge = '<span class="badge badge-danger">₹ ' + dueVal + ' (⚠️ ' + item.diffDays + ' দিন বাকি)</span>';
+          dueBadge = '<span class="badge badge-danger">₹ ' + dueVal + ' (⚠️ ' + item.diffDays + ' দিন জমা নেই)</span>';
         } else if (dueVal > 0) {
           dueBadge = '<strong style="color:red; font-size:14px;">₹ ' + dueVal + '</strong>';
         } else {
@@ -1077,7 +2022,7 @@
               netDiff: bTot - initialPaid,
               isSale: true,
               saleKey: k,
-              timestamp: new Date(s.date || '2000-01-01').getTime()
+              timestamp: parseDateToTime(s.date)
             });
           }
 
@@ -1093,7 +2038,7 @@
               isPayment: true,
               payObj: p,
               saleKey: k,
-              timestamp: new Date(p.date || s.date || '2000-01-01').getTime() + (pIdx + 1)
+              timestamp: parseDateToTime(p.date || s.date) + (pIdx + 1)
             });
           });
         }
@@ -1244,7 +2189,9 @@
     // নির্দিষ্ট পেমেন্টের জন্য সমন্বিত ইনভয়েস মোডাল
     window.showPaymentInvoice = function(pDate, pAmt, pNote, custName, cPhone, cArea, cAddr, balAfter, pId) {
       document.body.setAttribute('data-print', 'invoice');
-      if (getEl('invMainDocTitle')) getEl('invMainDocTitle').innerText = 'ইনভয়েস / INVOICE (পেমেন্ট বিল)';
+      if (getEl('invMainDocTitle')) {
+        getEl('invMainDocTitle').innerText = 'ইনভয়েস / INVOICE (পেমেন্ট বিল)';
+      }
 
       getEl('invoiceDetails').innerHTML = 
         '<div style="display:flex; justify-content:space-between; margin-bottom:12px;">' +
@@ -1291,7 +2238,9 @@
       var d = farmStore.sales[k];
       if (!d) return;
       document.body.setAttribute('data-print', 'invoice');
-      if (getEl('invMainDocTitle')) getEl('invMainDocTitle').innerText = 'ইনভয়েস / INVOICE (ক্যাশ মেমো)';
+      if (getEl('invMainDocTitle')) {
+        getEl('invMainDocTitle').innerText = 'ইনভয়েস / INVOICE (ক্যাশ মেমো)';
+      }
       
       var custBalances = getCustomerLiveBalances();
       var cKey = (d.name || '').trim().toLowerCase();
@@ -1378,7 +2327,8 @@
 
     function cancelCattleEdit() {
       eCatKey = null;
-      ['cowTag','cowBreed','cowBreedType','cowDob','cowWeight','cowLactation','cowMilkDay','cowSire','cowDam','cowExpCalving'].forEach(function(i) {
+      var fields = ['cowTag','cowBreed','cowBreedType','cowDob','cowWeight','cowLactation','cowMilkDay','cowSire','cowDam','cowExpCalving'];
+      fields.forEach(function(i) {
         getEl(i).value = '';
       });
       getEl('cowSubmitBtn').innerText = 'Save Cattle';
@@ -1389,13 +2339,22 @@
       var tag = (getEl('cowTag').value || '').trim();
       if (!tag) return alert('Tag ID আবশ্যক!');
       var data = {
-        tag: tag, breed: getEl('cowBreed').value, breedType: getEl('cowBreedType').value,
-        generation: getEl('cowGeneration').value, dob: getEl('cowDob').value,
-        weight: parseFloat(getEl('cowWeight').value) || 0, lactation: parseFloat(getEl('cowLactation').value) || 0,
-        status: getEl('cowStatus').value, milkDay: parseFloat(getEl('cowMilkDay').value) || 0,
-        sire: getEl('cowSire').value, dam: getEl('cowDam').value, expCalving: getEl('cowExpCalving').value
+        tag: tag,
+        breed: getEl('cowBreed').value,
+        breedType: getEl('cowBreedType').value,
+        generation: getEl('cowGeneration').value,
+        dob: getEl('cowDob').value,
+        weight: parseFloat(getEl('cowWeight').value) || 0,
+        lactation: parseFloat(getEl('cowLactation').value) || 0,
+        status: getEl('cowStatus').value,
+        milkDay: parseFloat(getEl('cowMilkDay').value) || 0,
+        sire: getEl('cowSire').value,
+        dam: getEl('cowDam').value,
+        expCalving: getEl('cowExpCalving').value
       };
-      if (db) eCatKey ? db.ref('cattle/' + eCatKey).update(data) : db.ref('cattle').push(data);
+      if (db) {
+        eCatKey ? db.ref('cattle/' + eCatKey).update(data) : db.ref('cattle').push(data);
+      }
       cancelCattleEdit();
     }
 
@@ -1421,7 +2380,8 @@
 
     function cancelBreedingEdit() {
       eBrKey = null;
-      ['brCowTag','brSemenId','brCompany','brAiCost','brPdDate','brExpCalvingDate','brActCalvingDate'].forEach(function(id) {
+      var fields = ['brCowTag','brSemenId','brCompany','brAiCost','brPdDate','brExpCalvingDate','brActCalvingDate'];
+      fields.forEach(function(id) {
         if (getEl(id)) getEl(id).value = '';
       });
       getEl('brStatus').value = 'Pending';
@@ -1433,12 +2393,19 @@
       var tag = (getEl('brCowTag').value || '').trim();
       if (!tag) return alert('Cattle ID দিন!');
       var data = {
-        tag: tag, aiDate: getEl('brAiDate').value, semenId: getEl('brSemenId').value,
-        company: getEl('brCompany').value, aiCost: parseFloat(getEl('brAiCost').value) || 0,
-        pdDate: getEl('brPdDate').value, status: getEl('brStatus').value,
-        expCalvingDate: getEl('brExpCalvingDate').value, actCalvingDate: getEl('brActCalvingDate').value
+        tag: tag,
+        aiDate: getEl('brAiDate').value,
+        semenId: getEl('brSemenId').value,
+        company: getEl('brCompany').value,
+        aiCost: parseFloat(getEl('brAiCost').value) || 0,
+        pdDate: getEl('brPdDate').value,
+        status: getEl('brStatus').value,
+        expCalvingDate: getEl('brExpCalvingDate').value,
+        actCalvingDate: getEl('brActCalvingDate').value
       };
-      if (db) eBrKey ? db.ref('breeding/' + eBrKey).update(data) : db.ref('breeding').push(data);
+      if (db) {
+        eBrKey ? db.ref('breeding/' + eBrKey).update(data) : db.ref('breeding').push(data);
+      }
       cancelBreedingEdit();
     }
 
@@ -1470,8 +2437,15 @@
       if (!lit) return alert('দুধের পরিমাণ দিন!');
       var cowTag = (getEl('milkCowTag').value || '').trim();
       if (!cowTag) return alert('Tag ID দিন!');
-      var data = { date: getEl('milkDate').value, cow: cowTag, session: getEl('milkSession').value, liters: lit };
-      if (db) eMlkKey ? db.ref('milk/' + eMlkKey).update(data) : db.ref('milk').push(data);
+      var data = {
+        date: getEl('milkDate').value,
+        cow: cowTag,
+        session: getEl('milkSession').value,
+        liters: lit
+      };
+      if (db) {
+        eMlkKey ? db.ref('milk/' + eMlkKey).update(data) : db.ref('milk').push(data);
+      }
       cancelMilkEdit();
     }
 
@@ -1507,7 +2481,8 @@
 
     function cancelSaleEdit() {
       eSaleKey = null;
-      ['saleCustomer','salePhone','saleArea','saleAddr','saleQty','saleRate','saleTotal','salePaid','saleDue'].forEach(function(i) {
+      var fields = ['saleCustomer','salePhone','saleArea','saleAddr','saleQty','saleRate','saleTotal','salePaid','saleDue'];
+      fields.forEach(function(i) {
         getEl(i).value = '';
       });
       getEl('saleSubmitBtn').innerText = 'Save Sale';
@@ -1531,7 +2506,9 @@
         due: parseFloat(getEl('saleDue').value) || 0,
         payments: []
       };
-      if (db) eSaleKey ? db.ref('sales/' + eSaleKey).update(data) : db.ref('sales').push(data);
+      if (db) {
+        eSaleKey ? db.ref('sales/' + eSaleKey).update(data) : db.ref('sales').push(data);
+      }
       cancelSaleEdit();
     }
 
@@ -1553,7 +2530,8 @@
 
     function cancelCustomerEdit() {
       eCustKey = null;
-      ['custName','custPhone','custArea','custAddress','custDailyDemand'].forEach(function(i) {
+      var fields = ['custName','custPhone','custArea','custAddress','custDailyDemand'];
+      fields.forEach(function(i) {
         getEl(i).value = '';
       });
       getEl('custSubmitBtn').innerText = 'Save Customer';
@@ -1570,7 +2548,9 @@
         addr: (getEl('custAddress').value || '').trim(),
         demand: parseFloat(getEl('custDailyDemand').value) || 0
       };
-      if (db) eCustKey ? db.ref('customers/' + eCustKey).update(data) : db.ref('customers').push(data);
+      if (db) {
+        eCustKey ? db.ref('customers/' + eCustKey).update(data) : db.ref('customers').push(data);
+      }
       cancelCustomerEdit();
     }
 
@@ -1605,7 +2585,9 @@
         items: getEl('orderItems').value,
         status: getEl('orderStatus').value
       };
-      if (db) eOrdKey ? db.ref('orders/' + eOrdKey).update(data) : db.ref('orders').push(data);
+      if (db) {
+        eOrdKey ? db.ref('orders/' + eOrdKey).update(data) : db.ref('orders').push(data);
+      }
       cancelOrderEdit();
     }
 
@@ -1641,7 +2623,9 @@
         title: title,
         amount: amt
       };
-      if (db) eExpKey ? db.ref('expenses/' + eExpKey).update(data) : db.ref('expenses').push(data);
+      if (db) {
+        eExpKey ? db.ref('expenses/' + eExpKey).update(data) : db.ref('expenses').push(data);
+      }
       cancelExpenseEdit();
     }
 
@@ -1677,7 +2661,9 @@
         unit: getEl('stkUnit').value,
         alertLevel: parseFloat(getEl('stkAlert').value) || 0
       };
-      if (db) eStkKey ? db.ref('stock/' + eStkKey).update(data) : db.ref('stock').push(data);
+      if (db) {
+        eStkKey ? db.ref('stock/' + eStkKey).update(data) : db.ref('stock').push(data);
+      }
       cancelStockEdit();
     }
 
@@ -1714,7 +2700,9 @@
         source: getEl('semSource').value,
         count: parseFloat(getEl('semCount').value) || 0
       };
-      if (db) eSemKey ? db.ref('semen/' + eSemKey).update(data) : db.ref('semen').push(data);
+      if (db) {
+        eSemKey ? db.ref('semen/' + eSemKey).update(data) : db.ref('semen').push(data);
+      }
       cancelSemenEdit();
     }
 
@@ -1752,7 +2740,9 @@
         desc: getEl('hlthDesc').value,
         nextDate: getEl('hlthNextDate').value
       };
-      if (db) eHlthKey ? db.ref('health/' + eHlthKey).update(data) : db.ref('health').push(data);
+      if (db) {
+        eHlthKey ? db.ref('health/' + eHlthKey).update(data) : db.ref('health').push(data);
+      }
       cancelHealthEdit();
     }
 
@@ -1797,13 +2787,17 @@
 
       db.ref('cattle').on('value', function(snap) {
         farmStore.cattle = {}; 
-        snap.forEach(function(c) { farmStore.cattle[c.key] = c.val(); });
+        snap.forEach(function(c) {
+          farmStore.cattle[c.key] = c.val();
+        });
         renderCattleTable();
       });
 
       db.ref('milk').on('value', function(snap) {
         farmStore.milk = {}; 
-        snap.forEach(function(c) { farmStore.milk[c.key] = c.val(); });
+        snap.forEach(function(c) {
+          farmStore.milk[c.key] = c.val();
+        });
         renderGroupedMilkTable();
         renderCattleTable();
       });
@@ -1813,9 +2807,11 @@
         var body = getEl('breedingTableBody');
         if (body) body.innerHTML = '';
         var count = 0;
+        
         snap.forEach(function(c) {
           count++;
-          var d = c.val(), k = c.key;
+          var d = c.val();
+          var k = c.key;
           farmStore.breeding[k] = d;
           var badgeClass = d.status === 'Pregnant' ? 'badge-success' : (d.status === 'Failed' ? 'badge-danger' : 'badge-warning');
           if (body) {
@@ -1836,12 +2832,16 @@
             '</tr>';
           }
         });
-        if (getEl('breedingNoData')) getEl('breedingNoData').style.display = count === 0 ? 'block' : 'none';
+        if (getEl('breedingNoData')) {
+          getEl('breedingNoData').style.display = count === 0 ? 'block' : 'none';
+        }
       });
 
       db.ref('sales').on('value', function(snap) {
         farmStore.sales = {}; 
-        snap.forEach(function(c) { farmStore.sales[c.key] = c.val(); });
+        snap.forEach(function(c) {
+          farmStore.sales[c.key] = c.val();
+        });
         renderSalesTable();
         if (window.activeLedgerCustomerName) {
           showCustomerLedger(encodeURIComponent(window.activeLedgerCustomerName));
@@ -1852,16 +2852,23 @@
         farmStore.customers = {}; 
         var body = getEl('customerTableBody'); 
         if (body) body.innerHTML = '';
-        var nameOpt = '', areaOpt = '', areaSet = {};
+
+        var nameOpt = '';
+        var areaOpt = '';
+        var areaSet = {};
 
         snap.forEach(function(c) {
-          var d = c.val(), k = c.key; 
+          var d = c.val();
+          var k = c.key; 
           farmStore.customers[k] = d;
-          if (d.name) nameOpt += '<option value="' + d.name + '">' + (d.phone ? d.name + ' (' + d.phone + ')' : d.name) + '</option>';
+          if (d.name) {
+            nameOpt += '<option value="' + d.name + '">' + (d.phone ? d.name + ' (' + d.phone + ')' : d.name) + '</option>';
+          }
           if (d.area && !areaSet[d.area]) {
             areaSet[d.area] = true;
             areaOpt += '<option value="' + d.area + '">';
           }
+
           if (body) {
             body.innerHTML += '<tr>' +
               '<td><strong>' + (d.name || '-') + '</strong></td>' +
@@ -1883,8 +2890,10 @@
         var body = getEl('ordersTableBody');
         if (body) body.innerHTML = '';
         var pend = 0;
+        
         snap.forEach(function(c) {
-          var d = c.val(), k = c.key;
+          var d = c.val();
+          var k = c.key;
           farmStore.orders[k] = d;
           if (d.status === 'Pending') pend++;
           if (body) {
@@ -1897,7 +2906,9 @@
             '</tr>';
           }
         });
-        if (getEl('dash-pending-orders')) getEl('dash-pending-orders').innerText = pend;
+        if (getEl('dash-pending-orders')) {
+          getEl('dash-pending-orders').innerText = pend;
+        }
       });
 
       db.ref('expenses').on('value', function(snap) {
@@ -1905,8 +2916,10 @@
         var body = getEl('expenseTableBody');
         if (body) body.innerHTML = '';
         var tE = 0;
+        
         snap.forEach(function(c) {
-          var d = c.val(), k = c.key;
+          var d = c.val();
+          var k = c.key;
           farmStore.expenses[k] = d;
           tE += Number(d.amount) || 0;
           if (body) {
@@ -1919,8 +2932,12 @@
             '</tr>';
           }
         });
-        if (getEl('dash-total-exp')) getEl('dash-total-exp').innerText = '₹ ' + tE.toLocaleString();
-        if (getEl('rep-expenses')) getEl('rep-expenses').innerText = '₹ ' + tE.toLocaleString();
+        if (getEl('dash-total-exp')) {
+          getEl('dash-total-exp').innerText = '₹ ' + tE.toLocaleString();
+        }
+        if (getEl('rep-expenses')) {
+          getEl('rep-expenses').innerText = '₹ ' + tE.toLocaleString();
+        }
         calcNet();
       });
 
@@ -1928,8 +2945,10 @@
         farmStore.stock = {};
         var body = getEl('stockTableBody');
         if (body) body.innerHTML = '';
+        
         snap.forEach(function(c) {
-          var d = c.val(), k = c.key;
+          var d = c.val();
+          var k = c.key;
           farmStore.stock[k] = d;
           var isLow = Number(d.qty) <= Number(d.alertLevel);
           if (body) {
@@ -1948,8 +2967,10 @@
         farmStore.semen = {};
         var body = getEl('semenTableBody');
         if (body) body.innerHTML = '';
+        
         snap.forEach(function(c) {
-          var d = c.val(), k = c.key;
+          var d = c.val();
+          var k = c.key;
           farmStore.semen[k] = d;
           if (body) {
             body.innerHTML += '<tr>' +
@@ -1967,8 +2988,10 @@
         farmStore.health = {};
         var body = getEl('healthTableBody');
         if (body) body.innerHTML = '';
+        
         snap.forEach(function(c) {
-          var d = c.val(), k = c.key;
+          var d = c.val();
+          var k = c.key;
           farmStore.health[k] = d;
           if (body) {
             body.innerHTML += '<tr>' +
