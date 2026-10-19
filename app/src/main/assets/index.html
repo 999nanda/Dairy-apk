@@ -1634,6 +1634,7 @@
 
       for (var k in farmStore.sales) {
         var s = farmStore.sales[k];
+        if (!s) continue;
         var cName = (s.name || '').trim();
         if (!cName) continue;
         var cKey = cName.toLowerCase();
@@ -1892,7 +1893,7 @@
       body.innerHTML = html;
     }
 
-    // ৫. SALES & BILLING রেন্ডার (প্রতিটি গ্রাহক মাত্র ১ বার প্রদর্শিত হবে)
+    // ৫. SALES & BILLING রেন্ডার (নিরাপদ ফিল্টারিং ও ইউনিক কাস্টমার লেজার)
     function renderSalesTable() {
       var body = getEl('salesTableBody');
       if (!body) return;
@@ -1907,6 +1908,7 @@
 
       for (var k in farmStore.sales) {
         var d = farmStore.sales[k];
+        if (!d) continue;
         if (d.isPayment && Number(d.total) === 0) continue;
 
         var total = Number(d.total) || 0;
@@ -1916,7 +1918,7 @@
         if (areaStr) uniqueAreas[areaStr] = true;
 
         var rawName = (d.name || '').trim();
-        if (!rawName) continue;
+        if (!rawName) continue; // নাম না থাকলে স্কিপ করবে যাতে টেবিল ব্ল্যাঙ্ক না হয়
         var cKey = rawName.toLowerCase();
 
         var saleTime = parseDateToTime(d.date);
@@ -2046,7 +2048,7 @@
       body.innerHTML = html;
     }
 
-    // কাস্টমার খাতা / স্টেটমেন্ট (প্রতিটি ঘরে টাকার অংক ও রানিং ব্যালেন্স দৃশ্যমান)
+    // কাস্টমার খাতা / স্টেটমেন্ট
     window.showCustomerLedger = function(encName) {
       var custName = decodeURIComponent(encName).trim();
       window.activeLedgerCustomerName = custName;
@@ -2060,6 +2062,7 @@
 
       for (var k in farmStore.sales) {
         var s = farmStore.sales[k];
+        if (!s) continue;
         if ((s.name || '').trim().toLowerCase() === custLower) {
           if (s.phone) cPhone = s.phone;
           if (s.area) cArea = s.area;
@@ -2175,6 +2178,7 @@
       var unpaidSales = [];
       for (var k in farmStore.sales) {
         var s = farmStore.sales[k];
+        if (!s) continue;
         if ((s.name || '').trim().toLowerCase() === custName.toLowerCase()) {
           var curDue = Number(s.due) || 0;
           if (curDue > 0) unpaidSales.push({ key: k, data: s });
@@ -2245,7 +2249,7 @@
       }, 300);
     };
 
-    // নির্দিষ্ট পেমেন্টের ইনভয়েস মোডাল (টাকার অংক না কাটার শতভাগ নিশ্চয়তা সহ)
+    // নির্দিষ্ট পেমেন্টের ইনভয়েস মোডাল
     window.showPaymentInvoice = function(pDate, pAmt, pNote, custName, cPhone, cArea, cAddr, balAfter, pId) {
       document.body.setAttribute('data-print', 'invoice');
       if (getEl('invMainDocTitle')) {
@@ -2274,7 +2278,7 @@
               '<th style="text-align:left; padding:8px 10px;">বিবরণ (Description)</th>' +
               '<th style="text-align:center; padding:8px 10px; width:25%;">পদ্ধতি (Method)</th>' +
               '<th style="text-align:right; padding:8px 10px; width:30%;">আদায়কৃত অর্থ</th>' +
-            </tr>' +
+            '</tr>' +
           '</thead>' +
           '<tbody>' +
             '<tr>' +
@@ -2332,7 +2336,7 @@
               '<th style="text-align:center; padding:8px 10px; width:20%;">পরিমাণ</th>' +
               '<th style="text-align:right; padding:8px 10px; width:22%;">দর (Rate)</th>' +
               '<th style="text-align:right; padding:8px 10px; width:25%;">মোট (Total)</th>' +
-            </tr>' +
+            '</tr>' +
           '</thead>' +
           '<tbody>' +
             '<tr>' +
@@ -2398,13 +2402,22 @@
       var tag = (getEl('cowTag').value || '').trim();
       if (!tag) return alert('Tag ID আবশ্যক!');
       var data = {
-        tag: tag, breed: getEl('cowBreed').value, breedType: getEl('cowBreedType').value,
-        generation: getEl('cowGeneration').value, dob: getEl('cowDob').value,
-        weight: parseFloat(getEl('cowWeight').value) || 0, lactation: parseFloat(getEl('cowLactation').value) || 0,
-        status: getEl('cowStatus').value, milkDay: parseFloat(getEl('cowMilkDay').value) || 0,
-        sire: getEl('cowSire').value, dam: getEl('cowDam').value, expCalving: getEl('cowExpCalving').value
+        tag: tag,
+        breed: getEl('cowBreed').value,
+        breedType: getEl('cowBreedType').value,
+        generation: getEl('cowGeneration').value,
+        dob: getEl('cowDob').value,
+        weight: parseFloat(getEl('cowWeight').value) || 0,
+        lactation: parseFloat(getEl('cowLactation').value) || 0,
+        status: getEl('cowStatus').value,
+        milkDay: parseFloat(getEl('cowMilkDay').value) || 0,
+        sire: getEl('cowSire').value,
+        dam: getEl('cowDam').value,
+        expCalving: getEl('cowExpCalving').value
       };
-      if (db) eCatKey ? db.ref('cattle/' + eCatKey).update(data) : db.ref('cattle').push(data);
+      if (db) {
+        eCatKey ? db.ref('cattle/' + eCatKey).update(data) : db.ref('cattle').push(data);
+      }
       cancelCattleEdit();
     }
 
@@ -2430,7 +2443,8 @@
 
     function cancelBreedingEdit() {
       eBrKey = null;
-      ['brCowTag','brSemenId','brCompany','brAiCost','brPdDate','brExpCalvingDate','brActCalvingDate'].forEach(function(id) {
+      var fields = ['brCowTag','brSemenId','brCompany','brAiCost','brPdDate','brExpCalvingDate','brActCalvingDate'];
+      fields.forEach(function(id) {
         if (getEl(id)) getEl(id).value = '';
       });
       getEl('brStatus').value = 'Pending';
@@ -2442,12 +2456,19 @@
       var tag = (getEl('brCowTag').value || '').trim();
       if (!tag) return alert('Cattle ID দিন!');
       var data = {
-        tag: tag, aiDate: getEl('brAiDate').value, semenId: getEl('brSemenId').value,
-        company: getEl('brCompany').value, aiCost: parseFloat(getEl('brAiCost').value) || 0,
-        pdDate: getEl('brPdDate').value, status: getEl('brStatus').value,
-        expCalvingDate: getEl('brExpCalvingDate').value, actCalvingDate: getEl('brActCalvingDate').value
+        tag: tag,
+        aiDate: getEl('brAiDate').value,
+        semenId: getEl('brSemenId').value,
+        company: getEl('brCompany').value,
+        aiCost: parseFloat(getEl('brAiCost').value) || 0,
+        pdDate: getEl('brPdDate').value,
+        status: getEl('brStatus').value,
+        expCalvingDate: getEl('brExpCalvingDate').value,
+        actCalvingDate: getEl('brActCalvingDate').value
       };
-      if (db) eBrKey ? db.ref('breeding/' + eBrKey).update(data) : db.ref('breeding').push(data);
+      if (db) {
+        eBrKey ? db.ref('breeding/' + eBrKey).update(data) : db.ref('breeding').push(data);
+      }
       cancelBreedingEdit();
     }
 
@@ -2479,8 +2500,15 @@
       if (!lit) return alert('দুধের পরিমাণ দিন!');
       var cowTag = (getEl('milkCowTag').value || '').trim();
       if (!cowTag) return alert('Tag ID দিন!');
-      var data = { date: getEl('milkDate').value, cow: cowTag, session: getEl('milkSession').value, liters: lit };
-      if (db) eMlkKey ? db.ref('milk/' + eMlkKey).update(data) : db.ref('milk').push(data);
+      var data = {
+        date: getEl('milkDate').value,
+        cow: cowTag,
+        session: getEl('milkSession').value,
+        liters: lit
+      };
+      if (db) {
+        eMlkKey ? db.ref('milk/' + eMlkKey).update(data) : db.ref('milk').push(data);
+      }
       cancelMilkEdit();
     }
 
@@ -2516,7 +2544,8 @@
 
     function cancelSaleEdit() {
       eSaleKey = null;
-      ['saleCustomer','salePhone','saleArea','saleAddr','saleQty','saleRate','saleTotal','salePaid','saleDue'].forEach(function(i) {
+      var fields = ['saleCustomer','salePhone','saleArea','saleAddr','saleQty','saleRate','saleTotal','salePaid','saleDue'];
+      fields.forEach(function(i) {
         getEl(i).value = '';
       });
       getEl('saleSubmitBtn').innerText = 'Save Sale';
@@ -2540,7 +2569,9 @@
         due: parseFloat(getEl('saleDue').value) || 0,
         payments: []
       };
-      if (db) eSaleKey ? db.ref('sales/' + eSaleKey).update(data) : db.ref('sales').push(data);
+      if (db) {
+        eSaleKey ? db.ref('sales/' + eSaleKey).update(data) : db.ref('sales').push(data);
+      }
       cancelSaleEdit();
     }
 
@@ -2562,7 +2593,8 @@
 
     function cancelCustomerEdit() {
       eCustKey = null;
-      ['custName','custPhone','custArea','custAddress','custDailyDemand'].forEach(function(i) {
+      var fields = ['custName','custPhone','custArea','custAddress','custDailyDemand'];
+      fields.forEach(function(i) {
         getEl(i).value = '';
       });
       getEl('custSubmitBtn').innerText = 'Save Customer';
@@ -2579,7 +2611,9 @@
         addr: (getEl('custAddress').value || '').trim(),
         demand: parseFloat(getEl('custDailyDemand').value) || 0
       };
-      if (db) eCustKey ? db.ref('customers/' + eCustKey).update(data) : db.ref('customers').push(data);
+      if (db) {
+        eCustKey ? db.ref('customers/' + eCustKey).update(data) : db.ref('customers').push(data);
+      }
       cancelCustomerEdit();
     }
 
@@ -2614,7 +2648,9 @@
         items: getEl('orderItems').value,
         status: getEl('orderStatus').value
       };
-      if (db) eOrdKey ? db.ref('orders/' + eOrdKey).update(data) : db.ref('orders').push(data);
+      if (db) {
+        eOrdKey ? db.ref('orders/' + eOrdKey).update(data) : db.ref('orders').push(data);
+      }
       cancelOrderEdit();
     }
 
@@ -2650,7 +2686,9 @@
         title: title,
         amount: amt
       };
-      if (db) eExpKey ? db.ref('expenses/' + eExpKey).update(data) : db.ref('expenses').push(data);
+      if (db) {
+        eExpKey ? db.ref('expenses/' + eExpKey).update(data) : db.ref('expenses').push(data);
+      }
       cancelExpenseEdit();
     }
 
@@ -2686,7 +2724,9 @@
         unit: getEl('stkUnit').value,
         alertLevel: parseFloat(getEl('stkAlert').value) || 0
       };
-      if (db) eStkKey ? db.ref('stock/' + eStkKey).update(data) : db.ref('stock').push(data);
+      if (db) {
+        eStkKey ? db.ref('stock/' + eStkKey).update(data) : db.ref('stock').push(data);
+      }
       cancelStockEdit();
     }
 
@@ -2723,7 +2763,9 @@
         source: getEl('semSource').value,
         count: parseFloat(getEl('semCount').value) || 0
       };
-      if (db) eSemKey ? db.ref('semen/' + eSemKey).update(data) : db.ref('semen').push(data);
+      if (db) {
+        eSemKey ? db.ref('semen/' + eSemKey).update(data) : db.ref('semen').push(data);
+      }
       cancelSemenEdit();
     }
 
@@ -2761,7 +2803,9 @@
         desc: getEl('hlthDesc').value,
         nextDate: getEl('hlthNextDate').value
       };
-      if (db) eHlthKey ? db.ref('health/' + eHlthKey).update(data) : db.ref('health').push(data);
+      if (db) {
+        eHlthKey ? db.ref('health/' + eHlthKey).update(data) : db.ref('health').push(data);
+      }
       cancelHealthEdit();
     }
 
