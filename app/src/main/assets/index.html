@@ -1153,7 +1153,7 @@
         </div>
       </div>
 
-      <!-- ৭. Orders (দৈনিক অটো-অর্ডার ও ডেলিভারি সেলস সিঙ্ক সহ) -->
+      <!-- ৭. Orders -->
       <div id="tab-orders" class="tab-content" style="display: none;">
         <div class="card">
           <h2>📦 Orders Management</h2>
@@ -1675,7 +1675,7 @@
       return [];
     }
 
-    // দৈনিক অটো-অর্ডার জেনারেটর (প্রতিদিন অ্যাপ খুললে বা সিঙ্ক হলে যাদের ডেলিভারি বাকি তাদের পেন্ডিং অর্ডার তৈরি করবে)
+    // দৈনিক অটো-অর্ডার জেনারেটর
     function checkAndGenerateDailyOrders() {
       if (!db) return;
       var today = new Date().toISOString().split('T')[0];
@@ -1697,7 +1697,7 @@
             if (!cust || !cust.name) return;
             var cName = cust.name.trim();
             var demand = Number(cust.demand) || 0;
-            if (demand <= 0) return; // চাহিদা না থাকলে অর্ডার নয়
+            if (demand <= 0) return;
 
             var cKey = cName.toLowerCase();
             if (!existingOrders[cKey]) {
@@ -1707,7 +1707,7 @@
                 phone: cust.phone || '',
                 area: cust.area || '',
                 items: demand + ' লিটার তরল দুধ',
-                total: demand * 50, // ডিফল্ট রেট ধরে হিসাব, চাইলে এডিট করা যাবে
+                total: demand * 50,
                 paid: 0,
                 status: 'Pending'
               };
@@ -2139,7 +2139,7 @@
         var rowStyle = isOv ? 'background:#fff3f3; border-left:5px solid #d32f2f;' : '';
         var dueBadge = '';
         if (isOv && dueVal > 0) {
-          dueBadge = '<span class="badge badge-danger">₹ ' + dueVal + ' (⚠️ ' + item.diffDays + ' দিন জমা নেই)</span>';
+          dueBadge = '<span class="badge badge-danger">₹ ' + dueVal + ' (⚠️ ' + item.diffDays + ' দিন জমা নেইকন্যা)</span>';
         } else if (dueVal > 0) {
           dueBadge = '<strong style="color:red; font-size:14px;">₹ ' + dueVal + '</strong>';
         } else {
@@ -2786,7 +2786,90 @@
       cancelCustomerEdit();
     }
 
-    // ৬. EXPENSES
+    // ৬. ORDERS (সঠিক এডিট ও ডেলিভারি অটো-সিঙ্ক সহ)
+    var eOrdKey = null;
+    function editOrder(k) {
+      var d = farmStore.orders[k];
+      if (!d) return;
+      eOrdKey = k;
+      getEl('orderDate').value = d.date || '';
+      getEl('orderCustomer').value = d.customer || '';
+      getEl('orderPhone').value = d.phone || '';
+      getEl('orderArea').value = d.area || '';
+      getEl('orderItems').value = d.items || '';
+      getEl('orderTotal').value = d.total || '';
+      getEl('orderPaid').value = d.paid || '';
+      getEl('orderStatus').value = d.status || 'Pending';
+      getEl('orderSubmitBtn').innerText = 'Update Order';
+      getEl('orderCancelBtn').style.display = 'inline-flex';
+      getEl('orderCustomer').scrollIntoView({ behavior: 'smooth' });
+    }
+
+    function cancelOrderEdit() {
+      eOrdKey = null;
+      var fields = ['orderCustomer','orderPhone','orderArea','orderItems','orderTotal','orderPaid'];
+      fields.forEach(function(i) {
+        if (getEl(i)) getEl(i).value = '';
+      });
+      getEl('orderStatus').value = 'Pending';
+      getEl('orderSubmitBtn').innerText = 'Save Order';
+      getEl('orderCancelBtn').style.display = 'none';
+    }
+
+    function saveOrder() {
+      var cust = (getEl('orderCustomer').value || '').trim();
+      var items = (getEl('orderItems').value || '').trim();
+      if (!cust || !items) return alert('গ্রাহকের নাম ও বিবরণ দিন!');
+      
+      var status = getEl('orderStatus').value;
+      var total = parseFloat(getEl('orderTotal').value) || 0;
+      var paid = parseFloat(getEl('orderPaid').value) || 0;
+      var due = Math.max(0, total - paid);
+      var deliveryDate = getEl('orderDate').value || new Date().toISOString().split('T')[0];
+      var phone = (getEl('orderPhone') ? getEl('orderPhone').value : '').trim();
+      var area = (getEl('orderArea') ? getEl('orderArea').value : '').trim();
+
+      var data = {
+        date: deliveryDate,
+        customer: cust,
+        phone: phone,
+        area: area,
+        items: items,
+        total: total,
+        paid: paid,
+        status: status
+      };
+
+      if (db) {
+        if (eOrdKey) {
+          db.ref('orders/' + eOrdKey).update(data);
+        } else {
+          db.ref('orders').push(data);
+        }
+
+        // যদি স্ট্যাটাস Delivered করা হয়, তবে স্বয়ংক্রিয়ভাবে Sales এন্ট্রি তৈরি হবে
+        if (status === 'Delivered' && total > 0) {
+          var saleRecord = {
+            date: deliveryDate,
+            name: cust,
+            phone: phone,
+            area: area,
+            addr: '',
+            item: items,
+            qty: 1,
+            rate: total,
+            total: total,
+            paid: paid,
+            due: due,
+            payments: []
+          };
+          db.ref('sales').push(saleRecord);
+        }
+      }
+      cancelOrderEdit();
+    }
+
+    // ৭. EXPENSES
     var eExpKey = null;
     function editExpense(k) {
       var d = farmStore.expenses[k];
@@ -2824,7 +2907,7 @@
       cancelExpenseEdit();
     }
 
-    // ৭. STOCK
+    // ৮. STOCK
     var eStkKey = null;
     function editStock(k) {
       var d = farmStore.stock[k];
@@ -2862,7 +2945,7 @@
       cancelStockEdit();
     }
 
-    // ৮. SEMEN
+    // ৯. SEMEN
     var eSemKey = null;
     function editSemen(k) {
       var d = farmStore.semen[k];
@@ -2901,7 +2984,7 @@
       cancelSemenEdit();
     }
 
-    // ৯. HEALTH
+    // ১০. HEALTH
     var eHlthKey = null;
     function editHealth(k) {
       var d = farmStore.health[k];
@@ -2941,7 +3024,7 @@
       cancelHealthEdit();
     }
 
-    // ১০. BACKUP
+    // ১১. BACKUP
     function downloadBackup() {
       if (!db) return alert('ডাটাবেস কানেক্টেড নেই!');
       db.ref('/').once('value', function(snap) {
@@ -2980,18 +3063,21 @@
     window.listenAllData = function() {
       if (!db) return;
 
-      // অ্যাপ চালু হবামাত্র দৈনিক অটো-অর্ডার চেক করবে
       checkAndGenerateDailyOrders();
 
       db.ref('cattle').on('value', function(snap) {
         farmStore.cattle = {}; 
-        snap.forEach(function(c) { farmStore.cattle[c.key] = c.val(); });
+        snap.forEach(function(c) {
+          farmStore.cattle[c.key] = c.val();
+        });
         renderCattleTable();
       });
 
       db.ref('milk').on('value', function(snap) {
         farmStore.milk = {}; 
-        snap.forEach(function(c) { farmStore.milk[c.key] = c.val(); });
+        snap.forEach(function(c) {
+          farmStore.milk[c.key] = c.val();
+        });
         renderGroupedMilkTable();
         renderCattleTable();
       });
@@ -3033,7 +3119,9 @@
 
       db.ref('sales').on('value', function(snap) {
         farmStore.sales = {}; 
-        snap.forEach(function(c) { farmStore.sales[c.key] = c.val(); });
+        snap.forEach(function(c) {
+          farmStore.sales[c.key] = c.val();
+        });
         renderSalesTable();
         if (window.activeLedgerCustomerName) {
           showCustomerLedger(encodeURIComponent(window.activeLedgerCustomerName));
@@ -3093,7 +3181,6 @@
           orderList.push({ key: k, data: d });
         });
 
-        // পেন্ডিং অর্ডারগুলো সবার ওপরে দেখানোর জন্য সর্টিং
         orderList.sort(function(a, b) {
           var pA = (a.data.status === 'Pending' ? 0 : 1);
           var pB = (b.data.status === 'Pending' ? 0 : 1);
