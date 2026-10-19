@@ -497,7 +497,6 @@
       position: relative;
     }
 
-    /* ইনভয়েস টেবিল */
     .invoice-table {
       width: 100% !important;
       min-width: 100% !important;
@@ -515,7 +514,6 @@
       font-size: 13px !important;
     }
 
-    /* প্রিন্ট এরিয়ায় লোগো ওয়াটারমার্ক */
     #invoicePrintArea {
       position: relative;
       background: white;
@@ -543,7 +541,6 @@
       z-index: 1;
     }
 
-    /* প্রিন্ট সেটিংস: কোনো ব্ল্যাঙ্ক পেজ ছাড়া সরাসরি নির্ভুল প্রিন্ট */
     @page {
       margin: 0mm !important;
       size: auto;
@@ -560,7 +557,6 @@
         overflow: visible !important;
       }
 
-      /* পেছনের ড্যাশবোর্ড সম্পূর্ণ হাইড */
       #appBody,
       #loginScreen,
       header,
@@ -570,7 +566,6 @@
         display: none !important;
       }
 
-      /* ১. যখন ইনভয়েস প্রিন্ট হবে */
       body[data-print="invoice"] #ledgerModal {
         display: none !important;
       }
@@ -607,7 +602,6 @@
         overflow: visible !important;
       }
 
-      /* ২. যখন খাতা প্রিন্ট হবে */
       body[data-print="ledger"] #invoiceModal {
         display: none !important;
       }
@@ -1086,7 +1080,7 @@
         </div>
       </div>
 
-      <!-- ৬. Customer -->
+      <!-- ৬. Customer (Opening Due, Type ও Shift সহ) -->
       <div id="tab-customers" class="tab-content" style="display: none;">
         <div class="card">
           <h2>👥 Customer Directory</h2>
@@ -1109,7 +1103,27 @@
             </div>
             <div class="input-group">
               <label>Daily Demand L (দৈনিক চাহিদা)</label>
-              <input type="number" id="custDailyDemand" placeholder="২.০">
+              <input type="number" step="0.1" id="custDailyDemand" placeholder="২.০">
+            </div>
+            <div class="input-group">
+              <label>Opening Due ₹ (প্রাথমিক বকেয়া)</label>
+              <input type="number" id="custOpeningDue" placeholder="০">
+            </div>
+            <div class="input-group">
+              <label>Customer Type (গ্রাহকের ধরন)</label>
+              <select id="custType">
+                <option value="Regular Retailer">Regular Retailer (খুচরা)</option>
+                <option value="Wholesale">Wholesale (পাইকারি)</option>
+                <option value="Feed/Agro Buyer">Feed/Agro Buyer (অন্যান্য)</option>
+              </select>
+            </div>
+            <div class="input-group">
+              <label>Delivery Shift (ডেলিভারি শিফট)</label>
+              <select id="custShift">
+                <option value="Morning">Morning (শুধু সকাল)</option>
+                <option value="Evening">Evening (শুধু বিকাল)</option>
+                <option value="Both">Both (সকাল ও বিকাল)</option>
+              </select>
             </div>
           </div>
           <div style="display:flex; gap:10px;">
@@ -1127,7 +1141,9 @@
                   <th>Phone</th>
                   <th>Area</th>
                   <th>Address</th>
-                  <th>Daily Demand</th>
+                  <th>Demand</th>
+                  <th>Opening Due</th>
+                  <th>Type & Shift</th>
                   <th>Action</th>
                 </tr>
               </thead>
@@ -1512,7 +1528,7 @@
           </div>
         </div>
 
-        <!-- পরিচ্ছন্ন ৬-কলামের লেজার টেবিল -->
+        <!-- পরিচ্ছন্ন লেজার টেবিল -->
         <div class="table-container" style="max-height:360px; overflow-y:auto;">
           <table style="font-size:12px; min-width:650px;">
             <thead>
@@ -1563,7 +1579,6 @@
       }
     }
 
-    // নির্দিষ্ট মোডাল সুনির্দিষ্টভাবে প্রিন্ট করার ফাংশন
     window.printSpecificModal = function(target) {
       document.body.setAttribute('data-print', target);
       var origTitle = document.title;
@@ -1626,11 +1641,31 @@
       return [];
     }
 
-    // ৩৫ দিন কোনো টাকা না দেওয়া গ্রাহক নির্ধারণকারী লাইভ ব্যালেন্স ইঞ্জিন
     function getCustomerLiveBalances() {
       var map = {};
       var now = new Date();
       var todayTime = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+
+      for (var ck in farmStore.customers) {
+        var cust = farmStore.customers[ck];
+        if (!cust || !cust.name) continue;
+        var cName = cust.name.trim();
+        var cKey = cName.toLowerCase();
+        var opDue = Number(cust.openingDue) || 0;
+
+        if (!map[cKey]) {
+          map[cKey] = {
+            totalBilled: opDue,
+            totalPaid: 0,
+            currentDue: opDue,
+            lastPaymentTime: 0,
+            earliestBillTime: opDue > 0 ? todayTime : Infinity,
+            phone: cust.phone || '',
+            area: cust.area || '',
+            addr: cust.addr || ''
+          };
+        }
+      }
 
       for (var k in farmStore.sales) {
         var s = farmStore.sales[k];
@@ -1692,7 +1727,6 @@
         }
       }
 
-      // ৩৫ দিন ওভারডিউ ফিল্টার
       for (var key in map) {
         var c = map[key];
         c.currentDue = Math.max(0, c.totalBilled - c.totalPaid);
@@ -1893,7 +1927,7 @@
       body.innerHTML = html;
     }
 
-    // ৫. SALES & BILLING রেন্ডার (নিরাপদ ফিল্টারিং ও ইউনিক কাস্টমার লেজার)
+    // ৫. SALES & BILLING রেন্ডার
     function renderSalesTable() {
       var body = getEl('salesTableBody');
       if (!body) return;
@@ -1905,6 +1939,20 @@
       var tS = 0;
       var uniqueAreas = {};
       var customerMap = {};
+
+      for (var ck in farmStore.customers) {
+        var cust = farmStore.customers[ck];
+        if (!cust || !cust.name) continue;
+        var rName = cust.name.trim();
+        var cKey = rName.toLowerCase();
+        customerMap[cKey] = {
+          key: 'cust-' + ck,
+          data: { name: rName, phone: cust.phone || '', area: cust.area || '', addr: cust.addr || '', item: '-', qty: 0, total: 0, paid: 0, date: '' },
+          latestDate: '',
+          latestTime: 0,
+          customerName: rName
+        };
+      }
 
       for (var k in farmStore.sales) {
         var d = farmStore.sales[k];
@@ -1918,7 +1966,7 @@
         if (areaStr) uniqueAreas[areaStr] = true;
 
         var rawName = (d.name || '').trim();
-        if (!rawName) continue; // নাম না থাকলে স্কিপ করবে যাতে টেবিল ব্ল্যাঙ্ক না হয়
+        if (!rawName) continue;
         var cKey = rawName.toLowerCase();
 
         var saleTime = parseDateToTime(d.date);
@@ -2021,6 +2069,13 @@
           dueBadge = '<span class="badge badge-success">পরিশোধ</span>';
         }
 
+        var actionBtns = k.startsWith('cust-') ? 
+          '<button class="action-btn" style="background:#455a64; color:white;" onclick="showCustomerLedger(\'' + encodeURIComponent(item.customerName) + '\')">খাতা</button>' :
+          '<button class="action-btn" style="background:#455a64; color:white;" onclick="showCustomerLedger(\'' + encodeURIComponent(item.customerName) + '\')">খাতা</button>' +
+          '<button class="action-btn btn-info" onclick="showInvoice(\'' + k + '\')">Invoice</button>' +
+          '<button class="action-btn btn-warning" onclick="editSale(\'' + k + '\')">Edit</button>' +
+          '<button class="action-btn btn-danger" onclick="deleteRecord(\'sales\',\'' + k + '\')">Delete</button>';
+
         html += '<tr style="' + rowStyle + '">' +
           '<td>' + (item.lastProductDate || d.date || '-') + '</td>' +
           '<td>' +
@@ -2032,16 +2087,11 @@
             (d.area ? '<span class="badge badge-warning" style="margin-bottom:3px;">' + d.area + '</span><br>' : '') +
             '<span style="font-size:11.5px; color:#555;">' + (d.addr || '-') + '</span>' +
           '</td>' +
-          '<td>' + (d.item || '-') + ' (' + (d.qty || 0) + ')</td>' +
+          '<td>' + (d.item && d.item !== '-' ? d.item + ' (' + (d.qty || 0) + ')' : '-') + '</td>' +
           '<td>₹ ' + (d.total || 0) + '</td>' +
           '<td style="color:green; font-weight:600;">₹ ' + (d.paid || 0) + '</td>' +
           '<td>' + dueBadge + '</td>' +
-          '<td>' +
-            '<button class="action-btn" style="background:#455a64; color:white;" onclick="showCustomerLedger(\'' + encodeURIComponent(item.customerName) + '\')">খাতা</button>' +
-            '<button class="action-btn btn-info" onclick="showInvoice(\'' + k + '\')">Invoice</button>' +
-            '<button class="action-btn btn-warning" onclick="editSale(\'' + k + '\')">Edit</button>' +
-            '<button class="action-btn btn-danger" onclick="deleteRecord(\'sales\',\'' + k + '\')">Delete</button>' +
-          '</td>' +
+          '<td>' + actionBtns + '</td>' +
         '</tr>';
       });
 
@@ -2055,18 +2105,42 @@
       document.body.setAttribute('data-print', 'ledger');
       
       var custLower = custName.toLowerCase();
-      var cPhone = '', cArea = '', cAddr = '';
+      var cPhone = '', cArea = '', cAddr = '', opDue = 0;
+
+      for (var ck in farmStore.customers) {
+        var cust = farmStore.customers[ck];
+        if (cust && cust.name && cust.name.trim().toLowerCase() === custLower) {
+          if (cust.phone) cPhone = cust.phone;
+          if (cust.area) cArea = cust.area;
+          if (cust.addr) cAddr = cust.addr;
+          opDue = Number(cust.openingDue) || 0;
+          break;
+        }
+      }
+
       var events = [];
-      var totalBillAmount = 0;
+      var totalBillAmount = opDue;
       var totalPaidAmount = 0;
+
+      if (opDue > 0) {
+        events.push({
+          date: 'শুরু',
+          desc: 'প্রাথমিক বকেয়া (Opening Due)',
+          bill: opDue,
+          paid: 0,
+          netDiff: opDue,
+          isOpening: true,
+          timestamp: 0
+        });
+      }
 
       for (var k in farmStore.sales) {
         var s = farmStore.sales[k];
         if (!s) continue;
         if ((s.name || '').trim().toLowerCase() === custLower) {
-          if (s.phone) cPhone = s.phone;
-          if (s.area) cArea = s.area;
-          if (s.addr) cAddr = s.addr;
+          if (s.phone && !cPhone) cPhone = s.phone;
+          if (s.area && !cArea) cArea = s.area;
+          if (s.addr && !cAddr) cAddr = s.addr;
 
           var bTot = Number(s.total) || 0;
           var bCurPaid = Number(s.paid) || 0;
@@ -2134,7 +2208,16 @@
       } else {
         var html = '';
         events.forEach(function(ev) {
-          if (ev.isSale) {
+          if (ev.isOpening) {
+            html += '<tr style="background:#fff9c4;">' +
+              '<td>' + ev.date + '</td>' +
+              '<td><strong>' + ev.desc + '</strong></td>' +
+              '<td>₹ ' + ev.bill + '</td>' +
+              '<td>₹ 0</td>' +
+              '<td style="color:#e65100; font-weight:bold; background:#fff8e1;">₹ ' + ev.cumDue + '</td>' +
+              '<td>-</td>' +
+            '</tr>';
+          } else if (ev.isSale) {
             html += '<tr>' +
               '<td>' + (ev.date || '-') + '</td>' +
               '<td><strong>' + ev.desc + '</strong></td>' +
@@ -2586,6 +2669,10 @@
       getEl('custArea').value = d.area || '';
       getEl('custAddress').value = d.addr || '';
       getEl('custDailyDemand').value = d.demand || '';
+      if (getEl('custOpeningDue')) getEl('custOpeningDue').value = d.openingDue || 0;
+      if (getEl('custType')) getEl('custType').value = d.type || 'Regular Retailer';
+      if (getEl('custShift')) getEl('custShift').value = d.shift || 'Morning';
+
       getEl('custSubmitBtn').innerText = 'Update Customer';
       getEl('custCancelBtn').style.display = 'inline-flex';
       getEl('custName').scrollIntoView({ behavior: 'smooth' });
@@ -2593,10 +2680,12 @@
 
     function cancelCustomerEdit() {
       eCustKey = null;
-      var fields = ['custName','custPhone','custArea','custAddress','custDailyDemand'];
+      var fields = ['custName','custPhone','custArea','custAddress','custDailyDemand','custOpeningDue'];
       fields.forEach(function(i) {
-        getEl(i).value = '';
+        if (getEl(i)) getEl(i).value = '';
       });
+      if (getEl('custType')) getEl('custType').value = 'Regular Retailer';
+      if (getEl('custShift')) getEl('custShift').value = 'Morning';
       getEl('custSubmitBtn').innerText = 'Save Customer';
       getEl('custCancelBtn').style.display = 'none';
     }
@@ -2609,7 +2698,10 @@
         phone: (getEl('custPhone').value || '').trim(),
         area: (getEl('custArea').value || '').trim(),
         addr: (getEl('custAddress').value || '').trim(),
-        demand: parseFloat(getEl('custDailyDemand').value) || 0
+        demand: parseFloat(getEl('custDailyDemand').value) || 0,
+        openingDue: parseFloat(getEl('custOpeningDue') ? getEl('custOpeningDue').value : 0) || 0,
+        type: getEl('custType') ? getEl('custType').value : 'Regular Retailer',
+        shift: getEl('custShift') ? getEl('custShift').value : 'Morning'
       };
       if (db) {
         eCustKey ? db.ref('customers/' + eCustKey).update(data) : db.ref('customers').push(data);
@@ -2939,6 +3031,8 @@
               '<td>' + (d.area ? '<span class="badge badge-warning">' + d.area + '</span>' : '-') + '</td>' +
               '<td>' + (d.addr || '-') + '</td>' +
               '<td>' + (d.demand || 0) + ' L</td>' +
+              '<td>₹ ' + (d.openingDue || 0) + '</td>' +
+              '<td><span style="font-size:11px; background:#e3f2fd; padding:2px 6px; border-radius:4px;">' + (d.type || 'Retail') + '</span> / <span style="font-size:11px; color:#1b5e20; font-weight:650;">' + (d.shift || 'Morning') + '</span></td>' +
               '<td><button class="action-btn btn-info" onclick="editCustomer(\'' + k + '\')">Edit</button><button class="action-btn btn-danger" onclick="deleteRecord(\'customers\',\'' + k + '\')">Delete</button></td>' +
             '</tr>';
           }
@@ -2946,6 +3040,7 @@
 
         if (getEl('customerNameList')) getEl('customerNameList').innerHTML = nameOpt;
         if (getEl('customerAreaList')) getEl('customerAreaList').innerHTML = areaOpt;
+        renderSalesTable();
       });
 
       db.ref('orders').on('value', function(snap) {
