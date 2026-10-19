@@ -1080,7 +1080,7 @@
         </div>
       </div>
 
-      <!-- ৬. Customer (Opening Due, Type ও Shift সহ) -->
+      <!-- ৬. Customer -->
       <div id="tab-customers" class="tab-content" style="display: none;">
         <div class="card">
           <h2>👥 Customer Directory</h2>
@@ -1153,7 +1153,7 @@
         </div>
       </div>
 
-      <!-- ৭. Orders -->
+      <!-- ৭. Orders (ডেলিভারি ও সেলস অটো-সিঙ্ক সহ) -->
       <div id="tab-orders" class="tab-content" style="display: none;">
         <div class="card">
           <h2>📦 Orders Management</h2>
@@ -1164,17 +1164,33 @@
             </div>
             <div class="input-group">
               <label>Customer Name *</label>
-              <input type="text" id="orderCustomer" list="customerNameList" placeholder="নাম">
+              <input type="text" id="orderCustomer" list="customerNameList" oninput="onOrderCustomerInput()" placeholder="নাম লিখুন বা সিলেক্ট করুন">
+            </div>
+            <div class="input-group">
+              <label>Phone (মোবাইল নম্বর)</label>
+              <input type="text" id="orderPhone" placeholder="মোবাইল নম্বর">
+            </div>
+            <div class="input-group">
+              <label>Area / Route (এলাকা)</label>
+              <input type="text" id="orderArea" list="customerAreaList" placeholder="এলাকা">
             </div>
             <div class="input-group">
               <label>Items & Quantity (বিবরণ) *</label>
               <input type="text" id="orderItems" placeholder="যেমন: ৫ লিটার দুধ">
             </div>
             <div class="input-group">
+              <label>Total Price ₹ (মোট দাম)</label>
+              <input type="number" id="orderTotal" placeholder="₹">
+            </div>
+            <div class="input-group">
+              <label>Paid Amount ₹ (নগদ পরিশোধ)</label>
+              <input type="number" id="orderPaid" placeholder="₹">
+            </div>
+            <div class="input-group">
               <label>Status (স্ট্যাটাস)</label>
               <select id="orderStatus">
                 <option value="Pending">Pending (পেন্ডিং)</option>
-                <option value="Delivered">Delivered (ডেলিভারড)</option>
+                <option value="Delivered">Delivered (ডেলিভারড - সেলস খাতায় যুক্ত হবে)</option>
                 <option value="Cancelled">Cancelled (বাতিল)</option>
               </select>
             </div>
@@ -1193,6 +1209,8 @@
                   <th>Date</th>
                   <th>Customer</th>
                   <th>Items</th>
+                  <th>Total ₹</th>
+                  <th>Paid ₹</th>
                   <th>Status</th>
                   <th>Action</th>
                 </tr>
@@ -1433,7 +1451,7 @@
     </div>
   </div>
 
-  <!-- ১. প্রিমিয়াম ইনভয়েস মোডাল (লোগো ওয়াটারমার্ক ও Bibhas Munshi স্বাক্ষর সহ) -->
+  <!-- ১. প্রিমিয়াম ইনভয়েস মোডাল -->
   <div id="invoiceModal">
     <div class="invoice-card">
       <div id="invoicePrintArea">
@@ -1528,7 +1546,7 @@
           </div>
         </div>
 
-        <!-- পরিচ্ছন্ন লেজার টেবিল -->
+        <!-- লেজার টেবিল -->
         <div class="table-container" style="max-height:360px; overflow-y:auto;">
           <table style="font-size:12px; min-width:650px;">
             <thead>
@@ -1613,6 +1631,19 @@
           if (c.phone) getEl('salePhone').value = c.phone;
           if (c.area) getEl('saleArea').value = c.area;
           if (c.addr) getEl('saleAddr').value = c.addr;
+          break;
+        }
+      }
+    }
+
+    function onOrderCustomerInput() {
+      var val = (getEl('orderCustomer').value || '').trim().toLowerCase();
+      if (!val) return;
+      for (var k in farmStore.customers) {
+        var c = farmStore.customers[k];
+        if ((c.name || '').trim().toLowerCase() === val) {
+          if (c.phone) getEl('orderPhone').value = c.phone;
+          if (c.area) getEl('orderArea').value = c.area;
           break;
         }
       }
@@ -2324,7 +2355,7 @@
         if (db) db.ref('sales').push(advRecord);
       }
 
-      alert('পেমেন্ট সফলভাবে জমা হয়েছে! সেলস লেজারের Due স্বয়ংক্রিয়ভাবে আপডেট হয়ে গেছে।');
+      alert('পেমেন্ট সফলভাবে জমা হয়েছে! সেলস লেজারের Due স্বয়ংক্রییভাবে আপডেট হয়ে গেছে।');
       getEl('ledgerPayAmount').value = '';
       getEl('ledgerPayNote').value = '';
       setTimeout(function() {
@@ -2658,58 +2689,7 @@
       cancelSaleEdit();
     }
 
-    // ৫. CUSTOMERS
-    var eCustKey = null;
-    function editCustomer(k) {
-      var d = farmStore.customers[k];
-      if (!d) return;
-      eCustKey = k;
-      getEl('custName').value = d.name || '';
-      getEl('custPhone').value = d.phone || '';
-      getEl('custArea').value = d.area || '';
-      getEl('custAddress').value = d.addr || '';
-      getEl('custDailyDemand').value = d.demand || '';
-      if (getEl('custOpeningDue')) getEl('custOpeningDue').value = d.openingDue || 0;
-      if (getEl('custType')) getEl('custType').value = d.type || 'Regular Retailer';
-      if (getEl('custShift')) getEl('custShift').value = d.shift || 'Morning';
-
-      getEl('custSubmitBtn').innerText = 'Update Customer';
-      getEl('custCancelBtn').style.display = 'inline-flex';
-      getEl('custName').scrollIntoView({ behavior: 'smooth' });
-    }
-
-    function cancelCustomerEdit() {
-      eCustKey = null;
-      var fields = ['custName','custPhone','custArea','custAddress','custDailyDemand','custOpeningDue'];
-      fields.forEach(function(i) {
-        if (getEl(i)) getEl(i).value = '';
-      });
-      if (getEl('custType')) getEl('custType').value = 'Regular Retailer';
-      if (getEl('custShift')) getEl('custShift').value = 'Morning';
-      getEl('custSubmitBtn').innerText = 'Save Customer';
-      getEl('custCancelBtn').style.display = 'none';
-    }
-
-    function saveCustomer() {
-      var name = (getEl('custName').value || '').trim();
-      if (!name) return alert('নাম দিন!');
-      var data = {
-        name: name,
-        phone: (getEl('custPhone').value || '').trim(),
-        area: (getEl('custArea').value || '').trim(),
-        addr: (getEl('custAddress').value || '').trim(),
-        demand: parseFloat(getEl('custDailyDemand').value) || 0,
-        openingDue: parseFloat(getEl('custOpeningDue') ? getEl('custOpeningDue').value : 0) || 0,
-        type: getEl('custType') ? getEl('custType').value : 'Regular Retailer',
-        shift: getEl('custShift') ? getEl('custShift').value : 'Morning'
-      };
-      if (db) {
-        eCustKey ? db.ref('customers/' + eCustKey).update(data) : db.ref('customers').push(data);
-      }
-      cancelCustomerEdit();
-    }
-
-    // ৬. ORDERS
+    // ৫. ORDERS (ডেলিভারি হলে স্বয়ংক্রিয়ভাবে Sales খাতায় যুক্ত হওয়ার ইঞ্জিন)
     var eOrdKey = null;
     function editOrder(k) {
       var d = farmStore.orders[k];
@@ -2717,36 +2697,82 @@
       eOrdKey = k;
       getEl('orderDate').value = d.date || '';
       getEl('orderCustomer').value = d.customer || '';
+      getEl('orderPhone').value = d.phone || '';
+      getEl('orderArea').value = d.area || '';
       getEl('orderItems').value = d.items || '';
+      getEl('orderTotal').value = d.total || '';
+      getEl('orderPaid').value = d.paid || '';
       getEl('orderStatus').value = d.status || 'Pending';
       getEl('orderSubmitBtn').innerText = 'Update Order';
       getEl('orderCancelBtn').style.display = 'inline-flex';
+      getEl('orderCustomer').scrollIntoView({ behavior: 'smooth' });
     }
 
     function cancelOrderEdit() {
       eOrdKey = null;
-      getEl('orderCustomer').value = '';
-      getEl('orderItems').value = '';
+      var fields = ['orderCustomer','orderPhone','orderArea','orderItems','orderTotal','orderPaid'];
+      fields.forEach(function(i) {
+        if (getEl(i)) getEl(i).value = '';
+      });
+      getEl('orderStatus').value = 'Pending';
       getEl('orderSubmitBtn').innerText = 'Save Order';
       getEl('orderCancelBtn').style.display = 'none';
     }
 
     function saveOrder() {
       var cust = (getEl('orderCustomer').value || '').trim();
-      if (!cust) return alert('Customer Name দিন!');
+      var items = (getEl('orderItems').value || '').trim();
+      if (!cust || !items) return alert('গ্রাহকের নাম ও বিবরণ দিন!');
+      
+      var status = getEl('orderStatus').value;
+      var total = parseFloat(getEl('orderTotal').value) || 0;
+      var paid = parseFloat(getEl('orderPaid').value) || 0;
+      var due = Math.max(0, total - paid);
+      var deliveryDate = getEl('orderDate').value || new Date().toISOString().split('T')[0];
+      var phone = (getEl('orderPhone') ? getEl('orderPhone').value : '').trim();
+      var area = (getEl('orderArea') ? getEl('orderArea').value : '').trim();
+
       var data = {
-        date: getEl('orderDate').value,
+        date: deliveryDate,
         customer: cust,
-        items: getEl('orderItems').value,
-        status: getEl('orderStatus').value
+        phone: phone,
+        area: area,
+        items: items,
+        total: total,
+        paid: paid,
+        status: status
       };
+
       if (db) {
-        eOrdKey ? db.ref('orders/' + eOrdKey).update(data) : db.ref('orders').push(data);
+        if (eOrdKey) {
+          db.ref('orders/' + eOrdKey).update(data);
+        } else {
+          db.ref('orders').push(data);
+        }
+
+        // যদি স্ট্যাটাস Delivered করা হয়, তবে স্বয়ংক্রিয়ভাবে Sales এন্ট্রি তৈরি হবে
+        if (status === 'Delivered' && total > 0) {
+          var saleRecord = {
+            date: deliveryDate,
+            name: cust,
+            phone: phone,
+            area: area,
+            addr: '',
+            item: items,
+            qty: 1,
+            rate: total,
+            total: total,
+            paid: paid,
+            due: due,
+            payments: []
+          };
+          db.ref('sales').push(saleRecord);
+        }
       }
       cancelOrderEdit();
     }
 
-    // ৭. EXPENSES
+    // ৬. EXPENSES
     var eExpKey = null;
     function editExpense(k) {
       var d = farmStore.expenses[k];
@@ -2784,7 +2810,7 @@
       cancelExpenseEdit();
     }
 
-    // ৮. STOCK
+    // ৭. STOCK
     var eStkKey = null;
     function editStock(k) {
       var d = farmStore.stock[k];
@@ -2822,7 +2848,7 @@
       cancelStockEdit();
     }
 
-    // ৯. SEMEN
+    // ৮. SEMEN
     var eSemKey = null;
     function editSemen(k) {
       var d = farmStore.semen[k];
@@ -2861,7 +2887,7 @@
       cancelSemenEdit();
     }
 
-    // ১০. HEALTH
+    // ৯. HEALTH
     var eHlthKey = null;
     function editHealth(k) {
       var d = farmStore.health[k];
@@ -2901,7 +2927,7 @@
       cancelHealthEdit();
     }
 
-    // ১১. BACKUP
+    // ১০. BACKUP
     function downloadBackup() {
       if (!db) return alert('ডাটাবেস কানেক্টেড নেই!');
       db.ref('/').once('value', function(snap) {
@@ -3054,13 +3080,20 @@
           var k = c.key;
           farmStore.orders[k] = d;
           if (d.status === 'Pending') pend++;
+          
+          var badgeSt = d.status === 'Delivered' ? 'badge-success' : (d.status === 'Cancelled' ? 'badge-danger' : 'badge-warning');
           if (body) {
             body.innerHTML += '<tr>' +
               '<td>' + (d.date || '-') + '</td>' +
-              '<td><strong>' + (d.customer || '-') + '</strong></td>' +
+              '<td><strong>' + (d.customer || '-') + '</strong>' + (d.phone ? '<br><small>📞 ' + d.phone + '</small>' : '') + '</td>' +
               '<td>' + (d.items || '-') + '</td>' +
-              '<td><span class="badge badge-warning">' + (d.status || '-') + '</span></td>' +
-              '<td><button class="action-btn btn-info" onclick="editOrder(\'' + k + '\')">Edit</button><button class="action-btn btn-danger" onclick="deleteRecord(\'orders\',\'' + k + '\')">Delete</button></td>' +
+              '<td>₹ ' + (d.total || 0) + '</td>' +
+              '<td style="color:green; font-weight:600;">₹ ' + (d.paid || 0) + '</td>' +
+              '<td><span class="badge ' + badgeSt + '">' + (d.status || 'Pending') + '</span></td>' +
+              '<td>' +
+                '<button class="action-btn btn-info" onclick="editOrder(\'' + k + '\')">Edit</button>' +
+                '<button class="action-btn btn-danger" onclick="deleteRecord(\'orders\',\'' + k + '\')">Delete</button>' +
+              '</td>' +
             '</tr>';
           }
         });
