@@ -38,34 +38,6 @@
       console.log(e);
     }
 
-    // তারিখ ফরম্যাট রূপান্তরকারী ফাংশন (YYYY-MM-DD থেকে DD-MM-YYYY)
-    window.formatDateBR = function(dtStr) {
-      if (!dtStr || dtStr === '-') return '-';
-      var clean = String(dtStr).trim();
-      if (clean === 'শুরু') return 'শুরু';
-      var parts = clean.split('-');
-      if (parts.length === 3) {
-        if (parts[0].length === 4) {
-          return parts[2] + '-' + parts[1] + '-' + parts[0];
-        }
-        return clean;
-      }
-      return clean;
-    };
-
-    // ইনপুট বা ডাটাবেসের জন্য তারিখ ফরম্যাট (DD-MM-YYYY থেকে YYYY-MM-DD)
-    window.parseDateToISO = function(dtStr) {
-      if (!dtStr) return '';
-      var clean = String(dtStr).trim();
-      var parts = clean.split('-');
-      if (parts.length === 3) {
-        if (parts[2].length === 4) {
-          return parts[2] + '-' + parts[1] + '-' + parts[0];
-        }
-      }
-      return clean;
-    };
-
     window.switchTab = function(tab, btn) {
       var contents = document.querySelectorAll('.tab-content');
       for (var i = 0; i < contents.length; i++) {
@@ -114,16 +86,11 @@
     };
 
     window.onload = function() {
-      var dObj = new Date();
-      var day = String(dObj.getDate()).padStart(2, '0');
-      var month = String(dObj.getMonth() + 1).padStart(2, '0');
-      var year = dObj.getFullYear();
-      var todayBR = day + '-' + month + '-' + year;
-
+      var today = new Date().toISOString().split('T')[0];
       var defaultDateIds = ['milkDate', 'saleDate', 'orderDate', 'expDate', 'brAiDate', 'hlthDate'];
       defaultDateIds.forEach(function(id) {
         if (getEl(id)) {
-          getEl(id).value = todayBR;
+          getEl(id).value = today;
         }
       });
 
@@ -148,12 +115,11 @@
     };
 
     function autoCalcExpectedCalving() {
-      var aiVal = parseDateToISO(getEl('brAiDate').value);
+      var aiVal = getEl('brAiDate').value;
       if (aiVal) {
         var d = new Date(aiVal);
         d.setDate(d.getDate() + 280);
-        var iso = d.toISOString().split('T')[0];
-        getEl('brExpCalvingDate').value = formatDateBR(iso);
+        getEl('brExpCalvingDate').value = d.toISOString().split('T')[0];
       }
     }
   </script>
@@ -806,8 +772,8 @@
               </select>
             </div>
             <div class="input-group">
-              <label>DOB (DD-MM-YYYY)</label>
-              <input type="text" id="cowDob" placeholder="DD-MM-YYYY">
+              <label>DOB (জন্মতারিখ)</label>
+              <input type="date" id="cowDob">
             </div>
             <div class="input-group">
               <label>Weight kg (ওজন)</label>
@@ -843,8 +809,8 @@
               <input type="text" id="cowDam" placeholder="মায়ের আইডি">
             </div>
             <div class="input-group">
-              <label>Expected Calving (DD-MM-YYYY)</label>
-              <input type="text" id="cowExpCalving" placeholder="DD-MM-YYYY">
+              <label>Expected Calving</label>
+              <input type="date" id="cowExpCalving">
             </div>
           </div>
           <div style="display:flex; gap:10px;">
@@ -890,8 +856,8 @@
               <input type="text" id="brCowTag" list="cattleTagList" placeholder="Tag সিলেক্ট বা টাইপ করুন">
             </div>
             <div class="input-group">
-              <label>AI Date (DD-MM-YYYY) *</label>
-              <input type="text" id="brAiDate" placeholder="DD-MM-YYYY" onchange="autoCalcExpectedCalving()">
+              <label>AI Date *</label>
+              <input type="date" id="brAiDate" onchange="autoCalcExpectedCalving()">
             </div>
             <div class="input-group">
               <label>Semen/Bull</label>
@@ -906,8 +872,8 @@
               <input type="number" id="brAiCost" placeholder="এআই খরচ (₹)">
             </div>
             <div class="input-group">
-              <label>Pregnancy Test (DD-MM-YYYY)</label>
-              <input type="text" id="brPdDate" placeholder="DD-MM-YYYY">
+              <label>Pregnancy Test (তারিখ)</label>
+              <input type="date" id="brPdDate">
             </div>
             <div class="input-group">
               <label>Result</label>
@@ -919,12 +885,12 @@
               </select>
             </div>
             <div class="input-group">
-              <label>Expected Calving (DD-MM-YYYY)</label>
-              <input type="text" id="brExpCalvingDate" placeholder="DD-MM-YYYY">
+              <label>Expected Calving (সম্ভাব্য প্রসব)</label>
+              <input type="date" id="brExpCalvingDate">
             </div>
             <div class="input-group">
-              <label>Actual Calving (DD-MM-YYYY)</label>
-              <input type="text" id="brActCalvingDate" placeholder="DD-MM-YYYY">
+              <label>Actual Calving (প্রকৃত প্রসব)</label>
+              <input type="date" id="brActCalvingDate">
             </div>
           </div>
           <div style="display:flex; gap:10px;">
@@ -971,8 +937,8 @@
           <h2>🥛 Milk Production Entry</h2>
           <div class="form-grid">
             <div class="input-group">
-              <label>Date (DD-MM-YYYY) *</label>
-              <input type="text" id="milkDate" placeholder="DD-MM-YYYY">
+              <label>Date (তারিখ) *</label>
+              <input type="date" id="milkDate">
             </div>
             <div class="input-group">
               <label>Tag ID (গরু আইডি) *</label>
@@ -1024,8 +990,8 @@
           <h2>💰 Sales & Billing</h2>
           <div class="form-grid">
             <div class="input-group">
-              <label>Date (DD-MM-YYYY) *</label>
-              <input type="text" id="saleDate" placeholder="DD-MM-YYYY">
+              <label>Date (তারিখ) *</label>
+              <input type="date" id="saleDate">
             </div>
             <div class="input-group">
               <label>Customer Name (কাস্টমার) *</label>
@@ -1193,8 +1159,8 @@
           <h2>📦 Orders Management</h2>
           <div class="form-grid">
             <div class="input-group">
-              <label>Delivery Date (DD-MM-YYYY) *</label>
-              <input type="text" id="orderDate" placeholder="DD-MM-YYYY">
+              <label>Delivery Date (তারিখ) *</label>
+              <input type="date" id="orderDate">
             </div>
             <div class="input-group">
               <label>Customer Name *</label>
@@ -1264,8 +1230,8 @@
           <h2>🧾 Expense Ledger</h2>
           <div class="form-grid">
             <div class="input-group">
-              <label>Date (DD-MM-YYYY) *</label>
-              <input type="text" id="expDate" placeholder="DD-MM-YYYY">
+              <label>Date (তারিখ) *</label>
+              <input type="date" id="expDate">
             </div>
             <div class="input-group">
               <label>Expense Category (খাত)</label>
@@ -1291,24 +1257,22 @@
             <button class="btn btn-warning" id="expCancelBtn" style="display:none;" onclick="cancelExpenseEdit()">Cancel (বাতিল)</button>
           </div>
         </div>
-
         <div class="card">
           <h2>খরচের তালিকা (Expense List)</h2>
-          <p style="font-size:12px; color:#666; margin-bottom:12px;">💡 যে-কোনো তারিখের লাইনে ক্লিক করলে ওই দিনের সমস্ত খরচের বিবরণী ও এডিট অপশন দেখতে পাবেন।</p>
           <div class="table-container">
             <table>
               <thead>
                 <tr>
-                  <th>তারিখ (Date)</th>
-                  <th>মোট খরচ (Total Amount)</th>
-                  <th>এন্ট্রি সংখ্যা (Entries)</th>
-                  <th>বিস্তারিত (Action)</th>
+                  <th>Date</th>
+                  <th>Category</th>
+                  <th>Description</th>
+                  <th>Amount (₹)</th>
+                  <th>Action</th>
                 </tr>
               </thead>
-              <tbody id="expenseGroupTableBody"></tbody>
+              <tbody id="expenseTableBody"></tbody>
             </table>
           </div>
-          <p id="expenseNoData" style="text-align: center; color: #777; font-size: 13px; margin-top: 15px; display: none;">কোনো খরচের রেকর্ড পাওয়া যায়নি।</p>
         </div>
       </div>
 
@@ -1415,8 +1379,8 @@
           <h2>🩺 Health & Vaccination Register</h2>
           <div class="form-grid">
             <div class="input-group">
-              <label>Date (DD-MM-YYYY) *</label>
-              <input type="text" id="hlthDate" placeholder="DD-MM-YYYY">
+              <label>Date (তারিখ) *</label>
+              <input type="date" id="hlthDate">
             </div>
             <div class="input-group">
               <label>Tag ID (গরুর ট্যাগ) *</label>
@@ -1436,8 +1400,8 @@
               <input type="text" id="hlthDesc" placeholder="ওষুধের নাম / বিবরণ">
             </div>
             <div class="input-group">
-              <label>Next Dose Date (DD-MM-YYYY)</label>
-              <input type="text" id="hlthNextDate" placeholder="DD-MM-YYYY">
+              <label>Next Dose Date (পরবর্তী তারিখ)</label>
+              <input type="date" id="hlthNextDate">
             </div>
           </div>
           <div style="display:flex; gap:10px;">
@@ -1568,8 +1532,8 @@
           <strong style="color:#1b5e20; font-size:13px; display:block; margin-bottom:8px;">💳 বকেয়া টাকা জমা নিন (Receive Payment)</strong>
           <div style="display:flex; flex-wrap:wrap; gap:10px; align-items:flex-end;">
             <div style="flex:1; min-width:130px;">
-              <label style="font-size:11px; font-weight:600; color:#444;">জমার তারিখ (DD-MM-YYYY)</label>
-              <input type="text" id="ledgerPayDate" placeholder="DD-MM-YYYY" style="padding:7px 10px; font-size:12px; margin-top:2px;">
+              <label style="font-size:11px; font-weight:600; color:#444;">জমার তারিখ</label>
+              <input type="date" id="ledgerPayDate" style="padding:7px 10px; font-size:12px; margin-top:2px;">
             </div>
             <div style="flex:1; min-width:130px;">
               <label style="font-size:11px; font-weight:600; color:#444;">জমার পরিমাণ (₹) *</label>
@@ -1693,20 +1657,11 @@
       var clean = String(dtStr).trim();
       var parts = clean.split('-');
       if (parts.length === 3) {
-        if (parts[2].length === 4) {
-          var d = parseInt(parts[0], 10);
-          var m = parseInt(parts[1], 10) - 1;
-          var y = parseInt(parts[2], 10);
-          if (!isNaN(y) && !isNaN(m) && !isNaN(d)) {
-            return new Date(y, m, d).getTime();
-          }
-        } else if (parts[0].length === 4) {
-          var y = parseInt(parts[0], 10);
-          var m = parseInt(parts[1], 10) - 1;
-          var d = parseInt(parts[2], 10);
-          if (!isNaN(y) && !isNaN(m) && !isNaN(d)) {
-            return new Date(y, m, d).getTime();
-          }
+        var y = parseInt(parts[0], 10);
+        var m = parseInt(parts[1], 10) - 1;
+        var d = parseInt(parts[2], 10);
+        if (!isNaN(y) && !isNaN(m) && !isNaN(d)) {
+          return new Date(y, m, d).getTime();
         }
       }
       var t = new Date(clean).getTime();
@@ -1723,11 +1678,7 @@
     // দৈনিক অটো-অর্ডার জেনারেটর
     function checkAndGenerateDailyOrders() {
       if (!db) return;
-      var dObj = new Date();
-      var day = String(dObj.getDate()).padStart(2, '0');
-      var month = String(dObj.getMonth() + 1).padStart(2, '0');
-      var year = dObj.getFullYear();
-      var todayBR = day + '-' + month + '-' + year;
+      var today = new Date().toISOString().split('T')[0];
 
       db.ref('customers').once('value', function(custSnap) {
         if (!custSnap.exists()) return;
@@ -1736,7 +1687,7 @@
           var existingOrders = {};
           ordSnap.forEach(function(o) {
             var val = o.val();
-            if (val && val.date === todayBR && val.customer) {
+            if (val && val.date === today && val.customer) {
               existingOrders[val.customer.trim().toLowerCase()] = true;
             }
           });
@@ -1751,7 +1702,7 @@
             var cKey = cName.toLowerCase();
             if (!existingOrders[cKey]) {
               var newOrder = {
-                date: todayBR,
+                date: today,
                 customer: cName,
                 phone: cust.phone || '',
                 area: cust.area || '',
@@ -1942,13 +1893,13 @@
             '<td>' + (d.breed || '-') + '</td>' +
             '<td>' + (d.breedType || '-') + '</td>' +
             '<td>' + (d.generation || '-') + '</td>' +
-            '<td>' + formatDateBR(d.dob) + '</td>' +
+            '<td>' + (d.dob || '-') + '</td>' +
             '<td>' + (d.weight || 0) + ' kg</td>' +
             '<td>' + (d.lactation || 0) + '</td>' +
             '<td><span class="badge badge-success">' + (d.status || '-') + '</span></td>' +
             '<td>' + milkDisplay + '</td>' +
             '<td>' + (d.sire || '-') + '</td>' +
-            '<td>' + formatDateBR(d.expCalving) + '</td>' +
+            '<td>' + (d.expCalving || '-') + '</td>' +
             '<td>' +
               '<button class="action-btn btn-info" onclick="editCattle(\'' + k + '\')">Edit</button>' +
               '<button class="action-btn btn-danger" onclick="deleteRecord(\'cattle\',\'' + k + '\')">Delete</button>' +
@@ -1980,16 +1931,15 @@
 
       var dateGroups = {};
       var totalMilkAll = 0;
-      var dObj = new Date();
-      var todayBR = String(dObj.getDate()).padStart(2, '0') + '-' + String(dObj.getMonth() + 1).padStart(2, '0') + '-' + dObj.getFullYear();
+      var today = new Date().toISOString().split('T')[0];
       var todayTotal = 0;
 
       for (var k in farmStore.milk) {
         var m = farmStore.milk[k];
-        var dt = formatDateBR(m.date) || 'Unknown';
+        var dt = m.date || 'Unknown';
         var lit = Number(m.liters) || 0;
         totalMilkAll += lit;
-        if (dt === todayBR) todayTotal += lit;
+        if (dt === today) todayTotal += lit;
 
         if (!dateGroups[dt]) dateGroups[dt] = { date: dt, total: 0, cows: {}, items: [] };
         dateGroups[dt].total += lit;
@@ -2000,7 +1950,7 @@
       if (getEl('dash-milk-today')) getEl('dash-milk-today').innerText = todayTotal.toFixed(1) + ' L';
       if (getEl('rep-milk')) getEl('rep-milk').innerText = totalMilkAll.toFixed(1);
 
-      var sortedDates = Object.keys(dateGroups).sort(function(a, b) { return parseDateToTime(b) - parseDateToTime(a); });
+      var sortedDates = Object.keys(dateGroups).sort(function(a, b) { return b.localeCompare(a); });
 
       if (sortedDates.length === 0) {
         body.innerHTML = '';
@@ -2097,12 +2047,11 @@
         var cKey = rawName.toLowerCase();
 
         var saleTime = parseDateToTime(d.date);
-        var fDateBR = formatDateBR(d.date);
         if (!customerMap[cKey]) {
           customerMap[cKey] = {
             key: k,
             data: d,
-            latestDate: fDateBR,
+            latestDate: d.date || '',
             latestTime: saleTime,
             customerName: rawName
           };
@@ -2111,7 +2060,7 @@
             customerMap[cKey] = {
               key: k,
               data: d,
-              latestDate: fDateBR,
+              latestDate: d.date || '',
               latestTime: saleTime,
               customerName: rawName
             };
@@ -2168,9 +2117,9 @@
       filtered.sort(function(a, b) {
         if (a.isOverdue && !b.isOverdue) return -1;
         if (!a.isOverdue && b.isOverdue) return 1;
-        var dtA = parseDateToTime(a.lastProductDate);
-        var dtB = parseDateToTime(b.lastProductDate);
-        return dtB - dtA;
+        var dtA = (a.lastProductDate || a.data.date || '').toString();
+        var dtB = (b.lastProductDate || b.data.date || '').toString();
+        return dtB.localeCompare(dtA);
       });
 
       if (filtered.length === 0) {
@@ -2190,7 +2139,7 @@
         var rowStyle = isOv ? 'background:#fff3f3; border-left:5px solid #d32f2f;' : '';
         var dueBadge = '';
         if (isOv && dueVal > 0) {
-          dueBadge = '<span class="badge badge-danger">₹ ' + dueVal + ' (⚠️ ' + item.diffDays + ' দিন জমা নেই)</span>';
+          dueBadge = '<span class="badge badge-danger">₹ ' + dueVal + ' (⚠️ ' + item.diffDays + ' দিন জমা নেইকন্যা)</span>';
         } else if (dueVal > 0) {
           dueBadge = '<strong style="color:red; font-size:14px;">₹ ' + dueVal + '</strong>';
         } else {
@@ -2205,7 +2154,7 @@
           '<button class="action-btn btn-danger" onclick="deleteRecord(\'sales\',\'' + k + '\')">Delete</button>';
 
         html += '<tr style="' + rowStyle + '">' +
-          '<td>' + (item.lastProductDate || '-') + '</td>' +
+          '<td>' + (item.lastProductDate || d.date || '-') + '</td>' +
           '<td>' +
             '<a href="javascript:void(0)" onclick="showCustomerLedger(\'' + encodeURIComponent(item.customerName) + '\')" style="color:var(--primary); font-weight:bold; text-decoration:underline; font-size:13.5px;">' + (item.customerName || '-') + '</a>' +
             (d.phone ? '<br><span style="font-size:11.5px; color:#455a64;">📞 ' + d.phone + '</span>' : '') +
@@ -2281,7 +2230,7 @@
             totalBillAmount += bTot;
             totalPaidAmount += initialPaid;
             events.push({
-              date: formatDateBR(s.date),
+              date: s.date || '',
               desc: (s.item || 'পণ্য') + (s.qty ? ' (' + s.qty + ')' : ''),
               bill: bTot,
               paid: initialPaid,
@@ -2296,7 +2245,7 @@
             var pAmt = Number(p.amount) || 0;
             totalPaidAmount += pAmt;
             events.push({
-              date: formatDateBR(p.date || s.date),
+              date: p.date || s.date || '',
               desc: '💳 বকেয়া জমা (' + (p.note || 'ক্যাশ') + ')',
               bill: 0,
               paid: pAmt,
@@ -2326,9 +2275,7 @@
       getEl('ledgerTotalPaid').innerText = '₹ ' + totalPaidAmount.toLocaleString();
       getEl('ledgerTotalDue').innerText = '₹ ' + overallCurrentDue.toLocaleString();
 
-      var dObj = new Date();
-      var todayBR = String(dObj.getDate()).padStart(2, '0') + '-' + String(dObj.getMonth() + 1).padStart(2, '0') + '-' + dObj.getFullYear();
-      if (getEl('ledgerPayDate')) getEl('ledgerPayDate').value = todayBR;
+      if (getEl('ledgerPayDate')) getEl('ledgerPayDate').value = new Date().toISOString().split('T')[0];
       if (getEl('ledgerPayAmount')) getEl('ledgerPayAmount').value = '';
       if (getEl('ledgerPayNote')) getEl('ledgerPayNote').value = '';
 
@@ -2383,8 +2330,7 @@
     window.saveCustomerPayment = function() {
       var amt = parseFloat(getEl('ledgerPayAmount').value) || 0;
       if (amt <= 0) return alert('অনুগ্রহ করে জমার সঠিক পরিমাণ (টাকা) লিখুন!');
-      var pDateRaw = getEl('ledgerPayDate').value;
-      var pDate = parseDateToISO(pDateRaw) || new Date().toISOString().split('T')[0];
+      var pDate = getEl('ledgerPayDate').value || new Date().toISOString().split('T')[0];
       var pNote = (getEl('ledgerPayNote').value || 'নগদ জমা').trim();
       var custName = window.activeLedgerCustomerName;
       if (!custName) return alert('গ্রাহকের নাম পাওয়া যায়নি!');
@@ -2481,7 +2427,7 @@
           '</div>' +
           '<div style="text-align:right;">' +
             '<strong style="color:#555;">ইনভয়েস বিবরণ:</strong><br>' +
-            'তারিখ: ' + formatDateBR(pDate) + '<br>' +
+            'তারিখ: ' + pDate + '<br>' +
             'ইনভয়েস নং: #' + (pId ? pId.substring(0, 10) : 'INV-' + Date.now().toString().slice(-6)) + '<br>' +
             '<span style="color:#2e7d32; font-weight:bold; background:#e8f5e9; padding:3px 9px; border-radius:4px; font-size:12px;">● অর্থ গ্রহণ সম্পন্ন (PAID)</span>' +
           '</div>' +
@@ -2511,7 +2457,7 @@
     };
 
     // সাধারণ বিক্রয় ইনভয়েস মোডাল
-    window.showInvoice = function(k) {
+    function showInvoice(k) {
       var d = farmStore.sales[k];
       if (!d) return;
       document.body.setAttribute('data-print', 'invoice');
@@ -2538,7 +2484,7 @@
           '</div>' +
           '<div style="text-align:right;">' +
             '<strong style="color:#555;">চালান বিবরণ:</strong><br>' +
-            'তারিখ: ' + formatDateBR(d.date) + '<br>' +
+            'তারিখ: ' + d.date + '<br>' +
             'ইনভয়েস নং: #NDA-' + k.substring(1, 7).toUpperCase() + '<br>' +
             paymentStatus +
           '</div>' +
@@ -2568,7 +2514,7 @@
         '</div>';
 
       getEl('invoiceModal').style.display = 'flex';
-    };
+    }
 
     function closeInvoice() {
       getEl('invoiceModal').style.display = 'none';
@@ -2589,14 +2535,14 @@
       getEl('cowBreed').value = d.breed || '';
       getEl('cowBreedType').value = d.breedType || '';
       getEl('cowGeneration').value = d.generation || 'F1';
-      getEl('cowDob').value = formatDateBR(d.dob) || '';
+      getEl('cowDob').value = d.dob || '';
       getEl('cowWeight').value = d.weight || '';
       getEl('cowLactation').value = d.lactation || '';
       getEl('cowStatus').value = d.status || 'Milking';
       getEl('cowMilkDay').value = d.milkDay || '';
       getEl('cowSire').value = d.sire || '';
       getEl('cowDam').value = d.dam || '';
-      getEl('cowExpCalving').value = formatDateBR(d.expCalving) || '';
+      getEl('cowExpCalving').value = d.expCalving || '';
       getEl('cowSubmitBtn').innerText = 'Update Cattle';
       getEl('cowCancelBtn').style.display = 'inline-flex';
       getEl('cowTag').scrollIntoView({ behavior: 'smooth' });
@@ -2620,14 +2566,14 @@
         breed: getEl('cowBreed').value,
         breedType: getEl('cowBreedType').value,
         generation: getEl('cowGeneration').value,
-        dob: parseDateToISO(getEl('cowDob').value),
+        dob: getEl('cowDob').value,
         weight: parseFloat(getEl('cowWeight').value) || 0,
         lactation: parseFloat(getEl('cowLactation').value) || 0,
         status: getEl('cowStatus').value,
         milkDay: parseFloat(getEl('cowMilkDay').value) || 0,
         sire: getEl('cowSire').value,
         dam: getEl('cowDam').value,
-        expCalving: parseDateToISO(getEl('cowExpCalving').value)
+        expCalving: getEl('cowExpCalving').value
       };
       if (db) {
         eCatKey ? db.ref('cattle/' + eCatKey).update(data) : db.ref('cattle').push(data);
@@ -2642,14 +2588,14 @@
       if (!d) return;
       eBrKey = k;
       getEl('brCowTag').value = d.tag || '';
-      getEl('brAiDate').value = formatDateBR(d.aiDate) || '';
+      getEl('brAiDate').value = d.aiDate || '';
       getEl('brSemenId').value = d.semenId || '';
       getEl('brCompany').value = d.company || '';
       getEl('brAiCost').value = d.aiCost || '';
-      getEl('brPdDate').value = formatDateBR(d.pdDate) || '';
+      getEl('brPdDate').value = d.pdDate || '';
       getEl('brStatus').value = d.status || 'Pending';
-      getEl('brExpCalvingDate').value = formatDateBR(d.expCalvingDate || d.calvingDate) || '';
-      getEl('brActCalvingDate').value = formatDateBR(d.actCalvingDate) || '';
+      getEl('brExpCalvingDate').value = d.expCalvingDate || d.calvingDate || '';
+      getEl('brActCalvingDate').value = d.actCalvingDate || '';
       getEl('brSubmitBtn').innerText = 'Update Breeding';
       getEl('brCancelBtn').style.display = 'inline-flex';
       getEl('brCowTag').scrollIntoView({ behavior: 'smooth' });
@@ -2671,14 +2617,14 @@
       if (!tag) return alert('Cattle ID দিন!');
       var data = {
         tag: tag,
-        aiDate: parseDateToISO(getEl('brAiDate').value),
+        aiDate: getEl('brAiDate').value,
         semenId: getEl('brSemenId').value,
         company: getEl('brCompany').value,
         aiCost: parseFloat(getEl('brAiCost').value) || 0,
-        pdDate: parseDateToISO(getEl('brPdDate').value),
+        pdDate: getEl('brPdDate').value,
         status: getEl('brStatus').value,
-        expCalvingDate: parseDateToISO(getEl('brExpCalvingDate').value),
-        actCalvingDate: parseDateToISO(getEl('brActCalvingDate').value)
+        expCalvingDate: getEl('brExpCalvingDate').value,
+        actCalvingDate: getEl('brActCalvingDate').value
       };
       if (db) {
         eBrKey ? db.ref('breeding/' + eBrKey).update(data) : db.ref('breeding').push(data);
@@ -2692,7 +2638,7 @@
       var d = farmStore.milk[k];
       if (!d) return;
       eMlkKey = k;
-      getEl('milkDate').value = formatDateBR(d.date) || '';
+      getEl('milkDate').value = d.date || '';
       getEl('milkCowTag').value = d.cow || '';
       getEl('milkSession').value = d.session || 'Morning';
       getEl('milkLiters').value = d.liters || '';
@@ -2715,7 +2661,7 @@
       var cowTag = (getEl('milkCowTag').value || '').trim();
       if (!cowTag) return alert('Tag ID দিন!');
       var data = {
-        date: parseDateToISO(getEl('milkDate').value),
+        date: getEl('milkDate').value,
         cow: cowTag,
         session: getEl('milkSession').value,
         liters: lit
@@ -2740,7 +2686,7 @@
       var d = farmStore.sales[k];
       if (!d) return;
       eSaleKey = k;
-      getEl('saleDate').value = formatDateBR(d.date) || '';
+      getEl('saleDate').value = d.date || '';
       getEl('saleCustomer').value = d.name || '';
       getEl('salePhone').value = d.phone || '';
       getEl('saleArea').value = d.area || '';
@@ -2770,7 +2716,7 @@
       var name = (getEl('saleCustomer').value || '').trim();
       if (!name) return alert('Customer Name দিন!');
       var data = {
-        date: parseDateToISO(getEl('saleDate').value),
+        date: getEl('saleDate').value,
         name: name,
         phone: (getEl('salePhone').value || '').trim(),
         area: (getEl('saleArea').value || '').trim(),
@@ -2840,13 +2786,13 @@
       cancelCustomerEdit();
     }
 
-    // ৬. ORDERS
+    // ৬. ORDERS (সঠিক এডিট ও ডেলিভারি অটো-সিঙ্ক সহ)
     var eOrdKey = null;
     function editOrder(k) {
       var d = farmStore.orders[k];
       if (!d) return;
       eOrdKey = k;
-      getEl('orderDate').value = formatDateBR(d.date) || '';
+      getEl('orderDate').value = d.date || '';
       getEl('orderCustomer').value = d.customer || '';
       getEl('orderPhone').value = d.phone || '';
       getEl('orderArea').value = d.area || '';
@@ -2879,7 +2825,7 @@
       var total = parseFloat(getEl('orderTotal').value) || 0;
       var paid = parseFloat(getEl('orderPaid').value) || 0;
       var due = Math.max(0, total - paid);
-      var deliveryDate = parseDateToISO(getEl('orderDate').value) || new Date().toISOString().split('T')[0];
+      var deliveryDate = getEl('orderDate').value || new Date().toISOString().split('T')[0];
       var phone = (getEl('orderPhone') ? getEl('orderPhone').value : '').trim();
       var area = (getEl('orderArea') ? getEl('orderArea').value : '').trim();
 
@@ -2901,6 +2847,7 @@
           db.ref('orders').push(data);
         }
 
+        // যদি স্ট্যাটাস Delivered করা হয়, তবে স্বয়ংক্রিয়ভাবে Sales এন্ট্রি তৈরি হবে
         if (status === 'Delivered' && total > 0) {
           var saleRecord = {
             date: deliveryDate,
@@ -2928,13 +2875,12 @@
       var d = farmStore.expenses[k];
       if (!d) return;
       eExpKey = k;
-      getEl('expDate').value = formatDateBR(d.date) || '';
+      getEl('expDate').value = d.date || '';
       getEl('expCategory').value = d.category || 'Other';
       getEl('expTitle').value = d.title || '';
       getEl('expAmount').value = d.amount || '';
       getEl('expSubmitBtn').innerText = 'Update Expense';
       getEl('expCancelBtn').style.display = 'inline-flex';
-      getEl('expDate').scrollIntoView({ behavior: 'smooth' });
     }
 
     function cancelExpenseEdit() {
@@ -2948,10 +2894,9 @@
     function saveExpense() {
       var title = (getEl('expTitle').value || '').trim();
       var amt = parseFloat(getEl('expAmount').value) || 0;
-      var dt = parseDateToISO(getEl('expDate').value);
-      if (!title || !amt || !dt) return alert('তারিখ, বিবরণ ও টাকা দিন!');
+      if (!title || !amt) return alert('বিবরণ ও টাকা দিন!');
       var data = {
-        date: dt,
+        date: getEl('expDate').value,
         category: getEl('expCategory').value,
         title: title,
         amount: amt
@@ -3045,11 +2990,11 @@
       var d = farmStore.health[k];
       if (!d) return;
       eHlthKey = k;
-      getEl('hlthDate').value = formatDateBR(d.date) || '';
+      getEl('hlthDate').value = d.date || '';
       getEl('hlthCowTag').value = d.cowTag || '';
       getEl('hlthType').value = d.type || 'Vaccination';
       getEl('hlthDesc').value = d.desc || '';
-      getEl('hlthNextDate').value = formatDateBR(d.nextDate) || '';
+      getEl('hlthNextDate').value = d.nextDate || '';
       getEl('hlthSubmitBtn').innerText = 'Update Health';
       getEl('hlthCancelBtn').style.display = 'inline-flex';
     }
@@ -3067,11 +3012,11 @@
       var tag = (getEl('hlthCowTag').value || '').trim();
       if (!tag) return alert('Tag ID দিন!');
       var data = {
-        date: parseDateToISO(getEl('hlthDate').value),
+        date: getEl('hlthDate').value,
         cowTag: tag,
         type: getEl('hlthType').value,
         desc: getEl('hlthDesc').value,
-        nextDate: parseDateToISO(getEl('hlthNextDate').value)
+        nextDate: getEl('hlthNextDate').value
       };
       if (db) {
         eHlthKey ? db.ref('health/' + eHlthKey).update(data) : db.ref('health').push(data);
@@ -3083,12 +3028,10 @@
     function downloadBackup() {
       if (!db) return alert('ডাটাবেস কানেক্টেড নেই!');
       db.ref('/').once('value', function(snap) {
-        var dObj = new Date();
-        var todayBR = String(dObj.getDate()).padStart(2, '0') + '-' + String(dObj.getMonth() + 1).padStart(2, '0') + '-' + dObj.getFullYear();
         var dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(snap.val(), null, 2));
         var a = document.createElement('a');
         a.setAttribute("href", dataStr);
-        a.setAttribute("download", "Nanda_Dairy_Agro_Backup_" + todayBR + ".json");
+        a.setAttribute("download", "Nanda_Dairy_Agro_Backup_" + new Date().toISOString().split('T')[0] + ".json");
         a.click();
       });
     }
@@ -3154,14 +3097,14 @@
           if (body) {
             body.innerHTML += '<tr>' +
               '<td><strong>' + (d.tag || '-') + '</strong></td>' +
-              '<td>' + formatDateBR(d.aiDate) + '</td>' +
+              '<td>' + (d.aiDate || '-') + '</td>' +
               '<td>' + (d.semenId || '-') + '</td>' +
               '<td>' + (d.company || '-') + '</td>' +
               '<td>₹ ' + (d.aiCost || 0) + '</td>' +
-              '<td>' + formatDateBR(d.pdDate) + '</td>' +
+              '<td>' + (d.pdDate || '-') + '</td>' +
               '<td><span class="badge ' + badgeClass + '">' + (d.status || 'Pending') + '</span></td>' +
-              '<td>' + formatDateBR(d.expCalvingDate || d.calvingDate) + '</td>' +
-              '<td>' + formatDateBR(d.actCalvingDate) + '</td>' +
+              '<td>' + (d.expCalvingDate || d.calvingDate || '-') + '</td>' +
+              '<td>' + (d.actCalvingDate || '-') + '</td>' +
               '<td>' +
                 '<button class="action-btn btn-info" onclick="editBreeding(\'' + k + '\')">Edit</button>' +
                 '<button class="action-btn btn-danger" onclick="deleteRecord(\'breeding\',\'' + k + '\')">Delete</button>' +
@@ -3256,7 +3199,7 @@
 
           if (body) {
             body.innerHTML += '<tr style="' + rowBg + '">' +
-              '<td>' + formatDateBR(d.date) + '</td>' +
+              '<td>' + (d.date || '-') + '</td>' +
               '<td><strong>' + (d.customer || '-') + '</strong>' + (d.phone ? '<br><small>📞 ' + d.phone + '</small>' : '') + '</td>' +
               '<td>' + (d.items || '-') + '</td>' +
               '<td>₹ ' + (d.total || 0) + '</td>' +
@@ -3276,11 +3219,33 @@
       });
 
       db.ref('expenses').on('value', function(snap) {
-        farmStore.expenses = {}; 
+        farmStore.expenses = {};
+        var body = getEl('expenseTableBody');
+        if (body) body.innerHTML = '';
+        var tE = 0;
+        
         snap.forEach(function(c) {
-          farmStore.expenses[c.key] = c.val();
+          var d = c.val();
+          var k = c.key;
+          farmStore.expenses[k] = d;
+          tE += Number(d.amount) || 0;
+          if (body) {
+            body.innerHTML += '<tr>' +
+              '<td>' + (d.date || '-') + '</td>' +
+              '<td>' + (d.category || '-') + '</td>' +
+              '<td>' + (d.title || '-') + '</td>' +
+              '<td>₹ ' + (d.amount || 0) + '</td>' +
+              '<td><button class="action-btn btn-info" onclick="editExpense(\'' + k + '\')">Edit</button><button class="action-btn btn-danger" onclick="deleteRecord(\'expenses\',\'' + k + '\')">Delete</button></td>' +
+            '</tr>';
+          }
         });
-        renderGroupedExpenseTable();
+        if (getEl('dash-total-exp')) {
+          getEl('dash-total-exp').innerText = '₹ ' + tE.toLocaleString();
+        }
+        if (getEl('rep-expenses')) {
+          getEl('rep-expenses').innerText = '₹ ' + tE.toLocaleString();
+        }
+        calcNet();
       });
 
       db.ref('stock').on('value', function(snap) {
@@ -3337,11 +3302,11 @@
           farmStore.health[k] = d;
           if (body) {
             body.innerHTML += '<tr>' +
-              '<td>' + formatDateBR(d.date) + '</td>' +
+              '<td>' + (d.date || '-') + '</td>' +
               '<td><strong>' + (d.cowTag || '-') + '</strong></td>' +
               '<td>' + (d.type || '-') + '</td>' +
               '<td>' + (d.desc || '-') + '</td>' +
-              '<td>' + formatDateBR(d.nextDate) + '</td>' +
+              '<td>' + (d.nextDate || '-') + '</td>' +
               '<td><button class="action-btn btn-info" onclick="editHealth(\'' + k + '\')">Edit</button><button class="action-btn btn-danger" onclick="deleteRecord(\'health\',\'' + k + '\')">Delete</button></td>' +
             '</tr>';
           }
