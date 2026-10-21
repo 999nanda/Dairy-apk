@@ -822,7 +822,7 @@
         </div>
       </div>
 
-      <!-- ৭. Orders -->
+      <!-- ৭. Orders (গ্রুপড ও সিঙ্গেল রো ভিউ সহ) -->
       <div id="tab-orders" class="tab-content" style="display: none;">
         <div class="card">
           <h2>📦 Orders Management</h2>
@@ -844,11 +844,11 @@
         <div class="card">
           <h2>অর্ডার তালিকা (Order List)</h2>
           <div style="background:#ffebee; border-left:4px solid #d32f2f; padding:8px 12px; border-radius:6px; font-size:12px; margin-bottom:12px; color:#c62828;">
-            ⚠️ <strong>লক্ষ্য করুন:</strong> পেন্ডিং অর্ডারগুলো ওপরে লাল হাইলাইট থাকবে। একবার Delivered বা Cancelled করলে তা আর নিজে থেকে Pending হবে না।
+            ⚠️ <strong>লক্ষ্য করুন:</strong> একই তারিখে একই কাস্টমারের একাধিক এন্ট্রি একত্রিত করে একটি গোছালো সারিতে দেখানো হচ্ছে। মাল্টিপল এন্ট্রি থাকলে তার পাশে ব্যাজ থাকবে।
           </div>
           <div class="table-container">
             <table>
-              <thead><tr><th>Date</th><th>Customer</th><th>Items</th><th>Total ₹</th><th>Paid ₹</th><th>Status</th><th>Action</th></tr></thead>
+              <thead><tr><th>Date</th><th>Customer & Multi-Entries</th><th>Items & Quantities</th><th>Total ₹</th><th>Paid ₹</th><th>Status Summary</th><th>Action</th></tr></thead>
               <tbody id="ordersTableBody"></tbody>
             </table>
           </div>
@@ -1122,12 +1122,13 @@
         if (!custSnap.exists()) return;
         
         db.ref('orders').once('value', function(ordSnap) {
-          var existingCustomersToday = {};
+          var existingKeysToday = {};
           ordSnap.forEach(function(o) {
             var val = o.val();
             if (val && val.date === todayISO && val.customer) {
-              // স্ট্যাটাস যাই হোক না কেন (Pending, Delivered, Cancelled), আজকের দিনে কাস্টমার থাকলে আর ডুপ্লিকেট জেনারেট করবে না
-              existingCustomersToday[val.customer.trim().toLowerCase()] = true;
+              // কাস্টমার নাম + ডেট মিলে ইউনিক কি তৈরি করা হলো যাতে স্ট্যাটাস পরিবর্তন হলেও ডুপ্লিকেট না হয়
+              var uniqueKey = val.date + '_' + val.customer.trim().toLowerCase();
+              existingKeysToday[uniqueKey] = true;
             }
           });
 
@@ -1138,8 +1139,8 @@
             var demand = Number(cust.demand) || 0;
             if (demand <= 0) return;
 
-            var cKey = cName.toLowerCase();
-            if (!existingCustomersToday[cKey]) {
+            var uniqueKey = todayISO + '_' + cName.toLowerCase();
+            if (!existingKeysToday[uniqueKey]) {
               var newOrder = {
                 date: todayISO,
                 customer: cName,
@@ -1989,23 +1990,79 @@
 
       db.ref('orders').on('value', function(snap) {
         farmStore.orders = {}; var body = getEl('ordersTableBody'); if (body) body.innerHTML = '';
-        var pend = 0, orderList = [];
-        snap.forEach(function(c) { orderList.push({ key: c.key, data: c.val() }); });
-        
-        orderList.sort(function(a, b) {
-          var pA = (a.data.status === 'Pending' ? 0 : 1);
-          var pB = (b.data.status === 'Pending' ? 0 : 1);
-          if (pA !== pB) return pA - pB;
-          return (b.data.date || '').localeCompare(a.data.date || '');
+        var pend = 0, groupedOrders = {};
+
+        snap.forEach(function(c) {
+          var d = c.val();
+          var k = c.key;
+          if (!d || !d.date || !d.customer) return;
+          var dateKey = d.date.trim();
+          var custKey = d.customer.trim().toLowerCase();
+          var groupKey = dateKey + '_' + custKey;
+
+          if (!groupedOrders[groupKey]) {
+            groupedOrders[groupKey] = {
+              date: dateKey,
+              customer: d.customer.trim(),
+              phone: d.phone || '',
+              itemsList: [],
+              totalSum: 0,
+              paidSum: 0,
+              statuses: [],
+              originalKeys: []
+            };
+          }
+          groupedOrders[groupKey].itemsList.push(d.items || '-');
+          groupedOrders[groupKey].totalSum += Number(d.total) || 0;
+          groupedOrders[groupKey].paidSum += Number(d.paid) || 0;
+          groupedOrders[groupKey].statuses.push(d.status || 'Pending');
+          groupedOrders[groupKey].originalKeys.push({ key: k, status: d.status || 'Pending' });
         });
 
-        orderList.forEach(function(item) {
-          var k = item.key, d = item.data; farmStore.orders[k] = d;
-          if (d.status === 'Pending') pend++;
-          var badgeSt = d.status === 'Delivered' ? 'badge-success' : (d.status === 'Cancelled' ? 'badge-danger' : 'badge-warning');
-          var rowBg = (d.status === 'Pending') ? 'background: #fff8f8; border-left: 4px solid #d32f2f;' : '';
-          if (body) body.innerHTML += '<tr style="' + rowBg + '"><td>' + formatDateBR(d.date) + '</td><td><strong>' + (d.customer || '-') + '</strong>' + (d.phone ? '<br><small>📞 ' + d.phone + '</small>' : '') + '</td><td>' + (d.items || '-') + '</td><td>₹ ' + (d.total || 0) + '</td><td style="color:green; font-weight:600;">₹ ' + (d.paid || 0) + '</td><td><span class="badge ' + badgeSt + '">' + (d.status || 'Pending') + '</span></td><td><button class="action-btn btn-info" onclick="editOrder(\'' + k + '\')">Edit</button><button class="action-btn btn-danger" onclick="deleteRecord(\'orders\',\'' + k + '\')">Delete</button></td></tr>';
+        var orderGroupArray = [];
+        for (var gKey in groupedOrders) {
+          orderGroupArray.push(groupedOrders[gKey]);
+        }
+
+        orderGroupArray.sort(function(a, b) {
+          var hasPendingA = a.statuses.includes('Pending') ? 0 : 1;
+          var hasPendingB = b.statuses.includes('Pending') ? 0 : 1;
+          if (hasPendingA !== hasPendingB) return hasPendingA - hasPendingB;
+          return b.date.localeCompare(a.date);
         });
+
+        orderGroupArray.forEach(function(og) {
+          var isPending = og.statuses.includes('Pending');
+          if (isPending) pend++;
+
+          var allDelivered = og.statuses.every(function(st) { return st === 'Delivered'; });
+          var allCancelled = og.statuses.every(function(st) { return st === 'Cancelled'; });
+          var mainStatus = isPending ? 'Pending' : (allDelivered ? 'Delivered' : (allCancelled ? 'Cancelled' : 'Mixed'));
+
+          var badgeSt = mainStatus === 'Delivered' ? 'badge-success' : (mainStatus === 'Cancelled' ? 'badge-danger' : 'badge-warning');
+          var rowBg = isPending ? 'background: #fff8f8; border-left: 4px solid #d32f2f;' : '';
+
+          var multiBadge = og.itemsList.length > 1 ? '<span style="background:#e3f2fd; color:#0288d1; font-size:10px; padding:2px 6px; border-radius:10px; margin-left:5px;">(' + og.itemsList.length + 'টি শিফট)</span>' : '';
+
+          // এডিট করার জন্য প্রথম কি ব্যবহার হবে
+          var targetEditKey = og.originalKeys[0].key;
+
+          if (body) {
+            body.innerHTML += '<tr style="' + rowBg + '">' +
+              '<td>' + formatDateBR(og.date) + '</td>' +
+              '<td><strong>' + og.customer + '</strong>' + multiBadge + (og.phone ? '<br><small>📞 ' + og.phone + '</small>' : '') + '</td>' +
+              '<td>' + og.itemsList.join(' | ') + '</td>' +
+              '<td>₹ ' + og.totalSum + '</td>' +
+              '<td style="color:green; font-weight:600;">₹ ' + og.paidSum + '</td>' +
+              '<td><span class="badge ' + badgeSt + '">' + mainStatus + '</span></td>' +
+              '<td>' +
+                '<button class="action-btn btn-info" onclick="editOrder(\'' + targetEditKey + '\')">Edit</button>' +
+                '<button class="action-btn btn-danger" onclick="deleteRecord(\'orders\',\'' + targetEditKey + '\')">Delete</button>' +
+              '</td>' +
+            '</tr>';
+          }
+        });
+
         if (getEl('dash-pending-orders')) getEl('dash-pending-orders').innerText = pend;
       });
 
