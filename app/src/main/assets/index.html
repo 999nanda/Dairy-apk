@@ -1122,11 +1122,12 @@
         if (!custSnap.exists()) return;
         
         db.ref('orders').once('value', function(ordSnap) {
-          var existingOrders = {};
+          var existingCustomersToday = {};
           ordSnap.forEach(function(o) {
             var val = o.val();
             if (val && val.date === todayISO && val.customer) {
-              existingOrders[val.customer.trim().toLowerCase()] = true;
+              // স্ট্যাটাস যাই হোক না কেন (Pending, Delivered, Cancelled), আজকের দিনে কাস্টমার থাকলে আর ডুপ্লিকেট জেনারেট করবে না
+              existingCustomersToday[val.customer.trim().toLowerCase()] = true;
             }
           });
 
@@ -1138,7 +1139,7 @@
             if (demand <= 0) return;
 
             var cKey = cName.toLowerCase();
-            if (!existingOrders[cKey]) {
+            if (!existingCustomersToday[cKey]) {
               var newOrder = {
                 date: todayISO,
                 customer: cName,
