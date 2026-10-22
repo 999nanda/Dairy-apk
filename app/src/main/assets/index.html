@@ -822,7 +822,7 @@
         </div>
       </div>
 
-      <!-- ৭. Orders (গ্রুপড ও সিঙ্গেল রো ভিউ সহ) -->
+      <!-- ৭. Orders (গ্রুপড ও সিঙ্গেল রো ভিউ, সঠিক এডিট সহ) -->
       <div id="tab-orders" class="tab-content" style="display: none;">
         <div class="card">
           <h2>📦 Orders Management</h2>
@@ -844,7 +844,7 @@
         <div class="card">
           <h2>অর্ডার তালিকা (Order List)</h2>
           <div style="background:#ffebee; border-left:4px solid #d32f2f; padding:8px 12px; border-radius:6px; font-size:12px; margin-bottom:12px; color:#c62828;">
-            ⚠️ <strong>লক্ষ্য করুন:</strong> একই তারিখে একই কাস্টমারের একাধিক এন্ট্রি একত্রিত করে একটি গোছালো সারিতে দেখানো হচ্ছে। মাল্টিপল এন্ট্রি থাকলে তার পাশে ব্যাজ থাকবে।
+            ⚠️ <strong>লক্ষ্য করুন:</strong> একই তারিখে একই কাস্টমারের একাধিক এন্ট্রি একত্রিত করে একটি গোছালো সারিতে দেখানো হচ্ছে। এডিট করার সময় নির্দিষ্ট এন্ট্রিটিই আপডেট হবে।
           </div>
           <div class="table-container">
             <table>
@@ -1126,7 +1126,6 @@
           ordSnap.forEach(function(o) {
             var val = o.val();
             if (val && val.date === todayISO && val.customer) {
-              // কাস্টমার নাম + ডেট মিলে ইউনিক কি তৈরি করা হলো যাতে স্ট্যাটাস পরিবর্তন হলেও ডুপ্লিকেট না হয়
               var uniqueKey = val.date + '_' + val.customer.trim().toLowerCase();
               existingKeysToday[uniqueKey] = true;
             }
@@ -1789,6 +1788,7 @@
       cancelCustomerEdit();
     }
 
+    // অর্ডার এডিট ও ফিক্সড কি হ্যান্ডলিং
     var eOrdKey = null;
     function editOrder(k) {
       var d = farmStore.orders[k]; if (!d) return; eOrdKey = k;
@@ -1989,8 +1989,11 @@
       });
 
       db.ref('orders').on('value', function(snap) {
-        farmStore.orders = {}; var body = getEl('ordersTableBody'); if (body) body.innerHTML = '';
-        var pend = 0, groupedOrders = {};
+        farmStore.orders = {}; 
+        var body = getEl('ordersTableBody'); 
+        if (body) body.innerHTML = '';
+        var pend = 0;
+        var groupedOrders = {};
 
         snap.forEach(function(c) {
           var d = c.val();
@@ -2016,7 +2019,7 @@
           groupedOrders[groupKey].totalSum += Number(d.total) || 0;
           groupedOrders[groupKey].paidSum += Number(d.paid) || 0;
           groupedOrders[groupKey].statuses.push(d.status || 'Pending');
-          groupedOrders[groupKey].originalKeys.push({ key: k, status: d.status || 'Pending' });
+          groupedOrders[groupKey].originalKeys.push({ key: k, status: d.status || 'Pending', items: d.items, total: d.total, paid: d.paid });
         });
 
         var orderGroupArray = [];
@@ -2041,11 +2044,23 @@
 
           var badgeSt = mainStatus === 'Delivered' ? 'badge-success' : (mainStatus === 'Cancelled' ? 'badge-danger' : 'badge-warning');
           var rowBg = isPending ? 'background: #fff8f8; border-left: 4px solid #d32f2f;' : '';
-
           var multiBadge = og.itemsList.length > 1 ? '<span style="background:#e3f2fd; color:#0288d1; font-size:10px; padding:2px 6px; border-radius:10px; margin-left:5px;">(' + og.itemsList.length + 'টি শিফট)</span>' : '';
 
-          // এডিট করার জন্য প্রথম কি ব্যবহার হবে
+          // প্রতিটি অর্ডারের সঠিক এডিট কি (যদি একাধিক শিফট থাকে তবে প্রথমটি বা পেন্ডিংটি এডিট করার জন্য সিলেক্ট হবে)
           var targetEditKey = og.originalKeys[0].key;
+          og.originalKeys.forEach(function(ok) {
+            farmStore.orders[ok.key] = {
+              date: og.date,
+              customer: og.customer,
+              phone: og.phone,
+              area: '',
+              items: ok.items,
+              total: ok.total,
+              paid: ok.paid,
+              status: ok.status
+            };
+            if (ok.status === 'Pending') targetEditKey = ok.key;
+          });
 
           if (body) {
             body.innerHTML += '<tr style="' + rowBg + '">' +
@@ -2063,7 +2078,9 @@
           }
         });
 
-        if (getEl('dash-pending-orders')) getEl('dash-pending-orders').innerText = pend;
+        if (getEl('dash-pending-orders')) {
+          getEl('dash-pending-orders').innerText = pend;
+        }
       });
 
       db.ref('expenses').on('value', function(snap) {
