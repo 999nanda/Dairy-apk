@@ -826,7 +826,7 @@
         </div>
       </div>
 
-      <!-- ৭. Orders (Sales Ledger-এর মতো গোছালো ও সঠিক তথ্যসহ) -->
+      <!-- ৭. Orders -->
       <div id="tab-orders" class="tab-content" style="display: none;">
         <div class="card">
           <h2>📦 Orders Management</h2>
@@ -1933,18 +1933,64 @@
       getEl('orderStatus').value = 'Pending'; getEl('orderSubmitBtn').innerText = 'Save Order'; getEl('orderCancelBtn').style.display = 'none';
     }
     function saveOrder() {
-      var cust = (getEl('orderCustomer').value || '').trim(); var items = (getEl('orderItems').value || '').trim();
+      var cust = (getEl('orderCustomer').value || '').trim(); 
+      var items = (getEl('orderItems').value || '').trim();
       if (!cust || !items) return alert('নাম ও বিবরণ দিন!');
-      var status = getEl('orderStatus').value, total = parseFloat(getEl('orderTotal').value)||0, paid = parseFloat(getEl('orderPaid').value)||0;
-      var data = { date: getEl('orderDate').value, customer: cust, phone: getEl('orderPhone').value||'', area: getEl('orderArea').value||'', items: items, total: total, paid: paid, status: status };
+      
+      var status = getEl('orderStatus').value; 
+      var total = parseFloat(getEl('orderTotal').value) || 0; 
+      var paid = parseFloat(getEl('orderPaid').value) || 0;
+      var deliveryDate = getEl('orderDate').value;
+      var phone = (getEl('orderPhone') ? getEl('orderPhone').value : '').trim();
+      var area = (getEl('orderArea') ? getEl('orderArea').value : '').trim();
+
+      // যদি কাস্টমার ডিরেক্টরিতে ফোন বা এরিয়া থাকে, সেখান থেকে নিয়ে নেওয়া
+      for (var ck in farmStore.customers) {
+        var cObj = farmStore.customers[ck];
+        if (cObj && cObj.name && cObj.name.trim().toLowerCase() === cust.toLowerCase()) {
+          if (!phone && cObj.phone) phone = cObj.phone;
+          if (!area && cObj.area) area = cObj.area.trim();
+          break;
+        }
+      }
+
+      var data = { 
+        date: deliveryDate, 
+        customer: cust, 
+        phone: phone, 
+        area: area, 
+        items: items, 
+        total: total, 
+        paid: paid, 
+        status: status 
+      };
+
       if (db) {
         if (eOrdKey) {
-          db.ref('orders/' + eOrdKey).update(data);
-        } else {
-          db.ref('orders').push(data);
+          db.ref('orders/' + eOrdKey).remove(); // পুরনো অর্ডারটি ডিলিট করে নতুন আপডেট স্ট্যাটাসে সেভ হবে
         }
-        if (status === 'Delivered' && total > 0) {
-          db.ref('sales').push({ date: data.date, name: cust, phone: data.phone, area: data.area, addr: '', item: items, qty: 1, rate: total, total: total, paid: paid, due: Math.max(0, total - paid), payments: [] });
+        
+        // যদি Delivered করা হয়, তবে সেলস খাতায় এন্ট্রি যোগ হবে এবং অর্ডার লিস্ট থেকে রিমুভ হয়ে যাবে (পেন্ডিং থাকবে না)
+        if (status === 'Delivered') {
+          if (total > 0) {
+            db.ref('sales').push({ 
+              date: deliveryDate, 
+              name: cust, 
+              phone: phone, 
+              area: area, 
+              addr: '', 
+              item: items, 
+              qty: 1, 
+              rate: total, 
+              total: total, 
+              paid: paid, 
+              due: Math.max(0, total - paid), 
+              payments: [] 
+            });
+          }
+        } else {
+          // Pending বা Cancelled হলে অর্ডারে সেভ থাকবে
+          db.ref('orders').push(data);
         }
       }
       cancelOrderEdit();
