@@ -116,7 +116,7 @@
 
     window.onload = function() {
       var todayISO = new Date().toISOString().split('T')[0];
-      var defaultDateIds = ['milkDate', 'saleDate', 'orderDate', 'expDate', 'brAiDate', 'hlthDate', 'ledgerPayDate'];
+      var defaultDateIds = ['milkDate', 'saleDate', 'orderDate', 'expDate', 'brAiDate', 'hlthDate', 'ledgerPayDate', 'feedDate'];
       defaultDateIds.forEach(function(id) {
         if (getEl(id)) {
           getEl(id).value = todayISO;
@@ -490,15 +490,16 @@
       overflow-y: auto;
     }
 
+    /* ইনভয়েস কার্ড বড় ও সুন্দর করা হলো যাতে পুরো পেজ ভরে থাকে */
     .invoice-card {
       background: white;
-      max-width: 520px;
+      max-width: 750px;
       width: 100%;
-      border-radius: 12px;
-      padding: 24px;
+      border-radius: 16px;
+      padding: 32px;
       position: relative;
-      box-shadow: 0 10px 30px rgba(0,0,0,0.3);
-      max-height: 90vh;
+      box-shadow: 0 15px 40px rgba(0,0,0,0.35);
+      max-height: 95vh;
       overflow-y: auto;
       box-sizing: border-box;
     }
@@ -518,18 +519,18 @@
     .invoice-table {
       width: 100% !important;
       border-collapse: collapse !important;
-      margin: 14px 0 !important;
+      margin: 18px 0 !important;
     }
 
     .invoice-table th, .invoice-table td {
-      padding: 8px 6px !important;
-      font-size: 12.5px !important;
+      padding: 10px 10px !important;
+      font-size: 14px !important;
     }
 
     #invoicePrintArea {
       position: relative;
       background: white;
-      padding: 10px;
+      padding: 15px;
       width: 100%;
       box-sizing: border-box;
     }
@@ -539,8 +540,8 @@
       top: 50%;
       left: 50%;
       transform: translate(-50%, -50%);
-      width: 220px;
-      height: 220px;
+      width: 280px;
+      height: 280px;
       opacity: 0.12;
       pointer-events: none;
       z-index: 0;
@@ -641,8 +642,9 @@
       <button onclick="switchTab('sales', this)">💰 Sales</button>
       <button onclick="switchTab('customers', this)">👥 Customer</button>
       <button onclick="switchTab('orders', this)">📦 Orders</button>
+      <button onclick="switchTab('feed', this)">🌾 Feed</button>
       <button onclick="switchTab('expenses', this)">🧾 Expenses</button>
-      <button onclick="switchTab('stock', this)">🌾 Stock</button>
+      <button onclick="switchTab('stock', this)">📦 Stock</button>
       <button onclick="switchTab('semen', this)">💉 Semen/Bull</button>
       <button onclick="switchTab('health', this)">🩺 Health</button>
       <button onclick="switchTab('reports', this)">📈 Reports</button>
@@ -666,7 +668,10 @@
       <!-- ২. Cattle -->
       <div id="tab-cattle" class="tab-content" style="display: none;">
         <div class="card">
-          <h2>🐄 Cattle Register</h2>
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+            <h2 style="margin:0; border:none; padding:0;">🐄 Cattle Register</h2>
+            <button class="action-btn btn-info" onclick="switchTab('dashboard', document.querySelector('nav button'))">⬅ Back (ফিরে যান)</button>
+          </div>
           <div class="form-grid">
             <div class="input-group"><label>Tag ID *</label><input type="text" id="cowTag" placeholder="NDA-001"></div>
             <div class="input-group"><label>Breed</label><input type="text" id="cowBreed" placeholder="Jersey / HF"></div>
@@ -700,7 +705,10 @@
       <!-- ৩. Breeding -->
       <div id="tab-breeding" class="tab-content" style="display: none;">
         <div class="card">
-          <h2>🧬 AI • Pregnancy • Calving • Pedigree</h2>
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+            <h2 style="margin:0; border:none; padding:0;">🧬 AI • Pregnancy • Calving • Pedigree</h2>
+            <button class="action-btn btn-info" onclick="switchTab('dashboard', document.querySelector('nav button'))">⬅ Back (ফিরে যান)</button>
+          </div>
           <div class="form-grid">
             <div class="input-group"><label>Cattle ID *</label><input type="text" id="brCowTag" list="cattleTagList" placeholder="Tag সিলেক্ট বা টাইপ করুন"></div>
             <div class="input-group"><label>AI Date *</label><input type="date" id="brAiDate" onchange="autoCalcExpectedCalving()"></div>
@@ -732,7 +740,10 @@
       <!-- ৪. Milk -->
       <div id="tab-milk" class="tab-content" style="display: none;">
         <div class="card">
-          <h2>🥛 Milk Production Entry</h2>
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+            <h2 style="margin:0; border:none; padding:0;">🥛 Milk Production Entry</h2>
+            <button class="action-btn btn-info" onclick="switchTab('dashboard', document.querySelector('nav button'))">⬅ Back (ফিরে যান)</button>
+          </div>
           <div class="form-grid">
             <div class="input-group"><label>Date *</label><input type="date" id="milkDate"></div>
             <div class="input-group"><label>Tag ID *</label><input type="text" id="milkCowTag" list="cattleTagList" placeholder="Tag সিলেক্ট বা টাইপ করুন"></div>
@@ -759,7 +770,10 @@
       <!-- ৫. Sales -->
       <div id="tab-sales" class="tab-content" style="display: none;">
         <div class="card">
-          <h2>💰 Sales & Billing</h2>
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+            <h2 style="margin:0; border:none; padding:0;">💰 Sales & Billing</h2>
+            <button class="action-btn btn-info" onclick="switchTab('dashboard', document.querySelector('nav button'))">⬅ Back (ফিরে যান)</button>
+          </div>
           <div class="form-grid">
             <div class="input-group"><label>Date *</label><input type="date" id="saleDate"></div>
             <div class="input-group"><label>Customer Name *</label><input type="text" id="saleCustomer" list="customerNameList" oninput="onSaleCustomerInput()" placeholder="নাম লিখুন"></div>
@@ -799,7 +813,10 @@
       <!-- ৬. Customer -->
       <div id="tab-customers" class="tab-content" style="display: none;">
         <div class="card">
-          <h2>👥 Customer Directory</h2>
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+            <h2 style="margin:0; border:none; padding:0;">👥 Customer Directory</h2>
+            <button class="action-btn btn-info" onclick="switchTab('dashboard', document.querySelector('nav button'))">⬅ Back (ফিরে যান)</button>
+          </div>
           <div class="form-grid">
             <div class="input-group"><label>Customer Name *</label><input type="text" id="custName" placeholder="নাম"></div>
             <div class="input-group"><label>Phone Number *</label><input type="text" id="custPhone" placeholder="মোবাইল"></div>
@@ -826,10 +843,13 @@
         </div>
       </div>
 
-      <!-- ৭. Orders (শুধুমাত্র পেন্ডিং বা বর্তমান অর্ডার দেখানোর নিখুঁত লিস্ট) -->
+      <!-- ৭. Orders -->
       <div id="tab-orders" class="tab-content" style="display: none;">
         <div class="card">
-          <h2>📦 Orders Management</h2>
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+            <h2 style="margin:0; border:none; padding:0;">📦 Orders Management</h2>
+            <button class="action-btn btn-info" onclick="switchTab('dashboard', document.querySelector('nav button'))">⬅ Back (ফিরে যান)</button>
+          </div>
           <div class="form-grid">
             <div class="input-group"><label>Delivery Date *</label><input type="date" id="orderDate"></div>
             <div class="input-group"><label>Customer Name *</label><input type="text" id="orderCustomer" list="customerNameList" oninput="onOrderCustomerInput()" placeholder="নাম লিখুন"></div>
@@ -847,7 +867,7 @@
         </div>
         <div class="card">
           <div style="display:flex; justify-content:space-between; align-items:center; gap:12px; margin-bottom:14px;">
-            <h2 style="margin:0; border:none; padding:0;">অর্ডার তালিকা (Pending Orders)</h2>
+            <h2 style="margin:0; border:none; padding:0;">অর্ডার তালিকা (Order Ledger & History)</h2>
             <div style="display:flex; gap:8px;">
               <input type="text" id="orderSearchInput" oninput="renderOrdersTable()" placeholder="🔍 কাস্টমার খুঁজুন..." style="width:200px; padding:7px;">
               <select id="orderAreaFilter" onchange="renderOrdersTable()" style="width:150px; padding:7px;"><option value="">সকল এলাকা</option></select>
@@ -855,18 +875,52 @@
           </div>
           <div class="table-container">
             <table>
-              <thead><tr><th>তারিখ</th><th>Customer Name</th><th>Area & Address</th><th>Items & Quantity</th><th>Total ₹</th><th>Status</th><th>Action</th></tr></thead>
+              <thead><tr><th>তারিখ</th><th>Customer Name</th><th>Area & Address</th><th>Total Orders / Items</th><th>Status</th><th>Action</th></tr></thead>
               <tbody id="ordersTableBody"></tbody>
             </table>
           </div>
-          <p id="ordersNoData" style="text-align: center; color: #777; font-size: 13px; margin-top: 15px; display: none;">কোনো পেন্ডিং অর্ডার নেই।</p>
+          <p id="ordersNoData" style="text-align: center; color: #777; font-size: 13px; margin-top: 15px; display: none;">কোনো অর্ডার রেকর্ড নেই।</p>
+        </div>
+      </div>
+
+      <!-- নতুন ট্যাব: Feed (পশুখাদ্য ব্যবস্থাপনা) -->
+      <div id="tab-feed" class="tab-content" style="display: none;">
+        <div class="card">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+            <h2 style="margin:0; border:none; padding:0;">🌾 Feed Management (পশুখাদ্য ও দানাদার খাদ্য)</h2>
+            <button class="action-btn btn-info" onclick="switchTab('dashboard', document.querySelector('nav button'))">⬅ Back (ফিরে যান)</button>
+          </div>
+          <div class="form-grid">
+            <div class="input-group"><label>Date (তারিখ) *</label><input type="date" id="feedDate"></div>
+            <div class="input-group"><label>Feed Type (খাদ্যের ধরণ) *</label><select id="feedType"><option value="Cattle Feed / Pellets">Cattle Feed / Pellets (ক্যাটল ফিড)</option><option value="Wheat Bran (Bhusi)">Wheat Bran (গমের ভুসি)</option><option value="Rice Bran (Khud/ কুঁড়ো)">Rice Bran (রাইস ব্রান/কুঁড়ো)</option><option value="Mustard Oil Cake (Khol)">Mustard Oil Cake (সর্ষের খোল)</option><option value="Green Grass / Fodder">Green Grass / Fodder (সবুজ ঘাস)</option><option value="Dry Straw (খড়)">Dry Straw (শুকনো খড়)</option><option value="Mineral Mixture / Salt">Mineral Mixture / Salt (মিনারেল ও লবণ)</option><option value="Other Feed">Other Feed (অন্যান্য)</option></select></div>
+            <div class="input-group"><label>Quantity & Unit (পরিমাণ ও একক) *</label><input type="text" id="feedQty" placeholder="যেমন: ২ বস্তা বা ৫০ কেজি"></div>
+            <div class="input-group"><label>Total Cost ₹ (মোট খরচ) *</label><input type="number" id="feedCost" placeholder="₹"></div>
+            <div class="input-group"><label>Note / Supplier (সরবরাহকারী বা নোট)</label><input type="text" id="feedNote" placeholder="কোথা থেকে কেনা বা কার নাম"></div>
+          </div>
+          <div style="display:flex; gap:10px;">
+            <button class="btn" id="feedSubmitBtn" onclick="saveFeed()">Save Feed Record</button>
+            <button class="btn btn-warning" id="feedCancelBtn" style="display:none;" onclick="cancelFeedEdit()">Cancel</button>
+          </div>
+        </div>
+        <div class="card">
+          <h2>পশুখাদ্যের তালিকা (Feed Records)</h2>
+          <div class="table-container">
+            <table>
+              <thead><tr><th>তারিখ</th><th>খাদ্যের ধরণ</th><th>পরিমাণ</th><th>মোট খরচ (₹)</th><th>নোট / সরবরাহকারী</th><th>Action</th></tr></thead>
+              <tbody id="feedTableBody"></tbody>
+            </table>
+          </div>
+          <p id="feedNoData" style="text-align: center; color: #777; font-size: 13px; margin-top: 15px; display: none;">কোনো খাদ্যের রেকর্ড নেই।</p>
         </div>
       </div>
 
       <!-- ৮. Expenses -->
       <div id="tab-expenses" class="tab-content" style="display: none;">
         <div class="card">
-          <h2>🧾 Expense Ledger</h2>
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+            <h2 style="margin:0; border:none; padding:0;">🧾 Expense Ledger</h2>
+            <button class="action-btn btn-info" onclick="switchTab('dashboard', document.querySelector('nav button'))">⬅ Back (ফিরে যান)</button>
+          </div>
           <div class="form-grid">
             <div class="input-group"><label>Date *</label><input type="date" id="expDate"></div>
             <div class="input-group"><label>Category</label><select id="expCategory"><option value="Feed & Fodder">Feed & Fodder</option><option value="Medicine & Health">Medicine & Health</option><option value="Labour Salary">Labour Salary</option><option value="Electricity / Utilities">Electricity / Utilities</option><option value="Other">Other</option></select></div>
@@ -893,7 +947,10 @@
       <!-- ৯. Stock -->
       <div id="tab-stock" class="tab-content" style="display: none;">
         <div class="card">
-          <h2>🌾 Stock & Inventory</h2>
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+            <h2 style="margin:0; border:none; padding:0;">🌾 Stock & Inventory</h2>
+            <button class="action-btn btn-info" onclick="switchTab('dashboard', document.querySelector('nav button'))">⬅ Back (ফিরে যান)</button>
+          </div>
           <div class="form-grid">
             <div class="input-group"><label>Item Name *</label><input type="text" id="stkName" placeholder="ফিড"></div>
             <div class="input-group"><label>Quantity *</label><input type="number" id="stkQty" placeholder="পরিমাণ"></div>
@@ -919,7 +976,10 @@
       <!-- ১০. Semen -->
       <div id="tab-semen" class="tab-content" style="display: none;">
         <div class="card">
-          <h2>💉 Semen & Bull Stock</h2>
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+            <h2 style="margin:0; border:none; padding:0;">💉 Semen & Bull Stock</h2>
+            <button class="action-btn btn-info" onclick="switchTab('dashboard', document.querySelector('nav button'))">⬅ Back (ফিরে যান)</button>
+          </div>
           <div class="form-grid">
             <div class="input-group"><label>Batch No *</label><input type="text" id="semBatch" placeholder="HF-8902"></div>
             <div class="input-group"><label>Breed</label><input type="text" id="semBreed" placeholder="জাত"></div>
@@ -945,7 +1005,10 @@
       <!-- ১১. Health -->
       <div id="tab-health" class="tab-content" style="display: none;">
         <div class="card">
-          <h2>🩺 Health & Vaccination Register</h2>
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+            <h2 style="margin:0; border:none; padding:0;">🩺 Health & Vaccination Register</h2>
+            <button class="action-btn btn-info" onclick="switchTab('dashboard', document.querySelector('nav button'))">⬅ Back (ফিরে যান)</button>
+          </div>
           <div class="form-grid">
             <div class="input-group"><label>Date *</label><input type="date" id="hlthDate"></div>
             <div class="input-group"><label>Tag ID *</label><input type="text" id="hlthCowTag" list="cattleTagList" placeholder="Tag"></div>
@@ -972,7 +1035,10 @@
       <!-- ১২. Reports -->
       <div id="tab-reports" class="tab-content" style="display: none;">
         <div class="card">
-          <h2>📈 Overall Farm Reports</h2>
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+            <h2 style="margin:0; border:none; padding:0;">📈 Overall Farm Reports</h2>
+            <button class="action-btn btn-info" onclick="switchTab('dashboard', document.querySelector('nav button'))">⬅ Back (ফিরে যান)</button>
+          </div>
           <div style="line-height: 2.2; font-size: 15px; margin-top: 10px;">
             <p><strong>Total Milk Produced:</strong> <span id="rep-milk" style="color:var(--primary); font-weight:bold;">0</span> L</p>
             <p><strong>Total Sales Revenue:</strong> <span id="rep-sales" style="color:green; font-weight:bold;">₹ 0</span></p>
@@ -986,14 +1052,17 @@
       <!-- ১৩. Backup -->
       <div id="tab-backup" class="tab-content" style="display: none;">
         <div class="card">
-          <h2>💾 System Backup & Security</h2>
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+            <h2 style="margin:0; border:none; padding:0;">💾 System Backup & Security</h2>
+            <button class="action-btn btn-info" onclick="switchTab('dashboard', document.querySelector('nav button'))">⬅ Back (ফিরে যান)</button>
+          </div>
           <button class="btn btn-info" onclick="downloadBackup()">📥 Download Farm Data Backup (JSON)</button>
         </div>
       </div>
     </div>
   </div>
 
-  <!-- ইনভয়েস মোডাল -->
+  <!-- ইনভয়েস মোডাল (বড় পেজ সাইজ) -->
   <div id="invoiceModal">
     <div class="invoice-card">
       <div id="invoicePrintArea">
@@ -1001,29 +1070,29 @@
         <div class="invoice-content">
           <div style="display:flex; justify-content:space-between; align-items:center; border-bottom: 2.5px solid #1b5e20; padding-bottom: 12px; margin-bottom: 14px;">
             <div style="display:flex; align-items:center; gap:12px;">
-              <img src="logo.png" style="height:50px; width:50px; border-radius:50%; object-fit:cover;">
+              <img src="logo.png" style="height:55px; width:55px; border-radius:50%; object-fit:cover;">
               <div>
-                <h2 style="margin:0; color:#1b5e20; font-size:18px; font-weight:800; border:none; padding:0;">NANDA DAIRY & AGRO</h2>
-                <p id="invMainDocTitle" style="font-size:11px; color:#333; margin:2px 0 0 0; font-weight:600;">ইনভয়েস / INVOICE</p>
+                <h2 style="margin:0; color:#1b5e20; font-size:20px; font-weight:800; border:none; padding:0;">NANDA DAIRY & AGRO</h2>
+                <p id="invMainDocTitle" style="font-size:12px; color:#333; margin:2px 0 0 0; font-weight:600;">ইনভয়েস / INVOICE (ক্যাশ মেমো)</p>
               </div>
             </div>
             <div style="text-align:right;">
-              <span style="border: 2px dashed #2e7d32; color: #2e7d32; font-weight: 800; font-size: 10px; padding: 3px 7px; border-radius: 6px;">✔ VERIFIED</span>
+              <span style="border: 2px dashed #2e7d32; color: #2e7d32; font-weight: 800; font-size: 11px; padding: 4px 8px; border-radius: 6px;">✔ VERIFIED</span>
             </div>
           </div>
-          <div id="invoiceDetails" style="font-size: 12.5px; line-height: 1.6;"></div>
-          <div style="display:flex; justify-content:space-between; align-items:flex-end; margin-top: 24px; border-top: 1px dashed #aaa; padding-top: 12px;">
-            <div><span style="font-size:10px; color:#555;">সিস্টেম জেনারেটেড</span></div>
+          <div id="invoiceDetails" style="font-size: 13.5px; line-height: 1.8;"></div>
+          <div style="display:flex; justify-content:space-between; align-items:flex-end; margin-top: 32px; border-top: 1px dashed #aaa; padding-top: 14px;">
+            <div><span style="font-size:11px; color:#555;">সিস্টেম জেনারেটেড মূল ইনভয়েস</span></div>
             <div style="text-align: right;">
-              <div style="font-family:'Brush Script MT', cursive, sans-serif; font-size: 24px; color: #1b5e20;">Bibhas Munshi</div>
-              <div style="border-top: 1.5px solid #222; padding-top: 2px; font-size: 10px;"><strong>Bibhas Munshi (Authorized)</strong></div>
+              <div style="font-family:'Brush Script MT', cursive, sans-serif; font-size: 26px; color: #1b5e20;">Bibhas Munshi</div>
+              <div style="border-top: 1.5px solid #222; padding-top: 3px; font-size: 11px;"><strong>Bibhas Munshi (Authorized)</strong></div>
             </div>
           </div>
         </div>
       </div>
-      <div class="no-print" style="display: flex; gap: 10px; margin-top: 16px;">
-        <button class="btn btn-info" style="flex: 1;" onclick="printSpecificModal('invoice')">🖨️ প্রিন্ট করুন</button>
-        <button class="btn btn-danger" style="flex: 1;" onclick="closeInvoice()">বন্ধ করুন</button>
+      <div class="no-print" style="display: flex; gap: 10px; margin-top: 20px;">
+        <button class="btn btn-info" style="flex: 1; padding: 12px;" onclick="printSpecificModal('invoice')">🖨️ প্রিন্ট করুন</button>
+        <button class="btn btn-danger" style="flex: 1; padding: 12px;" onclick="closeInvoice()">বন্ধ করুন</button>
       </div>
     </div>
   </div>
@@ -1074,7 +1143,7 @@
     var farmStore = {
       cattle: {}, breeding: {}, milk: {}, sales: {},
       customers: {}, orders: {}, expenses: {}, stock: {},
-      semen: {}, health: {}
+      semen: {}, health: {}, feed: {}
     };
     window.activeLedgerCustomerName = '';
 
@@ -1544,7 +1613,7 @@
       body.innerHTML = html;
     }
 
-    // অর্ডার তালিকা রেন্ডার (শুধুমাত্র Pending বা ডেলিভারি বাকি অর্ডারগুলো নিখুঁতভাবে দেখানোর জন্য)
+    // অর্ডার তালিকা রেন্ডার (সঠিক কাস্টমার ডিরেক্টরি ডেটা সিঙ্ক ও এরিয়া ফিল্টারসহ)
     function renderOrdersTable() {
       var body = getEl('ordersTableBody');
       if (!body) return;
@@ -1966,13 +2035,13 @@
       };
 
       if (db) {
-        // যদি এটি এডিট করা হয় বা নতুন সেভ করা হয়, আগে পুরনো অর্ডারটি ডাটাবেস থেকে রিমুভ করব যাতে ডুপ্লিকেট না থাকে
+        // এডিট করা হলে পুরনো অর্ডারটি রিমুভ হবে
         if (eOrdKey) {
           db.ref('orders/' + eOrdKey).remove();
         }
 
+        // যদি Delivered করা হয় তবে সেলসে এন্ট্রি যাবে এবং অর্ডার লিস্ট থেকে পাকাপাকি রিমুভ হবে
         if (status === 'Delivered') {
-          // Delivered হলে সেলস খাতায় এন্ট্রি যোগ হবে এবং অর্ডার লিস্ট থেকে পাকাপাকিভাবে মুছে যাবে (পেন্ডিং থাকবে না)
           if (total > 0) {
             db.ref('sales').push({ 
               date: deliveryDate, 
@@ -1990,11 +2059,85 @@
             });
           }
         } else {
-          // Pending বা Cancelled হলে অর্ডারে সেভ থাকবে
           db.ref('orders').push(data);
         }
       }
       cancelOrderEdit();
+    }
+
+    // নতুন ট্যাব: Feed (পশুখাদ্য ব্যবস্থাপনা) সেভ ও এডিট ফাংশন
+    var eFeedKey = null;
+    function editFeed(k) {
+      var d = farmStore.feed[k]; if (!d) return; eFeedKey = k;
+      getEl('feedDate').value = d.date || '';
+      getEl('feedType').value = d.type || 'Cattle Feed / Pellets';
+      getEl('feedQty').value = d.qty || '';
+      getEl('feedCost').value = d.cost || '';
+      getEl('feedNote').value = d.note || '';
+      getEl('feedSubmitBtn').innerText = 'Update Feed';
+      getEl('feedCancelBtn').style.display = 'inline-flex';
+      getEl('feedDate').scrollIntoView({ behavior: 'smooth' });
+    }
+    function cancelFeedEdit() {
+      eFeedKey = null;
+      ['feedQty','feedCost','feedNote'].forEach(function(i){ if(getEl(i)) getEl(i).value=''; });
+      getEl('feedSubmitBtn').innerText = 'Save Feed Record';
+      getEl('feedCancelBtn').style.display = 'none';
+    }
+    function saveFeed() {
+      var dt = getEl('feedDate').value;
+      var type = getEl('feedType').value;
+      var qty = (getEl('feedQty').value || '').trim();
+      var cost = parseFloat(getEl('feedCost').value) || 0;
+      var note = (getEl('feedNote').value || '').trim();
+
+      if (!dt || !qty || cost <= 0) return alert('তারিখ, পরিমাণ ও মোট খরচ দিন!');
+
+      var data = { date: dt, type: type, qty: qty, cost: cost, note: note };
+      if (db) {
+        if (eFeedKey) {
+          db.ref('feed/' + eFeedKey).update(data);
+        } else {
+          db.ref('feed').push(data);
+        }
+      }
+      cancelFeedEdit();
+    }
+
+    function renderFeedTable() {
+      var body = getEl('feedTableBody');
+      if (!body) return;
+      var list = [];
+      for (var k in farmStore.feed) {
+        list.push({ key: k, data: farmStore.feed[k] });
+      }
+      list.sort(function(a, b) {
+        return (b.data.date || '').localeCompare(a.data.date || '');
+      });
+
+      if (list.length === 0) {
+        body.innerHTML = '';
+        if (getEl('feedNoData')) getEl('feedNoData').style.display = 'block';
+        return;
+      }
+      if (getEl('feedNoData')) getEl('feedNoData').style.display = 'none';
+
+      var html = '';
+      list.forEach(function(item) {
+        var k = item.key, d = item.data;
+        html += '<tr>' +
+          '<td>' + formatDateBR(d.date) + '</td>' +
+          '<td><strong>' + (d.type || '-') + '</strong></td>' +
+          '<td>' + (d.qty || '-') + '</td>' +
+          '<td style="color:var(--danger); font-weight:600;">₹ ' + (d.cost || 0) + '</td>' +
+          '<td>' + (d.note || '-') + '</td>' +
+          '<td>' +
+            '<button class="action-btn btn-info" onclick="editFeed(\'' + k + '\')">Edit</button>' +
+            '<button class="action-btn btn-danger" onclick="deleteRecord(\'feed\',\'' + k + '\')">Delete</button>' +
+          '</td>' +
+        '</tr>';
+      });
+      body.innerHTML = html;
     }
 
     window.toggleExpenseDate = function(safeDt) {
@@ -2173,6 +2316,14 @@
           farmStore.orders[c.key] = c.val();
         });
         renderOrdersTable();
+      });
+
+      db.ref('feed').on('value', function(snap) {
+        farmStore.feed = {};
+        snap.forEach(function(c) {
+          farmStore.feed[c.key] = c.val();
+        });
+        renderFeedTable();
       });
 
       db.ref('expenses').on('value', function(snap) {
