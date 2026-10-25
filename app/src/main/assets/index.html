@@ -478,7 +478,6 @@
       border: 2px solid var(--secondary);
     }
 
-    /* মোডাল ফিক্সড লেআউট যাতে লেখা ও লোগো না কাটে */
     #ledgerModal, #invoiceModal {
       display: none;
       position: fixed;
@@ -827,7 +826,7 @@
         </div>
       </div>
 
-      <!-- ৭. Orders (Sales Ledger এর মতো সার্চ ও ফিল্টার সহ গোছালো অর্ডার তালিকা) -->
+      <!-- ৭. Orders -->
       <div id="tab-orders" class="tab-content" style="display: none;">
         <div class="card">
           <h2>📦 Orders Management</h2>
@@ -853,9 +852,6 @@
               <input type="text" id="orderSearchInput" oninput="renderOrdersTable()" placeholder="🔍 কাস্টমার খুঁজুন..." style="width:200px; padding:7px;">
               <select id="orderAreaFilter" onchange="renderOrdersTable()" style="width:150px; padding:7px;"><option value="">সকল এলাকা</option></select>
             </div>
-          </div>
-          <div style="background:#e8f5e9; border-left:4px solid #2e7d32; padding:8px 12px; border-radius:6px; font-size:12px; margin-bottom:12px; color:#1b5e20;">
-            💡 <strong>পরামর্শ:</strong> Sales Ledger-এর মতো এখানে প্রতিটি কাস্টমারকে এক সারিতে দেখানো হচ্ছে। কাস্টমারের নামের ওপর ক্লিক করলে বা 'খাতা' বাটনে ক্লিক করলে তাঁর অর্ডারের ইতিহাস দেখতে পাবেন।
           </div>
           <div class="table-container">
             <table>
@@ -997,7 +993,7 @@
     </div>
   </div>
 
-  <!-- ইনভয়েস মোডাল (লেআউট ও প্রিন্ট ফিক্সড) -->
+  <!-- ইনভয়েস মোডাল -->
   <div id="invoiceModal">
     <div class="invoice-card">
       <div id="invoicePrintArea">
@@ -1548,7 +1544,7 @@
       body.innerHTML = html;
     }
 
-    // অর্ডার তালিকা রেন্ডার (Sales Ledger-এর মতো কাস্টমার সার্চ ও ফিল্টার সহ)
+    // অর্ডার তালিকা রেন্ডার (Sales Ledger এর মতো গোছালো একক সারি ভিউ)
     function renderOrdersTable() {
       var body = getEl('ordersTableBody');
       if (!body) return;
@@ -1590,7 +1586,6 @@
       var list = [];
       for (var cKey in customerMap) {
         var cObj = customerMap[cKey];
-        // সর্বশেষ অর্ডার ডেট বের করা
         var latestDate = '';
         var latestTime = 0;
         cObj.orders.forEach(function(o) {
@@ -1628,7 +1623,6 @@
       var html = '';
       filtered.forEach(function(item) {
         var cName = item.customerName;
-        // প্রতিটি কাস্টমারের অর্ডারগুলোর সামারি তৈরি
         var itemsSummary = [];
         var totalSum = 0;
         var hasPending = false;
@@ -1641,15 +1635,13 @@
 
         var rowStyle = hasPending ? 'background: #fff8f8; border-left: 4px solid #d32f2f;' : '';
         var statusBadge = hasPending ? '<span class="badge badge-danger">Pending</span>' : '<span class="badge badge-success">Completed</span>';
-
-        // খাতা খোলার বা এডিট করার জন্য বাটন
         var firstKey = item.orders[0].key;
 
         html += '<tr style="' + rowStyle + '">' +
           '<td>' + (item.latestDate || '-') + '</td>' +
-          '<td><strong>' + cName + '</strong>' + (item.phone ? '<br><small>📞 ' + item.phone + '</small>' : '') + '</td>' +
-          '<td>' + (item.area ? '<span class="badge badge-warning">' + item.area + '</span><br>' : '') + itemsSummary.join('<br>') + '</td>' +
-          '<td>₹ ' + totalSum + '</td>' +
+          '<td><a href="javascript:void(0)" onclick="showCustomerLedger(\'' + encodeURIComponent(cName) + '\')" style="color:var(--primary); font-weight:bold; text-decoration:underline;">' + cName + '</a>' + (item.phone ? '<br><small>📞 ' + item.phone + '</small>' : '') + '</td>' +
+          '<td>' + (item.area ? '<span class="badge badge-warning">' + item.area + '</span>' : '-') + '</td>' +
+          '<td>' + itemsSummary.join('<br>') + '<br><strong>মোট: ₹ ' + totalSum + '</strong></td>' +
           '<td>' + statusBadge + '</td>' +
           '<td>' +
             '<button class="action-btn" style="background:#455a64; color:white;" onclick="showCustomerLedger(\'' + encodeURIComponent(cName) + '\')">খাতা</button>' +
