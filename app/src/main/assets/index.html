@@ -826,7 +826,7 @@
         </div>
       </div>
 
-      <!-- ৭. Orders -->
+      <!-- ৭. Orders (শুধুমাত্র পেন্ডিং বা বর্তমান অর্ডার দেখানোর নিখুঁত লিস্ট) -->
       <div id="tab-orders" class="tab-content" style="display: none;">
         <div class="card">
           <h2>📦 Orders Management</h2>
@@ -847,7 +847,7 @@
         </div>
         <div class="card">
           <div style="display:flex; justify-content:space-between; align-items:center; gap:12px; margin-bottom:14px;">
-            <h2 style="margin:0; border:none; padding:0;">অর্ডার তালিকা (Order Ledger & History)</h2>
+            <h2 style="margin:0; border:none; padding:0;">অর্ডার তালিকা (Pending Orders)</h2>
             <div style="display:flex; gap:8px;">
               <input type="text" id="orderSearchInput" oninput="renderOrdersTable()" placeholder="🔍 কাস্টমার খুঁজুন..." style="width:200px; padding:7px;">
               <select id="orderAreaFilter" onchange="renderOrdersTable()" style="width:150px; padding:7px;"><option value="">সকল এলাকা</option></select>
@@ -855,11 +855,11 @@
           </div>
           <div class="table-container">
             <table>
-              <thead><tr><th>তারিখ</th><th>Customer Name</th><th>Area & Address</th><th>Total Orders / Items</th><th>Status</th><th>Action</th></tr></thead>
+              <thead><tr><th>তারিখ</th><th>Customer Name</th><th>Area & Address</th><th>Items & Quantity</th><th>Total ₹</th><th>Status</th><th>Action</th></tr></thead>
               <tbody id="ordersTableBody"></tbody>
             </table>
           </div>
-          <p id="ordersNoData" style="text-align: center; color: #777; font-size: 13px; margin-top: 15px; display: none;">কোনো অর্ডার রেকর্ড নেই।</p>
+          <p id="ordersNoData" style="text-align: center; color: #777; font-size: 13px; margin-top: 15px; display: none;">কোনো পেন্ডিং অর্ডার নেই।</p>
         </div>
       </div>
 
@@ -1544,7 +1544,7 @@
       body.innerHTML = html;
     }
 
-    // অর্ডার তালিকা রেন্ডার (সঠিক কাস্টমার ডিরেক্টরি ডেটা সিঙ্ক ও এরিয়া ফিল্টারসহ)
+    // অর্ডার তালিকা রেন্ডার (শুধুমাত্র Pending বা ডেলিভারি বাকি অর্ডারগুলো নিখুঁতভাবে দেখানোর জন্য)
     function renderOrdersTable() {
       var body = getEl('ordersTableBody');
       if (!body) return;
@@ -1558,10 +1558,13 @@
       for (var k in farmStore.orders) {
         var d = farmStore.orders[k];
         if (!d || !d.customer) continue;
+        
+        // শুধুমাত্র Pending অর্ডারগুলো দেখাবে (Delivered হয়ে গেলে অটো সেলসে চলে যাবে এবং লিস্ট থেকে হটে যাবে)
+        if (d.status !== 'Pending') continue;
+
         var rName = d.customer.trim();
         var cKey = rName.toLowerCase();
 
-        // কাস্টমার ডিরেক্টরি থেকে সঠিক ফোন ও এরিয়া ফেচ করা
         var custPhone = d.phone || '';
         var custArea = d.area || '';
         for (var ck in farmStore.customers) {
@@ -1638,16 +1641,14 @@
         var cName = item.customerName;
         var itemsSummary = [];
         var totalSum = 0;
-        var hasPending = false;
 
         item.orders.forEach(function(o) {
           itemsSummary.push(o.data.items + ' (' + formatDateBR(o.data.date) + ')');
           totalSum += Number(o.data.total) || 0;
-          if (o.data.status === 'Pending') hasPending = true;
         });
 
-        var rowStyle = hasPending ? 'background: #fff8f8; border-left: 4px solid #d32f2f;' : '';
-        var statusBadge = hasPending ? '<span class="badge badge-danger">Pending</span>' : '<span class="badge badge-success">Completed</span>';
+        var rowStyle = 'background: #fff8f8; border-left: 4px solid #d32f2f;';
+        var statusBadge = '<span class="badge badge-danger">Pending</span>';
         var firstKey = item.orders[0].key;
 
         html += '<tr style="' + rowStyle + '">' +
@@ -1944,7 +1945,6 @@
       var phone = (getEl('orderPhone') ? getEl('orderPhone').value : '').trim();
       var area = (getEl('orderArea') ? getEl('orderArea').value : '').trim();
 
-      // যদি কাস্টমার ডিরেক্টরিতে ফোন বা এরিয়া থাকে, সেখান থেকে নিয়ে নেওয়া
       for (var ck in farmStore.customers) {
         var cObj = farmStore.customers[ck];
         if (cObj && cObj.name && cObj.name.trim().toLowerCase() === cust.toLowerCase()) {
@@ -1966,12 +1966,13 @@
       };
 
       if (db) {
+        // যদি এটি এডিট করা হয় বা নতুন সেভ করা হয়, আগে পুরনো অর্ডারটি ডাটাবেস থেকে রিমুভ করব যাতে ডুপ্লিকেট না থাকে
         if (eOrdKey) {
-          db.ref('orders/' + eOrdKey).remove(); // পুরনো অর্ডারটি ডিলিট করে নতুন আপডেট স্ট্যাটাসে সেভ হবে
+          db.ref('orders/' + eOrdKey).remove();
         }
-        
-        // যদি Delivered করা হয়, তবে সেলস খাতায় এন্ট্রি যোগ হবে এবং অর্ডার লিস্ট থেকে রিমুভ হয়ে যাবে (পেন্ডিং থাকবে না)
+
         if (status === 'Delivered') {
+          // Delivered হলে সেলস খাতায় এন্ট্রি যোগ হবে এবং অর্ডার লিস্ট থেকে পাকাপাকিভাবে মুছে যাবে (পেন্ডিং থাকবে না)
           if (total > 0) {
             db.ref('sales').push({ 
               date: deliveryDate, 
