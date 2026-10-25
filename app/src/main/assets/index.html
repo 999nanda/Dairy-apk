@@ -38,7 +38,7 @@
       console.log(e);
     }
 
-    // ভারতীয় ফরম্যাটে তারিখ দেখানোর ফাংশন (DD-MM-YYYY)
+    // ভারতীয় ফরম্যাটে তারিখ ও সময় দেখানোর ফাংশন (DD-MM-YYYY ও Time)
     window.formatDateBR = function(dtStr) {
       if (!dtStr || dtStr === '-') return '-';
       var clean = String(dtStr).trim();
@@ -51,6 +51,17 @@
         return clean;
       }
       return clean;
+    };
+
+    window.getCurrentTimeBR = function() {
+      var d = new Date();
+      var hours = d.getHours();
+      var minutes = d.getMinutes();
+      var ampm = hours >= 12 ? 'PM' : 'AM';
+      hours = hours % 12;
+      hours = hours ? hours : 12; 
+      minutes = minutes < 10 ? '0' + minutes : minutes;
+      return hours + ':' + minutes + ' ' + ampm;
     };
 
     window.parseDateToTime = function(dtStr) {
@@ -490,13 +501,13 @@
       overflow-y: auto;
     }
 
-    /* ইনভয়েস কার্ড বড় ও সুন্দর করা হলো যাতে পুরো পেজ ভরে থাকে */
+    /* ইনভয়েস কার্ড বড় ও পেজ পূর্ণ করার জন্য অপ্টিমাইজড */
     .invoice-card {
       background: white;
-      max-width: 750px;
+      max-width: 850px;
       width: 100%;
       border-radius: 16px;
-      padding: 32px;
+      padding: 36px;
       position: relative;
       box-shadow: 0 15px 40px rgba(0,0,0,0.35);
       max-height: 95vh;
@@ -519,18 +530,18 @@
     .invoice-table {
       width: 100% !important;
       border-collapse: collapse !important;
-      margin: 18px 0 !important;
+      margin: 20px 0 !important;
     }
 
     .invoice-table th, .invoice-table td {
-      padding: 10px 10px !important;
-      font-size: 14px !important;
+      padding: 12px 10px !important;
+      font-size: 14.5px !important;
     }
 
     #invoicePrintArea {
       position: relative;
       background: white;
-      padding: 15px;
+      padding: 20px;
       width: 100%;
       box-sizing: border-box;
     }
@@ -540,9 +551,9 @@
       top: 50%;
       left: 50%;
       transform: translate(-50%, -50%);
-      width: 280px;
-      height: 280px;
-      opacity: 0.12;
+      width: 320px;
+      height: 320px;
+      opacity: 0.10;
       pointer-events: none;
       z-index: 0;
     }
@@ -1062,37 +1073,37 @@
     </div>
   </div>
 
-  <!-- ইনভয়েস মোডাল (বড় পেজ সাইজ) -->
+  <!-- ইনভয়েস মোডাল (সম্পূর্ণ পেজ জোড়া বড় লেআউট ও সময় সহ) -->
   <div id="invoiceModal">
     <div class="invoice-card">
       <div id="invoicePrintArea">
         <img src="logo.png" class="invoice-watermark" alt="Logo">
         <div class="invoice-content">
-          <div style="display:flex; justify-content:space-between; align-items:center; border-bottom: 2.5px solid #1b5e20; padding-bottom: 12px; margin-bottom: 14px;">
-            <div style="display:flex; align-items:center; gap:12px;">
-              <img src="logo.png" style="height:55px; width:55px; border-radius:50%; object-fit:cover;">
+          <div style="display:flex; justify-content:space-between; align-items:center; border-bottom: 2.5px solid #1b5e20; padding-bottom: 14px; margin-bottom: 18px;">
+            <div style="display:flex; align-items:center; gap:14px;">
+              <img src="logo.png" style="height:60px; width:60px; border-radius:50%; object-fit:cover;">
               <div>
-                <h2 style="margin:0; color:#1b5e20; font-size:20px; font-weight:800; border:none; padding:0;">NANDA DAIRY & AGRO</h2>
-                <p id="invMainDocTitle" style="font-size:12px; color:#333; margin:2px 0 0 0; font-weight:600;">ইনভয়েস / INVOICE (ক্যাশ মেমো)</p>
+                <h2 style="margin:0; color:#1b5e20; font-size:22px; font-weight:800; border:none; padding:0;">NANDA DAIRY & AGRO</h2>
+                <p id="invMainDocTitle" style="font-size:12.5px; color:#333; margin:3px 0 0 0; font-weight:600;">ইনভয়েস / INVOICE (ক্যাশ মেমো)</p>
               </div>
             </div>
             <div style="text-align:right;">
-              <span style="border: 2px dashed #2e7d32; color: #2e7d32; font-weight: 800; font-size: 11px; padding: 4px 8px; border-radius: 6px;">✔ VERIFIED</span>
+              <span style="border: 2px dashed #2e7d32; color: #2e7d32; font-weight: 800; font-size: 11px; padding: 5px 10px; border-radius: 6px;">✔ VERIFIED</span>
             </div>
           </div>
-          <div id="invoiceDetails" style="font-size: 13.5px; line-height: 1.8;"></div>
-          <div style="display:flex; justify-content:space-between; align-items:flex-end; margin-top: 32px; border-top: 1px dashed #aaa; padding-top: 14px;">
-            <div><span style="font-size:11px; color:#555;">সিস্টেম জেনারেটেড মূল ইনভয়েস</span></div>
+          <div id="invoiceDetails" style="font-size: 14px; line-height: 1.9;"></div>
+          <div style="display:flex; justify-content:space-between; align-items:flex-end; margin-top: 40px; border-top: 1px dashed #aaa; padding-top: 16px;">
+            <div><span style="font-size:11.5px; color:#555;">সিস্টেম জেনারেটেড মূল ইনভয়েস</span></div>
             <div style="text-align: right;">
-              <div style="font-family:'Brush Script MT', cursive, sans-serif; font-size: 26px; color: #1b5e20;">Bibhas Munshi</div>
-              <div style="border-top: 1.5px solid #222; padding-top: 3px; font-size: 11px;"><strong>Bibhas Munshi (Authorized)</strong></div>
+              <div style="font-family:'Brush Script MT', cursive, sans-serif; font-size: 28px; color: #1b5e20;">Bibhas Munshi</div>
+              <div style="border-top: 1.5px solid #222; padding-top: 3px; font-size: 11.5px;"><strong>Bibhas Munshi (Authorized Signatory)</strong></div>
             </div>
           </div>
         </div>
       </div>
-      <div class="no-print" style="display: flex; gap: 10px; margin-top: 20px;">
-        <button class="btn btn-info" style="flex: 1; padding: 12px;" onclick="printSpecificModal('invoice')">🖨️ প্রিন্ট করুন</button>
-        <button class="btn btn-danger" style="flex: 1; padding: 12px;" onclick="closeInvoice()">বন্ধ করুন</button>
+      <div class="no-print" style="display: flex; gap: 12px; margin-top: 22px;">
+        <button class="btn btn-info" style="flex: 1; padding: 12px; font-size: 14px;" onclick="printSpecificModal('invoice')">🖨️ প্রিন্ট করুন</button>
+        <button class="btn btn-danger" style="flex: 1; padding: 12px; font-size: 14px;" onclick="closeInvoice()">বন্ধ করুন</button>
       </div>
     </div>
   </div>
@@ -1868,7 +1879,8 @@
     window.showPaymentInvoice = function(pDate, pAmt, pNote, custName, cPhone, cArea, cAddr, balAfter, pId) {
       document.body.setAttribute('data-print', 'invoice');
       getEl('invMainDocTitle').innerText = 'ইনভয়েস (পেমেন্ট বিল)';
-      getEl('invoiceDetails').innerHTML = '<div style="display:flex; justify-content:space-between; margin-bottom:12px;"><div><strong>গ্রাহক:</strong> ' + custName + '<br>মোবাইল: ' + cPhone + '</div><div style="text-align:right;">তারিখ: ' + pDate + '<br>স্ট্যাটাস: <span style="color:green; font-weight:bold;">PAID</span></div></div><table class="invoice-table" style="border:1px solid #ddd; width:100%;"><thead><tr style="background:#e8f5e9;"><th>বিবরণ</th><th>পদ্ধতি</th><th style="text-align:right;">আদায়কৃত অর্থ</th></tr></thead><tbody><tr><td>বকেয়া জমা</td><td>' + pNote + '</td><td style="text-align:right; font-weight:bold; color:green;">₹ ' + pAmt + '</td></tr></tbody></table><div style="text-align:right; margin-top:10px;">বর্তমান বকেয়া: <strong>₹ ' + balAfter + '</strong></div>';
+      var timeStr = getCurrentTimeBR();
+      getEl('invoiceDetails').innerHTML = '<div style="display:flex; justify-content:space-between; margin-bottom:12px;"><div><strong>গ্রাহক:</strong> ' + custName + '<br>মোবাইল: ' + cPhone + '</div><div style="text-align:right;">তারিখ: ' + pDate + ' | সময়: ' + timeStr + '<br>স্ট্যাটাস: <span style="color:green; font-weight:bold;">PAID</span></div></div><table class="invoice-table" style="border:1px solid #ddd; width:100%;"><thead><tr style="background:#e8f5e9;"><th>বিবরণ</th><th>পদ্ধতি</th><th style="text-align:right;">আদায়কৃত অর্থ</th></tr></thead><tbody><tr><td>বকেয়া জমা</td><td>' + pNote + '</td><td style="text-align:right; font-weight:bold; color:green;">₹ ' + pAmt + '</td></tr></tbody></table><div style="text-align:right; margin-top:10px;">বর্তমান বকেয়া: <strong>₹ ' + balAfter + '</strong></div>';
       getEl('invoiceModal').style.display = 'flex';
     };
 
@@ -1878,7 +1890,8 @@
       document.body.setAttribute('data-print', 'invoice');
       getEl('invMainDocTitle').innerText = 'ইনভয়েস (ক্যাশ মেমো)';
       var liveDue = getCustomerLiveBalances()[(d.name || '').trim().toLowerCase()]?.currentDue || 0;
-      getEl('invoiceDetails').innerHTML = '<div style="display:flex; justify-content:space-between; margin-bottom:12px;"><div><strong>গ্রাহক:</strong> ' + d.name + '<br>মোবাইল: ' + (d.phone || '-') + '</div><div style="text-align:right;">তারিখ: ' + formatDateBR(d.date) + '<br>ইনভয়েস: #NDA-' + k.substring(1, 6).toUpperCase() + '</div></div><table class="invoice-table" style="border:1px solid #ddd; width:100%;"><thead><tr style="background:#e8f5e9;"><th>পণ্য</th><th>পরিমাণ</th><th>দর</th><th style="text-align:right;">মোট</th></tr></thead><tbody><tr><td>' + d.item + '</td><td>' + d.qty + '</td><td>₹ ' + d.rate + '</td><td style="text-align:right; font-weight:bold;">₹ ' + d.total + '</td></tr></tbody></table><div style="text-align:right; margin-top:10px;">চালান মূল্য: ₹ ' + d.total + '<br>নগদ পরিশোধ: ₹ ' + d.paid + '<br><span style="color:red; font-weight:bold;">মোট বকেয়া: ₹ ' + liveDue + '</span></div>';
+      var timeStr = getCurrentTimeBR();
+      getEl('invoiceDetails').innerHTML = '<div style="display:flex; justify-content:space-between; margin-bottom:12px;"><div><strong>গ্রাহক:</strong> ' + d.name + '<br>মোবাইল: ' + (d.phone || '-') + '</div><div style="text-align:right;">তারিখ: ' + formatDateBR(d.date) + ' | সময়: ' + timeStr + '<br>ইনভয়েস: #NDA-' + k.substring(1, 6).toUpperCase() + '</div></div><table class="invoice-table" style="border:1px solid #ddd; width:100%;"><thead><tr style="background:#e8f5e9;"><th>পণ্য</th><th>পরিমাণ</th><th>দর</th><th style="text-align:right;">মোট</th></tr></thead><tbody><tr><td>' + d.item + '</td><td>' + d.qty + '</td><td>₹ ' + d.rate + '</td><td style="text-align:right; font-weight:bold;">₹ ' + d.total + '</td></tr></tbody></table><div style="text-align:right; margin-top:10px;">চালান মূল্য: ₹ ' + d.total + '<br>নগদ পরিশোধ: ₹ ' + d.paid + '<br><span style="color:red; font-weight:bold;">মোট বকেয়া: ₹ ' + liveDue + '</span></div>';
       getEl('invoiceModal').style.display = 'flex';
     };
 
@@ -2035,12 +2048,9 @@
       };
 
       if (db) {
-        // এডিট করা হলে পুরনো অর্ডারটি রিমুভ হবে
         if (eOrdKey) {
           db.ref('orders/' + eOrdKey).remove();
         }
-
-        // যদি Delivered করা হয় তবে সেলসে এন্ট্রি যাবে এবং অর্ডার লিস্ট থেকে পাকাপাকি রিমুভ হবে
         if (status === 'Delivered') {
           if (total > 0) {
             db.ref('sales').push({ 
@@ -2065,7 +2075,6 @@
       cancelOrderEdit();
     }
 
-    // নতুন ট্যাব: Feed (পশুখাদ্য ব্যবস্থাপনা) সেভ ও এডিট ফাংশন
     var eFeedKey = null;
     function editFeed(k) {
       var d = farmStore.feed[k]; if (!d) return; eFeedKey = k;
