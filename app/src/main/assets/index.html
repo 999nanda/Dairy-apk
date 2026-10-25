@@ -826,7 +826,7 @@
         </div>
       </div>
 
-      <!-- ৭. Orders -->
+      <!-- ৭. Orders (Sales Ledger-এর মতো গোছালো ও সঠিক তথ্যসহ) -->
       <div id="tab-orders" class="tab-content" style="display: none;">
         <div class="card">
           <h2>📦 Orders Management</h2>
@@ -1544,7 +1544,7 @@
       body.innerHTML = html;
     }
 
-    // অর্ডার তালিকা রেন্ডার (Sales Ledger এর মতো গোছালো একক সারি ভিউ)
+    // অর্ডার তালিকা রেন্ডার (সঠিক কাস্টমার ডিরেক্টরি ডেটা সিঙ্ক ও এরিয়া ফিল্টারসহ)
     function renderOrdersTable() {
       var body = getEl('ordersTableBody');
       if (!body) return;
@@ -1560,13 +1560,26 @@
         if (!d || !d.customer) continue;
         var rName = d.customer.trim();
         var cKey = rName.toLowerCase();
-        if (d.area) uniqueAreas[d.area.trim()] = true;
+
+        // কাস্টমার ডিরেক্টরি থেকে সঠিক ফোন ও এরিয়া ফেচ করা
+        var custPhone = d.phone || '';
+        var custArea = d.area || '';
+        for (var ck in farmStore.customers) {
+          var cust = farmStore.customers[ck];
+          if (cust && cust.name && cust.name.trim().toLowerCase() === cKey) {
+            if (cust.phone) custPhone = cust.phone;
+            if (cust.area) custArea = cust.area.trim();
+            break;
+          }
+        }
+
+        if (custArea) uniqueAreas[custArea] = true;
 
         if (!customerMap[cKey]) {
           customerMap[cKey] = {
             customerName: rName,
-            phone: d.phone || '',
-            area: d.area || '',
+            phone: custPhone,
+            area: custArea,
             orders: []
           };
         }
@@ -1608,7 +1621,7 @@
       var filtered = list.filter(function(item) {
         var nameMatch = item.customerName.toLowerCase().includes(searchQ);
         var phoneMatch = item.phone.toLowerCase().includes(searchQ);
-        return (!searchQ || nameMatch || phoneMatch) && (!areaFilter || item.area.toLowerCase() === areaFilter);
+        return (!searchQ || nameMatch || phoneMatch) && (!areaFilter || item.area.toLowerCase() === areaFilter.toLowerCase());
       });
 
       filtered.sort(function(a, b) { return b.latestTime - a.latestTime; });
@@ -2104,6 +2117,7 @@
         if (getEl('customerNameList')) getEl('customerNameList').innerHTML = nameOpt;
         if (getEl('customerAreaList')) getEl('customerAreaList').innerHTML = areaOpt;
         renderSalesTable();
+        renderOrdersTable();
       });
 
       db.ref('orders').on('value', function(snap) {
