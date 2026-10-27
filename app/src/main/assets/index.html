@@ -53,6 +53,16 @@
       return clean;
     };
 
+    window.getCurrentTimeBR = function() {
+      var d = new Date();
+      var hours = d.getHours();
+      var minutes = d.getMinutes();
+      var ampm = hours >= 12 ? 'PM' : 'AM';
+      hours = hours % 12; hours = hours ? hours : 12;
+      minutes = minutes < 10 ? '0' + minutes : minutes;
+      return hours + ':' + minutes + ' ' + ampm;
+    };
+
     window.parseDateToTime = function(dtStr) {
       if (!dtStr) return 0;
       var clean = String(dtStr).trim();
@@ -116,7 +126,7 @@
 
     window.onload = function() {
       var todayISO = new Date().toISOString().split('T')[0];
-      var defaultDateIds = ['milkDate', 'saleDate', 'orderDate', 'expDate', 'brAiDate', 'hlthDate', 'ledgerPayDate', 'feedDate', 'rationDate'];
+      var defaultDateIds = ['milkDate', 'saleDate', 'orderDate', 'expDate', 'brAiDate', 'hlthDate', 'ledgerPayDate', 'feedDate'];
       defaultDateIds.forEach(function(id) {
         if (getEl(id)) {
           getEl(id).value = todayISO;
@@ -1194,7 +1204,7 @@
       }
     }
 
-    // একবার জেনারেট হলে আর কখনোই ডুপ্লিকেট পেন্ডিং অর্ডার বানাবে না (যেকোনো স্ট্যাটাস চেক করে)
+    // নিখুঁত লজিক: আজকের দিনে ইতিপূর্বে কোনো অর্ডার তৈরি হয়ে থাকলে আর ডুপ্লিকেট পেন্ডিং অর্ডার বানাবে না
     function checkAndGenerateDailyOrders() {
       if (!db) return;
       var todayISO = new Date().toISOString().split('T')[0];
@@ -1203,11 +1213,12 @@
         if (!custSnap.exists()) return;
         
         db.ref('orders').once('value', function(ordSnap) {
-          var customerProcessedToday = {};
+          var existingKeysToday = {};
           ordSnap.forEach(function(o) {
             var val = o.val();
             if (val && val.date === todayISO && val.customer) {
-              customerProcessedToday[val.customer.trim().toLowerCase()] = true;
+              var uniqueKey = val.date + '_' + val.customer.trim().toLowerCase();
+              existingKeysToday[uniqueKey] = true;
             }
           });
 
@@ -1218,8 +1229,8 @@
             var demand = Number(cust.demand) || 0;
             if (demand <= 0) return;
 
-            var cKey = cName.toLowerCase();
-            if (!customerProcessedToday[cKey]) {
+            var uniqueKey = todayISO + '_' + cName.toLowerCase();
+            if (!existingKeysToday[uniqueKey]) {
               var newOrder = {
                 date: todayISO,
                 customer: cName,
@@ -1666,7 +1677,7 @@
       body.innerHTML = html;
     }
 
-    // অর্ডার তালিকা রেন্ডার (সঠিক ফিল্টারিং ও রেন্ডারিং)
+    // অর্ডার তালিকা রেন্ডার
     function renderOrdersTable() {
       var body = getEl('ordersTableBody');
       if (!body) return;
@@ -2056,22 +2067,12 @@
         }
       }
 
-      var data = { 
-        date: deliveryDate, 
-        customer: cust, 
-        phone: phone, 
-        area: area, 
-        items: items, 
-        total: total, 
-        paid: paid, 
-        status: status 
-      };
-
       if (db) {
         if (eOrdKey) {
-          db.ref('orders/' + eOrdKey).remove();
+          db.ref('orders/' + eOrdKey).remove(); // পুরনো অর্ডারটি ডিলিট হবে
         }
         if (status === 'Delivered') {
+          // Delivered হলে সেলসে এন্ট্রি যোগ হবে এবং অর্ডার লিস্ট থেকে পাকাপাকি রিমুভ হয়ে যাবে
           if (total > 0) {
             db.ref('sales').push({ 
               date: deliveryDate, 
@@ -2089,7 +2090,17 @@
             });
           }
         } else {
-          db.ref('orders').push(data);
+          // Pending বা Cancelled হলে নতুন ডেটা অর্ডারে সেভ হবে
+          db.ref('orders').push({ 
+            date: deliveryDate, 
+            customer: cust, 
+            phone: phone, 
+            area: area, 
+            items: items, 
+            total: total, 
+            paid: paid, 
+            status: status 
+          });
         }
       }
       cancelOrderEdit();
