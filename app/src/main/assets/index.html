@@ -53,16 +53,6 @@
       return clean;
     };
 
-    window.getCurrentTimeBR = function() {
-      var d = new Date();
-      var hours = d.getHours();
-      var minutes = d.getMinutes();
-      var ampm = hours >= 12 ? 'PM' : 'AM';
-      hours = hours % 12; hours = hours ? hours : 12;
-      minutes = minutes < 10 ? '0' + minutes : minutes;
-      return hours + ':' + minutes + ' ' + ampm;
-    };
-
     window.parseDateToTime = function(dtStr) {
       if (!dtStr) return 0;
       var clean = String(dtStr).trim();
@@ -126,7 +116,7 @@
 
     window.onload = function() {
       var todayISO = new Date().toISOString().split('T')[0];
-      var defaultDateIds = ['milkDate', 'saleDate', 'orderDate', 'expDate', 'brAiDate', 'hlthDate', 'ledgerPayDate', 'feedDate'];
+      var defaultDateIds = ['milkDate', 'saleDate', 'orderDate', 'expDate', 'brAiDate', 'hlthDate', 'ledgerPayDate', 'feedDate', 'rationDate'];
       defaultDateIds.forEach(function(id) {
         if (getEl(id)) {
           getEl(id).value = todayISO;
@@ -864,7 +854,7 @@
         </div>
         <div class="card">
           <div style="display:flex; justify-content:space-between; align-items:center; gap:12px; margin-bottom:14px;">
-            <h2 style="margin:0; border:none; padding:0;">অর্ডার তালিকা (Pending Orders)</h2>
+            <h2 style="margin:0; border:none; padding:0;">অর্ডার তালিকা (Order Ledger & History)</h2>
             <div style="display:flex; gap:8px;">
               <input type="text" id="orderSearchInput" oninput="renderOrdersTable()" placeholder="🔍 কাস্টমার খুঁজুন..." style="width:200px; padding:7px;">
               <select id="orderAreaFilter" onchange="renderOrdersTable()" style="width:150px; padding:7px;"><option value="">সকল এলাকা</option></select>
@@ -872,11 +862,11 @@
           </div>
           <div class="table-container">
             <table>
-              <thead><tr><th>তারিখ</th><th>Customer Name</th><th>Area & Address</th><th>Pending Items</th><th>Status</th><th>Action</th></tr></thead>
+              <thead><tr><th>তারিখ</th><th>Customer Name</th><th>Area & Address</th><th>Total Orders / Items</th><th>Status</th><th>Action</th></tr></thead>
               <tbody id="ordersTableBody"></tbody>
             </table>
           </div>
-          <p id="ordersNoData" style="text-align: center; color: #777; font-size: 13px; margin-top: 15px; display: none;">কোনো পেন্ডিং অর্ডার নেই।</p>
+          <p id="ordersNoData" style="text-align: center; color: #777; font-size: 13px; margin-top: 15px; display: none;">কোনো অর্ডার রেকর্ড নেই।</p>
         </div>
       </div>
 
@@ -1177,16 +1167,6 @@
       }, 1000);
     };
 
-    window.getCurrentTimeBR = function() {
-      var d = new Date();
-      var hours = d.getHours();
-      var minutes = d.getMinutes();
-      var ampm = hours >= 12 ? 'PM' : 'AM';
-      hours = hours % 12; hours = hours ? hours : 12;
-      minutes = minutes < 10 ? '0' + minutes : minutes;
-      return hours + ':' + minutes + ' ' + ampm;
-    };
-
     function onSaleCustomerInput() {
       var val = (getEl('saleCustomer').value || '').trim().toLowerCase();
       if (!val) return;
@@ -1214,6 +1194,7 @@
       }
     }
 
+    // একবার জেনারেট হলে আর কখনোই ডুপ্লিকেট পেন্ডিং অর্ডার বানাবে না (যেকোনো স্ট্যাটাস চেক করে)
     function checkAndGenerateDailyOrders() {
       if (!db) return;
       var todayISO = new Date().toISOString().split('T')[0];
@@ -1222,12 +1203,11 @@
         if (!custSnap.exists()) return;
         
         db.ref('orders').once('value', function(ordSnap) {
-          var existingKeysToday = {};
+          var customerProcessedToday = {};
           ordSnap.forEach(function(o) {
             var val = o.val();
             if (val && val.date === todayISO && val.customer) {
-              var uniqueKey = val.date + '_' + val.customer.trim().toLowerCase();
-              existingKeysToday[uniqueKey] = true;
+              customerProcessedToday[val.customer.trim().toLowerCase()] = true;
             }
           });
 
@@ -1238,8 +1218,8 @@
             var demand = Number(cust.demand) || 0;
             if (demand <= 0) return;
 
-            var uniqueKey = todayISO + '_' + cName.toLowerCase();
-            if (!existingKeysToday[uniqueKey]) {
+            var cKey = cName.toLowerCase();
+            if (!customerProcessedToday[cKey]) {
               var newOrder = {
                 date: todayISO,
                 customer: cName,
@@ -1686,7 +1666,7 @@
       body.innerHTML = html;
     }
 
-    // অর্ডার তালিকা রেন্ডার
+    // অর্ডার তালিকা রেন্ডার (সঠিক ফিল্টারিং ও রেন্ডারিং)
     function renderOrdersTable() {
       var body = getEl('ordersTableBody');
       if (!body) return;
@@ -1786,93 +1766,6 @@
       });
 
       body.innerHTML = html;
-    }
-
-    // রেশন টেবিল রেন্ডার
-    function renderRationTable() {
-      var body = getEl('rationTableBody');
-      if (!body) return;
-      var list = [];
-      for (var k in farmStore.feedRations) {
-        list.push({ key: k, data: farmStore.feedRations[k] });
-      }
-      list.sort(function(a, b) { return (b.data.date || '').localeCompare(a.data.date || ''); });
-
-      if (list.length === 0) {
-        body.innerHTML = '';
-        if (getEl('rationNoData')) getEl('rationNoData').style.display = 'block';
-        return;
-      }
-      if (getEl('rationNoData')) getEl('rationNoData').style.display = 'none';
-
-      var html = '';
-      list.forEach(function(item) {
-        var k = item.key, d = item.data;
-        html += '<tr>' +
-          '<td>' + formatDateBR(d.date) + '</td>' +
-          '<td><strong style="color:var(--primary);">Tag: ' + (d.cowTag || '-') + '</strong></td>' +
-          '<td>ফিড: ' + (d.pellet||0) + 'k | ভুসি: ' + (d.bran||0) + 'k | খৈল: ' + (d.oilcake||0) + 'k</td>' +
-          '<td>' + (d.grass || 0) + ' kg</td>' +
-          '<td><strong>' + (d.totalKg || 0) + ' kg</strong></td>' +
-          '<td style="color:green; font-weight:bold;">₹ ' + (d.totalCost || 0) + '</td>' +
-          '<td>' +
-            '<button class="action-btn btn-info" onclick="editRation(\'' + k + '\')">Edit</button>' +
-            '<button class="action-btn btn-danger" onclick="deleteRecord(\'feedRations\',\'' + k + '\')">Delete</button>' +
-          '</td>' +
-        '</tr>';
-      });
-      body.innerHTML = html;
-    }
-
-    var eRatKey = null;
-    function editRation(k) {
-      var d = farmStore.feedRations[k]; if (!d) return; eRatKey = k;
-      getEl('rationDate').value = d.date || '';
-      getEl('ratCowTag').value = d.cowTag || '';
-      getEl('ratPellet').value = d.pellet || '';
-      getEl('ratBran').value = d.bran || '';
-      getEl('ratCorn').value = d.corn || '';
-      getEl('ratOilcake').value = d.oilcake || '';
-      getEl('ratMineral').value = d.mineral || '';
-      getEl('ratGrass').value = d.grass || '';
-      getEl('ratTotalKg').value = d.totalKg || '';
-      getEl('ratTotalCost').value = d.totalCost || '';
-      getEl('ratSubmitBtn').innerText = 'Update Ration';
-      getEl('ratCancelBtn').style.display = 'inline-flex';
-      getEl('ratCowTag').scrollIntoView({ behavior: 'smooth' });
-    }
-    function cancelRationEdit() {
-      eRatKey = null;
-      ['ratCowTag','ratPellet','ratBran','ratCorn','ratOilcake','ratMineral','ratGrass','ratTotalKg','ratTotalCost'].forEach(function(i){ if(getEl(i)) getEl(i).value=''; });
-      getEl('ratSubmitBtn').innerText = 'Save Ration Chart';
-      getEl('ratCancelBtn').style.display = 'none';
-    }
-    function saveRation() {
-      var tag = (getEl('ratCowTag').value || '').trim();
-      var dt = getEl('rationDate').value;
-      if (!tag || !dt) return alert('তারিখ ও গরুর Tag ID দিন!');
-
-      var data = {
-        date: dt,
-        cowTag: tag,
-        pellet: parseFloat(getEl('ratPellet').value) || 0,
-        bran: parseFloat(getEl('ratBran').value) || 0,
-        corn: parseFloat(getEl('ratCorn').value) || 0,
-        oilcake: parseFloat(getEl('ratOilcake').value) || 0,
-        mineral: parseFloat(getEl('ratMineral').value) || 0,
-        grass: parseFloat(getEl('ratGrass').value) || 0,
-        totalKg: parseFloat(getEl('ratTotalKg').value) || 0,
-        totalCost: parseFloat(getEl('ratTotalCost').value) || 0
-      };
-
-      if (db) {
-        if (eRatKey) {
-          db.ref('feedRations/' + eRatKey).update(data);
-        } else {
-          db.ref('feedRations').push(data);
-        }
-      }
-      cancelRationEdit();
     }
 
     window.showCustomerLedger = function(encName) {
@@ -2200,6 +2093,80 @@
         }
       }
       cancelOrderEdit();
+    }
+
+    var eFeedKey = null;
+    function editFeed(k) {
+      var d = farmStore.feed[k]; if (!d) return; eFeedKey = k;
+      getEl('feedDate').value = d.date || '';
+      getEl('feedType').value = d.type || 'Cattle Feed / Pellets';
+      getEl('feedQty').value = d.qty || '';
+      getEl('feedCost').value = d.cost || '';
+      getEl('feedNote').value = d.note || '';
+      getEl('feedSubmitBtn').innerText = 'Update Feed';
+      getEl('feedCancelBtn').style.display = 'inline-flex';
+      getEl('feedDate').scrollIntoView({ behavior: 'smooth' });
+    }
+    function cancelFeedEdit() {
+      eFeedKey = null;
+      ['feedQty','feedCost','feedNote'].forEach(function(i){ if(getEl(i)) getEl(i).value=''; });
+      getEl('feedSubmitBtn').innerText = 'Save Feed Record';
+      getEl('feedCancelBtn').style.display = 'none';
+    }
+    function saveFeed() {
+      var dt = getEl('feedDate').value;
+      var type = getEl('feedType').value;
+      var qty = (getEl('feedQty').value || '').trim();
+      var cost = parseFloat(getEl('feedCost').value) || 0;
+      var note = (getEl('feedNote').value || '').trim();
+
+      if (!dt || !qty || cost <= 0) return alert('তারিখ, পরিমাণ ও মোট খরচ দিন!');
+
+      var data = { date: dt, type: type, qty: qty, cost: cost, note: note };
+      if (db) {
+        if (eFeedKey) {
+          db.ref('feed/' + eFeedKey).update(data);
+        } else {
+          db.ref('feed').push(data);
+        }
+      }
+      cancelFeedEdit();
+    }
+
+    function renderFeedTable() {
+      var body = getEl('feedTableBody');
+      if (!body) return;
+      var list = [];
+      for (var k in farmStore.feed) {
+        list.push({ key: k, data: farmStore.feed[k] });
+      }
+      list.sort(function(a, b) {
+        return (b.data.date || '').localeCompare(a.data.date || '');
+      });
+
+      if (list.length === 0) {
+        body.innerHTML = '';
+        if (getEl('feedNoData')) getEl('feedNoData').style.display = 'block';
+        return;
+      }
+      if (getEl('feedNoData')) getEl('feedNoData').style.display = 'none';
+
+      var html = '';
+      list.forEach(function(item) {
+        var k = item.key, d = item.data;
+        html += '<tr>' +
+          '<td>' + formatDateBR(d.date) + '</td>' +
+          '<td><strong>' + (d.type || '-') + '</strong></td>' +
+          '<td>' + (d.qty || '-') + '</td>' +
+          '<td style="color:var(--danger); font-weight:600;">₹ ' + (d.cost || 0) + '</td>' +
+          '<td>' + (d.note || '-') + '</td>' +
+          '<td>' +
+            '<button class="action-btn btn-info" onclick="editFeed(\'' + k + '\')">Edit</button>' +
+            '<button class="action-btn btn-danger" onclick="deleteRecord(\'feed\',\'' + k + '\')">Delete</button>' +
+          '</td>' +
+        '</tr>';
+      });
+      body.innerHTML = html;
     }
 
     window.toggleExpenseDate = function(safeDt) {
