@@ -38,7 +38,6 @@
       console.log(e);
     }
 
-    // ভারতীয় ফরম্যাটে তারিখ দেখানোর ফাংশন (DD-MM-YYYY)
     window.formatDateBR = function(dtStr) {
       if (!dtStr || dtStr === '-') return '-';
       var clean = String(dtStr).trim();
@@ -100,7 +99,6 @@
       }
     };
 
-    // স্থায়ী লগইন সিস্টেম
     window.doLogin = function() {
       var u = (getEl('loginId') ? getEl('loginId').value : '').trim().toLowerCase();
       var p = (getEl('loginPass') ? getEl('loginPass').value : '').trim();
@@ -134,22 +132,12 @@
       });
 
       if (localStorage.getItem('nanda_auth_status') === 'logged_in') {
-        if (getEl('loginScreen')) {
-          getEl('loginScreen').style.display = 'none';
-        }
-        if (getEl('appBody')) {
-          getEl('appBody').style.display = 'block';
-        }
-        if (typeof window.listenAllData === 'function') {
-          window.listenAllData();
-        }
+        if (getEl('loginScreen')) getEl('loginScreen').style.display = 'none';
+        if (getEl('appBody')) getEl('appBody').style.display = 'block';
+        if (typeof window.listenAllData === 'function') window.listenAllData();
       } else {
-        if (getEl('loginScreen')) {
-          getEl('loginScreen').style.display = 'flex';
-        }
-        if (getEl('appBody')) {
-          getEl('appBody').style.display = 'none';
-        }
+        if (getEl('loginScreen')) getEl('loginScreen').style.display = 'flex';
+        if (getEl('appBody')) getEl('appBody').style.display = 'none';
       }
     };
 
@@ -174,416 +162,66 @@
       --dark: #212121;
     }
 
-    * {
-      box-sizing: border-box;
-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-      margin: 0;
-      padding: 0;
-    }
-
-    body {
-      background-color: #f1f5f2;
-      color: var(--dark);
-      padding-bottom: 60px;
-    }
+    * { box-sizing: border-box; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 0; padding: 0; }
+    body { background-color: #f1f5f2; color: var(--dark); padding-bottom: 60px; }
 
     header {
       background: linear-gradient(135deg, #1b5e20, #2e7d32);
-      color: white;
-      padding: 12px 18px;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      box-shadow: 0 3px 10px rgba(0,0,0,0.15);
-      position: sticky;
-      top: 0;
-      z-index: 100;
+      color: white; padding: 12px 18px; display: flex; align-items: center; justify-content: space-between;
+      box-shadow: 0 3px 10px rgba(0,0,0,0.15); position: sticky; top: 0; z-index: 100;
     }
+    .header-title { display: flex; align-items: center; gap: 10px; }
+    .header-title img { height: 44px; width: 44px; border-radius: 50%; object-fit: cover; background: white; padding: 2px; }
+    .header-title h1 { font-size: 18px; font-weight: 700; }
+    .header-right { display: flex; align-items: center; gap: 8px; }
+    .sync-badge { background: #2e7d32; border: 1px solid #81c784; color: white; padding: 4px 10px; border-radius: 20px; font-size: 11px; font-weight: 600; }
+    .logout-btn { background: #b71c1c; color: white; border: none; padding: 6px 14px; border-radius: 6px; cursor: pointer; font-weight: bold; font-size: 12px; }
 
-    .header-title {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-    }
+    nav { display: flex; background: white; overflow-x: auto; box-shadow: 0 2px 5px rgba(0,0,0,0.06); padding: 6px 10px; }
+    nav button { flex: 0 0 auto; padding: 9px 15px; border: none; background: none; font-size: 13.5px; font-weight: 600; color: #495057; cursor: pointer; border-radius: 6px; margin-right: 5px; white-space: nowrap; }
+    nav button:hover { background: #f0f4f1; color: var(--primary); }
+    nav button.active { background: var(--secondary); color: var(--primary); font-weight: 700; border-bottom: 3px solid var(--primary); }
 
-    .header-title img {
-      height: 44px;
-      width: 44px;
-      border-radius: 50%;
-      object-fit: cover;
-      background: white;
-      padding: 2px;
-      box-shadow: 0 2px 4px rgba(0,0,0,0.2);
-    }
+    .container { max-width: 1150px; margin: 18px auto; padding: 0 14px; }
+    .card { background: white; border-radius: 12px; padding: 20px; margin-bottom: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
+    h2 { font-size: 17px; margin-bottom: 15px; color: var(--primary); border-bottom: 2px solid var(--secondary); padding-bottom: 6px; font-weight: 700; }
 
-    .header-title h1 {
-      font-size: 18px;
-      font-weight: 700;
-    }
+    .form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 14px; margin-bottom: 15px; }
+    .input-group label { display: block; font-size: 12px; font-weight: 600; margin-bottom: 5px; color: #444; }
+    input, select { width: 100%; padding: 10px 12px; border: 1px solid #ced4da; border-radius: 8px; font-size: 13.5px; outline: none; background: #fafafa; }
+    input:focus, select:focus { border-color: var(--primary); background: #fff; }
 
-    .header-right {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-    }
+    .btn { background: var(--primary); color: white; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer; font-size: 13.5px; font-weight: 700; display: inline-flex; align-items: center; gap: 6px; }
+    .btn:hover { background: var(--primary-light); }
+    .btn-danger { background: var(--danger); color: white; }
+    .btn-warning { background: var(--warning); color: white; }
+    .btn-info { background: var(--info); color: white; }
+    .action-btn { padding: 5px 11px; font-size: 12px; border: none; border-radius: 5px; cursor: pointer; margin-right: 4px; font-weight: 600; }
 
-    .sync-badge {
-      background: #2e7d32;
-      border: 1px solid #81c784;
-      color: white;
-      padding: 4px 10px;
-      border-radius: 20px;
-      font-size: 11px;
-      font-weight: 600;
-    }
+    .table-container { overflow-x: auto; margin-top: 10px; border-radius: 8px; border: 1px solid #edf2ee; }
+    table { width: 100%; border-collapse: collapse; font-size: 12.5px; text-align: left; min-width: 900px; }
+    th, td { padding: 10px 12px; border-bottom: 1px solid #eceff1; white-space: nowrap; }
+    th { background: #f8faf9; color: #555; font-weight: 700; }
 
-    .logout-btn {
-      background: #b71c1c;
-      color: white;
-      border: none;
-      padding: 6px 14px;
-      border-radius: 6px;
-      cursor: pointer;
-      font-weight: bold;
-      font-size: 12px;
-    }
+    .badge { padding: 3px 8px; border-radius: 12px; font-size: 11px; font-weight: 600; display: inline-block; }
+    .badge-success { background: #e8f5e9; color: #2e7d32; }
+    .badge-warning { background: #fff3e0; color: #e65100; }
+    .badge-danger { background: #ffebee; color: #c62828; }
 
-    nav {
-      display: flex;
-      background: white;
-      overflow-x: auto;
-      box-shadow: 0 2px 5px rgba(0,0,0,0.06);
-      padding: 6px 10px;
-    }
+    .summary-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 14px; margin-bottom: 22px; }
+    .summary-card { background: white; padding: 16px; border-radius: 10px; border-left: 5px solid var(--primary); box-shadow: 0 2px 6px rgba(0,0,0,0.05); }
+    .summary-card p { font-size: 11.5px; color: #666; font-weight: 600; text-transform: uppercase; }
+    .summary-card h3 { font-size: 22px; color: var(--primary); margin-top: 5px; font-weight: 700; }
 
-    nav button {
-      flex: 0 0 auto;
-      padding: 9px 15px;
-      border: none;
-      background: none;
-      font-size: 13.5px;
-      font-weight: 600;
-      color: #495057;
-      cursor: pointer;
-      border-radius: 6px;
-      margin-right: 5px;
-      white-space: nowrap;
-    }
-
-    nav button:hover {
-      background: #f0f4f1;
-      color: var(--primary);
-    }
-
-    nav button.active {
-      background: var(--secondary);
-      color: var(--primary);
-      font-weight: 700;
-      border-bottom: 3px solid var(--primary);
-    }
-
-    .container {
-      max-width: 1150px;
-      margin: 18px auto;
-      padding: 0 14px;
-    }
-
-    .card {
-      background: white;
-      border-radius: 12px;
-      padding: 20px;
-      margin-bottom: 20px;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.05);
-    }
-
-    h2 {
-      font-size: 17px;
-      margin-bottom: 15px;
-      color: var(--primary);
-      border-bottom: 2px solid var(--secondary);
-      padding-bottom: 6px;
-      font-weight: 700;
-    }
-
-    .form-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
-      gap: 14px;
-      margin-bottom: 15px;
-    }
-
-    .input-group label {
-      display: block;
-      font-size: 12px;
-      font-weight: 600;
-      margin-bottom: 5px;
-      color: #444;
-    }
-
-    input, select {
-      width: 100%;
-      padding: 10px 12px;
-      border: 1px solid #ced4da;
-      border-radius: 8px;
-      font-size: 13.5px;
-      outline: none;
-      background: #fafafa;
-    }
-
-    input:focus, select:focus {
-      border-color: var(--primary);
-      background: #fff;
-    }
-
-    .btn {
-      background: var(--primary);
-      color: white;
-      border: none;
-      padding: 10px 20px;
-      border-radius: 8px;
-      cursor: pointer;
-      font-size: 13.5px;
-      font-weight: 700;
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-    }
-
-    .btn:hover {
-      background: var(--primary-light);
-    }
-
-    .btn-danger {
-      background: var(--danger);
-      color: white;
-    }
-
-    .btn-warning {
-      background: var(--warning);
-      color: white;
-    }
-
-    .btn-info {
-      background: var(--info);
-      color: white;
-    }
-
-    .action-btn {
-      padding: 5px 11px;
-      font-size: 12px;
-      border: none;
-      border-radius: 5px;
-      cursor: pointer;
-      margin-right: 4px;
-      font-weight: 600;
-    }
-
-    .table-container {
-      overflow-x: auto;
-      margin-top: 10px;
-      border-radius: 8px;
-      border: 1px solid #edf2ee;
-    }
-
-    table {
-      width: 100%;
-      border-collapse: collapse;
-      font-size: 12.5px;
-      text-align: left;
-      min-width: 900px;
-    }
-
-    th, td {
-      padding: 10px 12px;
-      border-bottom: 1px solid #eceff1;
-      white-space: nowrap;
-    }
-
-    th {
-      background: #f8faf9;
-      color: #555;
-      font-weight: 700;
-    }
-
-    .badge {
-      padding: 3px 8px;
-      border-radius: 12px;
-      font-size: 11px;
-      font-weight: 600;
-      display: inline-block;
-    }
-
-    .badge-success {
-      background: #e8f5e9;
-      color: #2e7d32;
-    }
-
-    .badge-warning {
-      background: #fff3e0;
-      color: #e65100;
-    }
-
-    .badge-danger {
-      background: #ffebee;
-      color: #c62828;
-    }
-
-    .summary-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-      gap: 14px;
-      margin-bottom: 22px;
-    }
-
-    .summary-card {
-      background: white;
-      padding: 16px;
-      border-radius: 10px;
-      border-left: 5px solid var(--primary);
-      box-shadow: 0 2px 6px rgba(0,0,0,0.05);
-    }
-
-    .summary-card p {
-      font-size: 11.5px;
-      color: #666;
-      font-weight: 600;
-      text-transform: uppercase;
-    }
-
-    .summary-card h3 {
-      font-size: 22px;
-      color: var(--primary);
-      margin-top: 5px;
-      font-weight: 700;
-    }
-
-    #loginScreen {
-      position: fixed;
-      inset: 0;
-      background: #e8f5e9;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      z-index: 99999;
-      padding: 20px;
-    }
-
-    .login-box {
-      background: white;
-      padding: 32px;
-      border-radius: 16px;
-      width: 100%;
-      max-width: 380px;
-      box-shadow: 0 8px 24px rgba(0,0,0,0.12);
-      text-align: center;
-    }
-
-    .login-box img {
-      height: 95px;
-      width: 95px;
-      border-radius: 50%;
-      object-fit: cover;
-      margin-bottom: 14px;
-      box-shadow: 0 3px 10px rgba(0,0,0,0.15);
-      border: 2px solid var(--secondary);
-    }
+    #loginScreen { position: fixed; inset: 0; background: #e8f5e9; display: flex; align-items: center; justify-content: center; z-index: 99999; padding: 20px; }
+    .login-box { background: white; padding: 32px; border-radius: 16px; width: 100%; max-width: 380px; box-shadow: 0 8px 24px rgba(0,0,0,0.12); text-align: center; }
+    .login-box img { height: 95px; width: 95px; border-radius: 50%; object-fit: cover; margin-bottom: 14px; border: 2px solid var(--secondary); }
 
     #ledgerModal, #invoiceModal, #cattleFeedModal {
-      display: none;
-      position: fixed;
-      inset: 0;
-      background: rgba(0,0,0,0.65);
-      z-index: 2000;
-      align-items: center;
-      justify-content: center;
-      padding: 15px;
-      overflow-y: auto;
+      display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.65); z-index: 2000; align-items: center; justify-content: center; padding: 15px; overflow-y: auto;
     }
-
     .invoice-card, .ledger-card, .feed-modal-card {
-      background: white;
-      max-width: 850px;
-      width: 100%;
-      border-radius: 16px;
-      padding: 32px;
-      position: relative;
-      box-shadow: 0 15px 40px rgba(0,0,0,0.35);
-      max-height: 95vh;
-      overflow-y: auto;
-      box-sizing: border-box;
-    }
-
-    .invoice-table {
-      width: 100% !important;
-      border-collapse: collapse !important;
-      margin: 18px 0 !important;
-    }
-
-    .invoice-table th, .invoice-table td {
-      padding: 10px !important;
-      font-size: 14px !important;
-    }
-
-    #invoicePrintArea {
-      position: relative;
-      background: white;
-      padding: 15px;
-      width: 100%;
-      box-sizing: border-box;
-    }
-
-    .invoice-watermark {
-      position: absolute;
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, -50%);
-      width: 280px;
-      height: 280px;
-      opacity: 0.12;
-      pointer-events: none;
-      z-index: 0;
-    }
-
-    .invoice-content {
-      position: relative;
-      z-index: 1;
-    }
-
-    @page { margin: 0mm !important; size: auto; }
-
-    @media print {
-      body * { visibility: hidden !important; }
-      .no-print { display: none !important; }
-
-      body[data-print="invoice"] #invoiceModal,
-      body[data-print="invoice"] #invoicePrintArea,
-      body[data-print="invoice"] #invoicePrintArea * {
-        visibility: visible !important;
-      }
-      body[data-print="invoice"] #invoiceModal {
-        display: block !important;
-        position: absolute !important;
-        left: 0 !important;
-        top: 0 !important;
-        width: 100% !important;
-        background: white !important;
-        padding: 10mm !important;
-      }
-
-      body[data-print="ledger"] #ledgerModal,
-      body[data-print="ledger"] #ledgerPrintArea,
-      body[data-print="ledger"] #ledgerPrintArea * {
-        visibility: visible !important;
-      }
-      body[data-print="ledger"] #ledgerModal {
-        display: block !important;
-        position: absolute !important;
-        left: 0 !important;
-        top: 0 !important;
-        width: 100% !important;
-        background: white !important;
-        padding: 10mm !important;
-      }
+      background: white; max-width: 850px; width: 100%; border-radius: 16px; padding: 32px; position: relative; box-shadow: 0 15px 40px rgba(0,0,0,0.35); max-height: 95vh; overflow-y: auto; box-sizing: border-box;
     }
   </style>
 </head>
@@ -592,39 +230,27 @@
   <datalist id="cattleTagList"></datalist>
   <datalist id="customerNameList"></datalist>
   <datalist id="customerAreaList"></datalist>
-  <datalist id="stockItemList"></datalist> <!-- স্টক আইটেমের অটো-কমপ্লিট সাজেশন লিস্ট -->
+  <datalist id="stockItemList"></datalist>
 
-  <!-- ১. লগইন স্ক্রিন -->
+  <!-- লগইন স্ক্রিন -->
   <div id="loginScreen">
     <div class="login-box">
-      <img src="logo.png" alt="Nanda Dairy Agro" onerror="this.onerror=null; this.src='https://cdn-icons-png.flaticon.com/512/2395/2395796.png';">
+      <img src="logo.png" alt="Logo" onerror="this.onerror=null; this.src='https://cdn-icons-png.flaticon.com/512/2395/2395796.png';">
       <h2>Nanda Dairy Agro</h2>
       <p style="font-size: 13px; color: #666; margin-bottom: 20px;">ফার্ম ম্যানেজমেন্ট সিস্টেমে স্বাগতম</p>
-      
-      <div style="text-align: left; margin-bottom: 14px;">
-        <label style="font-size: 12px; font-weight:600;">User ID</label>
-        <input type="text" id="loginId" placeholder="ইউজার আইডি দিন" autocomplete="off" style="margin-top: 4px;">
-      </div>
-      
-      <div style="text-align: left; margin-bottom: 20px;">
-        <label style="font-size: 12px; font-weight:600;">Password</label>
-        <input type="password" id="loginPass" placeholder="পাসওয়ার্ড দিন" autocomplete="off" style="margin-top: 4px;">
-      </div>
-      
+      <div style="text-align: left; margin-bottom: 14px;"><label style="font-size: 12px; font-weight:600;">User ID</label><input type="text" id="loginId" placeholder="ইউজার আইডি"></div>
+      <div style="text-align: left; margin-bottom: 20px;"><label style="font-size: 12px; font-weight:600;">Password</label><input type="password" id="loginPass" placeholder="পাসওয়ার্ড"></div>
       <button class="btn" style="width: 100%; padding: 11px; justify-content:center;" onclick="window.doLogin()">লগইন করুন</button>
       <p id="loginErr" style="color: red; font-size: 12px; margin-top: 10px;"></p>
     </div>
   </div>
 
-  <!-- ২. মূল অ্যাপ্লিকেশন -->
+  <!-- মূল অ্যাপ্লিকেশন -->
   <div id="appBody" style="display: none;">
     <header>
       <div class="header-title">
-        <img src="logo.png" alt="Nanda Dairy Agro" onerror="this.onerror=null; this.src='https://cdn-icons-png.flaticon.com/512/2395/2395796.png';">
-        <div>
-          <h1>NANDA Dairy & Agro</h1>
-          <span style="font-size: 11px; opacity: 0.85;">Owner / Admin</span>
-        </div>
+        <img src="logo.png" alt="Logo" onerror="this.onerror=null; this.src='https://cdn-icons-png.flaticon.com/512/2395/2395796.png';">
+        <div><h1>NANDA Dairy & Agro</h1><span style="font-size: 11px; opacity: 0.85;">Owner / Admin</span></div>
       </div>
       <div class="header-right">
         <span class="sync-badge">● Online Cloud Sync</span>
@@ -661,7 +287,6 @@
           <div class="summary-card" style="border-left-color: var(--danger);"><p>TOTAL EXPENSE</p><h3 id="dash-total-exp">₹ 0</h3></div>
           <div class="summary-card" style="border-left-color: #00897b;"><p>PENDING ORDERS</p><h3 id="dash-pending-orders">0</h3></div>
         </div>
-        <!-- ডেইলি ফিড রিমাইন্ডার নোটিফিকেশন -->
         <div style="background:#e8f5e9; border-left:5px solid #2e7d32; padding:15px; border-radius:8px; margin-top:15px;">
           <h3 style="color:#1b5e20; font-size:15px; margin-bottom:5px;">🔔 দৈনিক ফিড ও রেশন টাস্ক রিমাইন্ডার (Daily Feeding Task)</h3>
           <p style="font-size:13px; color:#333;">আজকের দিনে সকল গরুর জন্য দৈনিক খাদ্য বরাদ্দ (Ration) এন্ট্রি করতে <strong>🌾 Feed</strong> ট্যাবে যান এবং স্টক চেক করে খাবার বিতরণ সম্পন্ন করুন।</p>
@@ -886,7 +511,7 @@
         </div>
       </div>
 
-      <!-- Feed Management (অটো-স্টক ডিডাকশন ও কাস্টম এড ফিচার সহ) -->
+      <!-- Feed Management (স্থায়ী নতুন ফিল্ড যোগ করার অপশনসহ) -->
       <div id="tab-feed" class="tab-content" style="display: none;">
         <div class="card">
           <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
@@ -904,15 +529,16 @@
             <div class="input-group"><label>Mineral / Salt (gram)</label><input type="number" id="ratMineral" oninput="autoCalcRation()" value="50" placeholder="গ্রাম"></div>
             <div class="input-group"><label>Green Grass / ঘাস (kg)</label><input type="number" step="0.1" id="ratGrass" oninput="autoCalcRation()" value="15.0" placeholder="০.০"></div>
 
-            <!-- নতুন কাস্টম ফিড আইটেম অ্যাড করার সেকশন -->
+            <!-- ডাইনামিক স্থায়ী নতুন ফিল্ড কন্টেইনার -->
+            <div id="dynamicCustomFieldsContainer" style="grid-column: span 2; display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 14px;"></div>
+
+            <!-- নতুন স্থায়ী ফিড ফিল্ড যোগ করার বক্স -->
             <div class="input-group" style="grid-column: span 2; background: #f9fdfa; border: 1px dashed #2e7d32; padding: 10px; border-radius: 8px;">
-              <label style="color:#1b5e20; font-weight:700;">➕ যেকোনো নতুন খাবার বা উপাদান যোগ করুন (Add Custom Feed Item)</label>
+              <label style="color:#1b5e20; font-weight:700;">➕ ফর্মে নতুন খাদ্যের ঘর যোগ করুন (Add Permanent Feed Field)</label>
               <div style="display:flex; gap:8px; margin-top:5px;">
-                <input type="text" id="customFeedName" list="stockItemList" placeholder="নাম (যেমন: সাইলেজ)" style="flex:2;">
-                <input type="number" step="0.1" id="customFeedVal" placeholder="পরিমাণ (কেজি)" style="flex:1;">
-                <button type="button" class="btn" style="padding: 8px 14px; font-size:12px;" onclick="addCustomFeedItem()">+ Add</button>
+                <input type="text" id="newFieldName" list="stockItemList" placeholder="খাবারের নাম (যেমন: সাইলেজ বা চোকট)" style="flex:2;">
+                <button type="button" class="btn" style="padding: 8px 14px; font-size:12px;" onclick="addPermanentFeedField('')">+ Add Field</button>
               </div>
-              <div id="customFeedDisplay" style="margin-top:6px; font-size:12px; color:#2e7d32; font-weight:600;"></div>
             </div>
 
             <div class="input-group"><label>Total Weight kg (অটো)</label><input type="number" id="ratTotalKg" readonly style="background:#eee; font-weight:bold;"></div>
@@ -927,7 +553,7 @@
           <h2>সকল গরুর দৈনিক খাদ্য বরাদ্দ তালিকা</h2>
           <div class="table-container">
             <table>
-              <thead><tr><th>তারিখ</th><th>Cattle Tag</th><th>দানা ফিড (kg)</th><th>ঘাস (kg)</th><th>কাস্টম আইটেম</th><th>মোট ওজন</th><th>খরচ (₹)</th><th>Action</th></tr></thead>
+              <thead><tr><th>তারিখ</th><th>Cattle Tag</th><th>দানা ফিড (kg)</th><th>ঘাস (kg)</th><th>অন্যান্য খাবার</th><th>মোট ওজন</th><th>খরচ (₹)</th><th>Action</th></tr></thead>
               <tbody id="rationTableBody"></tbody>
             </table>
           </div>
@@ -965,7 +591,7 @@
         </div>
       </div>
 
-      <!-- ৯. Stock (অটো-কমপ্লিট সাজেশন সহ) -->
+      <!-- ৯. Stock -->
       <div id="tab-stock" class="tab-content" style="display: none;">
         <div class="card">
           <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
@@ -1178,7 +804,7 @@
       semen: {}, health: {}, feedRations: {}
     };
     window.activeLedgerCustomerName = '';
-    window.tempCustomFeeds = [];
+    window.permanentCustomFeedFields = []; // ব্যবহারকারীর যোগ করা স্থায়ী নতুন ফিল্ডসমূহ
 
     function deleteRecord(path, id) {
       if (confirm('আপনি কি নিশ্চিতভাবে এই তথ্যটি মুছে ফেলতে চান?')) {
@@ -1234,11 +860,53 @@
       }
     }
 
-    // ট্যাগ সিলেক্ট করলে ডিফল্ট রেশন চার্ট লোড করার ফাংশন
+    // স্থায়ী নতুন ফিড ফিল্ড ফর্মে যোগ করার ফাংশন
+    window.addPermanentFeedField = function(fieldName, val) {
+      var fName = fieldName ? fieldName : (getEl('newFieldName').value || '').trim();
+      if (!fName) return alert('খাবারের নাম দিন!');
+
+      // ডুপ্লিকেট চেক
+      if (window.permanentCustomFeedFields.includes(fName)) {
+        return alert('এই নামটি ইতিমধ্যে যোগ করা হয়েছে!');
+      }
+
+      window.permanentCustomFeedFields.push(fName);
+      if (!fieldName && getEl('newFieldName')) getEl('newFieldName').value = '';
+
+      renderDynamicFeedFields();
+      if (val !== undefined) {
+        var inputEl = getEl('dynField_' + fName);
+        if (inputEl) inputEl.value = val;
+      }
+      autoCalcRation();
+    };
+
+    window.removePermanentFeedField = function(fName) {
+      var idx = window.permanentCustomFeedFields.indexOf(fName);
+      if (idx !== -1) {
+        window.permanentCustomFeedFields.splice(idx, 1);
+        renderDynamicFeedFields();
+        autoCalcRation();
+      }
+    };
+
+    function renderDynamicFeedFields() {
+      var container = getEl('dynamicCustomFieldsContainer');
+      if (!container) return;
+      var html = '';
+      window.permanentCustomFeedFields.forEach(function(f) {
+        html += '<div class="input-group">' +
+          '<label>' + f + ' (kg) <a href="javascript:void(0)" onclick="removePermanentFeedField(\'' + f + '\')" style="color:red; text-decoration:none; float:right;">[মুছে ফেলুন]</a></label>' +
+          '<input type="number" step="0.1" id="dynField_' + f + '" oninput="autoCalcRation()" placeholder="০.০">' +
+        '</div>';
+      });
+      container.innerHTML = html;
+    }
+
+    // ট্যাগ সিলেক্ট করলে ডিফল্ট রেশন চার্ট ও স্টক লেবেল আপডেট
     window.loadCattleDefaultRation = function() {
       var tag = (getEl('ratCowTag').value || '').trim();
       if (!tag) return;
-      // ডিফল্ট মান সেট করা (ম্যানুয়ালি এডিট করা যাবে)
       if (!getEl('ratPellet').value) getEl('ratPellet').value = "2.0";
       if (!getEl('ratBran').value) getEl('ratBran').value = "1.5";
       if (!getEl('ratCorn').value) getEl('ratCorn').value = "1.0";
@@ -1247,34 +915,6 @@
       if (!getEl('ratGrass').value) getEl('ratGrass').value = "15.0";
       autoCalcRation();
     };
-
-    // কাস্টম ফিড আইটেম অ্যাড করার ফাংশন
-    window.addCustomFeedItem = function() {
-      var fName = (getEl('customFeedName').value || '').trim();
-      var fVal = parseFloat(getEl('customFeedVal').value) || 0;
-      if (!fName || fVal <= 0) return alert('খাবারের নাম ও সঠিক পরিমাণ দিন!');
-
-      window.tempCustomFeeds.push({ name: fName, qty: fVal });
-      getEl('customFeedName').value = '';
-      getEl('customFeedVal').value = '';
-
-      updateCustomFeedDisplay();
-      autoCalcRation();
-    };
-
-    window.removeCustomFeed = function(idx) {
-      window.tempCustomFeeds.splice(idx, 1);
-      updateCustomFeedDisplay();
-      autoCalcRation();
-    };
-
-    function updateCustomFeedDisplay() {
-      var disp = '';
-      window.tempCustomFeeds.forEach(function(item, i) {
-        disp += '<span style="background:#e8f5e9; padding:2px 6px; border-radius:4px; margin-right:4px;">' + item.name + ': ' + item.qty + 'kg <a href="javascript:void(0)" onclick="removeCustomFeed(' + i + ')" style="color:red; text-decoration:none;">×</a></span>';
-      });
-      getEl('customFeedDisplay').innerHTML = disp;
-    }
 
     function autoCalcRation() {
       var pellet = parseFloat(getEl('ratPellet').value) || 0;
@@ -1286,9 +926,10 @@
 
       var customTotalKg = 0;
       var customTotalCost = 0;
-      window.tempCustomFeeds.forEach(function(item) {
-        customTotalKg += item.qty;
-        customTotalCost += (item.qty * 30);
+      window.permanentCustomFeedFields.forEach(function(f) {
+        var val = parseFloat(getEl('dynField_' + f)?.value) || 0;
+        customTotalKg += val;
+        customTotalCost += (val * 30);
       });
 
       var totalKg = pellet + bran + corn + oilcake + mineral + grass + customTotalKg;
@@ -1298,45 +939,26 @@
       getEl('ratTotalCost').value = totalCost.toFixed(2);
     }
 
-    function checkAndGenerateDailyOrders() {
-      if (!db) return;
-      var todayISO = new Date().toISOString().split('T')[0];
+    // স্টক লেবেল আপডেট করার ফাংশন
+    function updateStockLabels() {
+      var stockMap = {};
+      for (var sk in farmStore.stock) {
+        var st = farmStore.stock[sk];
+        if (st && st.name) {
+          stockMap[st.name.trim().toLowerCase()] = Number(st.qty) || 0;
+        }
+      }
 
-      db.ref('customers').once('value', function(custSnap) {
-        if (!custSnap.exists()) return;
-        
-        db.ref('orders').once('value', function(ordSnap) {
-          var customerProcessedToday = {};
-          ordSnap.forEach(function(o) {
-            var val = o.val();
-            if (val && val.date === todayISO && val.customer) {
-              customerProcessedToday[val.customer.trim().toLowerCase()] = true;
-            }
-          });
-
-          custSnap.forEach(function(c) {
-            var cust = c.val();
-            if (!cust || !cust.name) return;
-            var cName = cust.name.trim();
-            var demand = Number(cust.demand) || 0;
-            if (demand <= 0) return;
-
-            var cKey = cName.toLowerCase();
-            if (!customerProcessedToday[cKey]) {
-              var newOrder = {
-                date: todayISO,
-                customer: cName,
-                phone: cust.phone || '',
-                area: cust.area || '',
-                items: demand + ' লিটার তরল দুধ',
-                total: demand * 50,
-                paid: 0,
-                status: 'Pending'
-              };
-              db.ref('orders').push(newOrder);
-            }
-          });
-        });
+      ['Cattle Feed', 'Wheat Bran', 'Corn', 'Oilcake'].forEach(function(item) {
+        var qty = 0;
+        for (var sName in stockMap) {
+          if (sName.includes(item.toLowerCase()) || item.toLowerCase().includes(sName)) {
+            qty = stockMap[sName];
+            break;
+          }
+        }
+        var lbl = document.getElementById('stkLbl-' + item);
+        if (lbl) lbl.innerText = qty;
       });
     }
 
@@ -1477,7 +1099,7 @@
       '</div>';
 
       profileHtml += '<strong>সাম্প্রতিক খাদ্য বরাদ্দ ও রেশন ইতিহাস (Ration History):</strong>';
-      profileHtml += '<div class="table-container" style="max-height:220px; overflow-y:auto; margin-top:8px;"><table><thead><tr style="background:#f1f5f2;"><th>তারিখ</th><th>ফিড (কেজি)</th><th>ভুসি (কেজি)</th><th>ভুট্টা (কেজি)</th><th>খৈল (কেজি)</th><th>ঘাস (কেজি)</th><th>কাস্টম আইটেম</th><th>মোট ওজন</th><th>খরচ (₹)</th></tr></thead><tbody>';
+      profileHtml += '<div class="table-container" style="max-height:220px; overflow-y:auto; margin-top:8px;"><table><thead><tr style="background:#f1f5f2;"><th>তারিখ</th><th>ফিড (কেজি)</th><th>ভুসি (কেজি)</th><th>ভুট্টা (কেজি)</th><th>খৈল (কেজি)</th><th>ঘাস (কেজি)</th><th>অন্যান্য খাবার</th><th>মোট ওজন</th><th>খরচ (₹)</th></tr></thead><tbody>';
 
       var hasRation = false;
       for (var rk in farmStore.feedRations) {
@@ -1485,8 +1107,12 @@
         if (r && (r.cowTag || '').trim().toUpperCase() === tag.toUpperCase()) {
           hasRation = true;
           var customStr = '-';
-          if (r.customItems && r.customItems.length > 0) {
-            customStr = r.customItems.map(function(ci) { return ci.name + ': ' + ci.qty + 'kg'; }).join(', ');
+          if (r.customFields && Object.keys(r.customFields).length > 0) {
+            var parts = [];
+            for (var cf in r.customFields) {
+              parts.push(cf + ': ' + r.customFields[cf] + 'k');
+            }
+            customStr = parts.join(', ');
           }
           profileHtml += '<tr>' +
             '<td>' + formatDateBR(r.date) + '</td>' +
@@ -1765,7 +1391,6 @@
       body.innerHTML = html;
     }
 
-    // অর্ডার তালিকা রেন্ডার
     function renderOrdersTable() {
       var body = getEl('ordersTableBody');
       if (!body) return;
@@ -1879,100 +1504,10 @@
         }
       }
       stockDL.innerHTML = optHtml;
+      updateStockLabels();
     }
 
-    // রেশন সেভ ও স্টক অটো-ডিডাকশন (ভ্যালিডেশন সহ)
-    function saveRation() {
-      var tag = (getEl('ratCowTag').value || '').trim();
-      var dt = getEl('rationDate').value;
-      if (!tag || !dt) return alert('তারিখ ও গরুর Tag ID দিন!');
-
-      var pellet = parseFloat(getEl('ratPellet').value) || 0;
-      var bran = parseFloat(getEl('ratBran').value) || 0;
-      var corn = parseFloat(getEl('ratCorn').value) || 0;
-      var oilcake = parseFloat(getEl('ratOilcake').value) || 0;
-      var grass = parseFloat(getEl('ratGrass').value) || 0;
-
-      // স্টক ভ্যালিডেশন চেক (Stock Validation)
-      var stockMap = {};
-      for (var sk in farmStore.stock) {
-        var st = farmStore.stock[sk];
-        if (st && st.name) {
-          stockMap[st.name.trim().toLowerCase()] = { key: sk, qty: Number(st.qty) || 0 };
-        }
-      }
-
-      var requiredItems = [
-        { name: 'Cattle Feed', qty: pellet },
-        { name: 'Wheat Bran', qty: bran },
-        { name: 'Corn', qty: corn },
-        { name: 'Oilcake', qty: oilcake }
-      ];
-
-      // কাস্টম আইটেমগুলোও যোগ করা
-      window.tempCustomFeeds.forEach(function(ci) {
-        requiredItems.push({ name: ci.name, qty: ci.qty });
-      });
-
-      // চেক করা স্টকে পর্যাপ্ত আছে কি না
-      for (var i = 0; i < requiredItems.length; i++) {
-        var req = requiredItems[i];
-        if (req.qty > 0) {
-          var matchedKey = null;
-          var availableQty = 0;
-          for (var sName in stockMap) {
-            if (sName.includes(req.name.toLowerCase()) || req.name.toLowerCase().includes(sName)) {
-              matchedKey = stockMap[sName].key;
-              availableQty = stockMap[sName].qty;
-              break;
-            }
-          }
-
-          if (matchedKey && availableQty < req.qty) {
-            alert('⚠️ সতর্কতা (Stock Warning): স্টকে পর্যাপ্ত "' + req.name + '" নেই! বর্তমান স্টক: ' + availableQty + ' kg, প্রয়োজন: ' + req.qty + ' kg');
-            return;
-          }
-        }
-      }
-
-      var data = {
-        date: dt,
-        cowTag: tag,
-        pellet: pellet,
-        bran: bran,
-        corn: corn,
-        oilcake: oilcake,
-        mineral: parseFloat(getEl('ratMineral').value) || 0,
-        grass: grass,
-        customItems: window.tempCustomFeeds || [],
-        totalKg: parseFloat(getEl('ratTotalKg').value) || 0,
-        totalCost: parseFloat(getEl('ratTotalCost').value) || 0
-      };
-
-      if (db) {
-        if (eRatKey) {
-          db.ref('feedRations/' + eRatKey).update(data);
-        } else {
-          db.ref('feedRations').push(data);
-
-          // অটো-ডিডাকশন (Stock Auto-Deduction)
-          requiredItems.forEach(function(req) {
-            if (req.qty > 0) {
-              for (var sName in stockMap) {
-                if (sName.includes(req.name.toLowerCase()) || req.name.toLowerCase().includes(sName)) {
-                  var stkObj = farmStore.stock[stockMap[sName].key];
-                  var newQty = Math.max(0, Number(stkObj.qty) - req.qty);
-                  db.ref('stock/' + stockMap[sName].key).update({ qty: newQty });
-                  break;
-                }
-              }
-            }
-          });
-        }
-      }
-      cancelRationEdit();
-    }
-
+    // রেশন টেবিল রেন্ডার
     function renderRationTable() {
       var body = getEl('rationTableBody');
       if (!body) return;
@@ -1993,8 +1528,12 @@
       list.forEach(function(item) {
         var k = item.key, d = item.data;
         var customStr = '-';
-        if (d.customItems && d.customItems.length > 0) {
-          customStr = d.customItems.map(function(ci) { return ci.name + ': ' + ci.qty + 'k'; }).join(', ');
+        if (d.customFields && Object.keys(d.customFields).length > 0) {
+          var parts = [];
+          for (var cf in d.customFields) {
+            parts.push(cf + ': ' + d.customFields[cf] + 'k');
+          }
+          customStr = parts.join(', ');
         }
         html += '<tr>' +
           '<td>' + formatDateBR(d.date) + '</td>' +
@@ -2025,8 +1564,20 @@
       getEl('ratMineral').value = d.mineral || '';
       getEl('ratGrass').value = d.grass || '';
       
-      window.tempCustomFeeds = d.customItems || [];
-      updateCustomFeedDisplay();
+      window.permanentCustomFeedFields = [];
+      if (d.customFields) {
+        for (var cf in d.customFields) {
+          window.permanentCustomFeedFields.push(cf);
+        }
+      }
+      renderDynamicFeedFields();
+
+      if (d.customFields) {
+        for (var cf in d.customFields) {
+          var inp = getEl('dynField_' + cf);
+          if (inp) inp.value = d.customFields[cf];
+        }
+      }
 
       autoCalcRation();
       getEl('ratSubmitBtn').innerText = 'Update Ration';
@@ -2036,11 +1587,106 @@
 
     function cancelRationEdit() {
       eRatKey = null;
-      window.tempCustomFeeds = [];
-      if (getEl('customFeedDisplay')) getEl('customFeedDisplay').innerHTML = '';
+      window.permanentCustomFeedFields = [];
+      renderDynamicFeedFields();
       ['ratCowTag','ratPellet','ratBran','ratCorn','ratOilcake','ratMineral','ratGrass','ratTotalKg','ratTotalCost'].forEach(function(i){ if(getEl(i)) getEl(i).value=''; });
       getEl('ratSubmitBtn').innerText = 'Save & Deduct Stock';
       getEl('ratCancelBtn').style.display = 'none';
+    }
+
+    // রেশন সেভ ও স্টক অটো-ডিডাকশন (ভ্যালিডেশন সহ)
+    function saveRation() {
+      var tag = (getEl('ratCowTag').value || '').trim();
+      var dt = getEl('rationDate').value;
+      if (!tag || !dt) return alert('তারিখ ও গরুর Tag ID দিন!');
+
+      var pellet = parseFloat(getEl('ratPellet').value) || 0;
+      var bran = parseFloat(getEl('ratBran').value) || 0;
+      var corn = parseFloat(getEl('ratCorn').value) || 0;
+      var oilcake = parseFloat(getEl('ratOilcake').value) || 0;
+      var grass = parseFloat(getEl('ratGrass').value) || 0;
+
+      var customFieldsObj = {};
+      window.permanentCustomFeedFields.forEach(function(f) {
+        customFieldsObj[f] = parseFloat(getEl('dynField_' + f)?.value) || 0;
+      });
+
+      // স্টক ভ্যালিডেশন চেক (Stock Validation)
+      var stockMap = {};
+      for (var sk in farmStore.stock) {
+        var st = farmStore.stock[sk];
+        if (st && st.name) {
+          stockMap[st.name.trim().toLowerCase()] = { key: sk, qty: Number(st.qty) || 0 };
+        }
+      }
+
+      var requiredItems = [
+        { name: 'Cattle Feed', qty: pellet },
+        { name: 'Wheat Bran', qty: bran },
+        { name: 'Corn', qty: corn },
+        { name: 'Oilcake', qty: oilcake }
+      ];
+
+      for (var cf in customFieldsObj) {
+        requiredItems.push({ name: cf, qty: customFieldsObj[cf] });
+      }
+
+      for (var i = 0; i < requiredItems.length; i++) {
+        var req = requiredItems[i];
+        if (req.qty > 0) {
+          var matchedKey = null;
+          var availableQty = 0;
+          for (var sName in stockMap) {
+            if (sName.includes(req.name.toLowerCase()) || req.name.toLowerCase().includes(sName)) {
+              matchedKey = stockMap[sName].key;
+              availableQty = stockMap[sName].qty;
+              break;
+            }
+          }
+
+          if (matchedKey && availableQty < req.qty) {
+            alert('⚠️ সতর্কতা (Stock Warning): স্টকে পর্যাপ্ত "' + req.name + '" নেই! বর্তমান স্টক: ' + availableQty + ' kg, প্রয়োজন: ' + req.qty + ' kg');
+            return;
+          }
+        }
+      }
+
+      var data = {
+        date: dt,
+        cowTag: tag,
+        pellet: pellet,
+        bran: bran,
+        corn: corn,
+        oilcake: oilcake,
+        mineral: parseFloat(getEl('ratMineral').value) || 0,
+        grass: grass,
+        customFields: customFieldsObj,
+        totalKg: parseFloat(getEl('ratTotalKg').value) || 0,
+        totalCost: parseFloat(getEl('ratTotalCost').value) || 0
+      };
+
+      if (db) {
+        if (eRatKey) {
+          db.ref('feedRations/' + eRatKey).update(data);
+        } else {
+          db.ref('feedRations').push(data);
+
+          // অটো-ডিডাকশন (Stock Auto-Deduction)
+          requiredItems.forEach(function(req) {
+            if (req.qty > 0) {
+              for (var sName in stockMap) {
+                if (sName.includes(req.name.toLowerCase()) || req.name.toLowerCase().includes(sName)) {
+                  var stkObj = farmStore.stock[stockMap[sName].key];
+                  var newQty = Math.max(0, Number(stkObj.qty) - req.qty);
+                  db.ref('stock/' + stockMap[sName].key).update({ qty: newQty });
+                  break;
+                }
+              }
+            }
+          });
+        }
+      }
+      cancelRationEdit();
     }
 
     window.showCustomerLedger = function(encName) {
@@ -2518,7 +2164,6 @@
 
     window.listenAllData = function() {
       if (!db) return;
-      // অটো-অর্ডার জেনারেটর সম্পূর্ণরূপে বন্ধ রাখা হয়েছে যাতে রিফ্রেশ করলে কোনো ডুপ্লিকেট পেন্ডিং অর্ডার তৈরি না হয়।
 
       db.ref('cattle').on('value', function(snap) { farmStore.cattle = {}; snap.forEach(function(c){ farmStore.cattle[c.key] = c.val(); }); renderCattleTable(); });
       db.ref('milk').on('value', function(snap) { farmStore.milk = {}; snap.forEach(function(c){ farmStore.milk[c.key] = c.val(); }); renderGroupedMilkTable(); renderCattleTable(); });
