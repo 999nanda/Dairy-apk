@@ -287,10 +287,6 @@
           <div class="summary-card" style="border-left-color: var(--danger);"><p>TOTAL EXPENSE</p><h3 id="dash-total-exp">₹ 0</h3></div>
           <div class="summary-card" style="border-left-color: #00897b;"><p>PENDING ORDERS</p><h3 id="dash-pending-orders">0</h3></div>
         </div>
-        <div style="background:#e8f5e9; border-left:5px solid #2e7d32; padding:15px; border-radius:8px; margin-top:15px;">
-          <h3 style="color:#1b5e20; font-size:15px; margin-bottom:5px;">🔔 দৈনিক ফিড ও রেশন টাস্ক রিমাইন্ডার (Daily Feeding Task)</h3>
-          <p style="font-size:13px; color:#333;">আজকের দিনে সকল গরুর জন্য দৈনিক খাদ্য বরাদ্দ (Ration) এন্ট্রি করতে <strong>🌾 Feed</strong> ট্যাবে যান এবং স্টক চেক করে খাবার বিতরণ সম্পন্ন করুন।</p>
-        </div>
       </div>
 
       <!-- ২. Cattle -->
@@ -511,7 +507,7 @@
         </div>
       </div>
 
-      <!-- Feed Management (স্থায়ী নতুন ফিল্ড যোগ করার অপশনসহ) -->
+      <!-- Feed Management (আপডেটেড রিকোয়ারমেন্ট অনুযায়ী) -->
       <div id="tab-feed" class="tab-content" style="display: none;">
         <div class="card">
           <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
@@ -520,29 +516,12 @@
           </div>
           <div class="form-grid">
             <div class="input-group"><label>Date *</label><input type="date" id="rationDate"></div>
-            <div class="input-group"><label>Cattle Tag ID *</label><input type="text" id="ratCowTag" list="cattleTagList" onchange="loadCattleDefaultRation()" placeholder="NDA-001"></div>
+            <div class="input-group"><label>Cattle Tag ID *</label><input type="text" id="ratCowTag" list="cattleTagList" placeholder="NDA-001"></div>
             
             <div class="input-group"><label>Cattle Feed / Pellets (kg) [স্টক: <span id="stkLbl-Cattle Feed">0</span>]</label><input type="number" step="0.1" id="ratPellet" oninput="autoCalcRation()" value="2.0" placeholder="০.০"></div>
-            <div class="input-group"><label>Wheat Bran / ভুসি (kg) [স্টক: <span id="stkLbl-Wheat Bran">0</span>]</label><input type="number" step="0.1" id="ratBran" oninput="autoCalcRation()" value="1.5" placeholder="০.০"></div>
-            <div class="input-group"><label>Corn / ভুট্টা (kg) [স্টক: <span id="stkLbl-Corn">0</span>]</label><input type="number" step="0.1" id="ratCorn" oninput="autoCalcRation()" value="1.0" placeholder="০.০"></div>
-            <div class="input-group"><label>Oilcake / খৈল (kg) [স্টক: <span id="stkLbl-Oilcake">0</span>]</label><input type="number" step="0.1" id="ratOilcake" oninput="autoCalcRation()" value="0.5" placeholder="০.০"></div>
-            <div class="input-group"><label>Mineral / Salt (gram)</label><input type="number" id="ratMineral" oninput="autoCalcRation()" value="50" placeholder="গ্রাম"></div>
-            <div class="input-group"><label>Green Grass / ঘাস (kg)</label><input type="number" step="0.1" id="ratGrass" oninput="autoCalcRation()" value="15.0" placeholder="০.০"></div>
-
-            <!-- ডাইনামিক স্থায়ী নতুন ফিল্ড কন্টেইনার -->
-            <div id="dynamicCustomFieldsContainer" style="grid-column: span 2; display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 14px;"></div>
-
-            <!-- নতুন স্থায়ী ফিড ফিল্ড যোগ করার বক্স -->
-            <div class="input-group" style="grid-column: span 2; background: #f9fdfa; border: 1px dashed #2e7d32; padding: 10px; border-radius: 8px;">
-              <label style="color:#1b5e20; font-weight:700;">➕ ফর্মে নতুন খাদ্যের ঘর যোগ করুন (Add Permanent Feed Field)</label>
-              <div style="display:flex; gap:8px; margin-top:5px;">
-                <input type="text" id="newFieldName" list="stockItemList" placeholder="খাবারের নাম (যেমন: সাইলেজ বা চোকট)" style="flex:2;">
-                <button type="button" class="btn" style="padding: 8px 14px; font-size:12px;" onclick="addPermanentFeedField('')">+ Add Field</button>
-              </div>
-            </div>
-
-            <div class="input-group"><label>Total Weight kg (অটো)</label><input type="number" id="ratTotalKg" readonly style="background:#eee; font-weight:bold;"></div>
-            <div class="input-group"><label>Est. Cost ₹ (অটো)</label><input type="number" id="ratTotalCost" readonly style="background:#e8f5e9; color:green; font-weight:bold;"></div>
+            <div class="input-group"><label>Average Feed Cost per kg (₹)</label><input type="number" step="0.1" id="ratAvgCostPerKg" oninput="autoCalcRation()" value="32" placeholder="₹"></div>
+            <div class="input-group"><label>Supplement / Vitamin Cost (₹)</label><input type="number" step="1" id="ratSuppCost" oninput="autoCalcRation()" value="0" placeholder="₹"></div>
+            <div class="input-group"><label>Total Feeding Cost ₹ (অটো)</label><input type="number" id="ratTotalCost" readonly style="background:#e8f5e9; color:green; font-weight:bold;"></div>
           </div>
           <div style="display:flex; gap:10px; margin-top:10px;">
             <button class="btn" id="ratSubmitBtn" onclick="saveRation()">Save & Deduct Stock</button>
@@ -553,7 +532,7 @@
           <h2>সকল গরুর দৈনিক খাদ্য বরাদ্দ তালিকা</h2>
           <div class="table-container">
             <table>
-              <thead><tr><th>তারিখ</th><th>Cattle Tag</th><th>দানা ফিড (kg)</th><th>ঘাস (kg)</th><th>অন্যান্য খাবার</th><th>মোট ওজন</th><th>খরচ (₹)</th><th>Action</th></tr></thead>
+              <thead><tr><th>তারিখ</th><th>Cattle Tag</th><th>ফিড (kg)</th><th>ফিড রেট (₹)</th><th>ভিটামিন/সাপ্লিমেন্ট (₹)</th><th>মোট খরচ (₹)</th><th>Action</th></tr></thead>
               <tbody id="rationTableBody"></tbody>
             </table>
           </div>
@@ -599,7 +578,7 @@
             <button class="action-btn btn-info" onclick="switchTab('dashboard', document.querySelector('nav button'))">⬅ Back (ফিরে যান)</button>
           </div>
           <div class="form-grid">
-            <div class="input-group"><label>Item Name * (সাজেশন সহ)</label><input type="text" id="stkName" list="stockItemList" placeholder="যেমন: গমের ভুসি, ভুট্টা ভাঙা, খৈল"></div>
+            <div class="input-group"><label>Item Name * (সাজেশন সহ)</label><input type="text" id="stkName" list="stockItemList" placeholder="যেমন: Cattle Feed, ভুসি"></div>
             <div class="input-group"><label>Quantity *</label><input type="number" id="stkQty" placeholder="পরিমাণ"></div>
             <div class="input-group"><label>Unit</label><select id="stkUnit"><option value="kg">kg</option><option value="Bag">Bag</option><option value="Ton">Ton</option><option value="Pcs">Pcs</option></select></div>
             <div class="input-group"><label>Alert Level</label><input type="number" id="stkAlert" placeholder="৫"></div>
@@ -804,7 +783,6 @@
       semen: {}, health: {}, feedRations: {}
     };
     window.activeLedgerCustomerName = '';
-    window.permanentCustomFeedFields = []; // ব্যবহারকারীর যোগ করা স্থায়ী নতুন ফিল্ডসমূহ
 
     function deleteRecord(path, id) {
       if (confirm('আপনি কি নিশ্চিতভাবে এই তথ্যটি মুছে ফেলতে চান?')) {
@@ -860,86 +838,22 @@
       }
     }
 
-    // স্থায়ী নতুন ফিড ফিল্ড ফর্মে যোগ করার ফাংশন
-    window.addPermanentFeedField = function(fieldName, val) {
-      var fName = fieldName ? fieldName : (getEl('newFieldName').value || '').trim();
-      if (!fName) return alert('খাবারের নাম দিন!');
-
-      // ডুপ্লিকেট চেক
-      if (window.permanentCustomFeedFields.includes(fName)) {
-        return alert('এই নামটি ইতিমধ্যে যোগ করা হয়েছে!');
+    // স্টক ডেটা থেকে অটো-কমপ্লিট সাজেশন রেন্ডার
+    function renderStockAutocomplete() {
+      var stockDL = getEl('stockItemList');
+      if (!stockDL) return;
+      var optHtml = '';
+      for (var k in farmStore.stock) {
+        var sName = farmStore.stock[k].name;
+        if (sName) {
+          optHtml += '<option value="' + sName + '">';
+        }
       }
-
-      window.permanentCustomFeedFields.push(fName);
-      if (!fieldName && getEl('newFieldName')) getEl('newFieldName').value = '';
-
-      renderDynamicFeedFields();
-      if (val !== undefined) {
-        var inputEl = getEl('dynField_' + fName);
-        if (inputEl) inputEl.value = val;
-      }
-      autoCalcRation();
-    };
-
-    window.removePermanentFeedField = function(fName) {
-      var idx = window.permanentCustomFeedFields.indexOf(fName);
-      if (idx !== -1) {
-        window.permanentCustomFeedFields.splice(idx, 1);
-        renderDynamicFeedFields();
-        autoCalcRation();
-      }
-    };
-
-    function renderDynamicFeedFields() {
-      var container = getEl('dynamicCustomFieldsContainer');
-      if (!container) return;
-      var html = '';
-      window.permanentCustomFeedFields.forEach(function(f) {
-        html += '<div class="input-group">' +
-          '<label>' + f + ' (kg) <a href="javascript:void(0)" onclick="removePermanentFeedField(\'' + f + '\')" style="color:red; text-decoration:none; float:right;">[মুছে ফেলুন]</a></label>' +
-          '<input type="number" step="0.1" id="dynField_' + f + '" oninput="autoCalcRation()" placeholder="০.০">' +
-        '</div>';
-      });
-      container.innerHTML = html;
+      stockDL.innerHTML = optHtml;
+      updateStockLabels();
     }
 
-    // ট্যাগ সিলেক্ট করলে ডিফল্ট রেশন চার্ট ও স্টক লেবেল আপডেট
-    window.loadCattleDefaultRation = function() {
-      var tag = (getEl('ratCowTag').value || '').trim();
-      if (!tag) return;
-      if (!getEl('ratPellet').value) getEl('ratPellet').value = "2.0";
-      if (!getEl('ratBran').value) getEl('ratBran').value = "1.5";
-      if (!getEl('ratCorn').value) getEl('ratCorn').value = "1.0";
-      if (!getEl('ratOilcake').value) getEl('ratOilcake').value = "0.5";
-      if (!getEl('ratMineral').value) getEl('ratMineral').value = "50";
-      if (!getEl('ratGrass').value) getEl('ratGrass').value = "15.0";
-      autoCalcRation();
-    };
-
-    function autoCalcRation() {
-      var pellet = parseFloat(getEl('ratPellet').value) || 0;
-      var bran = parseFloat(getEl('ratBran').value) || 0;
-      var corn = parseFloat(getEl('ratCorn').value) || 0;
-      var oilcake = parseFloat(getEl('ratOilcake').value) || 0;
-      var mineral = (parseFloat(getEl('ratMineral').value) || 0) / 1000;
-      var grass = parseFloat(getEl('ratGrass').value) || 0;
-
-      var customTotalKg = 0;
-      var customTotalCost = 0;
-      window.permanentCustomFeedFields.forEach(function(f) {
-        var val = parseFloat(getEl('dynField_' + f)?.value) || 0;
-        customTotalKg += val;
-        customTotalCost += (val * 30);
-      });
-
-      var totalKg = pellet + bran + corn + oilcake + mineral + grass + customTotalKg;
-      getEl('ratTotalKg').value = totalKg.toFixed(2);
-
-      var totalCost = ((pellet + bran + corn + oilcake) * 32) + (mineral * 100) + (grass * 4) + customTotalCost;
-      getEl('ratTotalCost').value = totalCost.toFixed(2);
-    }
-
-    // স্টক লেবেল আপডেট করার ফাংশন
+    // স্টক লেবেল আপডেট
     function updateStockLabels() {
       var stockMap = {};
       for (var sk in farmStore.stock) {
@@ -960,6 +874,25 @@
         var lbl = document.getElementById('stkLbl-' + item);
         if (lbl) lbl.innerText = qty;
       });
+    }
+
+    // ট্যাগ সিলেক্ট করলে ডিফল্ট রেশন চার্ট লোড
+    window.loadCattleDefaultRation = function() {
+      var tag = (getEl('ratCowTag').value || '').trim();
+      if (!tag) return;
+      if (!getEl('ratPellet').value) getEl('ratPellet').value = "2.0";
+      if (!getEl('ratAvgCostPerKg').value) getEl('ratAvgCostPerKg').value = "32";
+      if (!getEl('ratSuppCost').value) getEl('ratSuppCost').value = "0";
+      autoCalcRation();
+    };
+
+    function autoCalcRation() {
+      var pellet = parseFloat(getEl('ratPellet').value) || 0;
+      var avgCost = parseFloat(getEl('ratAvgCostPerKg').value) || 0;
+      var suppCost = parseFloat(getEl('ratSuppCost').value) || 0;
+
+      var totalCost = (pellet * avgCost) + suppCost;
+      if (getEl('ratTotalCost')) getEl('ratTotalCost').value = totalCost.toFixed(2);
     }
 
     function getCustomerLiveBalances() {
@@ -1033,26 +966,6 @@
       for (var key in map) {
         var c = map[key];
         c.currentDue = Math.max(0, c.totalBilled - c.totalPaid);
-        c.isOverdue35 = false;
-        c.daysWithoutPayment = 0;
-
-        if (c.currentDue > 0) {
-          if (c.lastPaymentTime > 0) {
-            var daysSincePayment = Math.floor((todayTime - c.lastPaymentTime) / (1000 * 3600 * 24));
-            if (daysSincePayment >= 35) {
-              c.isOverdue35 = true;
-              c.daysWithoutPayment = daysSincePayment;
-            }
-          } else {
-            if (c.earliestBillTime !== Infinity) {
-              var daysSinceFirstBill = Math.floor((todayTime - c.earliestBillTime) / (1000 * 3600 * 24));
-              if (daysSinceFirstBill >= 35) {
-                c.isOverdue35 = true;
-                c.daysWithoutPayment = daysSinceFirstBill;
-              }
-            }
-          }
-        }
       }
       return map;
     }
@@ -1098,38 +1011,26 @@
         '<strong>বিয়ান:</strong> ' + (cowInfo?.lactation || 0) +
       '</div>';
 
-      profileHtml += '<strong>সাম্প্রতিক খাদ্য বরাদ্দ ও রেশন ইতিহাস (Ration History):</strong>';
-      profileHtml += '<div class="table-container" style="max-height:220px; overflow-y:auto; margin-top:8px;"><table><thead><tr style="background:#f1f5f2;"><th>তারিখ</th><th>ফিড (কেজি)</th><th>ভুসি (কেজি)</th><th>ভুট্টা (কেজি)</th><th>খৈল (কেজি)</th><th>ঘাস (কেজি)</th><th>অন্যান্য খাবার</th><th>মোট ওজন</th><th>খরচ (₹)</th></tr></thead><tbody>';
+      profileHtml += '<strong>সাম্প্রতিক খাদ্য বরাদ্দ ও খরচ (Feeding History):</strong>';
+      profileHtml += '<div class="table-container" style="max-height:220px; overflow-y:auto; margin-top:8px;"><table><thead><tr style="background:#f1f5f2;"><th>তারিখ</th><th>ফিড (কেজি)</th><th>ফিড রেট (₹)</th><th>সাপ্লিমেন্ট/ভিটামিন (₹)</th><th>মোট খরচ (₹)</th></tr></thead><tbody>';
 
       var hasRation = false;
       for (var rk in farmStore.feedRations) {
         var r = farmStore.feedRations[rk];
         if (r && (r.cowTag || '').trim().toUpperCase() === tag.toUpperCase()) {
           hasRation = true;
-          var customStr = '-';
-          if (r.customFields && Object.keys(r.customFields).length > 0) {
-            var parts = [];
-            for (var cf in r.customFields) {
-              parts.push(cf + ': ' + r.customFields[cf] + 'k');
-            }
-            customStr = parts.join(', ');
-          }
           profileHtml += '<tr>' +
             '<td>' + formatDateBR(r.date) + '</td>' +
-            '<td>' + (r.pellet || 0) + '</td>' +
-            '<td>' + (r.bran || 0) + '</td>' +
-            '<td>' + (r.corn || 0) + '</td>' +
-            '<td>' + (r.oilcake || 0) + '</td>' +
-            '<td>' + (r.grass || 0) + '</td>' +
-            '<td>' + customStr + '</td>' +
-            '<td><strong>' + (r.totalKg || 0) + ' kg</strong></td>' +
+            '<td>' + (r.pellet || 0) + ' kg</td>' +
+            '<td>₹ ' + (r.avgCostPerKg || 0) + '</td>' +
+            '<td>₹ ' + (r.suppCost || 0) + '</td>' +
             '<td style="color:green; font-weight:bold;">₹ ' + (r.totalCost || 0) + '</td>' +
           '</tr>';
         }
       }
 
       if (!hasRation) {
-        profileHtml += '<tr><td colspan="9" style="text-align:center; color:#777;">এই গরুর জন্য কোনো রেশন চার্ট এন্ট্রি করা হয়নি।</td></tr>';
+        profileHtml += '<tr><td colspan="5" style="text-align:center; color:#777;">এই গরুর জন্য কোনো রেশন রেকর্ড এন্ট্রি করা হয়নি।</td></tr>';
       }
 
       profileHtml += '</tbody></table></div>';
@@ -1174,7 +1075,7 @@
 
           body.innerHTML += '<tr>' +
             '<td><strong>' + (index + 1) + '</strong></td>' +
-            '<td><a href="javascript:void(0)" onclick="openCattleFeedModal(\'' + (d.tag || '') + '\')" style="color:var(--primary); font-weight:bold; text-decoration:underline;" title="প্রোফাইল ও রেশন দেখতে ক্লিক করুন">🐄 ' + (d.tag || '-') + '</a></td>' +
+            '<td><a href="javascript:void(0)" onclick="openCattleFeedModal(\'' + (d.tag || '') + '\')" style="color:var(--primary); font-weight:bold; text-decoration:underline;" title="প্রোফাইল দেখতে ক্লিক করুন">🐄 ' + (d.tag || '-') + '</a></td>' +
             '<td>' + (d.breed || '-') + '</td>' +
             '<td>' + (d.breedType || '-') + '</td>' +
             '<td>' + (d.generation || '-') + '</td>' +
@@ -1323,7 +1224,7 @@
         var cObj = customerMap[cKey];
         var d = cObj.data;
         var cBal = custBalances[cKey] || { currentDue: Number(d.due) || 0, isOverdue35: false, daysWithoutPayment: 0 };
-        list.push({ key: cObj.key, data: d, customerName: cObj.customerName, lastProductDate: cObj.latestDate, liveCustomerDue: cBal.currentDue, isOverdue: cBal.isOverdue35, diffDays: cBal.daysWithoutPayment });
+        list.push({ key: cObj.key, data: d, customerName: cObj.customerName, lastProductDate: cObj.latestDate, liveCustomerDue: cBal.currentDue });
       }
 
       var totalLiveFarmDue = 0;
@@ -1352,8 +1253,6 @@
       });
 
       filtered.sort(function(a, b) {
-        if (a.isOverdue && !b.isOverdue) return -1;
-        if (!a.isOverdue && b.isOverdue) return 1;
         return parseDateToTime(b.lastProductDate) - parseDateToTime(a.lastProductDate);
       });
 
@@ -1367,8 +1266,7 @@
       var html = '';
       filtered.forEach(function(item) {
         var k = item.key, d = item.data, dueVal = item.liveCustomerDue;
-        var rowStyle = item.isOverdue ? 'background:#fff3f3; border-left:5px solid #d32f2f;' : '';
-        var dueBadge = item.isOverdue && dueVal > 0 ? '<span class="badge badge-danger">₹ ' + dueVal + ' (⚠️ ' + item.diffDays + ' দিন বাকি)</span>' : (dueVal > 0 ? '<strong style="color:red;">₹ ' + dueVal + '</strong>' : '<span class="badge badge-success">পরিশোধ</span>');
+        var dueBadge = dueVal > 0 ? '<strong style="color:red;">₹ ' + dueVal + '</strong>' : '<span class="badge badge-success">পরিশোধ</span>';
 
         var actionBtns = k.startsWith('cust-') ? 
           '<button class="action-btn" style="background:#455a64; color:white;" onclick="showCustomerLedger(\'' + encodeURIComponent(item.customerName) + '\')">খাতা</button>' :
@@ -1377,9 +1275,9 @@
           '<button class="action-btn btn-warning" onclick="editSale(\'' + k + '\')">Edit</button>' +
           '<button class="action-btn btn-danger" onclick="deleteRecord(\'sales\',\'' + k + '\')">Delete</button>';
 
-        html += '<tr style="' + rowStyle + '">' +
+        html += '<tr>' +
           '<td>' + (item.lastProductDate || '-') + '</td>' +
-          '<td><a href="javascript:void(0)" onclick="showCustomerLedger(\'' + encodeURIComponent(item.customerName) + '\')" style="color:var(--primary); font-weight:bold; text-decoration:underline;">' + item.customerName + '</a>' + (d.phone ? '<br><small>📞 ' + d.phone + '</small>' : '') + (item.lastProductDate ? '<br><small style="color:#1b5e20; font-weight:600;">📅 শেষ: ' + item.lastProductDate + '</small>' : '') + '</td>' +
+          '<td><a href="javascript:void(0)" onclick="showCustomerLedger(\'' + encodeURIComponent(item.customerName) + '\')" style="color:var(--primary); font-weight:bold; text-decoration:underline;">' + item.customerName + '</a>' + (d.phone ? '<br><small>📞 ' + d.phone + '</small>' : '') + '</td>' +
           '<td>' + (d.area ? '<span class="badge badge-warning">' + d.area + '</span><br>' : '') + (d.addr || '-') + '</td>' +
           '<td>' + (d.item && d.item !== '-' ? d.item + ' (' + (d.qty || 0) + ')' : '-') + '</td>' +
           '<td>₹ ' + (d.total || 0) + '</td>' +
@@ -1391,6 +1289,7 @@
       body.innerHTML = html;
     }
 
+    // অর্ডার তালিকা রেন্ডার (সঠিকভাবে অর্ডার শো করার জন্য)
     function renderOrdersTable() {
       var body = getEl('ordersTableBody');
       if (!body) return;
@@ -1492,21 +1391,6 @@
       body.innerHTML = html;
     }
 
-    // স্টক ডেটা থেকে অটো-কমপ্লিট সাজেশন রেন্ডার
-    function renderStockAutocomplete() {
-      var stockDL = getEl('stockItemList');
-      if (!stockDL) return;
-      var optHtml = '';
-      for (var k in farmStore.stock) {
-        var sName = farmStore.stock[k].name;
-        if (sName) {
-          optHtml += '<option value="' + sName + '">';
-        }
-      }
-      stockDL.innerHTML = optHtml;
-      updateStockLabels();
-    }
-
     // রেশন টেবিল রেন্ডার
     function renderRationTable() {
       var body = getEl('rationTableBody');
@@ -1527,21 +1411,12 @@
       var html = '';
       list.forEach(function(item) {
         var k = item.key, d = item.data;
-        var customStr = '-';
-        if (d.customFields && Object.keys(d.customFields).length > 0) {
-          var parts = [];
-          for (var cf in d.customFields) {
-            parts.push(cf + ': ' + d.customFields[cf] + 'k');
-          }
-          customStr = parts.join(', ');
-        }
         html += '<tr>' +
           '<td>' + formatDateBR(d.date) + '</td>' +
           '<td><strong style="color:var(--primary);">Tag: ' + (d.cowTag || '-') + '</strong></td>' +
-          '<td>ফিড: ' + (d.pellet||0) + 'k | ভুসি: ' + (d.bran||0) + 'k | খৈল: ' + (d.oilcake||0) + 'k</td>' +
-          '<td>' + (d.grass || 0) + ' kg</td>' +
-          '<td>' + customStr + '</td>' +
-          '<td><strong>' + (d.totalKg || 0) + ' kg</strong></td>' +
+          '<td>' + (d.pellet || 0) + ' kg</td>' +
+          '<td>₹ ' + (d.avgCostPerKg || 0) + '</td>' +
+          '<td>₹ ' + (d.suppCost || 0) + '</td>' +
           '<td style="color:green; font-weight:bold;">₹ ' + (d.totalCost || 0) + '</td>' +
           '<td>' +
             '<button class="action-btn btn-info" onclick="editRation(\'' + k + '\')">Edit</button>' +
@@ -1558,28 +1433,10 @@
       getEl('rationDate').value = d.date || '';
       getEl('ratCowTag').value = d.cowTag || '';
       getEl('ratPellet').value = d.pellet || '';
-      getEl('ratBran').value = d.bran || '';
-      getEl('ratCorn').value = d.corn || '';
-      getEl('ratOilcake').value = d.oilcake || '';
-      getEl('ratMineral').value = d.mineral || '';
-      getEl('ratGrass').value = d.grass || '';
-      
-      window.permanentCustomFeedFields = [];
-      if (d.customFields) {
-        for (var cf in d.customFields) {
-          window.permanentCustomFeedFields.push(cf);
-        }
-      }
-      renderDynamicFeedFields();
+      getEl('ratAvgCostPerKg').value = d.avgCostPerKg || '';
+      getEl('ratSuppCost').value = d.suppCost || '';
+      getEl('ratTotalCost').value = d.totalCost || '';
 
-      if (d.customFields) {
-        for (var cf in d.customFields) {
-          var inp = getEl('dynField_' + cf);
-          if (inp) inp.value = d.customFields[cf];
-        }
-      }
-
-      autoCalcRation();
       getEl('ratSubmitBtn').innerText = 'Update Ration';
       getEl('ratCancelBtn').style.display = 'inline-flex';
       getEl('ratCowTag').scrollIntoView({ behavior: 'smooth' });
@@ -1587,9 +1444,7 @@
 
     function cancelRationEdit() {
       eRatKey = null;
-      window.permanentCustomFeedFields = [];
-      renderDynamicFeedFields();
-      ['ratCowTag','ratPellet','ratBran','ratCorn','ratOilcake','ratMineral','ratGrass','ratTotalKg','ratTotalCost'].forEach(function(i){ if(getEl(i)) getEl(i).value=''; });
+      ['ratCowTag','ratPellet','ratAvgCostPerKg','ratSuppCost','ratTotalCost'].forEach(function(i){ if(getEl(i)) getEl(i).value=''; });
       getEl('ratSubmitBtn').innerText = 'Save & Deduct Stock';
       getEl('ratCancelBtn').style.display = 'none';
     }
@@ -1601,15 +1456,9 @@
       if (!tag || !dt) return alert('তারিখ ও গরুর Tag ID দিন!');
 
       var pellet = parseFloat(getEl('ratPellet').value) || 0;
-      var bran = parseFloat(getEl('ratBran').value) || 0;
-      var corn = parseFloat(getEl('ratCorn').value) || 0;
-      var oilcake = parseFloat(getEl('ratOilcake').value) || 0;
-      var grass = parseFloat(getEl('ratGrass').value) || 0;
-
-      var customFieldsObj = {};
-      window.permanentCustomFeedFields.forEach(function(f) {
-        customFieldsObj[f] = parseFloat(getEl('dynField_' + f)?.value) || 0;
-      });
+      var avgCost = parseFloat(getEl('ratAvgCostPerKg').value) || 0;
+      var suppCost = parseFloat(getEl('ratSuppCost').value) || 0;
+      var totalCost = (pellet * avgCost) + suppCost;
 
       // স্টক ভ্যালিডেশন চেক (Stock Validation)
       var stockMap = {};
@@ -1620,34 +1469,20 @@
         }
       }
 
-      var requiredItems = [
-        { name: 'Cattle Feed', qty: pellet },
-        { name: 'Wheat Bran', qty: bran },
-        { name: 'Corn', qty: corn },
-        { name: 'Oilcake', qty: oilcake }
-      ];
-
-      for (var cf in customFieldsObj) {
-        requiredItems.push({ name: cf, qty: customFieldsObj[cf] });
-      }
-
-      for (var i = 0; i < requiredItems.length; i++) {
-        var req = requiredItems[i];
-        if (req.qty > 0) {
-          var matchedKey = null;
-          var availableQty = 0;
-          for (var sName in stockMap) {
-            if (sName.includes(req.name.toLowerCase()) || req.name.toLowerCase().includes(sName)) {
-              matchedKey = stockMap[sName].key;
-              availableQty = stockMap[sName].qty;
-              break;
-            }
+      if (pellet > 0) {
+        var matchedKey = null;
+        var availableQty = 0;
+        for (var sName in stockMap) {
+          if (sName.includes('cattle feed') || sName.includes('feed') || sName.includes('pellets')) {
+            matchedKey = stockMap[sName].key;
+            availableQty = stockMap[sName].qty;
+            break;
           }
+        }
 
-          if (matchedKey && availableQty < req.qty) {
-            alert('⚠️ সতর্কতা (Stock Warning): স্টকে পর্যাপ্ত "' + req.name + '" নেই! বর্তমান স্টক: ' + availableQty + ' kg, প্রয়োজন: ' + req.qty + ' kg');
-            return;
-          }
+        if (matchedKey && availableQty < pellet) {
+          alert('⚠️ সতর্কতা (Stock Warning): স্টকে পর্যাপ্ত ফিড নেই! বর্তমান স্টক: ' + availableQty + ' kg, প্রয়োজন: ' + pellet + ' kg');
+          return;
         }
       }
 
@@ -1655,14 +1490,9 @@
         date: dt,
         cowTag: tag,
         pellet: pellet,
-        bran: bran,
-        corn: corn,
-        oilcake: oilcake,
-        mineral: parseFloat(getEl('ratMineral').value) || 0,
-        grass: grass,
-        customFields: customFieldsObj,
-        totalKg: parseFloat(getEl('ratTotalKg').value) || 0,
-        totalCost: parseFloat(getEl('ratTotalCost').value) || 0
+        avgCostPerKg: avgCost,
+        suppCost: suppCost,
+        totalCost: totalCost
       };
 
       if (db) {
@@ -1672,18 +1502,16 @@
           db.ref('feedRations').push(data);
 
           // অটো-ডিডাকশন (Stock Auto-Deduction)
-          requiredItems.forEach(function(req) {
-            if (req.qty > 0) {
-              for (var sName in stockMap) {
-                if (sName.includes(req.name.toLowerCase()) || req.name.toLowerCase().includes(sName)) {
-                  var stkObj = farmStore.stock[stockMap[sName].key];
-                  var newQty = Math.max(0, Number(stkObj.qty) - req.qty);
-                  db.ref('stock/' + stockMap[sName].key).update({ qty: newQty });
-                  break;
-                }
+          if (pellet > 0) {
+            for (var sName in stockMap) {
+              if (sName.includes('cattle feed') || sName.includes('feed') || sName.includes('pellets')) {
+                var stkObj = farmStore.stock[stockMap[sName].key];
+                var newQty = Math.max(0, Number(stkObj.qty) - pellet);
+                db.ref('stock/' + stockMap[sName].key).update({ qty: newQty });
+                break;
               }
             }
-          });
+          }
         }
       }
       cancelRationEdit();
