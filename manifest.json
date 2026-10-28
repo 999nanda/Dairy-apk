@@ -1,0 +1,8 @@
+{
+  "short_name": "Nanda ERP",
+  "name": "NANDA Dairy & Agro Enterprise Farm ERP",
+  "start_url": "index.html",
+  "background_color": "#e8f5e9",
+  "theme_color": "#1b5e20",
+  "display": "standalone"
+}
