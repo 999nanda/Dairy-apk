@@ -1,6 +1,18 @@
 {
   "short_name": "Nanda ERP",
   "name": "NANDA Dairy & Agro Enterprise Farm ERP",
+  "icons": [
+    {
+      "src": "logo.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "logo.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ],
   "start_url": "index.html",
   "background_color": "#e8f5e9",
   "theme_color": "#1b5e20",
