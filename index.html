@@ -1,1 +1,570 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>NANDA Dairy & Agro - Enterprise Farm ERP</title>
+  <link rel="icon" type="image/png" href="logo.png">
+  <link rel="manifest" href="manifest.json">
 
+  <!-- স্টাইল ফাইল -->
+  <link rel="stylesheet" href="style.css">
+
+  <!-- Firebase লাইব্রেরি -->
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+</head>
+<body>
+
+  <datalist id="cattleTagList"></datalist>
+  <datalist id="customerNameList"></datalist>
+  <datalist id="customerAreaList"></datalist>
+
+  <!-- ১. লগইন স্ক্রিন -->
+  <div id="loginScreen">
+    <div class="login-box">
+      <img src="logo.png" alt="Nanda Dairy Agro" onerror="this.onerror=null; this.src='https://cdn-icons-png.flaticon.com/512/2395/2395796.png';">
+      <h2 style="border:none; margin-bottom: 5px; justify-content:center;">Nanda Dairy Agro</h2>
+      <p style="font-size: 13px; color: #666; margin-bottom: 20px;">ফার্ম ম্যানেজমেন্ট সিস্টেমে স্বাগতম</p>
+      
+      <div style="text-align: left; margin-bottom: 14px;">
+        <label style="font-size: 12px; font-weight:600;">User ID</label>
+        <input type="text" id="loginId" placeholder="ইউজার আইডি দিন" autocomplete="off" style="margin-top: 4px;">
+      </div>
+      
+      <div style="text-align: left; margin-bottom: 20px;">
+        <label style="font-size: 12px; font-weight:600;">Password</label>
+        <input type="password" id="loginPass" placeholder="পাসওয়ার্ড দিন" autocomplete="off" style="margin-top: 4px;">
+      </div>
+      
+      <button class="btn" style="width: 100%; padding: 11px; justify-content:center;" onclick="window.doLogin()">লগইন করুন</button>
+      <p id="loginErr" style="color: red; font-size: 12px; margin-top: 10px;"></p>
+    </div>
+  </div>
+
+  <!-- ২. মূল অ্যাপ্লিকেশন -->
+  <div id="appBody" style="display: none;">
+    <header>
+      <div class="header-title">
+        <img src="logo.png" alt="Nanda Dairy Agro" onerror="this.onerror=null; this.src='https://cdn-icons-png.flaticon.com/512/2395/2395796.png';">
+        <div>
+          <h1>NANDA Dairy & Agro</h1>
+          <span style="font-size: 11px; opacity: 0.85;">Owner / Admin</span>
+        </div>
+      </div>
+      <div class="header-right">
+        <span class="sync-badge">● Online Cloud Sync</span>
+        <button class="logout-btn" onclick="window.doLogout()">লগআউট</button>
+      </div>
+    </header>
+
+    <nav>
+      <button class="active" onclick="switchTab('dashboard', this)">📊 Dashboard</button>
+      <button onclick="switchTab('cattle', this)">🐄 Cattle</button>
+      <button onclick="switchTab('breeding', this)">🧬 Breeding</button>
+      <button onclick="switchTab('milk', this)">🥛 Milk</button>
+      <button onclick="switchTab('sales', this)">💰 Sales</button>
+      <button onclick="switchTab('customers', this)">👥 Customer</button>
+      <button onclick="switchTab('orders', this)">📦 Orders</button>
+      <button onclick="switchTab('feed', this)">🌾 Feed</button>
+      <button onclick="switchTab('expenses', this)">🧾 Expenses</button>
+      <button onclick="switchTab('stock', this)">📦 Stock</button>
+      <button onclick="switchTab('semen', this)">💉 Semen/Bull</button>
+      <button onclick="switchTab('health', this)">🩺 Health</button>
+      <button onclick="switchTab('reports', this)">📈 Reports</button>
+      <button onclick="switchTab('backup', this)">💾 Backup</button>
+    </nav>
+
+    <div class="container">
+      
+      <!-- ১. Dashboard -->
+      <div id="tab-dashboard" class="tab-content">
+        <div class="summary-grid">
+          <div class="summary-card"><p>TOTAL CATTLE</p><h3 id="dash-cow-count">০</h3></div>
+          <div class="summary-card" style="border-left-color: var(--info);"><p>TODAY'S MILK</p><h3 id="dash-milk-today">0.0 L</h3></div>
+          <div class="summary-card" style="border-left-color: #7b1fa2;"><p>TOTAL DUE</p><h3 id="dash-total-due">₹ 0</h3></div>
+          <div class="summary-card" style="border-left-color: var(--warning);"><p>TOTAL SALES</p><h3 id="dash-total-sales">₹ 0</h3></div>
+          <div class="summary-card" style="border-left-color: var(--danger);"><p>TOTAL EXPENSE</p><h3 id="dash-total-exp">₹ 0</h3></div>
+          <div class="summary-card" style="border-left-color: #00897b;"><p>PENDING ORDERS</p><h3 id="dash-pending-orders">0</h3></div>
+        </div>
+      </div>
+
+      <!-- ২. Cattle -->
+      <div id="tab-cattle" class="tab-content" style="display: none;">
+        <div class="card">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+            <h2 style="margin:0; border:none; padding:0;">🐄 Cattle Register</h2>
+            <button class="action-btn btn-info" onclick="switchTab('dashboard', document.querySelector('nav button'))">⬅ Back (ফিরে যান)</button>
+          </div>
+          <div class="form-grid">
+            <div class="input-group"><label>Tag ID *</label><input type="text" id="cowTag" placeholder="NDA-001"></div>
+            <div class="input-group"><label>Breed</label><input type="text" id="cowBreed" placeholder="Jersey / HF"></div>
+            <div class="input-group"><label>Breed Type</label><input type="text" id="cowBreedType" placeholder="Jersey Cross"></div>
+            <div class="input-group"><label>Generation</label><select id="cowGeneration"><option value="F1">F1</option><option value="F2">F2</option><option value="F3">F3</option><option value="F4+">F4+</option><option value="Pure/100%">Pure/100%</option></select></div>
+            <div class="input-group"><label>DOB (জন্মতারিখ)</label><input type="date" id="cowDob"></div>
+            <div class="input-group"><label>Weight kg</label><input type="number" id="cowWeight" placeholder="450"></div>
+            <div class="input-group"><label>Lactation</label><input type="number" id="cowLactation" placeholder="2"></div>
+            <div class="input-group"><label>Status</label><select id="cowStatus"><option value="Milking">Milking</option><option value="Pregnant">Pregnant</option><option value="Dry">Dry</option><option value="Heat">Heat</option><option value="Heifer">Heifer</option><option value="Calf">Calf</option><option value="Sick">Sick</option><option value="Sold/Transferred">Sold/Transferred</option></select></div>
+            <div class="input-group"><label>Daily Est. Milk (L/day)</label><input type="number" step="0.1" id="cowMilkDay" placeholder="12.5"></div>
+            <div class="input-group"><label>Sire / Semen</label><input type="text" id="cowSire" placeholder="Romio"></div>
+            <div class="input-group"><label>Dam</label><input type="text" id="cowDam" placeholder="মায়ের আইডি"></div>
+            <div class="input-group"><label>Expected Calving</label><input type="date" id="cowExpCalving"></div>
+          </div>
+          <div style="display:flex; gap:10px;">
+            <button class="btn" id="cowSubmitBtn" onclick="saveCattle()">Save Cattle</button>
+            <button class="btn btn-warning" id="cowCancelBtn" style="display:none;" onclick="cancelCattleEdit()">Cancel</button>
+          </div>
+        </div>
+        <div class="card">
+          <h2>সকল গরুর তালিকা</h2>
+          <div class="table-container">
+            <table>
+              <thead><tr><th>#</th><th>Tag</th><th>Breed</th><th>Type</th><th>Gen</th><th>DOB</th><th>Weight</th><th>Lact</th><th>Status</th><th style="background:#e8f5e9; color:#1b5e20;">Total Milk (Days)</th><th>Sire/Semen</th><th>Calving</th><th>Action</th></tr></thead>
+              <tbody id="cattleTableBody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- ৩. Breeding -->
+      <div id="tab-breeding" class="tab-content" style="display: none;">
+        <div class="card">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+            <h2 style="margin:0; border:none; padding:0;">🧬 AI • Pregnancy • Calving • Pedigree</h2>
+            <button class="action-btn btn-info" onclick="switchTab('dashboard', document.querySelector('nav button'))">⬅ Back (ফিরে যান)</button>
+          </div>
+          <div class="form-grid">
+            <div class="input-group"><label>Cattle ID *</label><input type="text" id="brCowTag" list="cattleTagList" placeholder="Tag সিলেক্ট বা টাইপ করুন"></div>
+            <div class="input-group"><label>AI Date *</label><input type="date" id="brAiDate" onchange="autoCalcExpectedCalving()"></div>
+            <div class="input-group"><label>Semen/Bull</label><input type="text" id="brSemenId" placeholder="ষাঁড় বা সিমেন আইডি"></div>
+            <div class="input-group"><label>Company</label><input type="text" id="brCompany" placeholder="কোম্পানির নাম"></div>
+            <div class="input-group"><label>AI Cost ₹</label><input type="number" id="brAiCost" placeholder="₹"></div>
+            <div class="input-group"><label>Pregnancy Test</label><input type="date" id="brPdDate"></div>
+            <div class="input-group"><label>Result</label><select id="brStatus"><option value="Pending">Pending</option><option value="Pregnant">Pregnant</option><option value="Failed">Failed</option><option value="Calved">Calved</option></select></div>
+            <div class="input-group"><label>Exp. Calving</label><input type="date" id="brExpCalvingDate"></div>
+            <div class="input-group"><label>Actual Calving</label><input type="date" id="brActCalvingDate"></div>
+          </div>
+          <div style="display:flex; gap:10px;">
+            <button class="btn" id="brSubmitBtn" onclick="saveBreeding()">Save Breeding Record</button>
+            <button class="btn btn-warning" id="brCancelBtn" style="display:none;" onclick="cancelBreedingEdit()">Cancel</button>
+          </div>
+        </div>
+        <div class="card">
+          <h2>প্রজনন রেকর্ড তালিকা</h2>
+          <div class="table-container">
+            <table>
+              <thead><tr><th>Cattle ID</th><th>AI Date</th><th>Semen/Bull</th><th>Company</th><th>AI Cost</th><th>Pregnancy Test</th><th>Result</th><th>Exp. Calving</th><th>Actual Calving</th><th>Action</th></tr></thead>
+              <tbody id="breedingTableBody"></tbody>
+            </table>
+          </div>
+          <p id="breedingNoData" style="text-align: center; color: #777; font-size: 13px; margin-top: 15px; display: none;">কোনো record নেই।</p>
+        </div>
+      </div>
+
+      <!-- ৪. Milk -->
+      <div id="tab-milk" class="tab-content" style="display: none;">
+        <div class="card">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+            <h2 style="margin:0; border:none; padding:0;">🥛 Milk Production Entry</h2>
+            <button class="action-btn btn-info" onclick="switchTab('dashboard', document.querySelector('nav button'))">⬅ Back (ফিরে যান)</button>
+          </div>
+          <div class="form-grid">
+            <div class="input-group"><label>Date *</label><input type="date" id="milkDate"></div>
+            <div class="input-group"><label>Tag ID *</label><input type="text" id="milkCowTag" list="cattleTagList" placeholder="Tag সিলেক্ট বা টাইপ করুন"></div>
+            <div class="input-group"><label>Session</label><select id="milkSession"><option value="Morning">Morning</option><option value="Evening">Evening</option><option value="Noon">Noon</option></select></div>
+            <div class="input-group"><label>Quantity Liters *</label><input type="number" id="milkLiters" step="0.1" placeholder="০.০"></div>
+          </div>
+          <div style="display:flex; gap:10px;">
+            <button class="btn" id="milkSubmitBtn" onclick="saveMilk()">Save Milk Record</button>
+            <button class="btn btn-warning" id="milkCancelBtn" style="display:none;" onclick="cancelMilkEdit()">Cancel</button>
+          </div>
+        </div>
+        <div class="card">
+          <h2>দুধ উৎপাদন খাতা (দৈনিক সারসংক্ষেপ)</h2>
+          <div class="table-container">
+            <table>
+              <thead><tr><th>তারিখ (Date)</th><th>মোট দুধ</th><th>গাভীর সংখ্যা</th><th>এন্ট্রি</th><th>বিস্তারিত</th></tr></thead>
+              <tbody id="milkGroupTableBody"></tbody>
+            </table>
+          </div>
+          <p id="milkNoData" style="text-align: center; color: #777; font-size: 13px; margin-top: 15px; display: none;">কোনো রেকর্ড নেই।</p>
+        </div>
+      </div>
+
+      <!-- ৫. Sales -->
+      <div id="tab-sales" class="tab-content" style="display: none;">
+        <div class="card">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+            <h2 style="margin:0; border:none; padding:0;">💰 Sales & Billing</h2>
+            <button class="action-btn btn-info" onclick="switchTab('dashboard', document.querySelector('nav button'))">⬅ Back (ফিরে যান)</button>
+          </div>
+          <div class="form-grid">
+            <div class="input-group"><label>Date *</label><input type="date" id="saleDate"></div>
+            <div class="input-group"><label>Customer Name *</label><input type="text" id="saleCustomer" list="customerNameList" oninput="onSaleCustomerInput()" placeholder="নাম লিখুন"></div>
+            <div class="input-group"><label>Phone</label><input type="text" id="salePhone" placeholder="মোবাইল"></div>
+            <div class="input-group"><label>Area / Route</label><input type="text" id="saleArea" list="customerAreaList" placeholder="এলাকা"></div>
+            <div class="input-group"><label>Address</label><input type="text" id="saleAddr" placeholder="ঠিকানা"></div>
+            <div class="input-group"><label>Item</label><select id="saleItem"><option value="Liquid Milk">Liquid Milk</option><option value="Ghee">Ghee</option><option value="Butter">Butter</option><option value="Paneer">Paneer</option><option value="Manure">Manure</option></select></div>
+            <div class="input-group"><label>Quantity</label><input type="number" id="saleQty" oninput="calcSale()" placeholder="০"></div>
+            <div class="input-group"><label>Rate ₹</label><input type="number" id="saleRate" oninput="calcSale()" placeholder="₹"></div>
+            <div class="input-group"><label>Total Bill ₹</label><input type="number" id="saleTotal" readonly style="background:#eee;"></div>
+            <div class="input-group"><label>Paid Amount ₹</label><input type="number" id="salePaid" oninput="calcSale()" placeholder="₹"></div>
+            <div class="input-group"><label>Due Amount ₹</label><input type="number" id="saleDue" readonly style="background:#ffebee; color:red; font-weight:bold;"></div>
+          </div>
+          <div style="display:flex; gap:10px;">
+            <button class="btn" id="saleSubmitBtn" onclick="saveSale()">Save Sale</button>
+            <button class="btn btn-warning" id="saleCancelBtn" style="display:none;" onclick="cancelSaleEdit()">Cancel</button>
+          </div>
+        </div>
+        <div class="card">
+          <div style="display:flex; justify-content:space-between; align-items:center; gap:12px; margin-bottom:14px;">
+            <h2 style="margin:0; border:none; padding:0;">বিক্রয় ও বাকি তালিকা (Sales Ledger)</h2>
+            <div style="display:flex; gap:8px;">
+              <input type="text" id="saleSearchInput" oninput="renderSalesTable()" placeholder="🔍 খুঁজুন..." style="width:200px; padding:7px;">
+              <select id="saleAreaFilter" onchange="renderSalesTable()" style="width:150px; padding:7px;"><option value="">সকল এলাকা</option></select>
+            </div>
+          </div>
+          <div class="table-container">
+            <table>
+              <thead><tr><th>তারিখ</th><th>Customer</th><th>Area & Address</th><th>Product & Qty</th><th>Total</th><th>Paid</th><th>গ্রাহকের মোট বকেয়া (Due)</th><th>Action</th></tr></thead>
+              <tbody id="salesTableBody"></tbody>
+            </table>
+          </div>
+          <p id="salesNoData" style="text-align: center; color: #777; font-size: 13px; margin-top: 15px; display: none;">কোনো রেকর্ড নেই।</p>
+        </div>
+      </div>
+
+      <!-- ৬. Customer -->
+      <div id="tab-customers" class="tab-content" style="display: none;">
+        <div class="card">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+            <h2 style="margin:0; border:none; padding:0;">👥 Customer Directory</h2>
+            <button class="action-btn btn-info" onclick="switchTab('dashboard', document.querySelector('nav button'))">⬅ Back (ফিরে যান)</button>
+          </div>
+          <div class="form-grid">
+            <div class="input-group"><label>Customer Name *</label><input type="text" id="custName" placeholder="নাম"></div>
+            <div class="input-group"><label>Phone Number *</label><input type="text" id="custPhone" placeholder="মোবাইল"></div>
+            <div class="input-group"><label>Area / Route</label><input type="text" id="custArea" list="customerAreaList" placeholder="এলাকা"></div>
+            <div class="input-group"><label>Address</label><input type="text" id="custAddress" placeholder="ঠিকানা"></div>
+            <div class="input-group"><label>Daily Demand L</label><input type="number" step="0.1" id="custDailyDemand" placeholder="২.০"></div>
+            <div class="input-group"><label>Opening Due ₹</label><input type="number" id="custOpeningDue" placeholder="০"></div>
+            <div class="input-group"><label>Customer Type</label><select id="custType"><option value="Regular Retailer">Regular Retailer</option><option value="Wholesale">Wholesale</option><option value="Feed/Agro Buyer">Feed/Agro Buyer</option></select></div>
+            <div class="input-group"><label>Delivery Shift</label><select id="custShift"><option value="Morning">Morning</option><option value="Evening">Evening</option><option value="Both">Both</option></select></div>
+          </div>
+          <div style="display:flex; gap:10px;">
+            <button class="btn" id="custSubmitBtn" onclick="saveCustomer()">Save Customer</button>
+            <button class="btn btn-warning" id="custCancelBtn" style="display:none;" onclick="cancelCustomerEdit()">Cancel</button>
+          </div>
+        </div>
+        <div class="card">
+          <h2>কাস্টমার তালিকা</h2>
+          <div class="table-container">
+            <table>
+              <thead><tr><th>Name</th><th>Phone</th><th>Area</th><th>Address</th><th>Demand</th><th>Opening Due</th><th>Type & Shift</th><th>Action</th></tr></thead>
+              <tbody id="customerTableBody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- ৭. Orders -->
+      <div id="tab-orders" class="tab-content" style="display: none;">
+        <div class="card">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+            <h2 style="margin:0; border:none; padding:0;">📦 Orders Management</h2>
+            <button class="action-btn btn-info" onclick="switchTab('dashboard', document.querySelector('nav button'))">⬅ Back (ফিরে যান)</button>
+          </div>
+          <div class="form-grid">
+            <div class="input-group"><label>Delivery Date *</label><input type="date" id="orderDate"></div>
+            <div class="input-group"><label>Customer Name *</label><input type="text" id="orderCustomer" list="customerNameList" oninput="onOrderCustomerInput()" placeholder="নাম লিখুন"></div>
+            <div class="input-group"><label>Phone</label><input type="text" id="orderPhone" placeholder="মোবাইল"></div>
+            <div class="input-group"><label>Area</label><input type="text" id="orderArea" list="customerAreaList" placeholder="এলাকা"></div>
+            <div class="input-group"><label>Items & Quantity *</label><input type="text" id="orderItems" placeholder="যেমন: ৫ লিটার দুধ"></div>
+            <div class="input-group"><label>Total Price ₹</label><input type="number" id="orderTotal" placeholder="₹"></div>
+            <div class="input-group"><label>Paid Amount ₹</label><input type="number" id="orderPaid" placeholder="₹"></div>
+            <div class="input-group"><label>Status</label><select id="orderStatus"><option value="Pending">Pending (ডেলিভারি বাকি)</option><option value="Delivered">Delivered (ডেলিভারড)</option><option value="Cancelled">Cancelled (বাতিল)</option></select></div>
+          </div>
+          <div style="display:flex; gap:10px;">
+            <button class="btn" id="orderSubmitBtn" onclick="saveOrder()">Save Order</button>
+            <button class="btn btn-warning" id="orderCancelBtn" style="display:none;" onclick="cancelOrderEdit()">Cancel</button>
+          </div>
+        </div>
+        <div class="card">
+          <div style="display:flex; justify-content:space-between; align-items:center; gap:12px; margin-bottom:14px;">
+            <h2 style="margin:0; border:none; padding:0;">অর্ডার তালিকা (Order Ledger & History)</h2>
+            <div style="display:flex; gap:8px;">
+              <input type="text" id="orderSearchInput" oninput="renderOrdersTable()" placeholder="🔍 কাস্টমার খুঁজুন..." style="width:200px; padding:7px;">
+              <select id="orderAreaFilter" onchange="renderOrdersTable()" style="width:150px; padding:7px;"><option value="">সকল এলাকা</option></select>
+            </div>
+          </div>
+          <div class="table-container">
+            <table>
+              <thead><tr><th>তারিখ</th><th>Customer Name</th><th>Area & Address</th><th>Total Orders / Items</th><th>Status</th><th>Action</th></tr></thead>
+              <tbody id="ordersTableBody"></tbody>
+            </table>
+          </div>
+          <p id="ordersNoData" style="text-align: center; color: #777; font-size: 13px; margin-top: 15px; display: none;">কোনো অর্ডার রেকর্ড নেই।</p>
+        </div>
+      </div>
+
+      <!-- ৮. Feed -->
+      <div id="tab-feed" class="tab-content" style="display: none;">
+        <div class="card">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+            <h2 style="margin:0; border:none; padding:0;">🌾 Feed Management (পশুখাদ্য ও দানাদার খাদ্য)</h2>
+            <button class="action-btn btn-info" onclick="switchTab('dashboard', document.querySelector('nav button'))">⬅ Back (ফিরে যান)</button>
+          </div>
+          <div class="form-grid">
+            <div class="input-group"><label>Date (তারিখ) *</label><input type="date" id="feedDate"></div>
+            <div class="input-group"><label>Feed Type (খাদ্যের ধরণ) *</label><select id="feedType"><option value="Cattle Feed / Pellets">Cattle Feed / Pellets (ক্যাটল ফিড)</option><option value="Wheat Bran (Bhusi)">Wheat Bran (গমের ভুসি)</option><option value="Rice Bran (Khud/ কুঁড়ো)">Rice Bran (রাইস ব্রান/কুঁড়ো)</option><option value="Mustard Oil Cake (Khol)">Mustard Oil Cake (সর্ষের খোল)</option><option value="Green Grass / Fodder">Green Grass / Fodder (সবুজ ঘাস)</option><option value="Dry Straw (খড়)">Dry Straw (শুকনো খড়)</option><option value="Mineral Mixture / Salt">Mineral Mixture / Salt (মিনারেল ও লবণ)</option><option value="Other Feed">Other Feed (অন্যান্য)</option></select></div>
+            <div class="input-group"><label>Quantity & Unit (পরিমাণ ও একক) *</label><input type="text" id="feedQty" placeholder="যেমন: ২ বস্তা বা ৫০ কেজি"></div>
+            <div class="input-group"><label>Total Cost ₹ (মোট খরচ) *</label><input type="number" id="feedCost" placeholder="₹"></div>
+            <div class="input-group"><label>Note / Supplier (সরবরাহকারী বা নোট)</label><input type="text" id="feedNote" placeholder="কোথা থেকে কেনা বা কার নাম"></div>
+          </div>
+          <div style="display:flex; gap:10px;">
+            <button class="btn" id="feedSubmitBtn" onclick="saveFeed()">Save Feed Record</button>
+            <button class="btn btn-warning" id="feedCancelBtn" style="display:none;" onclick="cancelFeedEdit()">Cancel</button>
+          </div>
+        </div>
+        <div class="card">
+          <h2>পশুখাদ্যের তালিকা (Feed Records)</h2>
+          <div class="table-container">
+            <table>
+              <thead><tr><th>তারিখ</th><th>খাদ্যের ধরণ</th><th>পরিমাণ</th><th>মোট খরচ (₹)</th><th>নোট / সরবরাহকারী</th><th>Action</th></tr></thead>
+              <tbody id="feedTableBody"></tbody>
+            </table>
+          </div>
+          <p id="feedNoData" style="text-align: center; color: #777; font-size: 13px; margin-top: 15px; display: none;">কোনো খাদ্যের রেকর্ড নেই।</p>
+        </div>
+      </div>
+
+      <!-- ৯. Expenses -->
+      <div id="tab-expenses" class="tab-content" style="display: none;">
+        <div class="card">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+            <h2 style="margin:0; border:none; padding:0;">🧾 Expense Ledger</h2>
+            <button class="action-btn btn-info" onclick="switchTab('dashboard', document.querySelector('nav button'))">⬅ Back (ফিরে যান)</button>
+          </div>
+          <div class="form-grid">
+            <div class="input-group"><label>Date *</label><input type="date" id="expDate"></div>
+            <div class="input-group"><label>Category</label><select id="expCategory"><option value="Feed & Fodder">Feed & Fodder</option><option value="Medicine & Health">Medicine & Health</option><option value="Labour Salary">Labour Salary</option><option value="Electricity / Utilities">Electricity / Utilities</option><option value="Other">Other</option></select></div>
+            <div class="input-group"><label>Description *</label><input type="text" id="expTitle" placeholder="বিবরণ"></div>
+            <div class="input-group"><label>Amount ₹ *</label><input type="number" id="expAmount" placeholder="₹"></div>
+          </div>
+          <div style="display:flex; gap:10px;">
+            <button class="btn" id="expSubmitBtn" onclick="saveExpense()">Save Expense</button>
+            <button class="btn btn-warning" id="expCancelBtn" style="display:none;" onclick="cancelExpenseEdit()">Cancel</button>
+          </div>
+        </div>
+        <div class="card">
+          <h2>খরচের তালিকা (Expense List)</h2>
+          <div class="table-container">
+            <table>
+              <thead><tr><th>তারিখ (Date)</th><th>মোট খরচ</th><th>এন্ট্রি</th><th>বিস্তারিত</th></tr></thead>
+              <tbody id="expenseGroupTableBody"></tbody>
+            </table>
+          </div>
+          <p id="expenseNoData" style="text-align: center; color: #777; font-size: 13px; margin-top: 15px; display: none;">কোনো রেকর্ড নেই।</p>
+        </div>
+      </div>
+
+      <!-- ১০. Stock -->
+      <div id="tab-stock" class="tab-content" style="display: none;">
+        <div class="card">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+            <h2 style="margin:0; border:none; padding:0;">🌾 Stock & Inventory</h2>
+            <button class="action-btn btn-info" onclick="switchTab('dashboard', document.querySelector('nav button'))">⬅ Back (ফিরে যান)</button>
+          </div>
+          <div class="form-grid">
+            <div class="input-group"><label>Item Name *</label><input type="text" id="stkName" placeholder="ফিড"></div>
+            <div class="input-group"><label>Quantity *</label><input type="number" id="stkQty" placeholder="পরিমাণ"></div>
+            <div class="input-group"><label>Unit</label><select id="stkUnit"><option value="kg">kg</option><option value="Bag">Bag</option><option value="Ton">Ton</option><option value="Pcs">Pcs</option></select></div>
+            <div class="input-group"><label>Alert Level</label><input type="number" id="stkAlert" placeholder="৫"></div>
+          </div>
+          <div style="display:flex; gap:10px;">
+            <button class="btn" id="stkSubmitBtn" onclick="saveStock()">Save Stock</button>
+            <button class="btn btn-warning" id="stkCancelBtn" style="display:none;" onclick="cancelStockEdit()">Cancel</button>
+          </div>
+        </div>
+        <div class="card">
+          <h2>বর্তমান স্টক তালিকা</h2>
+          <div class="table-container">
+            <table>
+              <thead><tr><th>Item</th><th>Quantity</th><th>Unit</th><th>Alert Level</th><th>Action</th></tr></thead>
+              <tbody id="stockTableBody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- ১১. Semen -->
+      <div id="tab-semen" class="tab-content" style="display: none;">
+        <div class="card">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+            <h2 style="margin:0; border:none; padding:0;">💉 Semen & Bull Stock</h2>
+            <button class="action-btn btn-info" onclick="switchTab('dashboard', document.querySelector('nav button'))">⬅ Back (ফিরে যান)</button>
+          </div>
+          <div class="form-grid">
+            <div class="input-group"><label>Batch No *</label><input type="text" id="semBatch" placeholder="HF-8902"></div>
+            <div class="input-group"><label>Breed</label><input type="text" id="semBreed" placeholder="জাত"></div>
+            <div class="input-group"><label>Source</label><input type="text" id="semSource" placeholder="কোম্পানি"></div>
+            <div class="input-group"><label>Straw Count *</label><input type="number" id="semCount" placeholder="পিস"></div>
+          </div>
+          <div style="display:flex; gap:10px;">
+            <button class="btn" id="semSubmitBtn" onclick="saveSemen()">Save Semen</button>
+            <button class="btn btn-warning" id="semCancelBtn" style="display:none;" onclick="cancelSemenEdit()">Cancel</button>
+          </div>
+        </div>
+        <div class="card">
+          <h2>সিমেন স্টক তালিকা</h2>
+          <div class="table-container">
+            <table>
+              <thead><tr><th>Batch No</th><th>Breed</th><th>Source</th><th>Straw Count</th><th>Action</th></tr></thead>
+              <tbody id="semenTableBody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- ১২. Health -->
+      <div id="tab-health" class="tab-content" style="display: none;">
+        <div class="card">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+            <h2 style="margin:0; border:none; padding:0;">🩺 Health & Vaccination Register</h2>
+            <button class="action-btn btn-info" onclick="switchTab('dashboard', document.querySelector('nav button'))">⬅ Back (ফিরে যান)</button>
+          </div>
+          <div class="form-grid">
+            <div class="input-group"><label>Date *</label><input type="date" id="hlthDate"></div>
+            <div class="input-group"><label>Tag ID *</label><input type="text" id="hlthCowTag" list="cattleTagList" placeholder="Tag"></div>
+            <div class="input-group"><label>Type</label><select id="hlthType"><option value="Vaccination">Vaccination</option><option value="Deworming">Deworming</option><option value="General Treatment">General Treatment</option><option value="Doctor Checkup">Doctor Checkup</option></select></div>
+            <div class="input-group"><label>Description</label><input type="text" id="hlthDesc" placeholder="বিবরণ"></div>
+            <div class="input-group"><label>Next Dose</label><input type="date" id="hlthNextDate"></div>
+          </div>
+          <div style="display:flex; gap:10px;">
+            <button class="btn" id="hlthSubmitBtn" onclick="saveHealth()">Save Health Record</button>
+            <button class="btn btn-warning" id="hlthCancelBtn" style="display:none;" onclick="cancelHealthEdit()">Cancel</button>
+          </div>
+        </div>
+        <div class="card">
+          <h2>স্বাস্থ্য রেকর্ড তালিকা</h2>
+          <div class="table-container">
+            <table>
+              <thead><tr><th>Date</th><th>Tag ID</th><th>Type</th><th>Description</th><th>Next Dose</th><th>Action</th></tr></thead>
+              <tbody id="healthTableBody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- ১৩. Reports -->
+      <div id="tab-reports" class="tab-content" style="display: none;">
+        <div class="card">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+            <h2 style="margin:0; border:none; padding:0;">📈 Overall Farm Reports</h2>
+            <button class="action-btn btn-info" onclick="switchTab('dashboard', document.querySelector('nav button'))">⬅ Back (ফিরে যান)</button>
+          </div>
+          <div style="line-height: 2.2; font-size: 15px; margin-top: 10px;">
+            <p><strong>Total Milk Produced:</strong> <span id="rep-milk" style="color:var(--primary); font-weight:bold;">0</span> L</p>
+            <p><strong>Total Sales Revenue:</strong> <span id="rep-sales" style="color:green; font-weight:bold;">₹ 0</span></p>
+            <p><strong>Total Expenses:</strong> <span id="rep-expenses" style="color:red; font-weight:bold;">₹ 0</span></p>
+            <hr style="margin: 15px 0;">
+            <p><strong>Net Profit:</strong> <span id="rep-profit" style="font-size: 19px; font-weight:bold;">₹ 0</span></p>
+          </div>
+        </div>
+      </div>
+
+      <!-- ১৪. Backup -->
+      <div id="tab-backup" class="tab-content" style="display: none;">
+        <div class="card">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+            <h2 style="margin:0; border:none; padding:0;">💾 System Backup & Security</h2>
+            <button class="action-btn btn-info" onclick="switchTab('dashboard', document.querySelector('nav button'))">⬅ Back (ফিরে যান)</button>
+          </div>
+          <button class="btn btn-info" onclick="downloadBackup()">📥 Download Farm Data Backup (JSON)</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ইনভয়েস মোডাল -->
+  <div id="invoiceModal">
+    <div class="invoice-card">
+      <div id="invoicePrintArea">
+        <img src="logo.png" class="invoice-watermark" alt="Logo">
+        <div class="invoice-content">
+          <div style="display:flex; justify-content:space-between; align-items:center; border-bottom: 2.5px solid #1b5e20; padding-bottom: 14px; margin-bottom: 18px;">
+            <div style="display:flex; align-items:center; gap:14px;">
+              <img src="logo.png" style="height:60px; width:60px; border-radius:50%; object-fit:cover;">
+              <div>
+                <h2 style="margin:0; color:#1b5e20; font-size:22px; font-weight:800; border:none; padding:0;">NANDA DAIRY & AGRO</h2>
+                <p id="invMainDocTitle" style="font-size:12.5px; color:#333; margin:3px 0 0 0; font-weight:600;">ইনভয়েস / INVOICE (ক্যাশ মেমো)</p>
+              </div>
+            </div>
+            <div style="text-align:right;">
+              <span style="border: 2px dashed #2e7d32; color: #2e7d32; font-weight: 800; font-size: 11px; padding: 5px 10px; border-radius: 6px;">✔ VERIFIED</span>
+            </div>
+          </div>
+          <div id="invoiceDetails" style="font-size: 14px; line-height: 1.9;"></div>
+          <div style="display:flex; justify-content:space-between; align-items:flex-end; margin-top: 40px; border-top: 1px dashed #aaa; padding-top: 16px;">
+            <div><span style="font-size:11.5px; color:#555;">সিস্টেম জেনারেটেড মূল ইনভয়েস</span></div>
+            <div style="text-align: right;">
+              <div style="font-family:'Brush Script MT', cursive, sans-serif; font-size: 28px; color: #1b5e20;">Bibhas Munshi</div>
+              <div style="border-top: 1.5px solid #222; padding-top: 3px; font-size: 11.5px;"><strong>Bibhas Munshi (Authorized Signatory)</strong></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="no-print" style="display: flex; gap: 12px; margin-top: 22px;">
+        <button class="btn btn-info" style="flex: 1; padding: 12px; font-size: 14px;" onclick="printSpecificModal('invoice')">🖨️ প্রিন্ট করুন</button>
+        <button class="btn btn-danger" style="flex: 1; padding: 12px; font-size: 14px;" onclick="closeInvoice()">বন্ধ করুন</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- কাস্টমার খাতা মোডাল -->
+  <div id="ledgerModal">
+    <div class="ledger-card">
+      <div id="ledgerPrintArea">
+        <div style="display:flex; justify-content:space-between; align-items:center; border-bottom: 2px solid #1b5e20; padding-bottom: 10px; margin-bottom: 12px;">
+          <div>
+            <h2 style="margin:0; color:#1b5e20; font-size:18px; border:none; padding:0;">গ্রাহক খাতা ও লেনদেন বিবরণী</h2>
+            <p id="ledgerCustSub" style="font-size:12px; color:#555; margin:3px 0 0 0;"></p>
+          </div>
+          <span class="badge badge-success">Nanda Dairy & Agro</span>
+        </div>
+
+        <div style="display:grid; grid-template-columns:repeat(3, 1fr); gap:10px; margin-bottom:15px; text-align:center;">
+          <div style="background:#e8f5e9; padding:10px; border-radius:8px;"><span style="font-size:11px; color:#555;">সর্বমোট কেনাকাটা</span><h3 id="ledgerTotalBill" style="color:#1b5e20; font-size:17px; margin-top:3px;">₹ 0</h3></div>
+          <div style="background:#e3f2fd; padding:10px; border-radius:8px;"><span style="font-size:11px; color:#555;">মোট পরিশোধ</span><h3 id="ledgerTotalPaid" style="color:#0288d1; font-size:17px; margin-top:3px;">₹ 0</h3></div>
+          <div style="background:#ffebee; padding:10px; border-radius:8px;"><span style="font-size:11px; color:#555;">বর্তমান মোট বকেয়া</span><h3 id="ledgerTotalDue" style="color:#c62828; font-size:17px; margin-top:3px;">₹ 0</h3></div>
+        </div>
+
+        <div style="background:#f4fbf5; border:1px solid #c8e6c9; border-radius:8px; padding:12px; margin-bottom:15px;" class="no-print">
+          <strong style="color:#1b5e20; font-size:13px; display:block; margin-bottom:8px;">💳 বকেয়া টাকা জমা নিন</strong>
+          <div style="display:flex; flex-wrap:wrap; gap:10px; align-items:flex-end;">
+            <div style="flex:1; min-width:130px;"><label style="font-size:11px; font-weight:600;">তারিখ</label><input type="date" id="ledgerPayDate" style="padding:7px; font-size:12px;"></div>
+            <div style="flex:1; min-width:130px;"><label style="font-size:11px; font-weight:600;">জমা (₹) *</label><input type="number" id="ledgerPayAmount" placeholder="টাকা" style="padding:7px; font-size:12px;"></div>
+            <div style="flex:1.5; min-width:160px;"><label style="font-size:11px; font-weight:600;">পদ্ধতি / নোট</label><input type="text" id="ledgerPayNote" placeholder="ক্যাশ / UPI" style="padding:7px; font-size:12px;"></div>
+            <div><button class="btn" style="padding:8px 16px; font-size:12.5px; height:37px;" onclick="saveCustomerPayment()">+ জমা সেভ করুন</button></div>
+          </div>
+        </div>
+
+        <div class="table-container" style="max-height:360px; overflow-y:auto;">
+          <table style="font-size:12px;">
+            <thead><tr style="background:#f1f5f2;"><th>তারিখ</th><th>বিবরণ</th><th>বিলের পরিমাণ</th><th>পরিশোধ (জমা)</th><th style="background:#fff3e0; color:#e65100;">লেনদেনের পর বাকি</th><th>ইনভয়েস</th></tr></thead>
+            <tbody id="ledgerTableBody"></tbody>
+          </table>
+        </div>
+      </div>
+      <div class="no-print" style="display:flex; gap:10px; margin-top:18px;">
+        <button class="btn btn-info" style="flex:1;" onclick="printSpecificModal('ledger')">🖨️ প্রিন্ট করুন</button>
+        <button class="btn btn-danger" style="flex:1;" onclick="closeLedger()">বন্ধ করুন</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- স্ক্রিপ্ট ফাইলসমূহ -->
+  <script src="firebase-config.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
