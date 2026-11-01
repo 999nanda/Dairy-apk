@@ -1200,9 +1200,8 @@
           var customerProcessedToday = {};
           ordSnap.forEach(function(o) {
             var val = o.val();
-            // যেসকল অর্ডার ইতিমধ্যে তৈরি আছে (সেটি Pending হোক বা Delivered বা Cancelled), 
-            // সেগুলোর ক্ষেত্রে আজকের দিনে নতুন করে আর অটো-অর্ডার তৈরি হবে না।
-            if (val && val.date === todayISO && val.customer) {
+            // শুধুমাত্র Pending অর্ডারগুলোকে ট্র্যাক করা হবে, যাতে Delivered বা Cancelled অর্ডার পুনরায় জেনারেট না হয়।
+            if (val && val.date === todayISO && val.customer && val.status === 'Pending') {
               customerProcessedToday[val.customer.trim().toLowerCase()] = true;
             }
           });
@@ -2009,12 +2008,11 @@
 
       if (db) {
         if (eOrdKey) {
-          // যখন আপডেট করা হবে এবং স্ট্যাটাস Delivered বা Cancelled সিলেক্ট করা হবে,
-          // তখন মূল orders লিস্ট থেকে ওই অর্ডারটি একদম রিমুভ (ডিলিট) করে দেওয়া হবে।
+          // যদি এডিট করার সময় স্ট্যাটাস Delivered বা Cancelled করা হয়, তবে ডাটাবেস থেকে অর্ডারটি চিরতরে মুছে ফেলা হবে
           if (status === 'Delivered' || status === 'Cancelled') {
             db.ref('orders/' + eOrdKey).remove();
             
-            // যদি Delivered করা হয়, তবে শুধু সেলস (Sales) লিস্টে এন্ট্রি যোগ হবে
+            // কেবল Delivered হলে সেলস খাতার মধ্যে এন্ট্রি যোগ হবে
             if (status === 'Delivered' && total > 0) {
               db.ref('sales').push({ 
                 date: deliveryDate, 
@@ -2032,7 +2030,7 @@
               });
             }
           } else {
-            // যদি Pending রাখা হয়, তবে অর্ডারটি আপডেট হবে
+            // অন্যথায় শুধু স্ট্যাটাস আপডেট হবে
             db.ref('orders/' + eOrdKey).update({
               date: deliveryDate, 
               customer: cust, 
@@ -2045,7 +2043,6 @@
             });
           }
         } else {
-          // নতুন অর্ডার যোগ করার সময়
           var newData = { 
             date: deliveryDate, 
             customer: cust, 
@@ -2056,27 +2053,7 @@
             paid: paid, 
             status: status 
           };
-          
-          if (status === 'Delivered') {
-            if (total > 0) {
-              db.ref('sales').push({ 
-                date: deliveryDate, 
-                name: cust, 
-                phone: phone, 
-                area: area, 
-                addr: '', 
-                item: items, 
-                qty: 1, 
-                rate: total, 
-                total: total, 
-                paid: paid, 
-                due: Math.max(0, total - paid), 
-                payments: [] 
-              });
-            }
-          } else if (status !== 'Cancelled') {
-            db.ref('orders').push(newData);
-          }
+          db.ref('orders').push(newData);
         }
       }
       cancelOrderEdit();
