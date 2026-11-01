@@ -1996,40 +1996,59 @@
       var phone = (getEl('orderPhone') ? getEl('orderPhone').value : '').trim();
       var area = (getEl('orderArea') ? getEl('orderArea').value : '').trim();
 
-      var data = { 
-        date: deliveryDate, 
-        customer: cust, 
-        phone: phone, 
-        area: area, 
-        items: items, 
-        total: total, 
-        paid: paid, 
-        status: status 
-      };
+      for (var ck in farmStore.customers) {
+        var cObj = farmStore.customers[ck];
+        if (cObj && cObj.name && cObj.name.trim().toLowerCase() === cust.toLowerCase()) {
+          if (!phone && cObj.phone) phone = cObj.phone;
+          if (!area && cObj.area) area = cObj.area.trim();
+          break;
+        }
+      }
 
       if (db) {
         if (eOrdKey) {
-          db.ref('orders/' + eOrdKey).remove();
-        }
-        if (status === 'Delivered') {
-          if (total > 0) {
-            db.ref('sales').push({ 
+          if (status === 'Delivered') {
+            db.ref('orders/' + eOrdKey).remove();
+            if (total > 0) {
+              db.ref('sales').push({ 
+                date: deliveryDate, 
+                name: cust, 
+                phone: phone, 
+                area: area, 
+                addr: '', 
+                item: items, 
+                qty: 1, 
+                rate: total, 
+                total: total, 
+                paid: paid, 
+                due: Math.max(0, total - paid), 
+                payments: [] 
+              });
+            }
+          } else {
+            db.ref('orders/' + eOrdKey).update({
               date: deliveryDate, 
-              name: cust, 
+              customer: cust, 
               phone: phone, 
               area: area, 
-              addr: '', 
-              item: items, 
-              qty: 1, 
-              rate: total, 
+              items: items, 
               total: total, 
               paid: paid, 
-              due: Math.max(0, total - paid), 
-              payments: [] 
+              status: status
             });
           }
         } else {
-          db.ref('orders').push(data);
+          var newData = { 
+            date: deliveryDate, 
+            customer: cust, 
+            phone: phone, 
+            area: area, 
+            items: items, 
+            total: total, 
+            paid: paid, 
+            status: status 
+          };
+          db.ref('orders').push(newData);
         }
       }
       cancelOrderEdit();
