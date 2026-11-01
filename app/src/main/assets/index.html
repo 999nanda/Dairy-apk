@@ -1200,12 +1200,45 @@
           var customerProcessedToday = {};
           ordSnap.forEach(function(o) {
             var val = o.val();
-            // শুধুমাত্র Pending অর্ডারগুলোকে ট্র্যাক করা হবে, যাতে Delivered বা Cancelled অর্ডার পুনরায় জেনারেট না হয়।
             if (val && val.date === todayISO && val.customer && val.status === 'Pending') {
               customerProcessedToday[val.customer.trim().toLowerCase()] = true;
             }
           });
 
+          db.ref('sales').once('value', function(saleSnap) {
+            saleSnap.forEach(function(s) {
+              var sVal = s.val();
+              if (sVal && sVal.date === todayISO && sVal.name) {
+                customerProcessedToday[sVal.name.trim().toLowerCase()] = true;
+              }
+            });
+
+            custSnap.forEach(function(c) {
+              var cust = c.val();
+              if (!cust || !cust.name) return;
+              var cName = cust.name.trim();
+              var demand = Number(cust.demand) || 0;
+              if (demand <= 0) return;
+
+              var cKey = cName.toLowerCase();
+              if (!customerProcessedToday[cKey]) {
+                var newOrder = {
+                  date: todayISO,
+                  customer: cName,
+                  phone: cust.phone || '',
+                  area: cust.area || '',
+                  items: demand + ' লিটার তরল দুধ',
+                  total: demand * 50,
+                  paid: 0,
+                  status: 'Pending'
+                };
+                db.ref('orders').push(newOrder);
+              }
+            });
+          });
+        });
+      });
+    }
           custSnap.forEach(function(c) {
             var cust = c.val();
             if (!cust || !cust.name) return;
