@@ -1752,7 +1752,7 @@
     }
     
     // একেবারে নিখুঁতভাবে অর্ডার এডিট ও আপডেট করার লজিক
-    function saveOrder() {
+   function saveOrder() {
       var cust = (getEl('orderCustomer').value || '').trim(); 
       var items = (getEl('orderItems').value || '').trim();
       if (!cust || !items) return alert('নাম ও বিবরণ দিন!');
@@ -1775,12 +1775,10 @@
 
       if (db) {
         if (eOrdKey) {
-          // পুরনো অর্ডারটি ডাটাবেস থেকে রিমুভ করা হলো
-          db.ref('orders/' + eOrdKey).remove();
-          
-          if (status === 'Delivered') {
-            // যদি Delivered করা হয় তবে সেলস লেজারে এন্ট্রি হবে এবং অর্ডারে আর থাকবে না
-            if (total > 0) {
+          // রিয়েলটাইম ডাটাবেস থেকে সরাসরি নির্দিষ্ট অর্ডারটি রিমুভ করা হচ্ছে
+          var orderRef = db.ref('orders/' + eOrdKey);
+          orderRef.remove().then(function() {
+            if (status === 'Delivered' && total > 0) {
               db.ref('sales').push({ 
                 date: deliveryDate, 
                 name: cust, 
@@ -1795,21 +1793,19 @@
                 due: Math.max(0, total - paid), 
                 payments: [] 
               });
+            } else if (status === 'Pending') {
+              db.ref('orders').push({ 
+                date: deliveryDate, 
+                customer: cust, 
+                phone: phone, 
+                area: area, 
+                items: items, 
+                total: total, 
+                paid: paid, 
+                status: status 
+              });
             }
-          } else if (status === 'Pending') {
-            // শুধুমাত্র Pending থাকলে তবেই অর্ডারে থাকবে
-            db.ref('orders').push({ 
-              date: deliveryDate, 
-              customer: cust, 
-              phone: phone, 
-              area: area, 
-              items: items, 
-              total: total, 
-              paid: paid, 
-              status: status 
-            });
-          }
-          // Cancelled হলে কোথাও সেভ হবে না
+          });
         } else {
           if (status === 'Delivered') {
             if (total > 0) {
