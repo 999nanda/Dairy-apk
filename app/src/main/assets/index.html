@@ -434,7 +434,7 @@
         </div>
       </div>
 
-      <!-- ৬. Customer -->
+      <!-- ۶. Customer -->
       <div id="tab-customers" class="tab-content" style="display: none;">
         <div class="card">
           <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
@@ -826,11 +826,6 @@
           break;
         }
       }
-    }
-
-    // স্বয়ংক্রিয় অর্ডার জেনারেশন সম্পূর্ণ বন্ধ রাখা হয়েছে
-    function checkAndGenerateDailyOrders() {
-      return;
     }
 
     function renderStockAutocomplete() {
@@ -1751,8 +1746,8 @@
       getEl('orderStatus').value = 'Pending'; getEl('orderSubmitBtn').innerText = 'Save Order'; getEl('orderCancelBtn').style.display = 'none';
     }
     
-    // একেবারে নিখুঁতভাবে অর্ডার এডিট ও আপডেট করার লজিক
-   function saveOrder() {
+    // চূড়ান্ত ও নিখুঁত অর্ডার এডিট ও আপডেট করার লজিক (অটো-রিজেনারেট সমস্যা দূর করা হয়েছে)
+    function saveOrder() {
       var cust = (getEl('orderCustomer').value || '').trim(); 
       var items = (getEl('orderItems').value || '').trim();
       if (!cust || !items) return alert('নাম ও বিবরণ দিন!');
@@ -1775,10 +1770,11 @@
 
       if (db) {
         if (eOrdKey) {
-          // রিয়েলটাইম ডাটাবেস থেকে সরাসরি নির্দিষ্ট অর্ডারটি রিমুভ করা হচ্ছে
-          var orderRef = db.ref('orders/' + eOrdKey);
-          orderRef.remove().then(function() {
-            if (status === 'Delivered' && total > 0) {
+          // পুরনো অর্ডারটি ডাটাবেস থেকে পাকাপাকিভাবে মুছে ফেলা হচ্ছে
+          db.ref('orders/' + eOrdKey).remove();
+          
+          if (status === 'Delivered') {
+            if (total > 0) {
               db.ref('sales').push({ 
                 date: deliveryDate, 
                 name: cust, 
@@ -1793,19 +1789,19 @@
                 due: Math.max(0, total - paid), 
                 payments: [] 
               });
-            } else if (status === 'Pending') {
-              db.ref('orders').push({ 
-                date: deliveryDate, 
-                customer: cust, 
-                phone: phone, 
-                area: area, 
-                items: items, 
-                total: total, 
-                paid: paid, 
-                status: status 
-              });
             }
-          });
+          } else if (status === 'Pending') {
+            db.ref('orders').push({ 
+              date: deliveryDate, 
+              customer: cust, 
+              phone: phone, 
+              area: area, 
+              items: items, 
+              total: total, 
+              paid: paid, 
+              status: status 
+            });
+          }
         } else {
           if (status === 'Delivered') {
             if (total > 0) {
