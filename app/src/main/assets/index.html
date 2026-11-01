@@ -38,7 +38,6 @@
       console.log(e);
     }
 
-    // ভারতীয় ফরম্যাটে তারিখ দেখানোর ফাংশন (DD-MM-YYYY)
     window.formatDateBR = function(dtStr) {
       if (!dtStr || dtStr === '-') return '-';
       var clean = String(dtStr).trim();
@@ -51,6 +50,16 @@
         return clean;
       }
       return clean;
+    };
+
+    window.getCurrentTimeBR = function() {
+      var d = new Date();
+      var hours = d.getHours();
+      var minutes = d.getMinutes();
+      var ampm = hours >= 12 ? 'PM' : 'AM';
+      hours = hours % 12; hours = hours ? hours : 12;
+      minutes = minutes < 10 ? '0' + minutes : minutes;
+      return hours + ':' + minutes + ' ' + ampm;
     };
 
     window.parseDateToTime = function(dtStr) {
@@ -90,7 +99,6 @@
       }
     };
 
-    // স্থায়ী লগইন সিস্টেম
     window.doLogin = function() {
       var u = (getEl('loginId') ? getEl('loginId').value : '').trim().toLowerCase();
       var p = (getEl('loginPass') ? getEl('loginPass').value : '').trim();
@@ -124,22 +132,12 @@
       });
 
       if (localStorage.getItem('nanda_auth_status') === 'logged_in') {
-        if (getEl('loginScreen')) {
-          getEl('loginScreen').style.display = 'none';
-        }
-        if (getEl('appBody')) {
-          getEl('appBody').style.display = 'block';
-        }
-        if (typeof window.listenAllData === 'function') {
-          window.listenAllData();
-        }
+        if (getEl('loginScreen')) getEl('loginScreen').style.display = 'none';
+        if (getEl('appBody')) getEl('appBody').style.display = 'block';
+        if (typeof window.listenAllData === 'function') window.listenAllData();
       } else {
-        if (getEl('loginScreen')) {
-          getEl('loginScreen').style.display = 'flex';
-        }
-        if (getEl('appBody')) {
-          getEl('appBody').style.display = 'none';
-        }
+        if (getEl('loginScreen')) getEl('loginScreen').style.display = 'flex';
+        if (getEl('appBody')) getEl('appBody').style.display = 'none';
       }
     };
 
@@ -164,416 +162,66 @@
       --dark: #212121;
     }
 
-    * {
-      box-sizing: border-box;
-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-      margin: 0;
-      padding: 0;
-    }
-
-    body {
-      background-color: #f1f5f2;
-      color: var(--dark);
-      padding-bottom: 60px;
-    }
+    * { box-sizing: border-box; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 0; padding: 0; }
+    body { background-color: #f1f5f2; color: var(--dark); padding-bottom: 60px; }
 
     header {
       background: linear-gradient(135deg, #1b5e20, #2e7d32);
-      color: white;
-      padding: 12px 18px;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      box-shadow: 0 3px 10px rgba(0,0,0,0.15);
-      position: sticky;
-      top: 0;
-      z-index: 100;
+      color: white; padding: 12px 18px; display: flex; align-items: center; justify-content: space-between;
+      box-shadow: 0 3px 10px rgba(0,0,0,0.15); position: sticky; top: 0; z-index: 100;
     }
+    .header-title { display: flex; align-items: center; gap: 10px; }
+    .header-title img { height: 44px; width: 44px; border-radius: 50%; object-fit: cover; background: white; padding: 2px; }
+    .header-title h1 { font-size: 18px; font-weight: 700; }
+    .header-right { display: flex; align-items: center; gap: 8px; }
+    .sync-badge { background: #2e7d32; border: 1px solid #81c784; color: white; padding: 4px 10px; border-radius: 20px; font-size: 11px; font-weight: 600; }
+    .logout-btn { background: #b71c1c; color: white; border: none; padding: 6px 14px; border-radius: 6px; cursor: pointer; font-weight: bold; font-size: 12px; }
 
-    .header-title {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-    }
+    nav { display: flex; background: white; overflow-x: auto; box-shadow: 0 2px 5px rgba(0,0,0,0.06); padding: 6px 10px; }
+    nav button { flex: 0 0 auto; padding: 9px 15px; border: none; background: none; font-size: 13.5px; font-weight: 600; color: #495057; cursor: pointer; border-radius: 6px; margin-right: 5px; white-space: nowrap; }
+    nav button:hover { background: #f0f4f1; color: var(--primary); }
+    nav button.active { background: var(--secondary); color: var(--primary); font-weight: 700; border-bottom: 3px solid var(--primary); }
 
-    .header-title img {
-      height: 44px;
-      width: 44px;
-      border-radius: 50%;
-      object-fit: cover;
-      background: white;
-      padding: 2px;
-      box-shadow: 0 2px 4px rgba(0,0,0,0.2);
-    }
+    .container { max-width: 1150px; margin: 18px auto; padding: 0 14px; }
+    .card { background: white; border-radius: 12px; padding: 20px; margin-bottom: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
+    h2 { font-size: 17px; margin-bottom: 15px; color: var(--primary); border-bottom: 2px solid var(--secondary); padding-bottom: 6px; font-weight: 700; }
 
-    .header-title h1 {
-      font-size: 18px;
-      font-weight: 700;
-    }
+    .form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 14px; margin-bottom: 15px; }
+    .input-group label { display: block; font-size: 12px; font-weight: 600; margin-bottom: 5px; color: #444; }
+    input, select { width: 100%; padding: 10px 12px; border: 1px solid #ced4da; border-radius: 8px; font-size: 13.5px; outline: none; background: #fafafa; }
+    input:focus, select:focus { border-color: var(--primary); background: #fff; }
 
-    .header-right {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-    }
+    .btn { background: var(--primary); color: white; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer; font-size: 13.5px; font-weight: 700; display: inline-flex; align-items: center; gap: 6px; }
+    .btn:hover { background: var(--primary-light); }
+    .btn-danger { background: var(--danger); color: white; }
+    .btn-warning { background: var(--warning); color: white; }
+    .btn-info { background: var(--info); color: white; }
+    .action-btn { padding: 5px 11px; font-size: 12px; border: none; border-radius: 5px; cursor: pointer; margin-right: 4px; font-weight: 600; }
 
-    .sync-badge {
-      background: #2e7d32;
-      border: 1px solid #81c784;
-      color: white;
-      padding: 4px 10px;
-      border-radius: 20px;
-      font-size: 11px;
-      font-weight: 600;
-    }
+    .table-container { overflow-x: auto; margin-top: 10px; border-radius: 8px; border: 1px solid #edf2ee; }
+    table { width: 100%; border-collapse: collapse; font-size: 12.5px; text-align: left; min-width: 900px; }
+    th, td { padding: 10px 12px; border-bottom: 1px solid #eceff1; white-space: nowrap; }
+    th { background: #f8faf9; color: #555; font-weight: 700; }
 
-    .logout-btn {
-      background: #b71c1c;
-      color: white;
-      border: none;
-      padding: 6px 14px;
-      border-radius: 6px;
-      cursor: pointer;
-      font-weight: bold;
-      font-size: 12px;
-    }
+    .badge { padding: 3px 8px; border-radius: 12px; font-size: 11px; font-weight: 600; display: inline-block; }
+    .badge-success { background: #e8f5e9; color: #2e7d32; }
+    .badge-warning { background: #fff3e0; color: #e65100; }
+    .badge-danger { background: #ffebee; color: #c62828; }
 
-    nav {
-      display: flex;
-      background: white;
-      overflow-x: auto;
-      box-shadow: 0 2px 5px rgba(0,0,0,0.06);
-      padding: 6px 10px;
-    }
+    .summary-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 14px; margin-bottom: 22px; }
+    .summary-card { background: white; padding: 16px; border-radius: 10px; border-left: 5px solid var(--primary); box-shadow: 0 2px 6px rgba(0,0,0,0.05); }
+    .summary-card p { font-size: 11.5px; color: #666; font-weight: 600; text-transform: uppercase; }
+    .summary-card h3 { font-size: 22px; color: var(--primary); margin-top: 5px; font-weight: 700; }
 
-    nav button {
-      flex: 0 0 auto;
-      padding: 9px 15px;
-      border: none;
-      background: none;
-      font-size: 13.5px;
-      font-weight: 600;
-      color: #495057;
-      cursor: pointer;
-      border-radius: 6px;
-      margin-right: 5px;
-      white-space: nowrap;
-    }
-
-    nav button:hover {
-      background: #f0f4f1;
-      color: var(--primary);
-    }
-
-    nav button.active {
-      background: var(--secondary);
-      color: var(--primary);
-      font-weight: 700;
-      border-bottom: 3px solid var(--primary);
-    }
-
-    .container {
-      max-width: 1150px;
-      margin: 18px auto;
-      padding: 0 14px;
-    }
-
-    .card {
-      background: white;
-      border-radius: 12px;
-      padding: 20px;
-      margin-bottom: 20px;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.05);
-    }
-
-    h2 {
-      font-size: 17px;
-      margin-bottom: 15px;
-      color: var(--primary);
-      border-bottom: 2px solid var(--secondary);
-      padding-bottom: 6px;
-      font-weight: 700;
-    }
-
-    .form-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
-      gap: 14px;
-      margin-bottom: 15px;
-    }
-
-    .input-group label {
-      display: block;
-      font-size: 12px;
-      font-weight: 600;
-      margin-bottom: 5px;
-      color: #444;
-    }
-
-    input, select {
-      width: 100%;
-      padding: 10px 12px;
-      border: 1px solid #ced4da;
-      border-radius: 8px;
-      font-size: 13.5px;
-      outline: none;
-      background: #fafafa;
-    }
-
-    input:focus, select:focus {
-      border-color: var(--primary);
-      background: #fff;
-    }
-
-    .btn {
-      background: var(--primary);
-      color: white;
-      border: none;
-      padding: 10px 20px;
-      border-radius: 8px;
-      cursor: pointer;
-      font-size: 13.5px;
-      font-weight: 700;
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-    }
-
-    .btn:hover {
-      background: var(--primary-light);
-    }
-
-    .btn-danger {
-      background: var(--danger);
-      color: white;
-    }
-
-    .btn-warning {
-      background: var(--warning);
-      color: white;
-    }
-
-    .btn-info {
-      background: var(--info);
-      color: white;
-    }
-
-    .action-btn {
-      padding: 5px 11px;
-      font-size: 12px;
-      border: none;
-      border-radius: 5px;
-      cursor: pointer;
-      margin-right: 4px;
-      font-weight: 600;
-    }
-
-    .table-container {
-      overflow-x: auto;
-      margin-top: 10px;
-      border-radius: 8px;
-      border: 1px solid #edf2ee;
-    }
-
-    table {
-      width: 100%;
-      border-collapse: collapse;
-      font-size: 12.5px;
-      text-align: left;
-      min-width: 900px;
-    }
-
-    th, td {
-      padding: 10px 12px;
-      border-bottom: 1px solid #eceff1;
-      white-space: nowrap;
-    }
-
-    th {
-      background: #f8faf9;
-      color: #555;
-      font-weight: 700;
-    }
-
-    .badge {
-      padding: 3px 8px;
-      border-radius: 12px;
-      font-size: 11px;
-      font-weight: 600;
-      display: inline-block;
-    }
-
-    .badge-success {
-      background: #e8f5e9;
-      color: #2e7d32;
-    }
-
-    .badge-warning {
-      background: #fff3e0;
-      color: #e65100;
-    }
-
-    .badge-danger {
-      background: #ffebee;
-      color: #c62828;
-    }
-
-    .summary-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-      gap: 14px;
-      margin-bottom: 22px;
-    }
-
-    .summary-card {
-      background: white;
-      padding: 16px;
-      border-radius: 10px;
-      border-left: 5px solid var(--primary);
-      box-shadow: 0 2px 6px rgba(0,0,0,0.05);
-    }
-
-    .summary-card p {
-      font-size: 11.5px;
-      color: #666;
-      font-weight: 600;
-      text-transform: uppercase;
-    }
-
-    .summary-card h3 {
-      font-size: 22px;
-      color: var(--primary);
-      margin-top: 5px;
-      font-weight: 700;
-    }
-
-    #loginScreen {
-      position: fixed;
-      inset: 0;
-      background: #e8f5e9;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      z-index: 99999;
-      padding: 20px;
-    }
-
-    .login-box {
-      background: white;
-      padding: 32px;
-      border-radius: 16px;
-      width: 100%;
-      max-width: 380px;
-      box-shadow: 0 8px 24px rgba(0,0,0,0.12);
-      text-align: center;
-    }
-
-    .login-box img {
-      height: 95px;
-      width: 95px;
-      border-radius: 50%;
-      object-fit: cover;
-      margin-bottom: 14px;
-      box-shadow: 0 3px 10px rgba(0,0,0,0.15);
-      border: 2px solid var(--secondary);
-    }
+    #loginScreen { position: fixed; inset: 0; background: #e8f5e9; display: flex; align-items: center; justify-content: center; z-index: 99999; padding: 20px; }
+    .login-box { background: white; padding: 32px; border-radius: 16px; width: 100%; max-width: 380px; box-shadow: 0 8px 24px rgba(0,0,0,0.12); text-align: center; }
+    .login-box img { height: 95px; width: 95px; border-radius: 50%; object-fit: cover; margin-bottom: 14px; border: 2px solid var(--secondary); }
 
     #ledgerModal, #invoiceModal, #cattleFeedModal {
-      display: none;
-      position: fixed;
-      inset: 0;
-      background: rgba(0,0,0,0.65);
-      z-index: 2000;
-      align-items: center;
-      justify-content: center;
-      padding: 15px;
-      overflow-y: auto;
+      display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.65); z-index: 2000; align-items: center; justify-content: center; padding: 15px; overflow-y: auto;
     }
-
     .invoice-card, .ledger-card, .feed-modal-card {
-      background: white;
-      max-width: 850px;
-      width: 100%;
-      border-radius: 16px;
-      padding: 32px;
-      position: relative;
-      box-shadow: 0 15px 40px rgba(0,0,0,0.35);
-      max-height: 95vh;
-      overflow-y: auto;
-      box-sizing: border-box;
-    }
-
-    .invoice-table {
-      width: 100% !important;
-      border-collapse: collapse !important;
-      margin: 18px 0 !important;
-    }
-
-    .invoice-table th, .invoice-table td {
-      padding: 10px !important;
-      font-size: 14px !important;
-    }
-
-    #invoicePrintArea {
-      position: relative;
-      background: white;
-      padding: 15px;
-      width: 100%;
-      box-sizing: border-box;
-    }
-
-    .invoice-watermark {
-      position: absolute;
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, -50%);
-      width: 280px;
-      height: 280px;
-      opacity: 0.12;
-      pointer-events: none;
-      z-index: 0;
-    }
-
-    .invoice-content {
-      position: relative;
-      z-index: 1;
-    }
-
-    @page { margin: 0mm !important; size: auto; }
-
-    @media print {
-      body * { visibility: hidden !important; }
-      .no-print { display: none !important; }
-
-      body[data-print="invoice"] #invoiceModal,
-      body[data-print="invoice"] #invoicePrintArea,
-      body[data-print="invoice"] #invoicePrintArea * {
-        visibility: visible !important;
-      }
-      body[data-print="invoice"] #invoiceModal {
-        display: block !important;
-        position: absolute !important;
-        left: 0 !important;
-        top: 0 !important;
-        width: 100% !important;
-        background: white !important;
-        padding: 10mm !important;
-      }
-
-      body[data-print="ledger"] #ledgerModal,
-      body[data-print="ledger"] #ledgerPrintArea,
-      body[data-print="ledger"] #ledgerPrintArea * {
-        visibility: visible !important;
-      }
-      body[data-print="ledger"] #ledgerModal {
-        display: block !important;
-        position: absolute !important;
-        left: 0 !important;
-        top: 0 !important;
-        width: 100% !important;
-        background: white !important;
-        padding: 10mm !important;
-      }
+      background: white; max-width: 850px; width: 100%; border-radius: 16px; padding: 32px; position: relative; box-shadow: 0 15px 40px rgba(0,0,0,0.35); max-height: 95vh; overflow-y: auto; box-sizing: border-box;
     }
   </style>
 </head>
@@ -582,38 +230,27 @@
   <datalist id="cattleTagList"></datalist>
   <datalist id="customerNameList"></datalist>
   <datalist id="customerAreaList"></datalist>
+  <datalist id="stockItemList"></datalist>
 
-  <!-- ১. লগইন স্ক্রিন -->
+  <!-- লগইন স্ক্রিন -->
   <div id="loginScreen">
     <div class="login-box">
-      <img src="logo.png" alt="Nanda Dairy Agro" onerror="this.onerror=null; this.src='https://cdn-icons-png.flaticon.com/512/2395/2395796.png';">
-      <h2>Nanda Dairy & Agro</h2>
+      <img src="logo.png" alt="Logo" onerror="this.onerror=null; this.src='https://cdn-icons-png.flaticon.com/512/2395/2395796.png';">
+      <h2>Nanda Dairy Agro</h2>
       <p style="font-size: 13px; color: #666; margin-bottom: 20px;">ফার্ম ম্যানেজমেন্ট সিস্টেমে স্বাগতম</p>
-      
-      <div style="text-align: left; margin-bottom: 14px;">
-        <label style="font-size: 12px; font-weight:600;">User ID</label>
-        <input type="text" id="loginId" placeholder="ইউজার আইডি দিন" autocomplete="off" style="margin-top: 4px;">
-      </div>
-      
-      <div style="text-align: left; margin-bottom: 20px;">
-        <label style="font-size: 12px; font-weight:600;">Password</label>
-        <input type="password" id="loginPass" placeholder="পাসওয়ার্ড দিন" autocomplete="off" style="margin-top: 4px;">
-      </div>
-      
+      <div style="text-align: left; margin-bottom: 14px;"><label style="font-size: 12px; font-weight:600;">User ID</label><input type="text" id="loginId" placeholder="ইউজার আইডি"></div>
+      <div style="text-align: left; margin-bottom: 20px;"><label style="font-size: 12px; font-weight:600;">Password</label><input type="password" id="loginPass" placeholder="পাসওয়ার্ড"></div>
       <button class="btn" style="width: 100%; padding: 11px; justify-content:center;" onclick="window.doLogin()">লগইন করুন</button>
       <p id="loginErr" style="color: red; font-size: 12px; margin-top: 10px;"></p>
     </div>
   </div>
 
-  <!-- ২. মূল অ্যাপ্লিকেশন -->
+  <!-- মূল অ্যাপ্লিকেশন -->
   <div id="appBody" style="display: none;">
     <header>
       <div class="header-title">
-        <img src="logo.png" alt="Nanda Dairy Agro" onerror="this.onerror=null; this.src='https://cdn-icons-png.flaticon.com/512/2395/2395796.png';">
-        <div>
-          <h1>NANDA Dairy & Agro</h1>
-          <span style="font-size: 11px; opacity: 0.85;">Owner / Admin</span>
-        </div>
+        <img src="logo.png" alt="Logo" onerror="this.onerror=null; this.src='https://cdn-icons-png.flaticon.com/512/2395/2395796.png';">
+        <div><h1>NANDA Dairy & Agro</h1><span style="font-size: 11px; opacity: 0.85;">Owner / Admin</span></div>
       </div>
       <div class="header-right">
         <span class="sync-badge">● Online Cloud Sync</span>
@@ -870,7 +507,7 @@
         </div>
       </div>
 
-      <!-- Feed Management -->
+      <!-- Feed Management (Updated as requested) -->
       <div id="tab-feed" class="tab-content" style="display: none;">
         <div class="card">
           <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
@@ -878,26 +515,28 @@
             <button class="action-btn btn-info" onclick="switchTab('dashboard', document.querySelector('nav button'))">⬅ Back (ফিরে যান)</button>
           </div>
           <div class="form-grid">
-            <div class="input-group"><label>Date *</label><input type="date" id="feedDate"></div>
-            <div class="input-group"><label>Feed Type</label><select id="feedType"><option value="Cattle Feed / Pellets">Cattle Feed / Pellets</option><option value="Wheat Bran / ভুসি">Wheat Bran / ভুসি</option><option value="Corn / ভুট্টা">Corn / ভুট্টা</option><option value="Oilcake / খৈল">Oilcake / খৈল</option><option value="Green Grass / ঘাস">Green Grass / ঘাস</option></select></div>
-            <div class="input-group"><label>Quantity</label><input type="text" id="feedQty" placeholder="পরিমাণ (যেমন: ৫০ কেজি)"></div>
-            <div class="input-group"><label>Total Cost ₹ *</label><input type="number" id="feedCost" placeholder="₹ খরচ"></div>
-            <div class="input-group"><label>Note / Supplier</label><input type="text" id="feedNote" placeholder="নোট বা সরবরাহকারী"></div>
+            <div class="input-group"><label>Date *</label><input type="date" id="rationDate"></div>
+            <div class="input-group"><label>Cattle Tag ID *</label><input type="text" id="ratCowTag" list="cattleTagList" onchange="loadCattleDefaultRation()" placeholder="NDA-001"></div>
+            
+            <div class="input-group"><label>Cattle Feed / Pellets (kg) [স্টক: <span id="stkLbl-Cattle Feed">0</span>]</label><input type="number" step="0.1" id="ratPellet" oninput="autoCalcRation()" value="2.0" placeholder="০.০"></div>
+            <div class="input-group"><label>Average Feed Cost per kg (₹)</label><input type="number" step="0.1" id="ratAvgCostPerKg" oninput="autoCalcRation()" value="32" placeholder="₹"></div>
+            <div class="input-group"><label>Supplement / Vitamin Cost (₹)</label><input type="number" step="1" id="ratSuppCost" oninput="autoCalcRation()" value="0" placeholder="₹"></div>
+            <div class="input-group"><label>Total Feeding Cost ₹ (অটো)</label><input type="number" id="ratTotalCost" readonly style="background:#e8f5e9; color:green; font-weight:bold;"></div>
           </div>
-          <div style="display:flex; gap:10px;">
-            <button class="btn" id="feedSubmitBtn" onclick="saveFeed()">Save Feed Record</button>
-            <button class="btn btn-warning" id="feedCancelBtn" style="display:none;" onclick="cancelFeedEdit()">Cancel</button>
+          <div style="display:flex; gap:10px; margin-top:10px;">
+            <button class="btn" id="ratSubmitBtn" onclick="saveRation()">Save & Deduct Stock</button>
+            <button class="btn btn-warning" id="ratCancelBtn" style="display:none;" onclick="cancelRationEdit()">Cancel</button>
           </div>
         </div>
         <div class="card">
-          <h2>ফিড ক্রয়ের খাতা (Feed History)</h2>
+          <h2>সকল গরুর দৈনিক খাদ্য বরাদ্দ তালিকা</h2>
           <div class="table-container">
             <table>
-              <thead><tr><th>তারিখ</th><th>ফিডের ধরণ</th><th>পরিমাণ</th><th>মোট খরচ</th><th>নোট</th><th>Action</th></tr></thead>
-              <tbody id="feedTableBody"></tbody>
+              <thead><tr><th>তারিখ</th><th>Cattle Tag</th><th>ফিড (kg)</th><th>ফিড রেট (₹)</th><th>ভিটামিন/সাপ্লিমেন্ট (₹)</th><th>মোট খরচ (₹)</th><th>Action</th></tr></thead>
+              <tbody id="rationTableBody"></tbody>
             </table>
           </div>
-          <p id="feedNoData" style="text-align: center; color: #777; font-size: 13px; margin-top: 15px; display: none;">কোনো রেকর্ড নেই।</p>
+          <p id="rationNoData" style="text-align: center; color: #777; font-size: 13px; margin-top: 15px; display: none;">কোনো রেকর্ড নেই।</p>
         </div>
       </div>
 
@@ -939,7 +578,7 @@
             <button class="action-btn btn-info" onclick="switchTab('dashboard', document.querySelector('nav button'))">⬅ Back (ফিরে যান)</button>
           </div>
           <div class="form-grid">
-            <div class="input-group"><label>Item Name *</label><input type="text" id="stkName" placeholder="ফিড"></div>
+            <div class="input-group"><label>Item Name *</label><input type="text" id="stkName" list="stockItemList" placeholder="ফিড"></div>
             <div class="input-group"><label>Quantity *</label><input type="number" id="stkQty" placeholder="পরিমাণ"></div>
             <div class="input-group"><label>Unit</label><select id="stkUnit"><option value="kg">kg</option><option value="Bag">Bag</option><option value="Ton">Ton</option><option value="Pcs">Pcs</option></select></div>
             <div class="input-group"><label>Alert Level</label><input type="number" id="stkAlert" placeholder="৫"></div>
@@ -1060,7 +699,7 @@
     </div>
   </div>
 
-  <!-- ইনভয়েস মোডাল -->
+  <!-- ইনভয়েস মোডাল -->
   <div id="invoiceModal">
     <div class="invoice-card">
       <div id="invoicePrintArea">
@@ -1071,7 +710,7 @@
               <img src="logo.png" style="height:60px; width:60px; border-radius:50%; object-fit:cover;">
               <div>
                 <h2 style="margin:0; color:#1b5e20; font-size:22px; font-weight:800; border:none; padding:0;">NANDA DAIRY & AGRO</h2>
-                <p id="invMainDocTitle" style="font-size:12.5px; color:#333; margin:3px 0 0 0; font-weight:600;">ইনভয়েস / INVOICE (ক্যাশ মেমো)</p>
+                <p id="invMainDocTitle" style="font-size:12.5px; color:#333; margin:3px 0 0 0; font-weight:600;">ইনভয়েস / INVOICE (ক্যাশ মেমো)</p>
               </div>
             </div>
             <div style="text-align:right;">
@@ -1080,7 +719,7 @@
           </div>
           <div id="invoiceDetails" style="font-size: 14px; line-height: 1.9;"></div>
           <div style="display:flex; justify-content:space-between; align-items:flex-end; margin-top: 40px; border-top: 1px dashed #aaa; padding-top: 16px;">
-            <div><span style="font-size:11.5px; color:#555;">সিস্টেম জেনারেটেড মূল ইনভয়েস</span></div>
+            <div><span style="font-size:11.5px; color:#555;">সিস্টেম জেনারেটেড মূল ইনভয়েস</span></div>
             <div style="text-align: right;">
               <div style="font-family:'Brush Script MT', cursive, sans-serif; font-size: 28px; color: #1b5e20;">Bibhas Munshi</div>
               <div style="border-top: 1.5px solid #222; padding-top: 3px; font-size: 11.5px;"><strong>Bibhas Munshi (Authorized Signatory)</strong></div>
@@ -1110,11 +749,11 @@
         <div style="display:grid; grid-template-columns:repeat(3, 1fr); gap:10px; margin-bottom:15px; text-align:center;">
           <div style="background:#e8f5e9; padding:10px; border-radius:8px;"><span style="font-size:11px; color:#555;">সর্বমোট কেনাকাটা</span><h3 id="ledgerTotalBill" style="color:#1b5e20; font-size:17px; margin-top:3px;">₹ 0</h3></div>
           <div style="background:#e3f2fd; padding:10px; border-radius:8px;"><span style="font-size:11px; color:#555;">মোট পরিশোধ</span><h3 id="ledgerTotalPaid" style="color:#0288d1; font-size:17px; margin-top:3px;">₹ 0</h3></div>
-          <div style="background:#ffebee; padding:10px; border-radius:8px;"><span style="font-size:11px; color:#555;">বর্তমান মোট বকেয়া</span><h3 id="ledgerTotalDue" style="color:#c62828; font-size:17px; margin-top:3px;">₹ 0</h3></div>
+          <div style="background:#ffebee; padding:10px; border-radius:8px;"><span style="font-size:11px; color:#555;">বর্তমান মোট বকেয়া</span><h3 id="ledgerTotalDue" style="color:#c62828; font-size:17px; margin-top:3px;">₹ 0</h3></div>
         </div>
 
         <div style="background:#f4fbf5; border:1px solid #c8e6c9; border-radius:8px; padding:12px; margin-bottom:15px;" class="no-print">
-          <strong style="color:#1b5e20; font-size:13px; display:block; margin-bottom:8px;">💳 বকেয়া টাকা জমা নিন</strong>
+          <strong style="color:#1b5e20; font-size:13px; display:block; margin-bottom:8px;">💳 বকেয়া টাকা জমা নিন</strong>
           <div style="display:flex; flex-wrap:wrap; gap:10px; align-items:flex-end;">
             <div style="flex:1; min-width:130px;"><label style="font-size:11px; font-weight:600;">তারিখ</label><input type="date" id="ledgerPayDate" style="padding:7px; font-size:12px;"></div>
             <div style="flex:1; min-width:130px;"><label style="font-size:11px; font-weight:600;">জমা (₹) *</label><input type="number" id="ledgerPayAmount" placeholder="টাকা" style="padding:7px; font-size:12px;"></div>
@@ -1125,7 +764,7 @@
 
         <div class="table-container" style="max-height:360px; overflow-y:auto;">
           <table style="font-size:12px;">
-            <thead><tr style="background:#f1f5f2;"><th>তারিখ</th><th>বিবরণ</th><th>বিলের পরিমাণ</th><th>পরিশোধ (জমা)</th><th style="background:#fff3e0; color:#e65100;">লেনদেনের পর বাকি</th><th>ইনভয়েস</th></tr></thead>
+            <thead><tr style="background:#f1f5f2;"><th>তারিখ</th><th>বিবরণ</th><th>বিলের পরিমাণ</th><th>পরিশোধ (জমা)</th><th style="background:#fff3e0; color:#e65100;">লেনদেনের পর বাকি</th><th>ইনভয়েস</th></tr></thead>
             <tbody id="ledgerTableBody"></tbody>
           </table>
         </div>
@@ -1189,80 +828,58 @@
       }
     }
 
-    function checkAndGenerateDailyOrders() {
-      if (!db) return;
-      var todayISO = new Date().toISOString().split('T')[0];
+    function renderStockAutocomplete() {
+      var stockDL = getEl('stockItemList');
+      if (!stockDL) return;
+      var optHtml = '';
+      for (var k in farmStore.stock) {
+        var sName = farmStore.stock[k].name;
+        if (sName) {
+          optHtml += '<option value="' + sName + '">';
+        }
+      }
+      stockDL.innerHTML = optHtml;
+      updateStockLabels();
+    }
 
-      db.ref('customers').once('value', function(custSnap) {
-        if (!custSnap.exists()) return;
-        
-        db.ref('orders').once('value', function(ordSnap) {
-          var customerProcessedToday = {};
-          ordSnap.forEach(function(o) {
-            var val = o.val();
-            if (val && val.date === todayISO && val.customer && val.status === 'Pending') {
-              customerProcessedToday[val.customer.trim().toLowerCase()] = true;
-            }
-          });
+    function updateStockLabels() {
+      var stockMap = {};
+      for (var sk in farmStore.stock) {
+        var st = farmStore.stock[sk];
+        if (st && st.name) {
+          stockMap[st.name.trim().toLowerCase()] = Number(st.qty) || 0;
+        }
+      }
 
-          db.ref('sales').once('value', function(saleSnap) {
-            saleSnap.forEach(function(s) {
-              var sVal = s.val();
-              if (sVal && sVal.date === todayISO && sVal.name) {
-                customerProcessedToday[sVal.name.trim().toLowerCase()] = true;
-              }
-            });
-
-            custSnap.forEach(function(c) {
-              var cust = c.val();
-              if (!cust || !cust.name) return;
-              var cName = cust.name.trim();
-              var demand = Number(cust.demand) || 0;
-              if (demand <= 0) return;
-
-              var cKey = cName.toLowerCase();
-              if (!customerProcessedToday[cKey]) {
-                var newOrder = {
-                  date: todayISO,
-                  customer: cName,
-                  phone: cust.phone || '',
-                  area: cust.area || '',
-                  items: demand + ' লিটার তরল দুধ',
-                  total: demand * 50,
-                  paid: 0,
-                  status: 'Pending'
-                };
-                db.ref('orders').push(newOrder);
-              }
-            });
-          });
-        });
+      ['Cattle Feed', 'Wheat Bran', 'Corn', 'Oilcake'].forEach(function(item) {
+        var qty = 0;
+        for (var sName in stockMap) {
+          if (sName.includes(item.toLowerCase()) || item.toLowerCase().includes(sName)) {
+            qty = stockMap[sName];
+            break;
+          }
+        }
+        var lbl = document.getElementById('stkLbl-' + item);
+        if (lbl) lbl.innerText = qty;
       });
     }
-          custSnap.forEach(function(c) {
-            var cust = c.val();
-            if (!cust || !cust.name) return;
-            var cName = cust.name.trim();
-            var demand = Number(cust.demand) || 0;
-            if (demand <= 0) return;
 
-            var cKey = cName.toLowerCase();
-            if (!customerProcessedToday[cKey]) {
-              var newOrder = {
-                date: todayISO,
-                customer: cName,
-                phone: cust.phone || '',
-                area: cust.area || '',
-                items: demand + ' লিটার তরল দুধ',
-                total: demand * 50,
-                paid: 0,
-                status: 'Pending'
-              };
-              db.ref('orders').push(newOrder);
-            }
-          });
-        });
-      });
+    window.loadCattleDefaultRation = function() {
+      var tag = (getEl('ratCowTag').value || '').trim();
+      if (!tag) return;
+      if (!getEl('ratPellet').value) getEl('ratPellet').value = "2.0";
+      if (!getEl('ratAvgCostPerKg').value) getEl('ratAvgCostPerKg').value = "32";
+      if (!getEl('ratSuppCost').value) getEl('ratSuppCost').value = "0";
+      autoCalcRation();
+    };
+
+    function autoCalcRation() {
+      var pellet = parseFloat(getEl('ratPellet').value) || 0;
+      var avgCost = parseFloat(getEl('ratAvgCostPerKg').value) || 0;
+      var suppCost = parseFloat(getEl('ratSuppCost').value) || 0;
+
+      var totalCost = (pellet * avgCost) + suppCost;
+      if (getEl('ratTotalCost')) getEl('ratTotalCost').value = totalCost.toFixed(2);
     }
 
     function getCustomerLiveBalances() {
@@ -1278,16 +895,7 @@
         var opDue = Number(cust.openingDue) || 0;
 
         if (!map[cKey]) {
-          map[cKey] = {
-            totalBilled: opDue,
-            totalPaid: 0,
-            currentDue: opDue,
-            lastPaymentTime: 0,
-            earliestBillTime: opDue > 0 ? todayTime : Infinity,
-            phone: cust.phone || '',
-            area: cust.area || '',
-            addr: cust.addr || ''
-          };
+          map[cKey] = { totalBilled: opDue, totalPaid: 0, currentDue: opDue, lastPaymentTime: 0, earliestBillTime: opDue > 0 ? todayTime : Infinity, phone: cust.phone || '', area: cust.area || '', addr: cust.addr || '' };
         }
       }
 
@@ -1389,8 +997,8 @@
         '<strong>বিয়ান:</strong> ' + (cowInfo?.lactation || 0) +
       '</div>';
 
-      profileHtml += '<strong>সাম্প্রতিক খাদ্য বরাদ্দ ও রেশন ইতিহাস (Ration History):</strong>';
-      profileHtml += '<div class="table-container" style="max-height:220px; overflow-y:auto; margin-top:8px;"><table><thead><tr style="background:#f1f5f2;"><th>তারিখ</th><th>ফিড (কেজি)</th><th>ভুসি (কেজি)</th><th>ভুট্টা (কেজি)</th><th>খৈল (কেজি)</th><th>ঘাস (কেজি)</th><th>মোট ওজন</th><th>খরচ (₹)</th></tr></thead><tbody>';
+      profileHtml += '<strong>সাম্প্রতিক খাদ্য বরাদ্দ ও খরচ (Feeding History):</strong>';
+      profileHtml += '<div class="table-container" style="max-height:220px; overflow-y:auto; margin-top:8px;"><table><thead><tr style="background:#f1f5f2;"><th>তারিখ</th><th>ফিড (কেজি)</th><th>ফিড রেট (₹)</th><th>সাপ্লিমেন্ট/ভিটামিন (₹)</th><th>মোট খরচ (₹)</th></tr></thead><tbody>';
 
       var hasRation = false;
       for (var rk in farmStore.feedRations) {
@@ -1399,19 +1007,16 @@
           hasRation = true;
           profileHtml += '<tr>' +
             '<td>' + formatDateBR(r.date) + '</td>' +
-            '<td>' + (r.pellet || 0) + '</td>' +
-            '<td>' + (r.bran || 0) + '</td>' +
-            '<td>' + (r.corn || 0) + '</td>' +
-            '<td>' + (r.oilcake || 0) + '</td>' +
-            '<td>' + (r.grass || 0) + '</td>' +
-            '<td><strong>' + (r.totalKg || 0) + ' kg</strong></td>' +
+            '<td>' + (r.pellet || 0) + ' kg</td>' +
+            '<td>₹ ' + (r.avgCostPerKg || 0) + '</td>' +
+            '<td>₹ ' + (r.suppCost || 0) + '</td>' +
             '<td style="color:green; font-weight:bold;">₹ ' + (r.totalCost || 0) + '</td>' +
           '</tr>';
         }
       }
 
       if (!hasRation) {
-        profileHtml += '<tr><td colspan="8" style="text-align:center; color:#777;">এই গরুর জন্য কোনো রেশন চার্ট এন্ট্রি করা হয়নি।</td></tr>';
+        profileHtml += '<tr><td colspan="5" style="text-align:center; color:#777;">এই গরুর জন্য কোনো রেশন রেকর্ড এন্ট্রি করা হয়নি।</td></tr>';
       }
 
       profileHtml += '</tbody></table></div>';
@@ -1456,7 +1061,7 @@
 
           body.innerHTML += '<tr>' +
             '<td><strong>' + (index + 1) + '</strong></td>' +
-            '<td><a href="javascript:void(0)" onclick="openCattleFeedModal(\'' + (d.tag || '') + '\')" style="color:var(--primary); font-weight:bold; text-decoration:underline;" title="প্রোফাইল ও রেশন দেখতে ক্লিক করুন">🐄 ' + (d.tag || '-') + '</a></td>' +
+            '<td><a href="javascript:void(0)" onclick="openCattleFeedModal(\'' + (d.tag || '') + '\')" style="color:var(--primary); font-weight:bold; text-decoration:underline;" title="প্রোফাইল দেখতে ক্লিক করুন">🐄 ' + (d.tag || '-') + '</a></td>' +
             '<td>' + (d.breed || '-') + '</td>' +
             '<td>' + (d.breedType || '-') + '</td>' +
             '<td>' + (d.generation || '-') + '</td>' +
@@ -1755,6 +1360,128 @@
       body.innerHTML = html;
     }
 
+    function renderRationTable() {
+      var body = getEl('rationTableBody');
+      if (!body) return;
+      var list = [];
+      for (var k in farmStore.feedRations) {
+        list.push({ key: k, data: farmStore.feedRations[k] });
+      }
+      list.sort(function(a, b) { return (b.data.date || '').localeCompare(a.data.date || ''); });
+
+      if (list.length === 0) {
+        body.innerHTML = '';
+        if (getEl('rationNoData')) getEl('rationNoData').style.display = 'block';
+        return;
+      }
+      if (getEl('rationNoData')) getEl('rationNoData').style.display = 'none';
+
+      var html = '';
+      list.forEach(function(item) {
+        var k = item.key, d = item.data;
+        html += '<tr>' +
+          '<td>' + formatDateBR(d.date) + '</td>' +
+          '<td><strong style="color:var(--primary);">Tag: ' + (d.cowTag || '-') + '</strong></td>' +
+          '<td>' + (d.pellet || 0) + ' kg</td>' +
+          '<td>₹ ' + (d.avgCostPerKg || 0) + '</td>' +
+          '<td>₹ ' + (d.suppCost || 0) + '</td>' +
+          '<td style="color:green; font-weight:bold;">₹ ' + (d.totalCost || 0) + '</td>' +
+          '<td>' +
+            '<button class="action-btn btn-info" onclick="editRation(\'' + k + '\')">Edit</button>' +
+            '<button class="action-btn btn-danger" onclick="deleteRecord(\'feedRations\',\'' + k + '\')">Delete</button>' +
+          '</td>' +
+        '</tr>';
+      });
+      body.innerHTML = html;
+    }
+
+    var eRatKey = null;
+    function editRation(k) {
+      var d = farmStore.feedRations[k]; if (!d) return; eRatKey = k;
+      getEl('rationDate').value = d.date || '';
+      getEl('ratCowTag').value = d.cowTag || '';
+      getEl('ratPellet').value = d.pellet || '';
+      getEl('ratAvgCostPerKg').value = d.avgCostPerKg || '';
+      getEl('ratSuppCost').value = d.suppCost || '';
+      getEl('ratTotalCost').value = d.totalCost || '';
+
+      getEl('ratSubmitBtn').innerText = 'Update Ration';
+      getEl('ratCancelBtn').style.display = 'inline-flex';
+      getEl('ratCowTag').scrollIntoView({ behavior: 'smooth' });
+    }
+
+    function cancelRationEdit() {
+      eRatKey = null;
+      ['ratCowTag','ratPellet','ratAvgCostPerKg','ratSuppCost','ratTotalCost'].forEach(function(i){ if(getEl(i)) getEl(i).value=''; });
+      getEl('ratSubmitBtn').innerText = 'Save & Deduct Stock';
+      getEl('ratCancelBtn').style.display = 'none';
+    }
+
+    function saveRation() {
+      var tag = (getEl('ratCowTag').value || '').trim();
+      var dt = getEl('rationDate').value;
+      if (!tag || !dt) return alert('তারিখ ও গরুর Tag ID দিন!');
+
+      var pellet = parseFloat(getEl('ratPellet').value) || 0;
+      var avgCost = parseFloat(getEl('ratAvgCostPerKg').value) || 0;
+      var suppCost = parseFloat(getEl('ratSuppCost').value) || 0;
+      var totalCost = (pellet * avgCost) + suppCost;
+
+      var stockMap = {};
+      for (var sk in farmStore.stock) {
+        var st = farmStore.stock[sk];
+        if (st && st.name) {
+          stockMap[st.name.trim().toLowerCase()] = { key: sk, qty: Number(st.qty) || 0 };
+        }
+      }
+
+      if (pellet > 0) {
+        var matchedKey = null;
+        var availableQty = 0;
+        for (var sName in stockMap) {
+          if (sName.includes('cattle feed') || sName.includes('feed') || sName.includes('pellets')) {
+            matchedKey = stockMap[sName].key;
+            availableQty = stockMap[sName].qty;
+            break;
+          }
+        }
+
+        if (matchedKey && availableQty < pellet) {
+          alert('⚠️ সতর্কতা (Stock Warning): স্টকে পর্যাপ্ত ফিড নেই! বর্তমান স্টক: ' + availableQty + ' kg, প্রয়োজন: ' + pellet + ' kg');
+          return;
+        }
+      }
+
+      var data = {
+        date: dt,
+        cowTag: tag,
+        pellet: pellet,
+        avgCostPerKg: avgCost,
+        suppCost: suppCost,
+        totalCost: totalCost
+      };
+
+      if (db) {
+        if (eRatKey) {
+          db.ref('feedRations/' + eRatKey).update(data);
+        } else {
+          db.ref('feedRations').push(data);
+
+          if (pellet > 0) {
+            for (var sName in stockMap) {
+              if (sName.includes('cattle feed') || sName.includes('feed') || sName.includes('pellets')) {
+                var stkObj = farmStore.stock[stockMap[sName].key];
+                var newQty = Math.max(0, Number(stkObj.qty) - pellet);
+                db.ref('stock/' + stockMap[sName].key).update({ qty: newQty });
+                break;
+              }
+            }
+          }
+        }
+      }
+      cancelRationEdit();
+    }
+
     window.showCustomerLedger = function(encName) {
       var custName = decodeURIComponent(encName).trim();
       window.activeLedgerCustomerName = custName;
@@ -1775,7 +1502,7 @@
       var totalBillAmount = opDue, totalPaidAmount = 0;
 
       if (opDue > 0) {
-        events.push({ date: 'শুরু', desc: 'প্রাথমিক বকেয়া', bill: opDue, paid: 0, netDiff: opDue, isOpening: true, timestamp: 0 });
+        events.push({ date: 'শুরু', desc: 'প্রাথমিক বকেয়া', bill: opDue, paid: 0, netDiff: opDue, isOpening: true, timestamp: 0 });
       }
 
       for (var k in farmStore.sales) {
@@ -1800,7 +1527,7 @@
 
           pList.forEach(function(p, pIdx) {
             var pAmt = Number(p.amount) || 0; totalPaidAmount += pAmt;
-            events.push({ date: formatDateBR(p.date || s.date), desc: '💳 বকেয়া জমা (' + (p.note || 'ক্যাশ') + ')', bill: 0, paid: pAmt, netDiff: -pAmt, isPayment: true, payObj: p, saleKey: k, timestamp: parseDateToTime(p.date || s.date) + (pIdx + 1) });
+            events.push({ date: formatDateBR(p.date || s.date), desc: '💳 বকেয়া জমা (' + (p.note || 'ক্যাশ') + ')', bill: 0, paid: pAmt, netDiff: -pAmt, isPayment: true, payObj: p, saleKey: k, timestamp: parseDateToTime(p.date || s.date) + (pIdx + 1) });
           });
         }
       }
@@ -1878,7 +1605,7 @@
         if (db) db.ref('sales').push(advRecord);
       }
 
-      alert('পেমেন্ট সফলভাবে জমা হয়েছে!');
+      alert('পেমেন্ট সফলভাবে জমা হয়েছে!');
       getEl('ledgerPayAmount').value = ''; getEl('ledgerPayNote').value = '';
       setTimeout(function() { showCustomerLedger(encodeURIComponent(custName)); }, 300);
     };
@@ -1887,9 +1614,9 @@
       var d = farmStore.sales[k];
       if (!d) return;
       document.body.setAttribute('data-print', 'invoice');
-      getEl('invMainDocTitle').innerText = 'ইনভয়েস (ক্যাশ মেমো)';
+      getEl('invMainDocTitle').innerText = 'ইনভয়েস (ক্যাশ মেমো)';
       var liveDue = getCustomerLiveBalances()[(d.name || '').trim().toLowerCase()]?.currentDue || 0;
-      getEl('invoiceDetails').innerHTML = '<div style="display:flex; justify-content:space-between; margin-bottom:12px;"><div><strong>গ্রাহক:</strong> ' + d.name + '<br>মোবাইল: ' + (d.phone || '-') + '</div><div style="text-align:right;">তারিখ: ' + formatDateBR(d.date) + '<br>ইনভয়েস: #NDA-' + k.substring(1, 6).toUpperCase() + '</div></div><table class="invoice-table" style="border:1px solid #ddd; width:100%;"><thead><tr style="background:#e8f5e9;"><th>পণ্য</th><th>পরিমাণ</th><th>দর</th><th style="text-align:right;">মোট</th></tr></thead><tbody><tr><td>' + d.item + '</td><td>' + d.qty + '</td><td>₹ ' + d.rate + '</td><td style="text-align:right; font-weight:bold;">₹ ' + d.total + '</td></tr></tbody></table><div style="text-align:right; margin-top:10px;">চালান মূল্য: ₹ ' + d.total + '<br>নগদ পরিশোধ: ₹ ' + d.paid + '<br><span style="color:red; font-weight:bold;">মোট বকেয়া: ₹ ' + liveDue + '</span></div>';
+      getEl('invoiceDetails').innerHTML = '<div style="display:flex; justify-content:space-between; margin-bottom:12px;"><div><strong>গ্রাহক:</strong> ' + d.name + '<br>মোবাইল: ' + (d.phone || '-') + '</div><div style="text-align:right;">তারিখ: ' + formatDateBR(d.date) + '<br>ইনভয়েস: #NDA-' + k.substring(1, 6).toUpperCase() + '</div></div><table class="invoice-table" style="border:1px solid #ddd; width:100%;"><thead><tr style="background:#e8f5e9;"><th>পণ্য</th><th>পরিমাণ</th><th>দর</th><th style="text-align:right;">মোট</th></tr></thead><tbody><tr><td>' + d.item + '</td><td>' + d.qty + '</td><td>₹ ' + d.rate + '</td><td style="text-align:right; font-weight:bold;">₹ ' + d.total + '</td></tr></tbody></table><div style="text-align:right; margin-top:10px;">চালান মূল্য: ₹ ' + d.total + '<br>নগদ পরিশোধ: ₹ ' + d.paid + '<br><span style="color:red; font-weight:bold;">মোট বকেয়া: ₹ ' + liveDue + '</span></div>';
       getEl('invoiceModal').style.display = 'flex';
     };
 
@@ -2041,12 +1768,37 @@
 
       if (db) {
         if (eOrdKey) {
-          // যদি এডিট করার সময় স্ট্যাটাস Delivered বা Cancelled করা হয়, তবে ডাটাবেস থেকে অর্ডারটি চিরতরে মুছে ফেলা হবে
-          if (status === 'Delivered' || status === 'Cancelled') {
-            db.ref('orders/' + eOrdKey).remove();
-            
-            // কেবল Delivered হলে সেলস খাতার মধ্যে এন্ট্রি যোগ হবে
-            if (status === 'Delivered' && total > 0) {
+          db.ref('orders/' + eOrdKey).remove();
+          if (status === 'Delivered' && total > 0) {
+            db.ref('sales').push({ 
+              date: deliveryDate, 
+              name: cust, 
+              phone: phone, 
+              area: area, 
+              addr: '', 
+              item: items, 
+              qty: 1, 
+              rate: total, 
+              total: total, 
+              paid: paid, 
+              due: Math.max(0, total - paid), 
+              payments: [] 
+            });
+          } else if (status !== 'Delivered' && status !== 'Cancelled') {
+            db.ref('orders').push({ 
+              date: deliveryDate, 
+              customer: cust, 
+              phone: phone, 
+              area: area, 
+              items: items, 
+              total: total, 
+              paid: paid, 
+              status: status 
+            });
+          }
+        } else {
+          if (status === 'Delivered') {
+            if (total > 0) {
               db.ref('sales').push({ 
                 date: deliveryDate, 
                 name: cust, 
@@ -2062,9 +1814,8 @@
                 payments: [] 
               });
             }
-          } else {
-            // অন্যথায় শুধু স্ট্যাটাস আপডেট হবে
-            db.ref('orders/' + eOrdKey).update({
+          } else if (status !== 'Cancelled') {
+            db.ref('orders').push({ 
               date: deliveryDate, 
               customer: cust, 
               phone: phone, 
@@ -2072,21 +1823,9 @@
               items: items, 
               total: total, 
               paid: paid, 
-              status: status
+              status: status 
             });
           }
-        } else {
-          var newData = { 
-            date: deliveryDate, 
-            customer: cust, 
-            phone: phone, 
-            area: area, 
-            items: items, 
-            total: total, 
-            paid: paid, 
-            status: status 
-          };
-          db.ref('orders').push(newData);
         }
       }
       cancelOrderEdit();
@@ -2291,7 +2030,6 @@
 
     window.listenAllData = function() {
       if (!db) return;
-      checkAndGenerateDailyOrders();
 
       db.ref('cattle').on('value', function(snap) { farmStore.cattle = {}; snap.forEach(function(c){ farmStore.cattle[c.key] = c.val(); }); renderCattleTable(); });
       db.ref('milk').on('value', function(snap) { farmStore.milk = {}; snap.forEach(function(c){ farmStore.milk[c.key] = c.val(); }); renderGroupedMilkTable(); renderCattleTable(); });
@@ -2347,6 +2085,7 @@
         snap.forEach(function(c) {
           farmStore.feedRations[c.key] = c.val();
         });
+        renderRationTable();
       });
 
       db.ref('expenses').on('value', function(snap) {
@@ -2361,6 +2100,7 @@
           var isLow = Number(d.qty) <= Number(d.alertLevel);
           if (body) body.innerHTML += '<tr><td><strong>' + (d.name || '-') + '</strong></td><td style="color:' + (isLow ? 'red' : 'inherit') + ';font-weight:bold;">' + (d.qty || 0) + '</td><td>' + (d.unit || '-') + '</td><td>' + (d.alertLevel || 0) + '</td><td><button class="action-btn btn-info" onclick="editStock(\'' + k + '\')">Edit</button><button class="action-btn btn-danger" onclick="deleteRecord(\'stock\',\'' + k + '\')">Delete</button></td></tr>';
         });
+        renderStockAutocomplete();
       });
 
       db.ref('semen').on('value', function(snap) {
