@@ -560,7 +560,7 @@
         </div>
       </div>
 
-      <!-- ৯. Stock -->
+      <!-- ۹. Stock -->
       <div id="tab-stock" class="tab-content" style="display: none;">
         <div class="card">
           <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
@@ -818,6 +818,7 @@
       }
     }
 
+    // অটো-জেনারেশন ফাংশন চিরতরে বন্ধ
     function checkAndGenerateDailyOrders() {
       return;
     }
@@ -1268,7 +1269,7 @@
       body.innerHTML = html;
     }
 
-    // নিখুঁত অর্ডার রেন্ডারিং: শুধুমাত্র Pending স্ট্যাটাসের অর্ডার দেখাবে। Delivered বা Cancelled হলে তালিকা থেকে চিরতরে গায়েব হয়ে যাবে।
+    // নিখুঁত ও চূড়ান্ত অর্ডার রেন্ডারিং লজিক: শুধুমাত্র স্ট্যাটাস 'Pending' থাকলে তবেই অর্ডারে দেখাবে। Delivered বা Cancelled হলে তালিকা থেকে চিরতরে গায়েব হয়ে যাবে।
     function renderOrdersTable() {
       var body = getEl('ordersTableBody');
       if (!body) return;
@@ -1285,7 +1286,7 @@
         if (!d || !d.customer) continue;
         
         var stat = String(d.status || '').trim();
-        // কঠোরভাবে ফিল্টার করা হলো যেন শুধুমাত্র Pending অর্ডারগুলোই স্ক্রিনে থাকে
+        // কঠোর ফিল্টার: কেবল Pending অর্ডারগুলোই স্ক্রিনে থাকবে
         if (stat === 'Pending') {
           pendingCount++;
           var custArea = d.area || '';
@@ -1733,7 +1734,7 @@
       getEl('orderStatus').value = 'Pending'; getEl('orderSubmitBtn').innerText = 'Save Order'; getEl('orderCancelBtn').style.display = 'none';
     }
     
-    // চূড়ান্ত ও কঠোর অর্ডার সেভ লজিক: একবার ডেলিভারড বা ক্যানসেল হলে চিরতরে অর্ডার লিস্ট থেকে রিমুভ হবে এবং ডুপ্লিকেট এন্ট্রি প্রতিরোধ হবে
+    // নিখুঁত ও চূড়ান্ত অর্ডার আপডেট লজিক: এডিট করার সময় স্ট্যাটাস Delivered বা Cancelled হলে ডাটাবেস থেকে অর্ডার চিরতরে ডিলিট হয়ে যাবে এবং ডুপ্লিকেট সেলস এন্ট্রি রোধ হবে
     function saveOrder() {
       var cust = (getEl('orderCustomer').value || '').trim(); 
       var items = (getEl('orderItems').value || '').trim();
@@ -1757,9 +1758,11 @@
 
       if (db) {
         if (eOrdKey) {
-          // পুরনো অর্ডারটি ডাটাবেস থেকে একেবারে রিমুভ করা হচ্ছে
+          // ১. প্রথমে পুরনো অর্ডারটি ডাটাবেস থেকে একেবারে রিমুভ করা হচ্ছে যাতে বারবার লিস্টে না আসে
           db.ref('orders/' + eOrdKey).remove();
+          eOrdKey = null; // কি ক্লিয়ার করা হলো যাতে ডুপ্লিকেট প্রসেস না হয়
           
+          // ২. যদি Delivered সিলেক্ট করা হয়, তবেই সেলস লেজারে একবার এন্ট্রি যাবে
           if (status === 'Delivered') {
             if (total > 0) {
               db.ref('sales').push({ 
@@ -1777,8 +1780,8 @@
                 payments: [] 
               });
             }
-          }
-          // যদি Pending থাকে, তবেই কেবল নতুন করে থাকবে। Delivered বা Cancelled হলে আর থাকবে না।
+          } 
+          // ৩. যদি Pending থাকে তবেই নতুন করে অর্ডারে সেভ হবে, Cancelled হলে কোথাও সেভ হবে না
           else if (status === 'Pending') {
             db.ref('orders').push({ 
               date: deliveryDate, 
@@ -1792,6 +1795,7 @@
             });
           }
         } else {
+          // নতুন অর্դারের ক্ষেত্রে
           if (status === 'Delivered') {
             if (total > 0) {
               db.ref('sales').push({ 
@@ -2033,7 +2037,7 @@
         snap.forEach(function(c) {
           count++; var d = c.val(), k = c.key; farmStore.breeding[k] = d;
           var badgeClass = d.status === 'Pregnant' ? 'badge-success' : (d.status === 'Failed' ? 'badge-danger' : 'badge-warning');
-          if (body) body.innerHTML += '<tr><td><strong>' + (d.tag || '-') + '</strong></td><td>' + formatDateBR(d.aiDate) + '</td><td>' + (d.semenId || '-') + '</td><td>' + (d.company || '-') + '</td><td>₹ ' + (d.aiCost || 0) + '</td><td>' + formatDateBR(d.pdDate) + '</td><td><span class="badge ' + badgeClass + '">' + (d.status || 'Pending') + '</span></td><td>' + formatDateBR(d.expCalvingDate || d.calvingDate) + '</td><td>' + formatDateBR(d.actCalvingDate) + '</td><td><button class="action-btn btn-info" onclick="editBreeding(\'' + k + \')">Edit</button><button class="action-btn btn-danger" onclick="deleteRecord(\'breeding\',\'' + k + \')">Delete</button></td></tr>';
+          if (body) body.innerHTML += '<tr><td><strong>' + (d.tag || '-') + '</strong></td><td>' + formatDateBR(d.aiDate) + '</td><td>' + (d.semenId || '-') + '</td><td>' + (d.company || '-') + '</td><td>₹ ' + (d.aiCost || 0) + '</td><td>' + formatDateBR(d.pdDate) + '</td><td><span class="badge ' + badgeClass + '">' + (d.status || 'Pending') + '</span></td><td>' + formatDateBR(d.expCalvingDate || d.calvingDate) + '</td><td>' + formatDateBR(d.actCalvingDate) + '</td><td><button class="action-btn btn-info" onclick="editBreeding(\'' + k + '\')">Edit</button><button class="action-btn btn-danger" onclick="deleteRecord(\'breeding\',\'' + k + '\')">Delete</button></td></tr>';
         });
         if (getEl('breedingNoData')) getEl('breedingNoData').style.display = count === 0 ? 'block' : 'none';
       });
@@ -2051,7 +2055,7 @@
           var d = c.val(), k = c.key; farmStore.customers[k] = d;
           if (d.name) nameOpt += '<option value="' + d.name + '">' + (d.phone ? d.name + ' (' + d.phone + ')' : d.name) + '</option>';
           if (d.area && !areaSet[d.area]) { areaSet[d.area] = true; areaOpt += '<option value="' + d.area + '">'; }
-          if (body) body.innerHTML += '<tr><td><strong>' + (d.name || '-') + '</strong></td><td>' + (d.phone || '-') + '</td><td>' + (d.area ? '<span class="badge badge-warning">' + d.area + '</span>' : '-') + '</td><td>' + (d.addr || '-') + '</td><td>' + (d.demand || 0) + ' L</td><td>₹ ' + (d.openingDue || 0) + '</td><td><span style="font-size:11px; background:#e3f2fd; padding:2px 6px;">' + (d.type || 'Retail') + '</span> / <span style="font-size:11px; color:#1b5e20;">' + (d.shift || 'Morning') + '</span></td><td><button class="action-btn btn-info" onclick="editCustomer(\'' + k + \')">Edit</button><button class="action-btn btn-danger" onclick="deleteRecord(\'customers\',\'' + k + \')">Delete</button></td></tr>';
+          if (body) body.innerHTML += '<tr><td><strong>' + (d.name || '-') + '</strong></td><td>' + (d.phone || '-') + '</td><td>' + (d.area ? '<span class="badge badge-warning">' + d.area + '</span>' : '-') + '</td><td>' + (d.addr || '-') + '</td><td>' + (d.demand || 0) + ' L</td><td>₹ ' + (d.openingDue || 0) + '</td><td><span style="font-size:11px; background:#e3f2fd; padding:2px 6px;">' + (d.type || 'Retail') + '</span> / <span style="font-size:11px; color:#1b5e20;">' + (d.shift || 'Morning') + '</span></td><td><button class="action-btn btn-info" onclick="editCustomer(\'' + k + '\')">Edit</button><button class="action-btn btn-danger" onclick="deleteRecord(\'customers\',\'' + k + '\')">Delete</button></td></tr>';
         });
         if (getEl('customerNameList')) getEl('customerNameList').innerHTML = nameOpt;
         if (getEl('customerAreaList')) getEl('customerAreaList').innerHTML = areaOpt;
@@ -2093,7 +2097,7 @@
         snap.forEach(function(c) {
           var d = c.val(), k = c.key; farmStore.stock[k] = d;
           var isLow = Number(d.qty) <= Number(d.alertLevel);
-          if (body) body.innerHTML += '<tr><td><strong>' + (d.name || '-') + '</strong></td><td style="color:' + (isLow ? 'red' : 'inherit') + ';font-weight:bold;">' + (d.qty || 0) + '</td><td>' + (d.unit || '-') + '</td><td>' + (d.alertLevel || 0) + '</td><td><button class="action-btn btn-info" onclick="editStock(\'' + k + \')">Edit</button><button class="action-btn btn-danger" onclick="deleteRecord(\'stock\',\'' + k + \')">Delete</button></td></tr>';
+          if (body) body.innerHTML += '<tr><td><strong>' + (d.name || '-') + '</strong></td><td style="color:' + (isLow ? 'red' : 'inherit') + ';font-weight:bold;">' + (d.qty || 0) + '</td><td>' + (d.unit || '-') + '</td><td>' + (d.alertLevel || 0) + '</td><td><button class="action-btn btn-info" onclick="editStock(\'' + k + '\')">Edit</button><button class="action-btn btn-danger" onclick="deleteRecord(\'stock\',\'' + k + '\')">Delete</button></td></tr>';
         });
         renderStockAutocomplete();
       });
@@ -2102,7 +2106,7 @@
         farmStore.semen = {}; var body = getEl('semenTableBody'); if (body) body.innerHTML = '';
         snap.forEach(function(c) {
           var d = c.val(), k = c.key; farmStore.semen[k] = d;
-          if (body) body.innerHTML += '<tr><td><strong>' + (d.batch || '-') + '</strong></td><td>' + (d.breed || '-') + '</td><td>' + (d.source || '-') + '</td><td><strong>' + (d.count || 0) + ' Straws</strong></td><td><button class="action-btn btn-info" onclick="editSemen(\'' + k + \')">Edit</button><button class="action-btn btn-danger" onclick="deleteRecord(\'semen\',\'' + k + \')">Delete</button></td></tr>';
+          if (body) body.innerHTML += '<tr><td><strong>' + (d.batch || '-') + '</strong></td><td>' + (d.breed || '-') + '</td><td>' + (d.source || '-') + '</td><td><strong>' + (d.count || 0) + ' Straws</strong></td><td><button class="action-btn btn-info" onclick="editSemen(\'' + k + '\')">Edit</button><button class="action-btn btn-danger" onclick="deleteRecord(\'semen\',\'' + k + '\')">Delete</button></td></tr>';
         });
       });
 
@@ -2110,7 +2114,7 @@
         farmStore.health = {}; var body = getEl('healthTableBody'); if (body) body.innerHTML = '';
         snap.forEach(function(c) {
           var d = c.val(), k = c.key; farmStore.health[k] = d;
-          if (body) body.innerHTML += '<tr><td>' + formatDateBR(d.date) + '</td><td><strong>' + (d.cowTag || '-') + '</strong></td><td>' + (d.type || '-') + '</td><td>' + (d.desc || '-') + '</td><td>' + formatDateBR(d.nextDate) + '</td><td><button class="action-btn btn-info" onclick="editHealth(\'' + k + \')">Edit</button><button class="action-btn btn-danger" onclick="deleteRecord(\'health\',\'' + k + \')">Delete</button></td></tr>';
+          if (body) body.innerHTML += '<tr><td>' + formatDateBR(d.date) + '</td><td><strong>' + (d.cowTag || '-') + '</strong></td><td>' + (d.type || '-') + '</td><td>' + (d.desc || '-') + '</td><td>' + formatDateBR(d.nextDate) + '</td><td><button class="action-btn btn-info" onclick="editHealth(\'' + k + '\')">Edit</button><button class="action-btn btn-danger" onclick="deleteRecord(\'health\',\'' + k + '\')">Delete</button></td></tr>';
         });
       });
     };
