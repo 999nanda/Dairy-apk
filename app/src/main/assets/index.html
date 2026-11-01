@@ -21,7 +21,7 @@
       authDomain: "nanda-dairy-agro-b5888.firebaseapp.com",
       databaseURL: "https://nanda-dairy-agro-b5888-default-rtdb.firebaseio.com",
       projectId: "nanda-dairy-agro-b5888",
-      storageBucket: "nanda-dairy-agro-b5888.appspot.com",
+      storageBucket: "nanda-dairy-agro-b5888.firebasestorage.app",
       messagingSenderId: "284932687587",
       appId: "1:284932687587:web:1613d832d65dabfb5f67d6"
     };
@@ -670,9 +670,9 @@
         <div class="card">
           <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
             <h2 style="margin:0; border:none; padding:0;">💾 System Backup & Security</h2>
-            <button class="action-btn btn-info" onclick="switchTab('dashboard', document.querySelector('nav button'))">⬅ Back (ফিরে যান)</button>
+            <button class="action-btn btn-info" onclick="downloadBackup()">📥 Download Farm Data Backup (JSON)</button>
           </div>
-          <button class="btn btn-info" onclick="downloadBackup()">📥 Download Farm Data Backup (JSON)</button>
+          <button class="btn btn-info" onclick="downloadBackup()">📥 Download FarmData Backup (JSON)</button>
         </div>
       </div>
     </div>
@@ -1731,7 +1731,7 @@
       getEl('orderStatus').value = 'Pending'; getEl('orderSubmitBtn').innerText = 'Save Order'; getEl('orderCancelBtn').style.display = 'none';
     }
     
-    // নিখুঁত ও ডুপ্লিকেট এন্ট্রি প্রতিরোধকারী অর্ডার আপডেট লজিক
+    // নিখুঁত অর্ডার এডিট ও ডুপ্লিকেট রোধকারী লজিক
     function saveOrder() {
       var cust = (getEl('orderCustomer').value || '').trim(); 
       var items = (getEl('orderItems').value || '').trim();
@@ -1755,7 +1755,7 @@
 
       if (db) {
         if (eOrdKey) {
-          // পুরনো অর্ডারটি ডাটাবেস থেকে একেবারে রিমুভ করা হচ্ছে যাতে ডুপ্লিকেট না হয়
+          // পুরনো অর্ডারটি ডাটাবেস থেকে একেবারে রিমুভ করা হচ্ছে যাতে বারবার ডিলভার্ড করলে ডুপ্লিকেট বিল না আসে
           db.ref('orders/' + eOrdKey).remove();
           
           if (status === 'Delivered') {
@@ -2050,7 +2050,7 @@
           if (body) body.innerHTML += '<tr><td><strong>' + (d.name || '-') + '</strong></td><td>' + (d.phone || '-') + '</td><td>' + (d.area ? '<span class="badge badge-warning">' + d.area + '</span>' : '-') + '</td><td>' + (d.addr || '-') + '</td><td>' + (d.demand || 0) + ' L</td><td>₹ ' + (d.openingDue || 0) + '</td><td><span style="font-size:11px; background:#e3f2fd; padding:2px 6px;">' + (d.type || 'Retail') + '</span> / <span style="font-size:11px; color:#1b5e20;">' + (d.shift || 'Morning') + '</span></td><td><button class="action-btn btn-info" onclick="editCustomer(\'' + k + '\')">Edit</button><button class="action-btn btn-danger" onclick="deleteRecord(\'customers\',\'' + k + '\')">Delete</button></td></tr>';
         });
         if (getEl('customerNameList')) getEl('customerNameList').innerHTML = nameOpt;
-        if (getEl('customerAreaList')) getEl('customerAreaList').innerHTML = areaOpt;
+        if (getEl('customerAreaList')) getEl('customerAreaList'.toString())) getEl('customerAreaList').innerHTML = areaOpt;
         renderSalesTable();
         renderOrdersTable();
       });
@@ -2103,7 +2103,7 @@
       });
 
       db.ref('health').on('value', function(snap) {
-        farmStore.health = {}; var body = getEl('healthTableBody'); if (body) body.innerHTML = '';
+        farmStore.health = {}; var body = getEl('healthTableBody'); if (body) body.innerHTML = ``;
         snap.forEach(function(c) {
           var d = c.val(), k = c.key; farmStore.health[k] = d;
           if (body) body.innerHTML += '<tr><td>' + formatDateBR(d.date) + '</td><td><strong>' + (d.cowTag || '-') + '</strong></td><td>' + (d.type || '-') + '</td><td>' + (d.desc || '-') + '</td><td>' + formatDateBR(d.nextDate) + '</td><td><button class="action-btn btn-info" onclick="editHealth(\'' + k + '\')">Edit</button><button class="action-btn btn-danger" onclick="deleteRecord(\'health\',\'' + k + '\')">Delete</button></td></tr>';
