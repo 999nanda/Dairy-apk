@@ -21,7 +21,7 @@
       authDomain: "nanda-dairy-agro-b5888.firebaseapp.com",
       databaseURL: "https://nanda-dairy-agro-b5888-default-rtdb.firebaseio.com",
       projectId: "nanda-dairy-agro-b5888",
-      storageBucket: "nanda-dairy-agro-b5888.firebasestorage.app",
+      storageBucket: "nanda-dairy-agro-b5888.appspot.com",
       messagingSenderId: "284932687587",
       appId: "1:284932687587:web:1613d832d65dabfb5f67d6"
     };
@@ -1731,7 +1731,7 @@
       getEl('orderStatus').value = 'Pending'; getEl('orderSubmitBtn').innerText = 'Save Order'; getEl('orderCancelBtn').style.display = 'none';
     }
     
-    // নিখুঁত ও পরীক্ষিত অর্ডার আপডেট লজিক
+    // নিখুঁত ও ডুপ্লিকেট এন্ট্রি প্রতিরোধকারী অর্ডার আপডেট লজিক
     function saveOrder() {
       var cust = (getEl('orderCustomer').value || '').trim(); 
       var items = (getEl('orderItems').value || '').trim();
@@ -1755,6 +1755,7 @@
 
       if (db) {
         if (eOrdKey) {
+          // পুরনো অর্ডারটি ডাটাবেস থেকে একেবারে রিমুভ করা হচ্ছে যাতে ডুপ্লিকেট না হয়
           db.ref('orders/' + eOrdKey).remove();
           
           if (status === 'Delivered') {
