@@ -1734,7 +1734,7 @@
     }
     
     // নিখুঁত ও চূড়ান্ত অর্ডার আপডেট লজিক: এডিট করার সময় স্ট্যাটাস Delivered বা Cancelled হলে ডাটাবেস থেকে অর্ডার চিরতরে ডিলিট হয়ে যাবে এবং ডুপ্লিকেট সেলস এন্ট্রি রোধ হবে
-    function saveOrder() {
+   function saveOrder() {
       var cust = (getEl('orderCustomer').value || '').trim(); 
       var items = (getEl('orderItems').value || '').trim();
       if (!cust || !items) return alert('নাম ও বিবরণ দিন!');
@@ -1757,10 +1757,10 @@
 
       if (db) {
         if (eOrdKey) {
-          // ১. প্রথমে পুরনো অর্ডারটি ডাটাবেস থেকে একেবারে রিমুভ করা হচ্ছে যাতে বারবার লিস্টে না আসে
+          // ১. ডাটাবেস থেকে পুরনো অর্ডারটি একেবারে মুছে ফেলা হচ্ছে
           db.ref('orders/' + eOrdKey).remove();
           
-          // ২. যদি Delivered সিলেক্ট করা হয়, তবেই সেলস লেজারে একবার এন্ট্রি যাবে
+          // ২. যদি স্ট্যাটাস Delivered হয়, তবেই সেলস লেজারে এন্ট্রি যাবে
           if (status === 'Delivered') {
             if (total > 0) {
               db.ref('sales').push({ 
@@ -1779,7 +1779,7 @@
               });
             }
           } 
-          // ৩. যদি Pending থাকে তবেই নতুন করে অর্ডারে সেভ হবে, Cancelled হলে কোথাও সেভ হবে না
+          // ৩. যদি Pending থাকে তবেই অর্ডারে থাকবে। Delivered বা Cancelled হলে আর অর্ডারে দেখাবে না।
           else if (status === 'Pending') {
             db.ref('orders').push({ 
               date: deliveryDate, 
@@ -1792,9 +1792,8 @@
               status: status 
             });
           }
-          eOrdKey = null; // কি ক্লিয়ার করা হলো যাতে ডুপ্লিকেট প্রসেস না হয়
+          eOrdKey = null; 
         } else {
-          // নতুন অর্դারের ক্ষেত্রে
           if (status === 'Delivered') {
             if (total > 0) {
               db.ref('sales').push({ 
