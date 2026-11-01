@@ -818,8 +818,45 @@
       }
     }
 
-    function checkAndGenerateDailyOrders() {
-      return;
+   function checkAndGenerateDailyOrders() {
+      if (!db) return;
+      var todayISO = new Date().toISOString().split('T')[0];
+      
+      db.ref('orders').once('value', function(snap) {
+        var existingOrders = snap.val() || {};
+        var todayOrdersMap = {};
+        
+        Object.keys(existingOrders).forEach(function(k) {
+          var o = existingOrders[k];
+          if (o && o.date === todayISO && o.customer) {
+            todayOrdersMap[o.customer.trim().toLowerCase()] = true;
+          }
+        });
+
+        db.ref('customers').once('value', function(custSnap) {
+          custSnap.forEach(function(cNode) {
+            var cust = cNode.val();
+            if (cust && cust.name && Number(cust.demand) > 0) {
+              var cName = cust.name.trim();
+              var cKey = cName.toLowerCase();
+              
+              if (!todayOrdersMap[cKey]) {
+                var autoOrder = {
+                  date: todayISO,
+                  customer: cName,
+                  phone: cust.phone || '',
+                  area: cust.area || '',
+                  items: cust.demand + ' লিটার তরল দুধ',
+                  total: Number(cust.demand) * 50,
+                  paid: 0,
+                  status: 'Pending'
+                };
+                db.ref('orders').push(autoOrder);
+              }
+            }
+          });
+        });
+      });
     }
 
     function renderStockAutocomplete() {
@@ -1733,7 +1770,7 @@
     }
     
     // নিখুঁত ও চূড়ান্ত অর্ডার আপডেট লজিক: এডিট করার সময় স্ট্যাটাস Delivered বা Cancelled হলে ডাটাবেস থেকে অর্ডার চিরতরে ডিলিট হয়ে যাবে এবং ডুপ্লিকেট সেলস এন্ট্রি রোধ হবে
-   function saveOrder() {
+ function saveOrder() {
       var cust = (getEl('orderCustomer').value || '').trim(); 
       var items = (getEl('orderItems').value || '').trim();
       if (!cust || !items) return alert('নাম ও বিবরণ দিন!');
@@ -1756,10 +1793,9 @@
 
       if (db) {
         if (eOrdKey) {
-          // ১. ডাটাবেস থেকে পুরনো অর্ডারটি একেবারে মুছে ফেলা হচ্ছে
+          // এডিট করার সময় পুরনো অর্ডারটি ডেটাবেস থেকে একেবারে রিমুভ করা হচ্ছে
           db.ref('orders/' + eOrdKey).remove();
           
-          // ২. যদি স্ট্যাটাস Delivered হয়, তবেই সেলস লেজারে এন্ট্রি যাবে
           if (status === 'Delivered') {
             if (total > 0) {
               db.ref('sales').push({ 
@@ -1778,7 +1814,6 @@
               });
             }
           } 
-          // ৩. যদি Pending থাকে তবেই অর্ডারে থাকবে। Delivered বা Cancelled হলে আর অর্ডারে দেখাবে না।
           else if (status === 'Pending') {
             db.ref('orders').push({ 
               date: deliveryDate, 
@@ -1826,7 +1861,6 @@
       }
       cancelOrderEdit();
     }
-
     var eFeedKey = null;
     function editFeed(k) {
       var d = farmStore.feed[k]; if (!d) return; eFeedKey = k;
