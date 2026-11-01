@@ -507,7 +507,7 @@
         </div>
       </div>
 
-      <!-- Feed Management (Updated as requested) -->
+      <!-- Feed Management -->
       <div id="tab-feed" class="tab-content" style="display: none;">
         <div class="card">
           <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
@@ -826,6 +826,57 @@
           break;
         }
       }
+    }
+
+    function checkAndGenerateDailyOrders() {
+      if (!db) return;
+      var todayISO = new Date().toISOString().split('T')[0];
+
+      db.ref('customers').once('value', function(custSnap) {
+        if (!custSnap.exists()) return;
+        
+        db.ref('orders').once('value', function(ordSnap) {
+          var customerProcessedToday = {};
+          ordSnap.forEach(function(o) {
+            var val = o.val();
+            if (val && val.date === todayISO && val.customer) {
+              customerProcessedToday[val.customer.trim().toLowerCase()] = true;
+            }
+          });
+
+          db.ref('sales').once('value', function(saleSnap) {
+            saleSnap.forEach(function(s) {
+              var sVal = s.val();
+              if (sVal && sVal.date === todayISO && sVal.name) {
+                customerProcessedToday[sVal.name.trim().toLowerCase()] = true;
+              }
+            });
+
+            custSnap.forEach(function(c) {
+              var cust = c.val();
+              if (!cust || !cust.name) return;
+              var cName = cust.name.trim();
+              var demand = Number(cust.demand) || 0;
+              if (demand <= 0) return;
+
+              var cKey = cName.toLowerCase();
+              if (!customerProcessedToday[cKey]) {
+                var newOrder = {
+                  date: todayISO,
+                  customer: cName,
+                  phone: cust.phone || '',
+                  area: cust.area || '',
+                  items: demand + ' লিটার তরল দুধ',
+                  total: demand * 50,
+                  paid: 0,
+                  status: 'Pending'
+                };
+                db.ref('orders').push(newOrder);
+              }
+            });
+          });
+        });
+      });
     }
 
     function renderStockAutocomplete() {
@@ -1435,7 +1486,7 @@
         }
       }
 
-      if (pellet > 0) {
+      if (pellet > 0 && !eRatKey) {
         var matchedKey = null;
         var availableQty = 0;
         for (var sName in stockMap) {
@@ -1745,6 +1796,8 @@
       eOrdKey = null; ['orderCustomer','orderPhone','orderArea','orderItems','orderTotal','orderPaid'].forEach(function(i){ if(getEl(i)) getEl(i).value=''; });
       getEl('orderStatus').value = 'Pending'; getEl('orderSubmitBtn').innerText = 'Save Order'; getEl('orderCancelBtn').style.display = 'none';
     }
+    
+    // নিখুঁতভাবে অর্ডার আপডেট এবং সেলস খাতায় যোগ করার ফাংশন
     function saveOrder() {
       var cust = (getEl('orderCustomer').value || '').trim(); 
       var items = (getEl('orderItems').value || '').trim();
@@ -1768,23 +1821,29 @@
 
       if (db) {
         if (eOrdKey) {
+          // পুরনো অর্ডারটি ডাটাবেস থেকে ডিলিট করে দেওয়া হচ্ছে
           db.ref('orders/' + eOrdKey).remove();
-          if (status === 'Delivered' && total > 0) {
-            db.ref('sales').push({ 
-              date: deliveryDate, 
-              name: cust, 
-              phone: phone, 
-              area: area, 
-              addr: '', 
-              item: items, 
-              qty: 1, 
-              rate: total, 
-              total: total, 
-              paid: paid, 
-              due: Math.max(0, total - paid), 
-              payments: [] 
-            });
-          } else if (status !== 'Delivered' && status !== 'Cancelled') {
+          
+          if (status === 'Delivered') {
+            // Delivered হলে সরাসরি সেলস লেজারে এন্ট্রি যাবে এবং অর্ডারে আর থাকবে না
+            if (total > 0) {
+              db.ref('sales').push({ 
+                date: deliveryDate, 
+                name: cust, 
+                phone: phone, 
+                area: area, 
+                addr: '', 
+                item: items, 
+                qty: 1, 
+                rate: total, 
+                total: total, 
+                paid: paid, 
+                due: Math.max(0, total - paid), 
+                payments: [] 
+              });
+            }
+          } else if (status === 'Pending') {
+            // স্ট্যাটাস Pending থাকলে নতুন করে অর্ডারে সেভ হবে
             db.ref('orders').push({ 
               date: deliveryDate, 
               customer: cust, 
@@ -1796,6 +1855,7 @@
               status: status 
             });
           }
+          // Cancelled হলে কোথাও সেভ হবে না (সম্পূর্ণ বাদ)
         } else {
           if (status === 'Delivered') {
             if (total > 0) {
