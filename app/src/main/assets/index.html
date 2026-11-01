@@ -1797,7 +1797,6 @@
       getEl('orderStatus').value = 'Pending'; getEl('orderSubmitBtn').innerText = 'Save Order'; getEl('orderCancelBtn').style.display = 'none';
     }
     
-    // নিখুঁতভাবে অর্ডার আপডেট এবং সেলস খাতায় যোগ করার ফাংশন
     function saveOrder() {
       var cust = (getEl('orderCustomer').value || '').trim(); 
       var items = (getEl('orderItems').value || '').trim();
@@ -1821,11 +1820,9 @@
 
       if (db) {
         if (eOrdKey) {
-          // পুরনো অর্ডারটি ডাটাবেস থেকে ডিলিট করে দেওয়া হচ্ছে
           db.ref('orders/' + eOrdKey).remove();
           
           if (status === 'Delivered') {
-            // Delivered হলে সরাসরি সেলস লেজারে এন্ট্রি যাবে এবং অর্ডারে আর থাকবে না
             if (total > 0) {
               db.ref('sales').push({ 
                 date: deliveryDate, 
@@ -1843,7 +1840,6 @@
               });
             }
           } else if (status === 'Pending') {
-            // স্ট্যাটাস Pending থাকলে নতুন করে অর্ডারে সেভ হবে
             db.ref('orders').push({ 
               date: deliveryDate, 
               customer: cust, 
@@ -1855,7 +1851,6 @@
               status: status 
             });
           }
-          // Cancelled হলে কোথাও সেভ হবে না (সম্পূর্ণ বাদ)
         } else {
           if (status === 'Delivered') {
             if (total > 0) {
