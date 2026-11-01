@@ -560,7 +560,7 @@
         </div>
       </div>
 
-      <!-- ۹. Stock -->
+      <!-- ৯. Stock -->
       <div id="tab-stock" class="tab-content" style="display: none;">
         <div class="card">
           <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
@@ -818,7 +818,6 @@
       }
     }
 
-    // অটো-জেনারেশন ফাংশন চিরতরে বন্ধ
     function checkAndGenerateDailyOrders() {
       return;
     }
@@ -1760,7 +1759,6 @@
         if (eOrdKey) {
           // ১. প্রথমে পুরনো অর্ডারটি ডাটাবেস থেকে একেবারে রিমুভ করা হচ্ছে যাতে বারবার লিস্টে না আসে
           db.ref('orders/' + eOrdKey).remove();
-          eOrdKey = null; // কি ক্লিয়ার করা হলো যাতে ডুপ্লিকেট প্রসেস না হয়
           
           // ২. যদি Delivered সিলেক্ট করা হয়, তবেই সেলস লেজারে একবার এন্ট্রি যাবে
           if (status === 'Delivered') {
@@ -1794,6 +1792,7 @@
               status: status 
             });
           }
+          eOrdKey = null; // কি ক্লিয়ার করা হলো যাতে ডুপ্লিকেট প্রসেস না হয়
         } else {
           // নতুন অর্դারের ক্ষেত্রে
           if (status === 'Delivered') {
