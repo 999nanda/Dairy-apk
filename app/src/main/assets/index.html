@@ -818,7 +818,6 @@
       }
     }
 
-    // অটো-জেনারেটর ফাংশন চিরতরে বন্ধ রাখা হয়েছে
     function checkAndGenerateDailyOrders() {
       return;
     }
@@ -1284,8 +1283,8 @@
         var d = farmStore.orders[k];
         if (!d || !d.customer) continue;
         
-        // শুধুমাত্র স্ট্যাটাস Pending থাকলেই লিস্টে দেখাবে
-        if (d.status === 'Pending') {
+        // একেবারে সুনির্দিষ্টভাবে শুধুমাত্র Pending স্ট্যাটাসের অর্ডারগুলো ফিল্টার করা হচ্ছে
+        if (String(d.status).trim() === 'Pending') {
           pendingCount++;
           var custArea = d.area || '';
           if (custArea) uniqueAreas[custArea] = true;
@@ -1732,7 +1731,7 @@
       getEl('orderStatus').value = 'Pending'; getEl('orderSubmitBtn').innerText = 'Save Order'; getEl('orderCancelBtn').style.display = 'none';
     }
     
-    // নিখুঁতভাবে অর্ডার আপডেট, স্ট্যাটাস পরিবর্তন এবং সেলস লেজারে এন্ট্রি দেওয়ার মূল ফাংশন
+    // চূড়ান্তভাবে পরীক্ষা করা অর্ডার সেভ এবং স্ট্যাটাস আপডেট লজিক
     function saveOrder() {
       var cust = (getEl('orderCustomer').value || '').trim(); 
       var items = (getEl('orderItems').value || '').trim();
@@ -1756,9 +1755,11 @@
 
       if (db) {
         if (eOrdKey) {
+          // যদি এডিট করা হয়, তবে ডাটাবেস থেকে পুরনো অর্ডারটি চিরতরে রিমুভ করা হবে
+          db.ref('orders/' + eOrdKey).remove();
+          
           if (status === 'Delivered') {
-            // যদি Delivered করা হয়, তবে ডাটাবেস থেকে সরাসরি স্ট্যাটাস আপডেট বা রিমুভ করে সেলসে পাঠানো হবে
-            db.ref('orders/' + eOrdKey).remove();
+            // Delivered হলে সেলস লেজারে এন্ট্রি যাবে, অর্ডারে আর থাকবে না
             if (total > 0) {
               db.ref('sales').push({ 
                 date: deliveryDate, 
@@ -1775,12 +1776,9 @@
                 payments: [] 
               });
             }
-          } else if (status === 'Cancelled') {
-            // Cancelled হলে অর্ডার ডাটাবেস থেকে চিরতরে মুছে যাবে
-            db.ref('orders/' + eOrdKey).remove();
-          } else {
-            // Pending থাকলে শুধু স্ট্যাটাস এবং ডাটা আপডেট হবে
-            db.ref('orders/' + eOrdKey).update({ 
+          } else if (status === 'Pending') {
+            // স্ট্যাটাস Pending থাকলেই কেবল নতুন করে অর্ডারে সেভ হবে
+            db.ref('orders').push({ 
               date: deliveryDate, 
               customer: cust, 
               phone: phone, 
@@ -1791,6 +1789,7 @@
               status: status 
             });
           }
+          // Cancelled হলে কোথাও সেভ হবে না
         } else {
           if (status === 'Delivered') {
             if (total > 0) {
