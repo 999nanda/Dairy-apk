@@ -818,42 +818,57 @@
       }
     }
 
-   function checkAndGenerateDailyOrders() {
+  // নিখুঁত ও পরীক্ষিত অটো-অর্ডার জেনারেশন (orders এবং sales উভয় টেবিল চেক করে ডুপ্লিকেট রোধ করবে)
+    function checkAndGenerateDailyOrders() {
       if (!db) return;
       var todayISO = new Date().toISOString().split('T')[0];
       
-      db.ref('orders').once('value', function(snap) {
-        var existingOrders = snap.val() || {};
-        var todayOrdersMap = {};
+      // ১. প্রথমে orders টেবিল চেক করা হচ্ছে
+      db.ref('orders').once('value', function(orderSnap) {
+        var existingOrders = orderSnap.val() || {};
+        var todayProcessedMap = {};
         
         Object.keys(existingOrders).forEach(function(k) {
           var o = existingOrders[k];
           if (o && o.date === todayISO && o.customer) {
-            todayOrdersMap[o.customer.trim().toLowerCase()] = true;
+            todayProcessedMap[o.customer.trim().toLowerCase()] = true;
           }
         });
 
-        db.ref('customers').once('value', function(custSnap) {
-          custSnap.forEach(function(cNode) {
-            var cust = cNode.val();
-            if (cust && cust.name && Number(cust.demand) > 0) {
-              var cName = cust.name.trim();
-              var cKey = cName.toLowerCase();
-              
-              if (!todayOrdersMap[cKey]) {
-                var autoOrder = {
-                  date: todayISO,
-                  customer: cName,
-                  phone: cust.phone || '',
-                  area: cust.area || '',
-                  items: cust.demand + ' লিটার তরল দুধ',
-                  total: Number(cust.demand) * 50,
-                  paid: 0,
-                  status: 'Pending'
-                };
-                db.ref('orders').push(autoOrder);
-              }
+        // ২. এরপর sales (ডেলিভারড) টেবিলও চেক করা হচ্ছে যাতে ডেলিভারড অর্ডারের জন্য আবার অটো অর্ডার না বসে
+        db.ref('sales').once('value', function(saleSnap) {
+          var existingSales = saleSnap.val() || {};
+          Object.keys(existingSales).forEach(function(k) {
+            var s = existingSales[k];
+            if (s && s.date === todayISO && s.name) {
+              todayProcessedMap[s.name.trim().toLowerCase()] = true;
             }
+          });
+
+          // ৩. কাস্টমারদের দৈনিক চাহিদা (Daily Demand) থেকে অর্ডার জেনারেট করা
+          db.ref('customers').once('value', function(custSnap) {
+            custSnap.forEach(function(cNode) {
+              var cust = cNode.val();
+              if (cust && cust.name && Number(cust.demand) > 0) {
+                var cName = cust.name.trim();
+                var cKey = cName.toLowerCase();
+                
+                // যদি আজকের দিনে orders বা sales কোথাও এন্ট্রি না থাকে, তবেই অটো অর্ডার বানাবে
+                if (!todayProcessedMap[cKey]) {
+                  var autoOrder = {
+                    date: todayISO,
+                    customer: cName,
+                    phone: cust.phone || '',
+                    area: cust.area || '',
+                    items: cust.demand + ' লিটার তরল দুধ',
+                    total: Number(cust.demand) * 50,
+                    paid: 0,
+                    status: 'Pending'
+                  };
+                  db.ref('orders').push(autoOrder);
+                }
+              }
+            });
           });
         });
       });
