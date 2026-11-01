@@ -1797,7 +1797,7 @@
       getEl('orderStatus').value = 'Pending'; getEl('orderSubmitBtn').innerText = 'Save Order'; getEl('orderCancelBtn').style.display = 'none';
     }
     
-   function saveOrder() {
+ function saveOrder() {
       var cust = (getEl('orderCustomer').value || '').trim(); 
       var items = (getEl('orderItems').value || '').trim();
       if (!cust || !items) return alert('নাম ও বিবরণ দিন!');
@@ -1820,11 +1820,11 @@
 
       if (db) {
         if (eOrdKey) {
-          // পুরনো অর্ডারটি ডাটাবেস থেকে পাকাপাকিভাবে মুছে ফেলা হচ্ছে
+          // পুরনো অর্ডারটি ডাটাবেস থেকে একেবারে মুছে ফেলা হচ্ছে যাতে আর ফিরে না আসে
           db.ref('orders/' + eOrdKey).remove();
           
           if (status === 'Delivered') {
-            // Delivered হলে সরাসরি সেলস লেজারে এন্ট্রি হবে এবং অর্ডারে আর থাকবে না
+            // স্ট্যাটাস Delivered হলে সরাসরি সেলস লেজারে এন্ট্রি চলে যাবে
             if (total > 0) {
               db.ref('sales').push({ 
                 date: deliveryDate, 
@@ -1842,7 +1842,98 @@
               });
             }
           } else if (status === 'Pending') {
-            // স্ট্যাটাস Pending থাকলে শুধুমাত্র তখনই অর্ডারে সেভ থাকবে
+            // শুধুমাত্র Pending থাকলেই নতুন করে অর্ডারে সেভ থাকবে
+            db.ref('orders').push({ 
+              date: deliveryDate, 
+              customer: cust, 
+              phone: phone, 
+              area: area, 
+              items: items, 
+              total: total, 
+              paid: paid, 
+              status: status 
+            });
+          }
+          // Cancelled হলে কোথাও সেভ হবে না
+        } else {
+          if (status === 'Delivered') {
+            if (total > 0) {
+              db.ref('sales').push({ 
+                date: deliveryDate, 
+                name: cust, 
+                phone: phone, 
+                area: area, 
+                addr: '', 
+                item: items, 
+                qty: 1, 
+                rate: total, 
+                total: total, 
+                paid: paid, 
+                due: Math.max(0, total - paid), 
+                payments: [] 
+              });
+            }
+          } else if (status !== 'Cancelled') {
+            db.ref('orders').push({ 
+              date: deliveryDate, 
+              customer: cust, 
+              phone: phone, 
+              area: area, 
+              items: items, 
+              total: total, 
+              paid: paid, 
+              status: status 
+            });
+          }
+        }
+      }
+      cancelOrderEdit();
+    }function saveOrder() {
+      var cust = (getEl('orderCustomer').value || '').trim(); 
+      var items = (getEl('orderItems').value || '').trim();
+      if (!cust || !items) return alert('নাম ও বিবরণ দিন!');
+      
+      var status = getEl('orderStatus').value; 
+      var total = parseFloat(getEl('orderTotal').value) || 0; 
+      var paid = parseFloat(getEl('orderPaid').value) || 0;
+      var deliveryDate = getEl('orderDate').value;
+      var phone = (getEl('orderPhone') ? getEl('orderPhone').value : '').trim();
+      var area = (getEl('orderArea') ? getEl('orderArea').value : '').trim();
+
+      for (var ck in farmStore.customers) {
+        var cObj = farmStore.customers[ck];
+        if (cObj && cObj.name && cObj.name.trim().toLowerCase() === cust.toLowerCase()) {
+          if (!phone && cObj.phone) phone = cObj.phone;
+          if (!area && cObj.area) area = cObj.area.trim();
+          break;
+        }
+      }
+
+      if (db) {
+        if (eOrdKey) {
+          // পুরনো অর্ডারটি ডাটাবেস থেকে একেবারে মুছে ফেলা হচ্ছে যাতে আর ফিরে না আসে
+          db.ref('orders/' + eOrdKey).remove();
+          
+          if (status === 'Delivered') {
+            // স্ট্যাটাস Delivered হলে সরাসরি সেলস লেজারে এন্ট্রি চলে যাবে
+            if (total > 0) {
+              db.ref('sales').push({ 
+                date: deliveryDate, 
+                name: cust, 
+                phone: phone, 
+                area: area, 
+                addr: '', 
+                item: items, 
+                qty: 1, 
+                rate: total, 
+                total: total, 
+                paid: paid, 
+                due: Math.max(0, total - paid), 
+                payments: [] 
+              });
+            }
+          } else if (status === 'Pending') {
+            // শুধুমাত্র Pending থাকলেই নতুন করে অর্ডারে সেভ থাকবে
             db.ref('orders').push({ 
               date: deliveryDate, 
               customer: cust, 
@@ -1889,74 +1980,6 @@
       }
       cancelOrderEdit();
     }
-      if (db) {
-        if (eOrdKey) {
-          db.ref('orders/' + eOrdKey).remove();
-          
-          if (status === 'Delivered') {
-            if (total > 0) {
-              db.ref('sales').push({ 
-                date: deliveryDate, 
-                name: cust, 
-                phone: phone, 
-                area: area, 
-                addr: '', 
-                item: items, 
-                qty: 1, 
-                rate: total, 
-                total: total, 
-                paid: paid, 
-                due: Math.max(0, total - paid), 
-                payments: [] 
-              });
-            }
-          } else if (status === 'Pending') {
-            db.ref('orders').push({ 
-              date: deliveryDate, 
-              customer: cust, 
-              phone: phone, 
-              area: area, 
-              items: items, 
-              total: total, 
-              paid: paid, 
-              status: status 
-            });
-          }
-        } else {
-          if (status === 'Delivered') {
-            if (total > 0) {
-              db.ref('sales').push({ 
-                date: deliveryDate, 
-                name: cust, 
-                phone: phone, 
-                area: area, 
-                addr: '', 
-                item: items, 
-                qty: 1, 
-                rate: total, 
-                total: total, 
-                paid: paid, 
-                due: Math.max(0, total - paid), 
-                payments: [] 
-              });
-            }
-          } else if (status !== 'Cancelled') {
-            db.ref('orders').push({ 
-              date: deliveryDate, 
-              customer: cust, 
-              phone: phone, 
-              area: area, 
-              items: items, 
-              total: total, 
-              paid: paid, 
-              status: status 
-            });
-          }
-        }
-      }
-      cancelOrderEdit();
-    }
-
     window.listenAllData = function() {
       if (!db) return;
 
