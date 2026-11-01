@@ -2007,10 +2007,11 @@
 
       if (db) {
         if (eOrdKey) {
-          // স্ট্যাটাস Delivered বা Cancelled যাই হোক না কেন, এডিট করে আপডেট করলে তা অর্ডার লিস্ট থেকে চিরতরে মুছে যাবে
+          // যদি স্ট্যাটাস Delivered বা Cancelled করা হয়, তবে অর্ডারটি ডাটাবেস থেকে একেবারে রিমুভ (ডিলিট) করে দেওয়া হবে
           if (status === 'Delivered' || status === 'Cancelled') {
             db.ref('orders/' + eOrdKey).remove();
-            // কেবল Delivered হলে সেলস খাতার মধ্যে যোগ হবে
+            
+            // কেবল Delivered হলে সেলস খাতার মধ্যে এন্ট্রি যোগ হবে
             if (status === 'Delivered' && total > 0) {
               db.ref('sales').push({ 
                 date: deliveryDate, 
