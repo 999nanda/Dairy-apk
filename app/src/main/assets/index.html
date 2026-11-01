@@ -672,7 +672,7 @@
             <h2 style="margin:0; border:none; padding:0;">💾 System Backup & Security</h2>
             <button class="action-btn btn-info" onclick="downloadBackup()">📥 Download Farm Data Backup (JSON)</button>
           </div>
-          <button class="btn btn-info" onclick="downloadBackup()">📥 Download FarmData Backup (JSON)</button>
+          <button class="btn btn-info" onclick="downloadBackup()">📥 Download Farm Data Backup (JSON)</button>
         </div>
       </div>
     </div>
@@ -818,6 +818,7 @@
       }
     }
 
+    // অটো অর্ডার জেনারেশন ফাংশন সম্পূর্ণ নিষ্ক্রিয় করা হলো যাতে নিজে নিজে অর্ডার তৈরি না হয়
     function checkAndGenerateDailyOrders() {
       return;
     }
@@ -1268,6 +1269,7 @@
       body.innerHTML = html;
     }
 
+    // নিখুঁত অর্ডার রেন্ডারিং: শুধুমাত্র Pending অর্ডার দেখাবে এবং Delivered বা Cancelled হলে চিরতরে মুছে যাবে
     function renderOrdersTable() {
       var body = getEl('ordersTableBody');
       if (!body) return;
@@ -1284,6 +1286,7 @@
         if (!d || !d.customer) continue;
         
         var stat = String(d.status || '').trim();
+        // নিশ্চিত করা হলো যে কেবল Pending অর্ডারগুলোই টেবিলে থাকবে
         if (stat === 'Pending') {
           pendingCount++;
           var custArea = d.area || '';
@@ -1731,7 +1734,7 @@
       getEl('orderStatus').value = 'Pending'; getEl('orderSubmitBtn').innerText = 'Save Order'; getEl('orderCancelBtn').style.display = 'none';
     }
     
-    // নিখুঁত অর্ডার এডিট ও ডুপ্লিকেট রোধকারী লজিক
+    // নিখুঁত ও পরীক্ষিত অর্ডার সেভ লজিক: ডেলিভারড বা ক্যানসেল হলে চিরতরে অর্ডার লিস্ট থেকে রিমুভ হবে
     function saveOrder() {
       var cust = (getEl('orderCustomer').value || '').trim(); 
       var items = (getEl('orderItems').value || '').trim();
@@ -1755,7 +1758,7 @@
 
       if (db) {
         if (eOrdKey) {
-          // পুরনো অর্ডারটি ডাটাবেস থেকে একেবারে রিমুভ করা হচ্ছে যাতে বারবার ডিলভার্ড করলে ডুপ্লিকেট বিল না আসে
+          // পুরনো অর্ডারটি ডাটাবেস থেকে রিমুভ করা হচ্ছে
           db.ref('orders/' + eOrdKey).remove();
           
           if (status === 'Delivered') {
@@ -1775,7 +1778,9 @@
                 payments: [] 
               });
             }
-          } else if (status === 'Pending') {
+          }
+          // Pending থাকলে নতুন করে যোগ হবে, Cancelled হলে কোথাও সেভ হবে না
+          else if (status === 'Pending') {
             db.ref('orders').push({ 
               date: deliveryDate, 
               customer: cust, 
@@ -1805,7 +1810,7 @@
                 payments: [] 
               });
             }
-          } else if (status !== 'Cancelled') {
+          } else if (status === 'Pending') {
             db.ref('orders').push({ 
               date: deliveryDate, 
               customer: cust, 
@@ -2050,7 +2055,7 @@
           if (body) body.innerHTML += '<tr><td><strong>' + (d.name || '-') + '</strong></td><td>' + (d.phone || '-') + '</td><td>' + (d.area ? '<span class="badge badge-warning">' + d.area + '</span>' : '-') + '</td><td>' + (d.addr || '-') + '</td><td>' + (d.demand || 0) + ' L</td><td>₹ ' + (d.openingDue || 0) + '</td><td><span style="font-size:11px; background:#e3f2fd; padding:2px 6px;">' + (d.type || 'Retail') + '</span> / <span style="font-size:11px; color:#1b5e20;">' + (d.shift || 'Morning') + '</span></td><td><button class="action-btn btn-info" onclick="editCustomer(\'' + k + '\')">Edit</button><button class="action-btn btn-danger" onclick="deleteRecord(\'customers\',\'' + k + '\')">Delete</button></td></tr>';
         });
         if (getEl('customerNameList')) getEl('customerNameList').innerHTML = nameOpt;
-        if (getEl('customerAreaList')) getEl('customerAreaList'.toString())) getEl('customerAreaList').innerHTML = areaOpt;
+        if (getEl('customerAreaList')) getEl('customerAreaList').innerHTML = areaOpt;
         renderSalesTable();
         renderOrdersTable();
       });
@@ -2103,7 +2108,7 @@
       });
 
       db.ref('health').on('value', function(snap) {
-        farmStore.health = {}; var body = getEl('healthTableBody'); if (body) body.innerHTML = ``;
+        farmStore.health = {}; var body = getEl('healthTableBody'); if (body) body.innerHTML = '';
         snap.forEach(function(c) {
           var d = c.val(), k = c.key; farmStore.health[k] = d;
           if (body) body.innerHTML += '<tr><td>' + formatDateBR(d.date) + '</td><td><strong>' + (d.cowTag || '-') + '</strong></td><td>' + (d.type || '-') + '</td><td>' + (d.desc || '-') + '</td><td>' + formatDateBR(d.nextDate) + '</td><td><button class="action-btn btn-info" onclick="editHealth(\'' + k + '\')">Edit</button><button class="action-btn btn-danger" onclick="deleteRecord(\'health\',\'' + k + '\')">Delete</button></td></tr>';
