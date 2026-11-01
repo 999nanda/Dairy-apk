@@ -1269,7 +1269,7 @@
     }
 
     // নিখুঁত ও চূড়ান্ত অর্ডার রেন্ডারিং লজিক: শুধুমাত্র স্ট্যাটাস 'Pending' থাকলে তবেই অর্ডারে দেখাবে। Delivered বা Cancelled হলে তালিকা থেকে চিরতরে গায়েব হয়ে যাবে।
-    function renderOrdersTable() {
+   function renderOrdersTable() {
       var body = getEl('ordersTableBody');
       if (!body) return;
 
@@ -1285,7 +1285,7 @@
         if (!d || !d.customer) continue;
         
         var stat = String(d.status || '').trim();
-        // কঠোর ফিল্টার: কেবল Pending অর্ডারগুলোই স্ক্রিনে থাকবে
+        // নিশ্চিত করা হলো যে স্ট্যাটাস কঠোরভাবে 'Pending' না হলে সেটি অর্ডারে দেখাবেই না
         if (stat === 'Pending') {
           pendingCount++;
           var custArea = d.area || '';
@@ -1346,7 +1346,6 @@
 
       body.innerHTML = html;
     }
-
     function renderRationTable() {
       var body = getEl('rationTableBody');
       if (!body) return;
