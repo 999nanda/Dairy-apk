@@ -52,16 +52,6 @@
       return clean;
     };
 
-    window.getCurrentTimeBR = function() {
-      var d = new Date();
-      var hours = d.getHours();
-      var minutes = d.getMinutes();
-      var ampm = hours >= 12 ? 'PM' : 'AM';
-      hours = hours % 12; hours = hours ? hours : 12;
-      minutes = minutes < 10 ? '0' + minutes : minutes;
-      return hours + ':' + minutes + ' ' + ampm;
-    };
-
     window.parseDateToTime = function(dtStr) {
       if (!dtStr) return 0;
       var clean = String(dtStr).trim();
@@ -434,7 +424,7 @@
         </div>
       </div>
 
-      <!-- ۶. Customer -->
+      <!-- ৬. Customer -->
       <div id="tab-customers" class="tab-content" style="display: none;">
         <div class="card">
           <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
@@ -826,6 +816,11 @@
           break;
         }
       }
+    }
+
+    // অটো-জেনারেটর ফাংশন চিরতরে বন্ধ রাখা হয়েছে
+    function checkAndGenerateDailyOrders() {
+      return;
     }
 
     function renderStockAutocomplete() {
@@ -1282,46 +1277,48 @@
       var areaFilter = (getEl('orderAreaFilter') ? getEl('orderAreaFilter').value : '').trim().toLowerCase();
 
       var uniqueAreas = {};
-      var customerMap = {};
+      var list = [];
       var pendingCount = 0;
 
       for (var k in farmStore.orders) {
         var d = farmStore.orders[k];
         if (!d || !d.customer) continue;
-        if (d.status === 'Pending') pendingCount++;
-        if (d.status !== 'Pending') continue;
+        
+        // শুধুমাত্র স্ট্যাটাস Pending থাকলেই লিস্টে দেখাবে
+        if (d.status === 'Pending') {
+          pendingCount++;
+          var custArea = d.area || '';
+          if (custArea) uniqueAreas[custArea] = true;
 
-        var rName = d.customer.trim();
-        var cKey = rName.toLowerCase();
-
-        var custPhone = d.phone || '';
-        var custArea = d.area || '';
-        if (custArea) uniqueAreas[custArea] = true;
-
-        if (!customerMap[cKey]) {
-          customerMap[cKey] = { customerName: rName, phone: custPhone, area: custArea, orders: [] };
+          list.push({
+            key: k,
+            date: d.date || '',
+            customer: d.customer.trim(),
+            phone: d.phone || '',
+            area: custArea,
+            items: d.items || '',
+            total: Number(d.total) || 0
+          });
         }
-        customerMap[cKey].orders.push({ key: k, data: d });
       }
 
       if (getEl('dash-pending-orders')) getEl('dash-pending-orders').innerText = pendingCount;
 
-      var list = [];
-      for (var cKey in customerMap) {
-        var cObj = customerMap[cKey];
-        var latestDate = '', latestTime = 0;
-        cObj.orders.forEach(function(o) {
-          var t = parseDateToTime(o.data.date);
-          if (t >= latestTime) { latestTime = t; latestDate = formatDateBR(o.data.date); }
+      var areaSelect = getEl('orderAreaFilter');
+      if (areaSelect) {
+        var currVal = areaSelect.value;
+        var optH = '<option value="">সকল এলাকা</option>';
+        Object.keys(uniqueAreas).sort().forEach(function(a) {
+          optH += '<option value="' + a + '" ' + (currVal.toLowerCase() === a.toLowerCase() ? 'selected' : '') + '>' + a + '</option>';
         });
-        list.push({ customerName: cObj.customerName, phone: cObj.phone, area: cObj.area, orders: cObj.orders, latestDate: latestDate, latestTime: latestTime });
+        areaSelect.innerHTML = optH;
       }
 
       var filtered = list.filter(function(item) {
-        return (!searchQ || item.customerName.toLowerCase().includes(searchQ) || item.phone.toLowerCase().includes(searchQ)) && (!areaFilter || item.area.toLowerCase() === areaFilter.toLowerCase());
+        return (!searchQ || item.customer.toLowerCase().includes(searchQ) || item.phone.toLowerCase().includes(searchQ)) && (!areaFilter || item.area.toLowerCase() === areaFilter.toLowerCase());
       });
 
-      filtered.sort(function(a, b) { return b.latestTime - a.latestTime; });
+      filtered.sort(function(a, b) { return parseDateToTime(b.date) - parseDateToTime(a.date); });
 
       if (filtered.length === 0) {
         body.innerHTML = '';
@@ -1332,27 +1329,16 @@
 
       var html = '';
       filtered.forEach(function(item) {
-        var cName = item.customerName;
-        var itemsSummary = [];
-        var totalSum = 0;
-
-        item.orders.forEach(function(o) {
-          itemsSummary.push(o.data.items + ' (' + formatDateBR(o.data.date) + ')');
-          totalSum += Number(o.data.total) || 0;
-        });
-
-        var firstKey = item.orders[0].key;
-
         html += '<tr style="background: #fff8f8; border-left: 4px solid #d32f2f;">' +
-          '<td>' + (item.latestDate || '-') + '</td>' +
-          '<td><a href="javascript:void(0)" onclick="showCustomerLedger(\'' + encodeURIComponent(cName) + '\')" style="color:var(--primary); font-weight:bold; text-decoration:underline;">' + cName + '</a>' + (item.phone ? '<br><small>📞 ' + item.phone + '</small>' : '') + '</td>' +
+          '<td>' + formatDateBR(item.date) + '</td>' +
+          '<td><a href="javascript:void(0)" onclick="showCustomerLedger(\'' + encodeURIComponent(item.customer) + '\')" style="color:var(--primary); font-weight:bold; text-decoration:underline;">' + item.customer + '</a>' + (item.phone ? '<br><small>📞 ' + item.phone + '</small>' : '') + '</td>' +
           '<td>' + (item.area ? '<span class="badge badge-warning">' + item.area + '</span>' : '-') + '</td>' +
-          '<td>' + itemsSummary.join('<br>') + '<br><strong>মোট: ₹ ' + totalSum + '</strong></td>' +
+          '<td>' + item.items + '<br><strong>মোট: ₹ ' + item.total + '</strong></td>' +
           '<td><span class="badge badge-danger">Pending</span></td>' +
           '<td>' +
-            '<button class="action-btn" style="background:#455a64; color:white;" onclick="showCustomerLedger(\'' + encodeURIComponent(cName) + '\')">খাতা</button>' +
-            '<button class="action-btn btn-info" onclick="editOrder(\'' + firstKey + '\')">Edit</button>' +
-            '<button class="action-btn btn-danger" onclick="deleteRecord(\'orders\',\'' + firstKey + '\')">Delete</button>' +
+            '<button class="action-btn" style="background:#455a64; color:white;" onclick="showCustomerLedger(\'' + encodeURIComponent(item.customer) + '\')">খাতা</button>' +
+            '<button class="action-btn btn-info" onclick="editOrder(\'' + item.key + '\')">Edit</button>' +
+            '<button class="action-btn btn-danger" onclick="deleteRecord(\'orders\',\'' + item.key + '\')">Delete</button>' +
           '</td>' +
         '</tr>';
       });
@@ -1746,7 +1732,7 @@
       getEl('orderStatus').value = 'Pending'; getEl('orderSubmitBtn').innerText = 'Save Order'; getEl('orderCancelBtn').style.display = 'none';
     }
     
-    // চূড়ান্ত ও নিখুঁত অর্ডার এডিট ও আপডেট করার লজিক (অটো-রিজেনারেট সমস্যা দূর করা হয়েছে)
+    // নিখুঁতভাবে অর্ডার আপডেট, স্ট্যাটাস পরিবর্তন এবং সেলস লেজারে এন্ট্রি দেওয়ার মূল ফাংশন
     function saveOrder() {
       var cust = (getEl('orderCustomer').value || '').trim(); 
       var items = (getEl('orderItems').value || '').trim();
@@ -1770,10 +1756,9 @@
 
       if (db) {
         if (eOrdKey) {
-          // পুরনো অর্ডারটি ডাটাবেস থেকে পাকাপাকিভাবে মুছে ফেলা হচ্ছে
-          db.ref('orders/' + eOrdKey).remove();
-          
           if (status === 'Delivered') {
+            // যদি Delivered করা হয়, তবে ডাটাবেস থেকে সরাসরি স্ট্যাটাস আপডেট বা রিমুভ করে সেলসে পাঠানো হবে
+            db.ref('orders/' + eOrdKey).remove();
             if (total > 0) {
               db.ref('sales').push({ 
                 date: deliveryDate, 
@@ -1790,8 +1775,12 @@
                 payments: [] 
               });
             }
-          } else if (status === 'Pending') {
-            db.ref('orders').push({ 
+          } else if (status === 'Cancelled') {
+            // Cancelled হলে অর্ডার ডাটাবেস থেকে চিরতরে মুছে যাবে
+            db.ref('orders/' + eOrdKey).remove();
+          } else {
+            // Pending থাকলে শুধু স্ট্যাটাস এবং ডাটা আপডেট হবে
+            db.ref('orders/' + eOrdKey).update({ 
               date: deliveryDate, 
               customer: cust, 
               phone: phone, 
