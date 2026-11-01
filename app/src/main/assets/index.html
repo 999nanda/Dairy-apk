@@ -1200,7 +1200,7 @@
           var customerProcessedToday = {};
           ordSnap.forEach(function(o) {
             var val = o.val();
-            if (val && val.date === todayISO && val.customer) {
+            if (val && val.date === todayISO && val.customer && val.status !== 'Cancelled') {
               customerProcessedToday[val.customer.trim().toLowerCase()] = true;
             }
           });
@@ -2007,9 +2007,11 @@
 
       if (db) {
         if (eOrdKey) {
-          if (status === 'Delivered') {
+          // স্ট্যাটাস Delivered বা Cancelled যাই হোক না কেন, এডিট করে আপডেট করলে তা অর্ডার লিস্ট থেকে চিরতরে মুছে যাবে
+          if (status === 'Delivered' || status === 'Cancelled') {
             db.ref('orders/' + eOrdKey).remove();
-            if (total > 0) {
+            // কেবল Delivered হলে সেলস খাতার মধ্যে যোগ হবে
+            if (status === 'Delivered' && total > 0) {
               db.ref('sales').push({ 
                 date: deliveryDate, 
                 name: cust, 
@@ -2026,6 +2028,7 @@
               });
             }
           } else {
+            // অন্যথায় Pending থাকলে স্ট্যাটাস আপডেট হবে
             db.ref('orders/' + eOrdKey).update({
               date: deliveryDate, 
               customer: cust, 
