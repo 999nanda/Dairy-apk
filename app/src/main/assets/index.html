@@ -818,55 +818,67 @@
       }
     }
 
- // অটো-অর্ডার জেনারেশন (একই সাথে Orders এবং Sales চেক করবে)
+ // নিখুঁত অটো-অর্ডার জেনারেশন (ফিক্সড আইডি ও স্ট্যাটাস লকিং সহ)
     function checkAndGenerateDailyOrders() {
       if (!db) return;
       var todayISO = new Date().toISOString().split('T')[0];
-      
-      // ডেটাবেসের সম্পূর্ণ স্ন্যাপশট একবারে নেওয়া হচ্ছে যাতে কোনো সিঙ্ক ডিলের কারণে ডুপ্লিকেট না হয়
+      var todayBR = formatDateBR(todayISO);
+
       db.ref('/').once('value', function(snap) {
         var allData = snap.val() || {};
         var existingOrders = allData.orders || {};
         var existingSales = allData.sales || {};
         var existingCustomers = allData.customers || {};
         var todayProcessedMap = {};
-        
-        // ১. আজকের পেন্ডিং অর্ডার চেক করা
+
+        // ১. আজকের তারিখে যেকোনো অর্ডার (Pending, Delivered বা Cancelled যাই হোক) থাকলে তা লক করা
         Object.keys(existingOrders).forEach(function(k) {
           var o = existingOrders[k];
-          if (o && o.date === todayISO && o.customer) {
-            todayProcessedMap[o.customer.trim().toLowerCase()] = true;
+          if (o && o.customer) {
+            var oDate = String(o.date || '').trim();
+            if (oDate === todayISO || formatDateBR(oDate) === todayBR) {
+              todayProcessedMap[o.customer.trim().toLowerCase()] = true;
+            }
           }
         });
 
-        // ২. আজকের ডেলিভারড সেলস চেক করা (যাতে ডেলিভার করার পর আবার জেনারেট না হয়)
+        // ২. আজকের তারিখে Sales-এ কোনো এন্ট্রি থাকলে তাও লক করা
         Object.keys(existingSales).forEach(function(k) {
           var s = existingSales[k];
-          if (s && s.date === todayISO && s.name) {
-            todayProcessedMap[s.name.trim().toLowerCase()] = true;
+          if (s && s.name && !s.isPayment) {
+            var sDate = String(s.date || '').trim();
+            if (sDate === todayISO || formatDateBR(sDate) === todayBR) {
+              todayProcessedMap[s.name.trim().toLowerCase()] = true;
+            }
           }
         });
 
-        // ৩. যাদের আজ কোনো অর্ডার বা ডেলিভারি নেই, তাদের জন্য নতুন অর্ডার জেনারেট করা
+        // ৩. যাদের আজ কোনো অর্ডার বা সেলস নেই, শুধুমাত্র তাদের জন্য নির্দিষ্ট ফিক্সড আইডিতে ১টি অর্ডার তৈরি করা
         Object.keys(existingCustomers).forEach(function(k) {
           var cust = existingCustomers[k];
           if (cust && cust.name && Number(cust.demand) > 0) {
             var cName = cust.name.trim();
             var cKey = cName.toLowerCase();
-            
+
             if (!todayProcessedMap[cKey]) {
-              var autoOrder = {
-                date: todayISO,
-                customer: cName,
-                phone: cust.phone || '',
-                area: cust.area || '',
-                items: cust.demand + ' লিটার তরল দুধ',
-                total: Number(cust.demand) * 50,
-                paid: 0,
-                status: 'Pending'
-              };
-              db.ref('orders').push(autoOrder);
-              todayProcessedMap[cKey] = true;
+              var safeCustKey = cKey.replace(/[^a-z0-9\u0980-\u09FF]/g, '_');
+              var deterministicOrderId = 'auto_' + todayISO + '_' + safeCustKey;
+
+              if (!existingOrders[deterministicOrderId]) {
+                var autoOrder = {
+                  date: todayISO,
+                  customer: cName,
+                  phone: cust.phone || '',
+                  area: cust.area || '',
+                  items: cust.demand + ' লিটার তরল দুধ',
+                  total: Number(cust.demand) * 50,
+                  paid: 0,
+                  status: 'Pending'
+                };
+                // push এর বদলে ফিক্সড আইডিতে set করা হচ্ছে যাতে ডুপ্লিকেট হতেই না পারে
+                db.ref('orders/' + deterministicOrderId).set(autoOrder);
+                todayProcessedMap[cKey] = true;
+              }
             }
           }
         });
@@ -1782,7 +1794,7 @@
       getEl('orderStatus').value = 'Pending'; getEl('orderSubmitBtn').innerText = 'Save Order'; getEl('orderCancelBtn').style.display = 'none';
     }
     
-    // নিখুঁত ও চূড়ান্ত অর্ডার সেভ লজিক
+   // নিখুঁত অর্ডার সেভ লজিক (ডিলিট না করে স্ট্যাটাস আপডেট করে রাখা হবে যাতে অটো-জেনারেটর পুনরায় তৈরি না করে)
     function saveOrder() {
       var cust = (getEl('orderCustomer').value || '').trim(); 
       var items = (getEl('orderItems').value || '').trim();
@@ -1794,80 +1806,88 @@
       var deliveryDate = getEl('orderDate').value;
       var phone = (getEl('orderPhone') ? getEl('orderPhone').value : '').trim();
       var area = (getEl('orderArea') ? getEl('orderArea').value : '').trim();
+      var addr = '';
 
       for (var ck in farmStore.customers) {
         var cObj = farmStore.customers[ck];
         if (cObj && cObj.name && cObj.name.trim().toLowerCase() === cust.toLowerCase()) {
           if (!phone && cObj.phone) phone = cObj.phone;
           if (!area && cObj.area) area = cObj.area.trim();
+          if (cObj.addr) addr = cObj.addr.trim();
           break;
         }
       }
 
+      var orderData = {
+        date: deliveryDate,
+        customer: cust,
+        phone: phone,
+        area: area,
+        items: items,
+        total: total,
+        paid: paid,
+        status: status
+      };
+
       if (db) {
-        if (eOrdKey) {
-          // পুরনো অর্ডারটি ডাটাবেস থেকে একেবারে মুছে ফেলা হচ্ছে
-          db.ref('orders/' + eOrdKey).remove();
-          
+        var currentOrderKey = eOrdKey;
+        eOrdKey = null;
+
+        if (currentOrderKey) {
+          var prevOrder = farmStore.orders[currentOrderKey] || {};
+          var wasAlreadyDelivered = (prevOrder.status === 'Delivered' || prevOrder.saleAdded === true);
+
           if (status === 'Delivered') {
-            if (total > 0) {
+            orderData.saleAdded = true;
+            // অর্ডারটি ডিলিট না করে স্ট্যাটাস Delivered হিসেবে ডাটাবেসে সেভ রাখা হচ্ছে
+            db.ref('orders/' + currentOrderKey).update(orderData);
+
+            // শুধুমাত্র একবারই Sales খাতায় বিল যোগ হবে
+            if (!wasAlreadyDelivered && total > 0) {
               db.ref('sales').push({ 
                 date: deliveryDate, 
                 name: cust, 
                 phone: phone, 
                 area: area, 
-                addr: '', 
+                addr: addr, 
                 item: items, 
                 qty: 1, 
                 rate: total, 
                 total: total, 
                 paid: paid, 
                 due: Math.max(0, total - paid), 
-                payments: [] 
+                payments: [],
+                fromOrderKey: currentOrderKey
               });
             }
-          } else if (status === 'Pending') {
-            db.ref('orders').push({ 
-              date: deliveryDate, 
-              customer: cust, 
-              phone: phone, 
-              area: area, 
-              items: items, 
-              total: total, 
-              paid: paid, 
-              status: status 
-            });
+          } else {
+            // স্ট্যাটাস Pending বা Cancelled হলে সেটি ডাটাবেসে আপডেট থাকবে
+            db.ref('orders/' + currentOrderKey).update(orderData);
           }
-          eOrdKey = null; 
         } else {
+          // নতুন ম্যানুয়াল অর্ডার এন্ট্রি করার ক্ষেত্রে
           if (status === 'Delivered') {
+            orderData.saleAdded = true;
+            var newRef = db.ref('orders').push(orderData);
             if (total > 0) {
               db.ref('sales').push({ 
                 date: deliveryDate, 
                 name: cust, 
                 phone: phone, 
                 area: area, 
-                addr: '', 
+                addr: addr, 
                 item: items, 
                 qty: 1, 
                 rate: total, 
                 total: total, 
                 paid: paid, 
                 due: Math.max(0, total - paid), 
-                payments: [] 
+                payments: [],
+                fromOrderKey: newRef.key
               });
             }
-          } else if (status === 'Pending') {
-            db.ref('orders').push({ 
-              date: deliveryDate, 
-              customer: cust, 
-              phone: phone, 
-              area: area, 
-              items: items, 
-              total: total, 
-              paid: paid, 
-              status: status 
-            });
+          } else {
+            db.ref('orders').push(orderData);
           }
         }
       }
@@ -2070,8 +2090,13 @@
       });
     }
 
-    window.listenAllData = function() {
+   window.listenAllData = function() {
       if (!db) return;
+
+      // পেজ লোড হওয়ার সময় প্রতিদিনের অটো-অর্ডার চেক ও জেনারেট করবে
+      checkAndGenerateDailyOrders();
+
+      db.ref('cattle').on('value', function(snap) { ...
 
       db.ref('cattle').on('value', function(snap) { farmStore.cattle = {}; snap.forEach(function(c){ farmStore.cattle[c.key] = c.val(); }); renderCattleTable(); });
       db.ref('milk').on('value', function(snap) { farmStore.milk = {}; snap.forEach(function(c){ farmStore.milk[c.key] = c.val(); }); renderGroupedMilkTable(); renderCattleTable(); });
