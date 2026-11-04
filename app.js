@@ -750,88 +750,136 @@ function renderOrdersTable() {
 }
 
 window.showCustomerLedger = function(encName) {
-  var custName = decodeURIComponent(encName).trim();
-  window.activeLedgerCustomerName = custName;
-  document.body.setAttribute('data-print', 'ledger');
-  
-  var custLower = custName.toLowerCase();
-  var cPhone = '', cArea = '', cAddr = '', opDue = 0;
+      var custName = decodeURIComponent(encName).trim();
+      window.activeLedgerCustomerName = custName;
+      document.body.setAttribute('data-print', 'ledger');
+      
+      var custLower = custName.toLowerCase();
+      var cPhone = '', cArea = '', cAddr = '', opDue = 0;
 
-  for (var ck in farmStore.customers) {
-    var cust = farmStore.customers[ck];
-    if (cust && cust.name && cust.name.trim().toLowerCase() === custLower) {
-      cPhone = cust.phone || ''; cArea = cust.area || ''; cAddr = cust.addr || ''; opDue = Number(cust.openingDue) || 0;
-      break;
-    }
-  }
-
-  var events = [];
-  var totalBillAmount = opDue, totalPaidAmount = 0;
-
-  if (opDue > 0) {
-    events.push({ date: 'শুরু', desc: 'প্রাথমিক বকেয়া', bill: opDue, paid: 0, netDiff: opDue, isOpening: true, timestamp: 0 });
-  }
-
-  for (var k in farmStore.sales) {
-    var s = farmStore.sales[k];
-    if (!s) continue;
-    if ((s.name || '').trim().toLowerCase() === custLower) {
-      if (s.phone && !cPhone) cPhone = s.phone;
-      if (s.area && !cArea) cArea = s.area;
-      if (s.addr && !cAddr) cAddr = s.addr;
-
-      var bTot = Number(s.total) || 0;
-      var bCurPaid = Number(s.paid) || 0;
-      var pList = getPaymentsArray(s.payments);
-      var subsequentSum = 0;
-      pList.forEach(function(p) { subsequentSum += (Number(p.amount) || 0); });
-      var initialPaid = Math.max(0, bCurPaid - subsequentSum);
-
-      if (bTot > 0) {
-        totalBillAmount += bTot; totalPaidAmount += initialPaid;
-        events.push({ date: formatDateBR(s.date), desc: (s.item || 'পণ্য') + (s.qty ? ' (' + s.qty + ')' : ''), bill: bTot, paid: initialPaid, netDiff: bTot - initialPaid, isSale: true, saleKey: k, timestamp: parseDateToTime(s.date) });
+      for (var ck in farmStore.customers) {
+        var cust = farmStore.customers[ck];
+        if (cust && cust.name && cust.name.trim().toLowerCase() === custLower) {
+          cPhone = cust.phone || ''; cArea = cust.area || ''; cAddr = cust.addr || ''; opDue = Number(cust.openingDue) || 0;
+          break;
+        }
       }
 
-      pList.forEach(function(p, pIdx) {
-        var pAmt = Number(p.amount) || 0; totalPaidAmount += pAmt;
-        events.push({ date: formatDateBR(p.date || s.date), desc: '💳 বকেয়া জমা (' + (p.note || 'ক্যাশ') + ')', bill: 0, paid: pAmt, netDiff: -pAmt, isPayment: true, payObj: p, saleKey: k, timestamp: parseDateToTime(p.date || s.date) + (pIdx + 1) });
-      });
-    }
-  }
+      var events = [];
+      var totalBillAmount = opDue, totalPaidAmount = 0;
 
-  events.sort(function(a, b) { return a.timestamp - b.timestamp; });
-  var runningBalance = 0;
-  events.forEach(function(ev) { runningBalance += ev.netDiff; ev.cumDue = Math.max(0, runningBalance); });
-  events.reverse();
+      if (opDue > 0) {
+        events.push({ date: 'শুরু', desc: 'প্রাথমিক বকেয়া', bill: opDue, paid: 0, netDiff: opDue, isOpening: true, timestamp: 0 });
+      }
 
-  getEl('ledgerCustSub').innerHTML = 'গ্রাহক: <strong>' + custName + '</strong> ' + (cPhone ? '| 📞 ' + cPhone : '');
-  getEl('ledgerTotalBill').innerText = '₹ ' + totalBillAmount.toLocaleString();
-  getEl('ledgerTotalPaid').innerText = '₹ ' + totalPaidAmount.toLocaleString();
-  getEl('ledgerTotalDue').innerText = '₹ ' + Math.max(0, totalBillAmount - totalPaidAmount).toLocaleString();
+      for (var k in farmStore.sales) {
+        var s = farmStore.sales[k];
+        if (!s) continue;
+        if ((s.name || '').trim().toLowerCase() === custLower) {
+          if (s.phone && !cPhone) cPhone = s.phone;
+          if (s.area && !cArea) cArea = s.area;
+          if (s.addr && !cAddr) cAddr = s.addr;
 
-  if (getEl('ledgerPayDate')) getEl('ledgerPayDate').value = new Date().toISOString().split('T')[0];
-  if (getEl('ledgerPayAmount')) getEl('ledgerPayAmount').value = '';
-  if (getEl('ledgerPayNote')) getEl('ledgerPayNote').value = '';
+          var bTot = Number(s.total) || 0;
+          var bCurPaid = Number(s.paid) || 0;
+          var pList = getPaymentsArray(s.payments);
+          var subsequentSum = 0;
+          pList.forEach(function(p) { subsequentSum += (Number(p.amount) || 0); });
+          var initialPaid = Math.max(0, bCurPaid - subsequentSum);
 
-  var tbody = getEl('ledgerTableBody');
-  if (events.length === 0) {
-    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; color:#888;">কোনো রেকর্ড নেই।</td></tr>';
-  } else {
-    var html = '';
-    events.forEach(function(ev) {
-      if (ev.isOpening) {
-        html += '<tr style="background:#fff9c4;"><td>' + ev.date + '</td><td><strong>' + ev.desc + '</strong></td><td>₹ ' + ev.bill + '</td><td>₹ 0</td><td style="color:#e65100; font-weight:bold;">₹ ' + ev.cumDue + '</td><td>-</td></tr>';
-      } else if (ev.isSale) {
-        html += '<tr><td>' + ev.date + '</td><td><strong>' + ev.desc + '</strong></td><td>₹ ' + ev.bill + '</td><td style="color:green; font-weight:600;">₹ ' + ev.paid + '</td><td style="color:#e65100; font-weight:bold;">₹ ' + ev.cumDue + '</td><td><button class="action-btn btn-info" onclick="showInvoice(\'' + ev.saleKey + '\')">📄 Invoice</button></td></tr>';
+          if (bTot > 0) {
+            totalBillAmount += bTot; totalPaidAmount += initialPaid;
+            events.push({ date: formatDateBR(s.date), desc: (s.item || 'পণ্য') + (s.qty ? ' (' + s.qty + ')' : ''), bill: bTot, paid: initialPaid, netDiff: bTot - initialPaid, isSale: true, saleKey: k, timestamp: parseDateToTime(s.date) });
+          }
+
+          pList.forEach(function(p, pIdx) {
+            var pAmt = Number(p.amount) || 0; totalPaidAmount += pAmt;
+            events.push({ date: formatDateBR(p.date || s.date), desc: '💳 বকেয়া জমা (' + (p.note || 'ক্যাশ') + ')', bill: 0, paid: pAmt, netDiff: -pAmt, isPayment: true, payObj: p, saleKey: k, timestamp: parseDateToTime(p.date || s.date) + (pIdx + 1) });
+          });
+        }
+      }
+
+      events.sort(function(a, b) { return a.timestamp - b.timestamp; });
+      var runningBalance = 0;
+      events.forEach(function(ev) { runningBalance += ev.netDiff; ev.cumDue = Math.max(0, runningBalance); });
+      events.reverse();
+
+      // ফুল-স্ক্রিন মোডালের ভেতরে ব্যাক বাটন ও শিরোনাম
+      var subHeaderHtml = '<div style="display:flex; justify-content:space-between; align-items:center; border-bottom: 2px solid #1b5e20; padding-bottom: 12px; margin-bottom: 15px;">' +
+        '<div style="display:flex; align-items:center; gap:10px;">' +
+          '<button class="action-btn btn-info" style="padding:8px 14px; font-size:14px;" onclick="closeLedger()">⬅ ফিরে যান (Back)</button>' +
+          '<div><h2 style="margin:0; color:#1b5e20; font-size:20px; border:none; padding:0;">গ্রাহক খাতা ও লেনদেন বিবরণী</h2>' +
+          '<p id="ledgerCustSub" style="font-size:13px; color:#555; margin:3px 0 0 0;">গ্রাহক: <strong>' + custName + '</strong> ' + (cPhone ? '| 📞 ' + cPhone : '') + '</p></div>' +
+        '</div>' +
+        '<span class="badge badge-success" style="font-size:13px; padding:6px 12px;">Nanda Dairy & Agro</span>' +
+      '</div>';
+
+      // মোডাল প্রিন্ট এরিয়া বা কন্টেন্ট আপডেট করা
+      var modalArea = document.querySelector('#ledgerModal .ledger-card');
+      if (modalArea) {
+        modalArea.innerHTML = subHeaderHtml + 
+          '<div style="display:grid; grid-template-columns:repeat(3, 1fr); gap:10px; margin-bottom:15px; text-align:center;">' +
+            '<div style="background:#e8f5e9; padding:12px; border-radius:8px;"><span style="font-size:12px; color:#555;">সর্বমোট কেনাকাটা</span><h3 id="ledgerTotalBill" style="color:#1b5e20; font-size:19px; margin-top:3px;">₹ ' + totalBillAmount.toLocaleString() + '</h3></div>' +
+            '<div style="background:#e3f2fd; padding:12px; border-radius:8px;"><span style="font-size:12px; color:#555;">মোট পরিশোধ</span><h3 id="ledgerTotalPaid" style="color:#0288d1; font-size:19px; margin-top:3px;">₹ ' + totalPaidAmount.toLocaleString() + '</h3></div>' +
+            '<div style="background:#ffebee; padding:12px; border-radius:8px;"><span style="font-size:12px; color:#555;">বর্তমান মোট বকেয়া</span><h3 id="ledgerTotalDue" style="color:#c62828; font-size:19px; margin-top:3px;">₹ ' + Math.max(0, totalBillAmount - totalPaidAmount).toLocaleString() + '</h3></div>' +
+          '</div>' +
+          '<div style="background:#f4fbf5; border:1px solid #c8e6c9; border-radius:8px; padding:14px; margin-bottom:15px;" class="no-print">' +
+            '<strong style="color:#1b5e20; font-size:14px; display:block; margin-bottom:8px;">💳 বকেয়া টাকা জমা নিন</strong>' +
+            '<div style="display:flex; flex-wrap:wrap; gap:10px; align-items:flex-end;">' +
+              '<div style="flex:1; min-width:130px;"><label style="font-size:12px; font-weight:600;">তারিখ</label><input type="date" id="ledgerPayDate" value="' + (new Date().toISOString().split('T')[0]) + '" style="padding:8px; font-size:13px;"></div>' +
+              '<div style="flex:1; min-width:130px;"><label style="font-size:12px; font-weight:600;">জমা (₹) *</label><input type="number" id="ledgerPayAmount" placeholder="টাকা" style="padding:8px; font-size:13px;"></div>' +
+              '<div style="flex:1.5; min-width:160px;"><label style="font-size:12px; font-weight:600;">পদ্ধতি / নোট</label><input type="text" id="ledgerPayNote" placeholder="ক্যাশ / UPI" style="padding:8px; font-size:13px;"></div>' +
+              '<div><button class="btn" style="padding:9px 18px; font-size:13px; height:39px;" onclick="saveCustomerPayment()">+ জমা সেভ করুন</button></div>' +
+            '</div>' +
+          '</div>' +
+          '<div class="table-container" style="max-height:50vh; overflow-y:auto;">' +
+            '<table style="width:100%; font-size:13px;">' +
+              '<thead><tr style="background:#f1f5f2;"><th>তারিখ</th><th>বিবরণ</th><th>বিলের পরিমাণ</th><th>পরিশোধ (জমা)</th><th style="background:#fff3e0; color:#e65100;">লেনদেনের পর বাকি</th><th>ইনভয়েস</th></tr></thead>' +
+              '<tbody id="ledgerTableBody"></tbody>' +
+            '</table>' +
+          '</div>' +
+          '<div class="no-print" style="display:flex; gap:10px; margin-top:20px;">' +
+            '<button class="btn btn-info" style="flex:1; padding:12px;" onclick="printSpecificModal(\'ledger\')">🖨️ প্রিন্ট করুন</button>' +
+            '<button class="btn btn-danger" style="flex:1; padding:12px;" onclick="closeLedger()">✕ বন্ধ করুন</button>' +
+          '</div>';
+      }
+
+      var tbody = getEl('ledgerTableBody');
+      if (events.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; color:#888;">কোনো রেকর্ড নেই।</td></tr>';
       } else {
-        html += '<tr style="background:#f9fdfa;"><td>' + ev.date + '</td><td><strong style="color:#1b5e20;">' + ev.desc + '</strong></td><td>₹ 0</td><td style="color:green; font-weight:700;">₹ ' + ev.paid + '</td><td style="color:#e65100; font-weight:bold;">₹ ' + ev.cumDue + '</td><td><button class="action-btn btn-info" onclick="showPaymentInvoice(\'' + ev.date + '\', ' + ev.paid + ', \'' + (ev.payObj.note || 'ক্যাশ') + '\', \'' + custName + '\', \'' + cPhone + '\', \'' + cArea + '\', \'' + cAddr + '\', ' + ev.cumDue + ', \'' + (ev.payObj.id || '') + '\')">📄 Invoice</button></td></tr>';
+        var html = '';
+        events.forEach(function(ev) {
+          if (ev.isOpening) {
+            html += '<tr style="background:#fff9c4;"><td>' + ev.date + '</td><td><strong>' + ev.desc + '</strong></td><td>₹ ' + ev.bill + '</td><td>₹ 0</td><td style="color:#e65100; font-weight:bold;">₹ ' + ev.cumDue + '</td><td>-</td></tr>';
+          } else if (ev.isSale) {
+            html += '<tr><td>' + ev.date + '</td><td><strong>' + ev.desc + '</strong></td><td>₹ ' + ev.bill + '</td><td style="color:green; font-weight:600;">₹ ' + ev.paid + '</td><td style="color:#e65100; font-weight:bold;">₹ ' + ev.cumDue + '</td><td><button class="action-btn btn-info" onclick="showInvoice(\'' + ev.saleKey + '\')">📄 Invoice</button></td></tr>';
+          } else {
+            html += '<tr style="background:#f9fdfa;"><td>' + ev.date + '</td><td><strong style="color:#1b5e20;">' + ev.desc + '</strong></td><td>₹ 0</td><td style="color:green; font-weight:700;">₹ ' + ev.paid + '</td><td style="color:#e65100; font-weight:bold;">₹ ' + ev.cumDue + '</td><td>-</td></tr>';
+          }
+        });
+        tbody.innerHTML = html;
       }
-    });
-    tbody.innerHTML = html;
-  }
-  getEl('ledgerModal').style.display = 'flex';
-};
-
+      getEl('ledgerModal').style.display = 'block';
+    }; 
+#ledgerModal {
+      display: none; 
+      position: fixed; 
+      inset: 0; 
+      background: #f1f5f2; 
+      z-index: 2000; 
+      overflow-y: auto; 
+      padding: 10px;
+    }
+    .ledger-card {
+      background: white; 
+      max-width: 100%; 
+      min-height: 100vh; 
+      border-radius: 0; 
+      padding: 20px; 
+      position: relative; 
+      box-sizing: border-box;
+    }
 window.closeLedger = function() {
   getEl('ledgerModal').style.display = 'none';
   window.activeLedgerCustomerName = '';
