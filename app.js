@@ -503,7 +503,7 @@ function renderGroupedMilkTable() {
   body.innerHTML = html;
 }
 
-// সেলস লেজার টেবিল রেন্ডারিং (গ্রুপিং, ড্রপডাউন এবং এডিট/ডিলিট সহ)
+// সেলস লেজার টেবিল রেন্ডারিং (পরিচ্ছন্ন কাস্টমার লিস্ট ভিউ)
 function renderSalesTable(salesData) {
   var body = getEl('salesTableBody');
   if (!body) return;
@@ -514,62 +514,55 @@ function renderSalesTable(salesData) {
 
   var tS = 0;
   var uniqueAreas = {};
-  var groupedMap = {};
+  var customerMap = {};
 
+  // ১. সেভ করা সকল কাস্টমার আগে তালিকায় যুক্ত করা
+  for (var ck in farmStore.customers) {
+    var cust = farmStore.customers[ck];
+    if (!cust || !cust.name) continue;
+    var rName = cust.name.trim();
+    var cKey = rName.toLowerCase();
+    customerMap[cKey] = {
+      key: 'cust-' + ck,
+      data: { name: rName, phone: cust.phone || '', area: cust.area || '', addr: cust.addr || '', item: '-', qty: 0, total: 0, paid: 0, date: '' },
+      latestDate: '',
+      latestTime: 0,
+      customerName: rName
+    };
+  }
+
+  // ২. সেলস ডেটা থেকে সর্বশেষ এন্ট্রি ম্যাপ করা
   for (var k in farmStore.sales) {
-    var s = farmStore.sales[k];
-    if (!s || (s.isPayment && Number(s.total) === 0)) continue;
-    tS += Number(s.total) || 0;
-    if (s.area) uniqueAreas[s.area.trim()] = true;
+    var d = farmStore.sales[k];
+    if (!d || (d.isPayment && Number(d.total) === 0)) continue;
+    tS += Number(d.total) || 0;
+    if (d.area) uniqueAreas[d.area.trim()] = true;
 
-    var rawName = (s.name || '').trim();
+    var rawName = (d.name || '').trim();
     if (!rawName) continue;
-    var rawDate = (s.date || '').trim();
-    var groupKey = rawDate + '_' + rawName.toLowerCase();
+    var cKey = rawName.toLowerCase();
+    var saleTime = parseDateToTime(d.date);
+    var fDateBR = formatDateBR(d.date);
 
-    if (!groupedMap[groupKey]) {
-      groupedMap[groupKey] = {
-        date: rawDate,
-        name: rawName,
-        phone: s.phone || '',
-        area: s.area || s.addr || '',
-        totalQty: 0,
-        totalAmount: 0,
-        totalPaid: 0,
-        entries: [],
-        latestTime: parseDateToTime(rawDate)
-      };
+    if (!customerMap[cKey] || saleTime >= customerMap[cKey].latestTime) {
+      customerMap[cKey] = { key: k, data: d, latestDate: fDateBR, latestTime: saleTime, customerName: rawName };
     }
-
-    var qtyVal = parseFloat(s.qty || s.quantity || 1) || 1;
-    var amtVal = Number(s.total) || 0;
-    var paidVal = Number(s.paid) || 0;
-
-    groupedMap[groupKey].totalQty += qtyVal;
-    groupedMap[groupKey].totalAmount += amtVal;
-    groupedMap[groupKey].totalPaid += paidVal;
-    groupedMap[groupKey].entries.push({ key: k, sale: s });
   }
 
   var list = [];
-  for (var gKey in groupedMap) {
-    var g = groupedMap[gKey];
-    var cKey = g.name.toLowerCase();
-    var cBal = custBalances[cKey] || { currentDue: Math.max(0, g.totalAmount - g.totalPaid), isOverdue35: false, daysWithoutPayment: 0 };
+  for (var cKey in customerMap) {
+    var cObj = customerMap[cKey];
+    var d = cObj.data;
+    var cBal = custBalances[cKey] || { currentDue: Number(d.due) || 0, isOverdue35: false, daysWithoutPayment: 0 };
     list.push({
-      groupKey: gKey,
-      date: g.date,
-      name: g.name,
-      phone: g.phone,
-      area: g.area,
-      totalQty: g.totalQty,
-      totalAmount: g.totalAmount,
-      totalPaid: g.totalPaid,
-      entries: g.entries,
-      latestTime: g.latestTime,
+      key: cObj.key,
+      data: d,
+      customerName: cObj.customerName,
+      lastProductDate: cObj.latestDate,
       liveCustomerDue: cBal.currentDue,
       isOverdue: cBal.isOverdue35,
-      diffDays: cBal.daysWithoutPayment
+      diffDays: cBal.daysWithoutPayment,
+      latestTime: cObj.latestTime
     });
   }
 
@@ -592,9 +585,10 @@ function renderSalesTable(salesData) {
   }
 
   var filtered = list.filter(function(item) {
-    var nameMatch = item.name.toLowerCase().includes(searchQ);
-    var phoneMatch = (item.phone || '').toLowerCase().includes(searchQ);
-    return (!searchQ || nameMatch || phoneMatch) && (!areaFilter || (item.area || '').toLowerCase() === areaFilter);
+    var d = item.data;
+    var nameMatch = (item.customerName || d.name || '').toLowerCase().includes(searchQ);
+    var phoneMatch = (d.phone || '').toLowerCase().includes(searchQ);
+    return (!searchQ || nameMatch || phoneMatch) && (!areaFilter || (d.area || '').toLowerCase() === areaFilter);
   });
 
   filtered.sort(function(a, b) { return b.latestTime - a.latestTime; });
@@ -607,71 +601,30 @@ function renderSalesTable(salesData) {
   if (getEl('salesNoData')) getEl('salesNoData').style.display = 'none';
 
   var html = '';
-  filtered.forEach(function(item, idx) {
-    var dateBR = formatDateBR(item.date);
-    var dueVal = Math.max(0, item.totalAmount - item.totalPaid);
-    var subTableId = 'sub_sales_' + idx;
-    var hasMultiple = item.entries.length > 1;
-    var rowStyle = item.isOverdue ? 'background:#fff3f3; border-left:5px solid #d32f2f;' : 'background:#fafafa; border-top:2px solid #e0e0e0;';
+  filtered.forEach(function(item) {
+    var k = item.key, d = item.data, dueVal = item.liveCustomerDue;
+    var rowStyle = item.isOverdue ? 'background:#fff3f3; border-left:5px solid #d32f2f;' : '';
     var dueBadge = item.isOverdue && dueVal > 0 ? '<span class="badge badge-danger">₹ ' + dueVal + ' (⚠️ ' + item.diffDays + ' দিন বাকি)</span>' : (dueVal > 0 ? '<strong style="color:red;">₹ ' + dueVal + '</strong>' : '<span class="badge badge-success">পরিশোধ</span>');
 
+    var actionBtns = k.startsWith('cust-') ? 
+      '<button class="action-btn" style="background:#455a64; color:white; padding:4px 8px; font-size:11px;" onclick="showCustomerLedger(\'' + encodeURIComponent(item.customerName) + '\')">খাতা</button>' :
+      '<button class="action-btn" style="background:#455a64; color:white; padding:4px 8px; font-size:11px;" onclick="showCustomerLedger(\'' + encodeURIComponent(item.customerName) + '\')">খাতা</button> ' +
+      '<button class="action-btn btn-info" style="padding:4px 8px; font-size:11px;" onclick="showInvoice(\'' + k + '\')">Invoice</button> ' +
+      '<button class="action-btn btn-warning" style="padding:4px 8px; font-size:11px;" onclick="editSale(\'' + k + '\')">Edit</button> ' +
+      '<button class="action-btn btn-danger" style="padding:4px 8px; font-size:11px;" onclick="deleteRecord(\'sales\',\'' + k + '\')">Delete</button>';
+
     html += '<tr style="' + rowStyle + '">' +
-      '<td>' + dateBR + '</td>' +
-      '<td><strong>' + item.name + '</strong>' + (item.phone ? '<br><small style="color:#666;">📞 ' + item.phone + '</small>' : '') + '</td>' +
-      '<td>' + item.area + '</td>' +
-      '<td>' +
-        (hasMultiple ? '<span style="color:#1b5e20; font-weight:600;">মোট ' + item.entries.length + 'টি এন্ট্রি (' + item.totalQty + ' লিটার)</span>' : (item.entries[0].sale.item || 'দুধ') + ' (' + item.totalQty + ')') +
-        (hasMultiple ? '<br><a href="javascript:void(0)" onclick="toggleSubSales(\'' + subTableId + '\', this)" style="color:#0288d1; font-weight:bold; font-size:12px; text-decoration:none; display:inline-block; margin-top:3px;">বিস্তারিত দেখুন ▼</a>' : '') +
-      '</td>' +
-      '<td><strong>₹ ' + item.totalAmount + '</strong></td>' +
-      '<td style="color:green;">₹ ' + item.totalPaid + '</td>' +
+      '<td>' + (item.lastProductDate || '-') + '</td>' +
+      '<td><a href="javascript:void(0)" onclick="showCustomerLedger(\'' + encodeURIComponent(item.customerName) + '\')" style="color:var(--primary); font-weight:bold; text-decoration:underline;">' + item.customerName + '</a>' + (d.phone ? '<br><small>📞 ' + d.phone + '</small>' : '') + '</td>' +
+      '<td>' + (d.area ? '<span class="badge badge-warning">' + d.area + '</span><br>' : '') + (d.addr || '-') + '</td>' +
+      '<td>' + (d.item && d.item !== '-' ? d.item + ' (' + (d.qty || 0) + ')' : '-') + '</td>' +
+      '<td>₹ ' + (d.total || 0) + '</td>' +
+      '<td style="color:green; font-weight:600;">₹ ' + (d.paid || 0) + '</td>' +
       '<td>' + dueBadge + '</td>' +
-      '<td>' +
-        '<button class="action-btn" style="background:#455a64; color:white; padding:4px 8px; font-size:11px;" onclick="showCustomerLedger(\'' + encodeURIComponent(item.name) + '\')">খাতা</button> ' +
-        (!hasMultiple ? '<button class="action-btn btn-warning" style="padding:4px 8px; font-size:11px;" onclick="editSale(\'' + item.entries[0].key + '\')">Edit</button> ' +
-        '<button class="action-btn btn-danger" style="padding:4px 8px; font-size:11px;" onclick="deleteRecord(\'sales\', \'' + item.entries[0].key + '\')">Delete</button>' : '') +
-      '</td>' +
+      '<td>' + actionBtns + '</td>' +
     '</tr>';
-
-    if (hasMultiple) {
-      html += '<tr id="' + subTableId + '" style="display:none; background:#f1f8e9;"><td colspan="8" style="padding:10px 20px;">' +
-        '<div style="font-size:12px; font-weight:bold; color:#2e7d32; margin-bottom:5px;">📋 আজকের পৃথক এন্ট্রিগুলোর বিবরণ ও এডিট অপশন:</div>' +
-        '<table style="width:100%; font-size:12px; background:white; border:1px solid #c8e6c9; border-collapse:collapse;">' +
-          '<tr style="background:#e8f5e9;"><th style="padding:6px; border:1px solid #c8e6c9;">বিবরণ</th><th style="padding:6px; border:1px solid #c8e6c9;">পরিমাণ</th><th style="padding:6px; border:1px solid #c8e6c9;">মোট দাম</th><th style="padding:6px; border:1px solid #c8e6c9;">পরিশোধ</th><th style="padding:6px; border:1px solid #c8e6c9;">কার্যক্রম (Action)</th></tr>';
-      
-      item.entries.forEach(function(itemObj) {
-        var sItem = itemObj.sale;
-        html += '<tr>' +
-          '<td style="padding:6px; border:1px solid #c8e6c9;">' + (sItem.item || 'দুধ') + '</td>' +
-          '<td style="padding:6px; border:1px solid #c8e6c9;">' + (sItem.qty || 1) + '</td>' +
-          '<td style="padding:6px; border:1px solid #c8e6c9;">₹ ' + (Number(sItem.total) || 0) + '</td>' +
-          '<td style="padding:6px; border:1px solid #c8e6c9; color:green;">₹ ' + (Number(sItem.paid) || 0) + '</td>' +
-          '<td style="padding:6px; border:1px solid #c8e6c9;">' +
-            '<button class="action-btn" style="padding:2px 6px; font-size:10px;" onclick="showInvoice(\'' + itemObj.key + '\')">Invoice</button> ' +
-            '<button class="action-btn btn-warning" style="padding:2px 6px; font-size:10px;" onclick="editSale(\'' + itemObj.key + '\')">Edit</button> ' +
-            '<button class="action-btn btn-danger" style="padding:2px 6px; font-size:10px;" onclick="deleteRecord(\'sales\', \'' + itemObj.key + '\')">Delete</button>' +
-          '</td>' +
-        '</tr>';
-      });
-
-      html += '</table></td></tr>';
-    }
   });
-
   body.innerHTML = html;
-}
-
-// ড্রপডাউন টগল করার ছোট ফাংশন (Expand/Collapse)
-function toggleSubSales(subId, linkEl) {
-  var row = document.getElementById(subId);
-  if (!row) return;
-  if (row.style.display === 'none') {
-    row.style.display = 'table-row';
-    linkEl.innerText = 'সংক্ষিপ্ত দেখুন ▲';
-  } else {
-    row.style.display = 'none';
-    linkEl.innerText = 'বিস্তারিত দেখুন ▼';
-  }
 }
 
 function renderOrdersTable() {
@@ -975,7 +928,7 @@ window.showInvoice = function(k) {
   getEl('invMainDocTitle').innerText = 'ইনভয়েস (ক্যাশ মেমো)';
   var liveDue = getCustomerLiveBalances()[(d.name || '').trim().toLowerCase()]?.currentDue || 0;
   var timeStr = getCurrentTimeBR();
-  getEl('invoiceDetails').innerHTML = '<div style="display:flex; justify-content:space-between; margin-bottom:12px;"><div><strong>গ্রাহক:</strong> ' + d.name + '<br>মোবাইল: ' + (d.phone || '-') + '</div><div style="text-align:right;">তারিখ: ' + formatDateBR(d.date) + ' | সময়: ' + timeStr + '<br>ইনভয়েস: #NDA-' + k.substring(1, 6).toUpperCase() + '</div></div><table class="invoice-table" style="border:1px solid #ddd; width:100%;"><thead><tr style="background:#e8f5e9;"><th>পণ্য</th><th>পরিমাণ</th><th>দর</th><th style="text-align:right;">মোট</th></tr></thead><tbody><tr><td>' + d.item + '</td><td>' + d.qty + '</td><td>₹ ' + d.rate + '</td><td style="text-align:right; font-weight:bold;">₹ ' + d.total + '</td></tr></tbody></table><div style="text-align:right; margin-top:10px;">চালান মূল্য: ₹ ' + d.total + '<br>নগদ পরিশোধ: ₹ ' + d.paid + '<br><span style="color:red; font-weight:bold;">মোট বকেয়া: ₹ ' + liveDue + '</span></div>';
+  getEl('invoiceDetails').innerHTML = '<div style="display:flex; justify-content:space-between; margin-bottom:12px;"><div><strong>গ্রাহক:</strong> ' + d.name + '<br>মোবাইল: ' + (d.phone || '-') + '</div><div style="text-align:right;">তারিখ: ' + formatDateBR(d.date) + ' | সময়: ' + timeStr + '<br>ইনভয়েস: #NDA-' + k.substring(1, 6).toUpperCase() + '</div></div><table class="invoice-table" style="border:1px solid #ddd; width:100%;"><thead><tr style="background:#e8f5e9;"><th>পণ্য</th><th>পরিমাণ</th><th>দর</th><th style="text-align:right;">মোট</th></tr></thead><tbody><tr><td>' + d.item + '</td><td>' + d.qty + '</td><td>₹ ' + d.rate + '</td><td style="text-align:right; font-weight:bold;">₹ ' + d.total + '</td></tr></tbody></table><div style="text-align:right; margin-top:10px;">চালান মূল্য: ₹ ' + d.total + '<br>নগদ পরিশোধ: ₹ ' + d.paid + '<br><span style="color:red; font-weight:bold;">সর্বশেষ মোট বকেয়া: ₹ ' + liveDue + '</span></div>';
   getEl('invoiceModal').style.display = 'flex';
 };
 
