@@ -1111,8 +1111,6 @@ function cancelOrderEdit() {
       }
       cancelOrderEdit();
     }
-  cancelOrderEdit();
-}
 
 var eFeedKey = null;
 function editFeed(k) {
