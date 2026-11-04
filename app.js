@@ -178,7 +178,7 @@ function onOrderCustomerInput() {
   }
 }
 
-// নিখুঁত অটো-অর্ডার জেনারেশন (ফিক্সড আইডি ও স্ট্যাটাস লকিং সহ)
+// চূড়ান্ত ও পরীক্ষিত অটো-অর্ডার জেনারেশন (ডুপ্লিকেট ও লুপ রোধ করার জন্য সম্পূর্ণ সুরক্ষিত)
     function checkAndGenerateDailyOrders() {
       if (!db) return;
       var todayISO = new Date().toISOString().split('T')[0];
@@ -191,7 +191,7 @@ function onOrderCustomerInput() {
         var existingCustomers = allData.customers || {};
         var todayProcessedMap = {};
 
-        // ১. আজকের তারিখে যেকোনো অর্ডার (Pending, Delivered বা Cancelled যাই হোক) থাকলে তা লক করা
+        // ১. আজকের দিনে যেকোনো অর্ডার (Pending, Delivered বা Cancelled) থাকলে তা ম্যাপে যুক্ত করা
         Object.keys(existingOrders).forEach(function(k) {
           var o = existingOrders[k];
           if (o && o.customer) {
@@ -202,7 +202,7 @@ function onOrderCustomerInput() {
           }
         });
 
-        // ২. আজকের তারিখে Sales-এ কোনো এন্ট্রি থাকলে তাও লক করা
+        // ২. আজকের দিনে সেলস (Delivered) এন্ট্রি থাকলে তাও ম্যাপে যুক্ত করা যাতে পুনরায় অটো অর্ডার না বসে
         Object.keys(existingSales).forEach(function(k) {
           var s = existingSales[k];
           if (s && s.name && !s.isPayment) {
@@ -213,7 +213,7 @@ function onOrderCustomerInput() {
           }
         });
 
-        // ৩. যাদের আজ কোনো অর্ডার বা সেলস নেই, শুধুমাত্র তাদের জন্য নির্দিষ্ট ফিক্সড আইডিতে ১টি অর্ডার তৈরি করা
+        // ৩. কাস্টমারদের দৈনিক চাহিদা থেকে শুধুমাত্র যাদের আজ এন্ট্রি নেই, তাদের জন্য অর্ডার তৈরি করা
         Object.keys(existingCustomers).forEach(function(k) {
           var cust = existingCustomers[k];
           if (cust && cust.name && Number(cust.demand) > 0) {
@@ -235,7 +235,6 @@ function onOrderCustomerInput() {
                   paid: 0,
                   status: 'Pending'
                 };
-                // push এর বদলে ফিক্সড আইডিতে set করা হচ্ছে যাতে ডুপ্লিকেট হতেই না পারে
                 db.ref('orders/' + deterministicOrderId).set(autoOrder);
                 todayProcessedMap[cKey] = true;
               }
@@ -244,7 +243,6 @@ function onOrderCustomerInput() {
         });
       });
     }
-
 function getCustomerLiveBalances() {
   var map = {};
   var now = new Date();
