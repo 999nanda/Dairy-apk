@@ -691,14 +691,11 @@ function renderGroupedMilkTable() {
 
   filtered.sort(function(a, b) {
     if (a.isOverdue && !b.isOverdue) return -1;
-    if (!a.isOverdue && b.isOverdue) return 1;
-    return parseDateToTime(b.lastProductDate) - parseDateToTime(a.lastProductDate);
-  });
-
+   
   if (filtered.length === 0) {
     body.innerHTML = '';
     if (getEl('salesNoData')) getEl('salesNoData').style.display = 'block';
-    return;
+    
   }
   if (getEl('salesNoData')) getEl('salesNoData').style.display = 'none';
 
