@@ -773,23 +773,7 @@ function renderOrdersTable() {
     customerMap[cKey].orders.push({ key: k, data: d });
   }
 cObj.orders.forEach(function(o) {
-      var t = parseDateToTime(o.data.date);
-      if (t > latestTime) {
-        latestTime = t;
-        latestDate = formatDateBR(o.data.date);
-      }
-    });
-    
-    list.push({
-      customerName: cObj.customerName,
-      phone: cObj.phone,
-      area: cObj.area,
-      orders: cObj.orders,
-      latestDate: latestDate,
-      latestTime: latestTime
-    });
-  }
-var areaSelect = getEl('orderAreaFilter');
+     var areaSelect = getEl('orderAreaFilter');
     if (areaSelect) {
       var currVal = areaSelect.value;
       var optH = '<option value="">সকল এলাকা</option>';
@@ -798,11 +782,6 @@ var areaSelect = getEl('orderAreaFilter');
       });
       areaSelect.innerHTML = optH;
     }
-  var filtered = list.filter(function(item) {
-    var nameMatch = item.customerName.toLowerCase().includes(searchQ);
-    var phoneMatch = item.phone.toLowerCase().includes(searchQ);
-    return (!searchQ || nameMatch || phoneMatch) && (!areaFilter || item.area.toLowerCase() === areaFilter.toLowerCase());
-  });
 
   filtered.sort(function(a, b) { return b.latestTime - a.latestTime; });
 
