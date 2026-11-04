@@ -690,8 +690,8 @@ function renderGroupedMilkTable() {
   });
 
   filtered.sort(function(a, b) {
-    if (a.isOverdue && !b.isOverdue) return -1;
-   
+    
+  
   if (filtered.length === 0) {
     body.innerHTML = '';
     if (getEl('salesNoData')) getEl('salesNoData').style.display = 'block';
@@ -774,25 +774,15 @@ function renderOrdersTable() {
   }
 
   if (getEl('dash-pending-orders')) getEl('dash-pending-orders').innerText = pendingCount;
-
-  var areaSelect = getEl('orderAreaFilter');
-  if (areaSelect) {
-    var currVal = areaSelect.value;
-    var optH = '<option value="">সকল এলাকা</option>';
-    Object.keys(uniqueAreas).sort().forEach(function(a) {
-      optH += '<option value="' + a + '" ' + (currVal.toLowerCase() === a.toLowerCase() ? 'selected' : '') + '>' + a + '</option>';
-    });
-    areaSelect.innerHTML = optH;
-  }
-
-  var list = [];
-  for (var cKey in customerMap) {
-    var cObj = customerMap[cKey];
-    var latestDate = '';
-    var latestTime = 0;
-    cObj.orders.forEach(function(o) {
-      var t = parseDateToTime(o.data.date);
-      if (t >= latestTime) {
+var areaSelect = getEl('orderAreaFilter');
+    if (areaSelect) {
+      var currVal = areaSelect.value;
+      var optH = '<option value="">সকল এলাকা</option>';
+      Object.keys(uniqueAreas).sort().forEach(function(a) {
+        optH += '<option value="' + a + '" ' + (currVal.toLowerCase() === a.toLowerCase() ? 'selected' : '') + '>' + a + '</option>';
+      });
+      areaSelect.innerHTML = optH;
+    }
         latestTime = t;
         latestDate = formatDateBR(o.data.date);
       }
