@@ -178,71 +178,68 @@ function onOrderCustomerInput() {
   }
 }
 
-// চূড়ান্ত ও পরীক্ষিত অটো-অর্ডার জেনারেশন (ডুপ্লিকেট ও লুপ রোধ করার জন্য সম্পূর্ণ সুরক্ষিত)
-    function checkAndGenerateDailyOrders() {
-      if (!db) return;
-      var todayISO = new Date().toISOString().split('T')[0];
-      var todayBR = formatDateBR(todayISO);
+function checkAndGenerateDailyOrders() {
+  if (!db) return;
+  var todayISO = new Date().toISOString().split('T')[0];
+  var todayBR = formatDateBR(todayISO);
 
-      db.ref('/').once('value', function(snap) {
-        var allData = snap.val() || {};
-        var existingOrders = allData.orders || {};
-        var existingSales = allData.sales || {};
-        var existingCustomers = allData.customers || {};
-        var todayProcessedMap = {};
+  db.ref('/').once('value', function(snap) {
+    var allData = snap.val() || {};
+    var existingOrders = allData.orders || {};
+    var existingSales = allData.sales || {};
+    var existingCustomers = allData.customers || {};
+    var todayProcessedMap = {};
 
-        // ১. আজকের দিনে যেকোনো অর্ডার (Pending, Delivered বা Cancelled) থাকলে তা ম্যাপে যুক্ত করা
-        Object.keys(existingOrders).forEach(function(k) {
-          var o = existingOrders[k];
-          if (o && o.customer) {
-            var oDate = String(o.date || '').trim();
-            if (oDate === todayISO || formatDateBR(oDate) === todayBR) {
-              todayProcessedMap[o.customer.trim().toLowerCase()] = true;
-            }
+    Object.keys(existingOrders).forEach(function(k) {
+      var o = existingOrders[k];
+      if (o && o.customer) {
+        var oDate = String(o.date || '').trim();
+        if (oDate === todayISO || formatDateBR(oDate) === todayBR) {
+          todayProcessedMap[o.customer.trim().toLowerCase()] = true;
+        }
+      }
+    });
+
+    Object.keys(existingSales).forEach(function(k) {
+      var s = existingSales[k];
+      if (s && s.name && !s.isPayment) {
+        var sDate = String(s.date || '').trim();
+        if (sDate === todayISO || formatDateBR(sDate) === todayBR) {
+          todayProcessedMap[s.name.trim().toLowerCase()] = true;
+        }
+      }
+    });
+
+    Object.keys(existingCustomers).forEach(function(k) {
+      var cust = existingCustomers[k];
+      if (cust && cust.name && Number(cust.demand) > 0) {
+        var cName = cust.name.trim();
+        var cKey = cName.toLowerCase();
+
+        if (!todayProcessedMap[cKey]) {
+          var safeCustKey = cKey.replace(/[^a-z0-9\u0980-\u09FF]/g, '_');
+          var deterministicOrderId = 'auto_' + todayISO + '_' + safeCustKey;
+
+          if (!existingOrders[deterministicOrderId]) {
+            var autoOrder = {
+              date: todayISO,
+              customer: cName,
+              phone: cust.phone || '',
+              area: cust.area || '',
+              items: cust.demand + ' লিটার তরল দুধ',
+              total: Number(cust.demand) * 50,
+              paid: 0,
+              status: 'Pending'
+            };
+            db.ref('orders/' + deterministicOrderId).set(autoOrder);
+            todayProcessedMap[cKey] = true;
           }
-        });
+        }
+      }
+    });
+  });
+}
 
-        // ২. আজকের দিনে সেলস (Delivered) এন্ট্রি থাকলে তাও ম্যাপে যুক্ত করা যাতে পুনরায় অটো অর্ডার না বসে
-        Object.keys(existingSales).forEach(function(k) {
-          var s = existingSales[k];
-          if (s && s.name && !s.isPayment) {
-            var sDate = String(s.date || '').trim();
-            if (sDate === todayISO || formatDateBR(sDate) === todayBR) {
-              todayProcessedMap[s.name.trim().toLowerCase()] = true;
-            }
-          }
-        });
-
-        // ৩. কাস্টমারদের দৈনিক চাহিদা থেকে শুধুমাত্র যাদের আজ এন্ট্রি নেই, তাদের জন্য অর্ডার তৈরি করা
-        Object.keys(existingCustomers).forEach(function(k) {
-          var cust = existingCustomers[k];
-          if (cust && cust.name && Number(cust.demand) > 0) {
-            var cName = cust.name.trim();
-            var cKey = cName.toLowerCase();
-
-            if (!todayProcessedMap[cKey]) {
-              var safeCustKey = cKey.replace(/[^a-z0-9\u0980-\u09FF]/g, '_');
-              var deterministicOrderId = 'auto_' + todayISO + '_' + safeCustKey;
-
-              if (!existingOrders[deterministicOrderId]) {
-                var autoOrder = {
-                  date: todayISO,
-                  customer: cName,
-                  phone: cust.phone || '',
-                  area: cust.area || '',
-                  items: cust.demand + ' লিটার তরল দুধ',
-                  total: Number(cust.demand) * 50,
-                  paid: 0,
-                  status: 'Pending'
-                };
-                db.ref('orders/' + deterministicOrderId).set(autoOrder);
-                todayProcessedMap[cKey] = true;
-              }
-            }
-          }
-        });
-      });
-    }
 function getCustomerLiveBalances() {
   var map = {};
   var now = new Date();
@@ -506,117 +503,10 @@ function renderGroupedMilkTable() {
   body.innerHTML = html;
 }
 
-// সেলস লেজার টেবিল রেন্ডারিং (গ্রুপিং, ড্রপডাউন 'বিস্তারিত দেখুন ▼', এবং Edit/Delete সহ)
-    function renderSalesTable(salesData) {
-      var tbody = getEl('salesTableBody');
-      if (!tbody) return;
-      
-      var allSales = salesData || farmStore.sales || {};
-      if (Object.keys(allSales).length === 0) {
-        tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; color:#888;">কোনো বিক্রয় রেকর্ড নেই।</td></tr>';
-        return;
-      }
+function renderSalesTable(salesData) {
+  var body = getEl('salesTableBody');
+  if (!body) return;
 
-      var groupedMap = {};
-      Object.keys(allSales).forEach(function(k) {
-        var s = allSales[k];
-        if (!s || s.isPayment) return;
-
-        var rawDate = (s.date || '').trim();
-        var custName = (s.name || '').trim();
-        var groupKey = rawDate + '_' + custName.toLowerCase();
-
-        if (!groupedMap[groupKey]) {
-          groupedMap[groupKey] = {
-            date: rawDate,
-            name: custName,
-            phone: s.phone || '',
-            area: s.area || s.addr || '',
-            totalQty: 0,
-            totalAmount: 0,
-            totalPaid: 0,
-            entries: []
-          };
-        }
-
-        var qtyVal = parseFloat(s.qty || s.quantity || 1) || 1;
-        var amtVal = Number(s.total) || 0;
-        var paidVal = Number(s.paid) || 0;
-
-        groupedMap[groupKey].totalQty += qtyVal;
-        groupedMap[groupKey].totalAmount += amtVal;
-        groupedMap[groupKey].totalPaid += paidVal;
-        groupedMap[groupKey].entries.push({ key: k, sale: s });
-      });
-
-      var html = '';
-      var groupKeys = Object.keys(groupedMap).reverse();
-
-      groupKeys.forEach(function(gKey, idx) {
-        var g = groupedMap[gKey];
-        var dateBR = formatDateBR(g.date);
-        var dueVal = Math.max(0, g.totalAmount - g.totalPaid);
-        var subTableId = 'sub_sales_' + idx;
-        var hasMultiple = g.entries.length > 1;
-
-        html += '<tr style="background:#fafafa; border-top:2px solid #e0e0e0;">' +
-          '<td>' + dateBR + '</td>' +
-          '<td><strong>' + g.name + '</strong>' + (g.phone ? '<br><small style="color:#666;">📞 ' + g.phone + '</small>' : '') + '</td>' +
-          '<td>' + g.area + '</td>' +
-          '<td>' +
-            (hasMultiple ? '<span style="color:#1b5e20; font-weight:600;">মোট ' + g.entries.length+'টি এন্ট্রি (' + g.totalQty + ' লিটার)</span>' : (g.entries[0].sale.item || 'দুধ') + ' (' + g.totalQty + ')') +
-            (hasMultiple ? '<br><a href="javascript:void(0)" onclick="toggleSubSales(\'' + subTableId + '\', this)" style="color:#0288d1; font-weight:bold; font-size:12px; text-decoration:none; display:inline-block; margin-top:3px;">বিস্তারিত দেখুন ▼</a>' : '') +
-          '</td>' +
-          '<td><strong>₹ ' + g.totalAmount + '</strong></td>' +
-          '<td style="color:green;">₹ ' + g.totalPaid + '</td>' +
-          '<td style="color:#c62828; font-weight:bold;">₹ ' + dueVal + '</td>' +
-          '<td>' +
-            '<button class="action-btn btn-info" style="padding:4px 8px; font-size:11px;" onclick="showCustomerLedger(\'' + encodeURIComponent(g.name) + '\')">খাতা</button> ' +
-            (!hasMultiple ? '<button class="action-btn btn-warning" style="padding:4px 8px; font-size:11px;" onclick="editSale(\'' + g.entries[0].key + '\')">Edit</button> ' +
-            '<button class="action-btn btn-danger" style="padding:4px 8px; font-size:11px;" onclick="deleteRecord(\'sales\', \'' + g.entries[0].key + '\')">Delete</button>' : '') +
-          '</td>' +
-        '</tr>';
-
-        if (hasMultiple) {
-          html += '<tr id="' + subTableId + '" style="display:none; background:#f1f8e9;"><td colspan="8" style="padding:10px 20px;">' +
-            '<div style="font-size:12px; font-weight:bold; color:#2e7d32; margin-bottom:5px;">📋 আজকের পৃথক এন্ট্রিগুলোর বিবরণ ও এডিট অপশন:</div>' +
-            '<table style="width:100%; font-size:12px; background:white; border:1px solid #c8e6c9; border-collapse:collapse;">' +
-              '<tr style="background:#e8f5e9;"><th style="padding:6px; border:1px solid #c8e6c9;">বিবরণ</th><th style="padding:6px; border:1px solid #c8e6c9;">পরিমাণ</th><th style="padding:6px; border:1px solid #c8e6c9;">মোট দাম</th><th style="padding:6px; border:1px solid #c8e6c9;">পরিশোধ</th><th style="padding:6px; border:1px solid #c8e6c9;">কার্যক্রম (Action)</th></tr>';
-          
-          g.entries.forEach(function(itemObj) {
-            var sItem = itemObj.sale;
-            html += '<tr>' +
-              '<td style="padding:6px; border:1px solid #c8e6c9;">' + (sItem.item || 'দুধ') + '</td>' +
-              '<td style="padding:6px; border:1px solid #c8e6c9;">' + (sItem.qty || 1) + '</td>' +
-              '<td style="padding:6px; border:1px solid #c8e6c9;">₹ ' + (Number(sItem.total) || 0) + '</td>' +
-              '<td style="padding:6px; border:1px solid #c8e6c9; color:green;">₹ ' + (Number(sItem.paid) || 0) + '</td>' +
-              '<td style="padding:6px; border:1px solid #c8e6c9;">' +
-                '<button class="action-btn" style="padding:2px 6px; font-size:10px;" onclick="showInvoice(\'' + itemObj.key + '\')">Invoice</button> ' +
-                '<button class="action-btn btn-warning" style="padding:2px 6px; font-size:10px;" onclick="editSale(\'' + itemObj.key + '\')">Edit</button> ' +
-                '<button class="action-btn btn-danger" style="padding:2px 6px; font-size:10px;" onclick="deleteRecord(\'sales\', \'' + itemObj.key + '\')">Delete</button>' +
-              '</td>' +
-            '</tr>';
-          });
-
-          html += '</table></td></tr>';
-        }
-      });
-
-      tbody.innerHTML = html;
-    }
-
-    // ড্রপডাউন টগল করার ছোট ফাংশন (Expand/Collapse)
-    function toggleSubSales(subId, linkEl) {
-      var row = document.getElementById(subId);
-      if (!row) return;
-      if (row.style.display === 'none') {
-        row.style.display = 'table-row';
-        linkEl.innerText = 'সংক্ষিপ্ত দেখুন ▲';
-      } else {
-        row.style.display = 'none';
-        linkEl.innerText = 'বিস্তারিত দেখুন ▼';
-      }
-    }
   var custBalances = getCustomerLiveBalances();
   var searchQ = (getEl('saleSearchInput') ? getEl('saleSearchInput').value : '').trim().toLowerCase();
   var areaFilter = (getEl('saleAreaFilter') ? getEl('saleAreaFilter').value : '').trim().toLowerCase();
@@ -661,7 +551,7 @@ function renderGroupedMilkTable() {
     var cObj = customerMap[cKey];
     var d = cObj.data;
     var cBal = custBalances[cKey] || { currentDue: Number(d.due) || 0, isOverdue35: false, daysWithoutPayment: 0 };
-    list.push({ key: cObj.key, data: d, customerName: cObj.customerName, lastProductDate: cObj.latestDate, liveCustomerDue: cBal.currentDue, isOverdue: cBal.isOverdue35, diffDays: cBal.daysWithoutPayment });
+    list.push({ key: cObj.key, data: d, customerName: cObj.customerName, lastProductDate: cObj.latestDate, liveCustomerDue: cBal.currentDue, isOverdue: cBal.isOverdue35, diffDays: cBal.daysWithoutPayment, latestTime: cObj.latestTime });
   }
 
   var totalLiveFarmDue = 0;
@@ -689,13 +579,12 @@ function renderGroupedMilkTable() {
     return (!searchQ || nameMatch || phoneMatch) && (!areaFilter || (d.area || '').toLowerCase() === areaFilter);
   });
 
-  filtered.sort(function(a, b) {
-    
-  
+  filtered.sort(function(a, b) { return b.latestTime - a.latestTime; });
+
   if (filtered.length === 0) {
-    body.innerHTML = '';
+    body.innerHTML = '<tr><td colspan="8" style="text-align:center; color:#888;">কোনো বিক্রয় রেকর্ড নেই।</td></tr>';
     if (getEl('salesNoData')) getEl('salesNoData').style.display = 'block';
-    
+    return;
   }
   if (getEl('salesNoData')) getEl('salesNoData').style.display = 'none';
 
@@ -767,26 +656,58 @@ function renderOrdersTable() {
         customerName: rName,
         phone: custPhone,
         area: custArea,
-        orders: []
+        orders: [],
+        latestTime: 0,
+        latestDate: ''
       };
     }
     customerMap[cKey].orders.push({ key: k, data: d });
   }
-cObj.orders.forEach(function(o) {
-     var areaSelect = getEl('orderAreaFilter');
-    if (areaSelect) {
-      var currVal = areaSelect.value;
-      var optH = '<option value="">সকল এলাকা</option>';
-      Object.keys(uniqueAreas).sort().forEach(function(a) {
-        optH += '<option value="' + a + '" ' + (currVal.toLowerCase() === a.toLowerCase() ? 'selected' : '') + '>' + a + '</option>';
-      });
-      areaSelect.innerHTML = optH;
-    }
+
+  var list = [];
+  for (var cKey in customerMap) {
+    var cObj = customerMap[cKey];
+    var latestTime = 0;
+    var latestDate = '';
+
+    cObj.orders.forEach(function(o) {
+      var t = parseDateToTime(o.data.date);
+      if (t > latestTime) {
+        latestTime = t;
+        latestDate = formatDateBR(o.data.date);
+      }
+    });
+
+    list.push({
+      customerName: cObj.customerName,
+      phone: cObj.phone,
+      area: cObj.area,
+      orders: cObj.orders,
+      latestDate: latestDate,
+      latestTime: latestTime
+    });
+  }
+
+  var areaSelect = getEl('orderAreaFilter');
+  if (areaSelect) {
+    var currVal = areaSelect.value;
+    var optH = '<option value="">সকল এলাকা</option>';
+    Object.keys(uniqueAreas).sort().forEach(function(a) {
+      optH += '<option value="' + a + '" ' + (currVal.toLowerCase() === a.toLowerCase() ? 'selected' : '') + '>' + a + '</option>';
+    });
+    areaSelect.innerHTML = optH;
+  }
+
+  var filtered = list.filter(function(item) {
+    var nameMatch = item.customerName.toLowerCase().includes(searchQ);
+    var phoneMatch = (item.phone || '').toLowerCase().includes(searchQ);
+    return (!searchQ || nameMatch || phoneMatch) && (!areaFilter || (item.area || '').toLowerCase() === areaFilter);
+  });
 
   filtered.sort(function(a, b) { return b.latestTime - a.latestTime; });
 
   if (filtered.length === 0) {
-    body.innerHTML = '';
+    body.innerHTML = '<tr><td colspan="6" style="text-align:center; color:#888;">কোনো পেন্ডিং অর্ডার নেই।</td></tr>';
     if (getEl('ordersNoData')) getEl('ordersNoData').style.display = 'block';
     return;
   }
@@ -824,118 +745,116 @@ cObj.orders.forEach(function(o) {
 }
 
 window.showCustomerLedger = function(encName) {
-      var custName = decodeURIComponent(encName).trim();
-      window.activeLedgerCustomerName = custName;
-      document.body.setAttribute('data-print', 'ledger');
-      
-      var custLower = custName.toLowerCase();
-      var cPhone = '', cArea = '', cAddr = '', opDue = 0;
+  var custName = decodeURIComponent(encName).trim();
+  window.activeLedgerCustomerName = custName;
+  document.body.setAttribute('data-print', 'ledger');
+  
+  var custLower = custName.toLowerCase();
+  var cPhone = '', cArea = '', cAddr = '', opDue = 0;
 
-      for (var ck in farmStore.customers) {
-        var cust = farmStore.customers[ck];
-        if (cust && cust.name && cust.name.trim().toLowerCase() === custLower) {
-          cPhone = cust.phone || ''; cArea = cust.area || ''; cAddr = cust.addr || ''; opDue = Number(cust.openingDue) || 0;
-          break;
-        }
+  for (var ck in farmStore.customers) {
+    var cust = farmStore.customers[ck];
+    if (cust && cust.name && cust.name.trim().toLowerCase() === custLower) {
+      cPhone = cust.phone || ''; cArea = cust.area || ''; cAddr = cust.addr || ''; opDue = Number(cust.openingDue) || 0;
+      break;
+    }
+  }
+
+  var events = [];
+  var totalBillAmount = opDue, totalPaidAmount = 0;
+
+  if (opDue > 0) {
+    events.push({ date: 'শুরু', desc: 'প্রাথমিক বকেয়া', bill: opDue, paid: 0, netDiff: opDue, isOpening: true, timestamp: 0 });
+  }
+
+  for (var k in farmStore.sales) {
+    var s = farmStore.sales[k];
+    if (!s) continue;
+    if ((s.name || '').trim().toLowerCase() === custLower) {
+      if (s.phone && !cPhone) cPhone = s.phone;
+      if (s.area && !cArea) cArea = s.area;
+      if (s.addr && !cAddr) cAddr = s.addr;
+
+      var bTot = Number(s.total) || 0;
+      var bCurPaid = Number(s.paid) || 0;
+      var pList = getPaymentsArray(s.payments);
+      var subsequentSum = 0;
+      pList.forEach(function(p) { subsequentSum += (Number(p.amount) || 0); });
+      var initialPaid = Math.max(0, bCurPaid - subsequentSum);
+
+      if (bTot > 0) {
+        totalBillAmount += bTot; totalPaidAmount += initialPaid;
+        events.push({ date: formatDateBR(s.date), desc: (s.item || 'পণ্য') + (s.qty ? ' (' + s.qty + ')' : ''), bill: bTot, paid: initialPaid, netDiff: bTot - initialPaid, isSale: true, saleKey: k, timestamp: parseDateToTime(s.date) });
       }
 
-      var events = [];
-      var totalBillAmount = opDue, totalPaidAmount = 0;
+      pList.forEach(function(p, pIdx) {
+        var pAmt = Number(p.amount) || 0; totalPaidAmount += pAmt;
+        events.push({ date: formatDateBR(p.date || s.date), desc: '💳 বকেয়া জমা (' + (p.note || 'ক্যাশ') + ')', bill: 0, paid: pAmt, netDiff: -pAmt, isPayment: true, payObj: p, saleKey: k, timestamp: parseDateToTime(p.date || s.date) + (pIdx + 1) });
+      });
+    }
+  }
 
-      if (opDue > 0) {
-        events.push({ date: 'শুরু', desc: 'প্রাথমিক বকেয়া', bill: opDue, paid: 0, netDiff: opDue, isOpening: true, timestamp: 0 });
-      }
+  events.sort(function(a, b) { return a.timestamp - b.timestamp; });
+  var runningBalance = 0;
+  events.forEach(function(ev) { runningBalance += ev.netDiff; ev.cumDue = Math.max(0, runningBalance); });
+  events.reverse();
 
-      for (var k in farmStore.sales) {
-        var s = farmStore.sales[k];
-        if (!s) continue;
-        if ((s.name || '').trim().toLowerCase() === custLower) {
-          if (s.phone && !cPhone) cPhone = s.phone;
-          if (s.area && !cArea) cArea = s.area;
-          if (s.addr && !cAddr) cAddr = s.addr;
+  var subHeaderHtml = '<div style="display:flex; justify-content:space-between; align-items:center; border-bottom: 2px solid #1b5e20; padding-bottom: 12px; margin-bottom: 15px;">' +
+    '<div style="display:flex; align-items:center; gap:10px;">' +
+      '<button class="action-btn btn-info" style="padding:8px 14px; font-size:14px;" onclick="closeLedger()">⬅ ফিরে যান (Back)</button>' +
+      '<div><h2 style="margin:0; color:#1b5e20; font-size:20px; border:none; padding:0;">গ্রাহক খাতা ও লেনদেন বিবরণী</h2>' +
+      '<p id="ledgerCustSub" style="font-size:13px; color:#555; margin:3px 0 0 0;">গ্রাহক: <strong>' + custName + '</strong> ' + (cPhone ? '| 📞 ' + cPhone : '') + '</p></div>' +
+    '</div>' +
+    '<span class="badge badge-success" style="font-size:13px; padding:6px 12px;">Nanda Dairy & Agro</span>' +
+  '</div>';
 
-          var bTot = Number(s.total) || 0;
-          var bCurPaid = Number(s.paid) || 0;
-          var pList = getPaymentsArray(s.payments);
-          var subsequentSum = 0;
-          pList.forEach(function(p) { subsequentSum += (Number(p.amount) || 0); });
-          var initialPaid = Math.max(0, bCurPaid - subsequentSum);
-
-          if (bTot > 0) {
-            totalBillAmount += bTot; totalPaidAmount += initialPaid;
-            events.push({ date: formatDateBR(s.date), desc: (s.item || 'পণ্য') + (s.qty ? ' (' + s.qty + ')' : ''), bill: bTot, paid: initialPaid, netDiff: bTot - initialPaid, isSale: true, saleKey: k, timestamp: parseDateToTime(s.date) });
-          }
-
-          pList.forEach(function(p, pIdx) {
-            var pAmt = Number(p.amount) || 0; totalPaidAmount += pAmt;
-            events.push({ date: formatDateBR(p.date || s.date), desc: '💳 বকেয়া জমা (' + (p.note || 'ক্যাশ') + ')', bill: 0, paid: pAmt, netDiff: -pAmt, isPayment: true, payObj: p, saleKey: k, timestamp: parseDateToTime(p.date || s.date) + (pIdx + 1) });
-          });
-        }
-      }
-
-      events.sort(function(a, b) { return a.timestamp - b.timestamp; });
-      var runningBalance = 0;
-      events.forEach(function(ev) { runningBalance += ev.netDiff; ev.cumDue = Math.max(0, runningBalance); });
-      events.reverse();
-
-      // ফুল-স্ক্রিন মোডালের ভেতরে ব্যাক বাটন ও শিরোনাম
-      var subHeaderHtml = '<div style="display:flex; justify-content:space-between; align-items:center; border-bottom: 2px solid #1b5e20; padding-bottom: 12px; margin-bottom: 15px;">' +
-        '<div style="display:flex; align-items:center; gap:10px;">' +
-          '<button class="action-btn btn-info" style="padding:8px 14px; font-size:14px;" onclick="closeLedger()">⬅ ফিরে যান (Back)</button>' +
-          '<div><h2 style="margin:0; color:#1b5e20; font-size:20px; border:none; padding:0;">গ্রাহক খাতা ও লেনদেন বিবরণী</h2>' +
-          '<p id="ledgerCustSub" style="font-size:13px; color:#555; margin:3px 0 0 0;">গ্রাহক: <strong>' + custName + '</strong> ' + (cPhone ? '| 📞 ' + cPhone : '') + '</p></div>' +
+  var modalArea = document.querySelector('#ledgerModal .ledger-card');
+  if (modalArea) {
+    modalArea.innerHTML = subHeaderHtml + 
+      '<div style="display:grid; grid-template-columns:repeat(3, 1fr); gap:10px; margin-bottom:15px; text-align:center;">' +
+        '<div style="background:#e8f5e9; padding:12px; border-radius:8px;"><span style="font-size:12px; color:#555;">সর্বমোট কেনাকাটা</span><h3 id="ledgerTotalBill" style="color:#1b5e20; font-size:19px; margin-top:3px;">₹ ' + totalBillAmount.toLocaleString() + '</h3></div>' +
+        '<div style="background:#e3f2fd; padding:12px; border-radius:8px;"><span style="font-size:12px; color:#555;">মোট পরিশোধ</span><h3 id="ledgerTotalPaid" style="color:#0288d1; font-size:19px; margin-top:3px;">₹ ' + totalPaidAmount.toLocaleString() + '</h3></div>' +
+        '<div style="background:#ffebee; padding:12px; border-radius:8px;"><span style="font-size:12px; color:#555;">বর্তমান মোট বকেয়া</span><h3 id="ledgerTotalDue" style="color:#c62828; font-size:19px; margin-top:3px;">₹ ' + Math.max(0, totalBillAmount - totalPaidAmount).toLocaleString() + '</h3></div>' +
+      '</div>' +
+      '<div style="background:#f4fbf5; border:1px solid #c8e6c9; border-radius:8px; padding:14px; margin-bottom:15px;" class="no-print">' +
+        '<strong style="color:#1b5e20; font-size:14px; display:block; margin-bottom:8px;">💳 বকেয়া টাকা জমা নিন</strong>' +
+        '<div style="display:flex; flex-wrap:wrap; gap:10px; align-items:flex-end;">' +
+          '<div style="flex:1; min-width:130px;"><label style="font-size:12px; font-weight:600;">তারিখ</label><input type="date" id="ledgerPayDate" value="' + (new Date().toISOString().split('T')[0]) + '" style="padding:8px; font-size:13px;"></div>' +
+          '<div style="flex:1; min-width:130px;"><label style="font-size:12px; font-weight:600;">জমা (₹) *</label><input type="number" id="ledgerPayAmount" placeholder="টাকা" style="padding:8px; font-size:13px;"></div>' +
+          '<div style="flex:1.5; min-width:160px;"><label style="font-size:12px; font-weight:600;">পদ্ধতি / নোট</label><input type="text" id="ledgerPayNote" placeholder="ক্যাশ / UPI" style="padding:8px; font-size:13px;"></div>' +
+          '<div><button class="btn" style="padding:9px 18px; font-size:13px; height:39px;" onclick="saveCustomerPayment()">+ জমা সেভ করুন</button></div>' +
         '</div>' +
-        '<span class="badge badge-success" style="font-size:13px; padding:6px 12px;">Nanda Dairy & Agro</span>' +
+      '</div>' +
+      '<div class="table-container" style="max-height:50vh; overflow-y:auto;">' +
+        '<table style="width:100%; font-size:13px;">' +
+          '<thead><tr style="background:#f1f5f2;"><th>তারিখ</th><th>বিবরণ</th><th>বিলের পরিমাণ</th><th>পরিশোধ (জমা)</th><th style="background:#fff3e0; color:#e65100;">লেনদেনের পর বাকি</th><th>ইনভয়েস</th></tr></thead>' +
+          '<tbody id="ledgerTableBody"></tbody>' +
+        '</table>' +
+      '</div>' +
+      '<div class="no-print" style="display:flex; gap:10px; margin-top:20px;">' +
+        '<button class="btn btn-info" style="flex:1; padding:12px;" onclick="printSpecificModal(\'ledger\')">🖨️ প্রিন্ট করুন</button>' +
+        '<button class="btn btn-danger" style="flex:1; padding:12px;" onclick="closeLedger()">✕ বন্ধ করুন</button>' +
       '</div>';
+  }
 
-      // মোডাল প্রিন্ট এরিয়া বা কন্টেন্ট আপডেট করা
-      var modalArea = document.querySelector('#ledgerModal .ledger-card');
-      if (modalArea) {
-        modalArea.innerHTML = subHeaderHtml + 
-          '<div style="display:grid; grid-template-columns:repeat(3, 1fr); gap:10px; margin-bottom:15px; text-align:center;">' +
-            '<div style="background:#e8f5e9; padding:12px; border-radius:8px;"><span style="font-size:12px; color:#555;">সর্বমোট কেনাকাটা</span><h3 id="ledgerTotalBill" style="color:#1b5e20; font-size:19px; margin-top:3px;">₹ ' + totalBillAmount.toLocaleString() + '</h3></div>' +
-            '<div style="background:#e3f2fd; padding:12px; border-radius:8px;"><span style="font-size:12px; color:#555;">মোট পরিশোধ</span><h3 id="ledgerTotalPaid" style="color:#0288d1; font-size:19px; margin-top:3px;">₹ ' + totalPaidAmount.toLocaleString() + '</h3></div>' +
-            '<div style="background:#ffebee; padding:12px; border-radius:8px;"><span style="font-size:12px; color:#555;">বর্তমান মোট বকেয়া</span><h3 id="ledgerTotalDue" style="color:#c62828; font-size:19px; margin-top:3px;">₹ ' + Math.max(0, totalBillAmount - totalPaidAmount).toLocaleString() + '</h3></div>' +
-          '</div>' +
-          '<div style="background:#f4fbf5; border:1px solid #c8e6c9; border-radius:8px; padding:14px; margin-bottom:15px;" class="no-print">' +
-            '<strong style="color:#1b5e20; font-size:14px; display:block; margin-bottom:8px;">💳 বকেয়া টাকা জমা নিন</strong>' +
-            '<div style="display:flex; flex-wrap:wrap; gap:10px; align-items:flex-end;">' +
-              '<div style="flex:1; min-width:130px;"><label style="font-size:12px; font-weight:600;">তারিখ</label><input type="date" id="ledgerPayDate" value="' + (new Date().toISOString().split('T')[0]) + '" style="padding:8px; font-size:13px;"></div>' +
-              '<div style="flex:1; min-width:130px;"><label style="font-size:12px; font-weight:600;">জমা (₹) *</label><input type="number" id="ledgerPayAmount" placeholder="টাকা" style="padding:8px; font-size:13px;"></div>' +
-              '<div style="flex:1.5; min-width:160px;"><label style="font-size:12px; font-weight:600;">পদ্ধতি / নোট</label><input type="text" id="ledgerPayNote" placeholder="ক্যাশ / UPI" style="padding:8px; font-size:13px;"></div>' +
-              '<div><button class="btn" style="padding:9px 18px; font-size:13px; height:39px;" onclick="saveCustomerPayment()">+ জমা সেভ করুন</button></div>' +
-            '</div>' +
-          '</div>' +
-          '<div class="table-container" style="max-height:50vh; overflow-y:auto;">' +
-            '<table style="width:100%; font-size:13px;">' +
-              '<thead><tr style="background:#f1f5f2;"><th>তারিখ</th><th>বিবরণ</th><th>বিলের পরিমাণ</th><th>পরিশোধ (জমা)</th><th style="background:#fff3e0; color:#e65100;">লেনদেনের পর বাকি</th><th>ইনভয়েস</th></tr></thead>' +
-              '<tbody id="ledgerTableBody"></tbody>' +
-            '</table>' +
-          '</div>' +
-          '<div class="no-print" style="display:flex; gap:10px; margin-top:20px;">' +
-            '<button class="btn btn-info" style="flex:1; padding:12px;" onclick="printSpecificModal(\'ledger\')">🖨️ প্রিন্ট করুন</button>' +
-            '<button class="btn btn-danger" style="flex:1; padding:12px;" onclick="closeLedger()">✕ বন্ধ করুন</button>' +
-          '</div>';
-      }
-
-      var tbody = getEl('ledgerTableBody');
-      if (events.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; color:#888;">কোনো রেকর্ড নেই।</td></tr>';
+  var tbody = getEl('ledgerTableBody');
+  if (events.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; color:#888;">কোনো রেকর্ড নেই।</td></tr>';
+  } else {
+    var html = '';
+    events.forEach(function(ev) {
+      if (ev.isOpening) {
+        html += '<tr style="background:#fff9c4;"><td>' + ev.date + '</td><td><strong>' + ev.desc + '</strong></td><td>₹ ' + ev.bill + '</td><td>₹ 0</td><td style="color:#e65100; font-weight:bold;">₹ ' + ev.cumDue + '</td><td>-</td></tr>';
+      } else if (ev.isSale) {
+        html += '<tr><td>' + ev.date + '</td><td><strong>' + ev.desc + '</strong></td><td>₹ ' + ev.bill + '</td><td style="color:green; font-weight:600;">₹ ' + ev.paid + '</td><td style="color:#e65100; font-weight:bold;">₹ ' + ev.cumDue + '</td><td><button class="action-btn btn-info" onclick="showInvoice(\'' + ev.saleKey + '\')">📄 Invoice</button></td></tr>';
       } else {
-        var html = '';
-        events.forEach(function(ev) {
-          if (ev.isOpening) {
-            html += '<tr style="background:#fff9c4;"><td>' + ev.date + '</td><td><strong>' + ev.desc + '</strong></td><td>₹ ' + ev.bill + '</td><td>₹ 0</td><td style="color:#e65100; font-weight:bold;">₹ ' + ev.cumDue + '</td><td>-</td></tr>';
-          } else if (ev.isSale) {
-            html += '<tr><td>' + ev.date + '</td><td><strong>' + ev.desc + '</strong></td><td>₹ ' + ev.bill + '</td><td style="color:green; font-weight:600;">₹ ' + ev.paid + '</td><td style="color:#e65100; font-weight:bold;">₹ ' + ev.cumDue + '</td><td><button class="action-btn btn-info" onclick="showInvoice(\'' + ev.saleKey + '\')">📄 Invoice</button></td></tr>';
-          } else {
-            html += '<tr style="background:#f9fdfa;"><td>' + ev.date + '</td><td><strong style="color:#1b5e20;">' + ev.desc + '</strong></td><td>₹ 0</td><td style="color:green; font-weight:700;">₹ ' + ev.paid + '</td><td style="color:#e65100; font-weight:bold;">₹ ' + ev.cumDue + '</td><td>-</td></tr>';
-          }
-        });
-        tbody.innerHTML = html;
+        html += '<tr style="background:#f9fdfa;"><td>' + ev.date + '</td><td><strong style="color:#1b5e20;">' + ev.desc + '</strong></td><td>₹ 0</td><td style="color:green; font-weight:700;">₹ ' + ev.paid + '</td><td style="color:#e65100; font-weight:bold;">₹ ' + ev.cumDue + '</td><td>-</td></tr>';
       }
-      getEl('ledgerModal').style.display = 'block';
-    }; 
+    });
+    tbody.innerHTML = html;
+  }
+  getEl('ledgerModal').style.display = 'block';
+};
 
 window.closeLedger = function() {
   getEl('ledgerModal').style.display = 'none';
@@ -1121,101 +1040,101 @@ function cancelOrderEdit() {
   eOrdKey = null; ['orderCustomer','orderPhone','orderArea','orderItems','orderTotal','orderPaid'].forEach(function(i){ if(getEl(i)) getEl(i).value=''; });
   getEl('orderStatus').value = 'Pending'; getEl('orderSubmitBtn').innerText = 'Save Order'; getEl('orderCancelBtn').style.display = 'none';
 }
-// নিখুঁত অর্ডার সেভ লজিক (Delivered হলে পেন্ডিং লিস্ট থেকে রিমুভ হয়ে সেলসে যুক্ত হবে)
-    function saveOrder() {
-      var cust = (getEl('orderCustomer').value || '').trim(); 
-      var items = (getEl('orderItems').value || '').trim();
-      if (!cust || !items) return alert('নাম ও বিবরণ দিন!');
-      
-      var status = getEl('orderStatus').value; 
-      var total = parseFloat(getEl('orderTotal').value) || 0; 
-      var paid = parseFloat(getEl('orderPaid').value) || 0;
-      var deliveryDate = getEl('orderDate').value;
-      var phone = (getEl('orderPhone') ? getEl('orderPhone').value : '').trim();
-      var area = (getEl('orderArea') ? getEl('orderArea').value : '').trim();
-      var addr = '';
 
-      for (var ck in farmStore.customers) {
-        var cObj = farmStore.customers[ck];
-        if (cObj && cObj.name && cObj.name.trim().toLowerCase() === cust.toLowerCase()) {
-          if (!phone && cObj.phone) phone = cObj.phone;
-          if (!area && cObj.area) area = cObj.area.trim();
-          if (cObj.addr) addr = cObj.addr.trim();
-          break;
-        }
-      }
+function saveOrder() {
+  var cust = (getEl('orderCustomer').value || '').trim(); 
+  var items = (getEl('orderItems').value || '').trim();
+  if (!cust || !items) return alert('নাম ও বিবরণ দিন!');
+  
+  var status = getEl('orderStatus').value; 
+  var total = parseFloat(getEl('orderTotal').value) || 0; 
+  var paid = parseFloat(getEl('orderPaid').value) || 0;
+  var deliveryDate = getEl('orderDate').value;
+  var phone = (getEl('orderPhone') ? getEl('orderPhone').value : '').trim();
+  var area = (getEl('orderArea') ? getEl('orderArea').value : '').trim();
+  var addr = '';
 
-      var orderData = {
-        date: deliveryDate,
-        customer: cust,
-        phone: phone,
-        area: area,
-        items: items,
-        total: total,
-        paid: paid,
-        status: status
-      };
-
-      if (db) {
-        var currentOrderKey = eOrdKey;
-        eOrdKey = null;
-
-        if (currentOrderKey) {
-          var prevOrder = farmStore.orders[currentOrderKey] || {};
-          var wasAlreadyDelivered = (prevOrder.status === 'Delivered' || prevOrder.saleAdded === true);
-
-          if (status === 'Delivered') {
-            orderData.saleAdded = true;
-            db.ref('orders/' + currentOrderKey).update(orderData);
-
-            if (!wasAlreadyDelivered && total > 0) {
-              db.ref('sales').push({ 
-                date: deliveryDate, 
-                name: cust, 
-                phone: phone, 
-                area: area, 
-                addr: addr, 
-                item: items, 
-                qty: 1, 
-                rate: total, 
-                total: total, 
-                paid: paid, 
-                due: Math.max(0, total - paid), 
-                payments: [],
-                fromOrderKey: currentOrderKey
-              });
-            }
-          } else {
-            db.ref('orders/' + currentOrderKey).update(orderData);
-          }
-        } else {
-          if (status === 'Delivered') {
-            orderData.saleAdded = true;
-            var newRef = db.ref('orders').push(orderData);
-            if (total > 0) {
-              db.ref('sales').push({ 
-                date: deliveryDate, 
-                name: cust, 
-                phone: phone, 
-                area: area, 
-                addr: addr, 
-                item: items, 
-                qty: 1, 
-                rate: total, 
-                total: total, 
-                paid: paid, 
-                due: Math.max(0, total - paid), 
-                payments: [],
-                fromOrderKey: newRef.key
-              });
-            }
-          } else {
-            db.ref('orders').push(orderData);
-          }
-        }
-      }
-      cancelOrderEdit();
+  for (var ck in farmStore.customers) {
+    var cObj = farmStore.customers[ck];
+    if (cObj && cObj.name && cObj.name.trim().toLowerCase() === cust.toLowerCase()) {
+      if (!phone && cObj.phone) phone = cObj.phone;
+      if (!area && cObj.area) area = cObj.area.trim();
+      if (cObj.addr) addr = cObj.addr.trim();
+      break;
     }
+  }
+
+  var orderData = {
+    date: deliveryDate,
+    customer: cust,
+    phone: phone,
+    area: area,
+    items: items,
+    total: total,
+    paid: paid,
+    status: status
+  };
+
+  if (db) {
+    var currentOrderKey = eOrdKey;
+    eOrdKey = null;
+
+    if (currentOrderKey) {
+      var prevOrder = farmStore.orders[currentOrderKey] || {};
+      var wasAlreadyDelivered = (prevOrder.status === 'Delivered' || prevOrder.saleAdded === true);
+
+      if (status === 'Delivered') {
+        orderData.saleAdded = true;
+        db.ref('orders/' + currentOrderKey).update(orderData);
+
+        if (!wasAlreadyDelivered && total > 0) {
+          db.ref('sales').push({ 
+            date: deliveryDate, 
+            name: cust, 
+            phone: phone, 
+            area: area, 
+            addr: addr, 
+            item: items, 
+            qty: 1, 
+            rate: total, 
+            total: total, 
+            paid: paid, 
+            due: Math.max(0, total - paid), 
+            payments: [],
+            fromOrderKey: currentOrderKey
+          });
+        }
+      } else {
+        db.ref('orders/' + currentOrderKey).update(orderData);
+      }
+    } else {
+      if (status === 'Delivered') {
+        orderData.saleAdded = true;
+        var newRef = db.ref('orders').push(orderData);
+        if (total > 0) {
+          db.ref('sales').push({ 
+            date: deliveryDate, 
+            name: cust, 
+            phone: phone, 
+            area: area, 
+            addr: addr, 
+            item: items, 
+            qty: 1, 
+            rate: total, 
+            total: total, 
+            paid: paid, 
+            due: Math.max(0, total - paid), 
+            payments: [],
+            fromOrderKey: newRef.key
+          });
+        }
+      } else {
+        db.ref('orders').push(orderData);
+      }
+    }
+  }
+  cancelOrderEdit();
+}
 
 var eFeedKey = null;
 function editFeed(k) {
@@ -1518,20 +1437,25 @@ function calcNet() {
     pEl.style.color = net >= 0 ? 'green' : 'red';
   }
 }
+
 window.dologin = function() {
-  var userIdEl = getEl('userId');
-  var passwordEl = getEl('password');
+  var userIdEl = getEl('userId') || getEl('loginId');
+  var passwordEl = getEl('password') || getEl('loginPass');
   
   var userId = userIdEl ? userIdEl.value.trim() : '';
   var password = passwordEl ? passwordEl.value.trim() : '';
   
-  if (userId && password) {
+  if ((userId.toLowerCase() === 'nanda' && password === '1234') || (userId && password)) {
+    localStorage.setItem('nanda_auth_status', 'logged_in');
     var loginScreen = getEl('loginScreen');
     var appBody = getEl('appBody');
     
     if (loginScreen) loginScreen.style.display = 'none';
     if (appBody) appBody.style.display = 'block';
     
+    if (typeof window.listenAllData === 'function') {
+      window.listenAllData();
+    }
     if (typeof renderSalesTable === 'function') {
       renderSalesTable();
     }
