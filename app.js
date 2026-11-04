@@ -1519,21 +1519,31 @@ function calcNet() {
   }
 }
 window.dologin = function() {
-  var userId = getEl('userId').value.trim();
-  var password = getEl('password').value.trim();
+  var userIdEl = getEl('userId');
+  var passwordEl = getEl('password');
   
-  // ইউজার আইডি ও পাসওয়ার্ড ইনপুট চেক করা
+  var userId = userIdEl ? userIdEl.value.trim() : '';
+  var password = passwordEl ? passwordEl.value.trim() : '';
+  
   if (userId && password) {
     var loginScreen = getEl('loginScreen');
     var appBody = getEl('appBody');
     
-    // লগইন স্ক্রিন হাইড করে মেইন অ্যাপ শো করা
     if (loginScreen) loginScreen.style.display = 'none';
     if (appBody) appBody.style.display = 'block';
     
-    // লেজার বা ডাটা রেন্ডার ফাংশন থাকলে কল করা
-    if (typeof renderSalesTable === 'function') renderSalesTable();
+    if (typeof renderSalesTable === 'function') {
+      renderSalesTable();
+    }
   } else {
     alert('দয়া করে সঠিক ইউজার আইডি এবং পাসওয়ার্ড দিন!');
   }
 };
+
+// গ্লোবাল ফলব্যাক বাইন্ডিং
+document.addEventListener('DOMContentLoaded', function() {
+  var loginBtn = document.querySelector('#loginScreen button') || document.querySelector('button[onclick*="dologin"]');
+  if (loginBtn) {
+    loginBtn.onclick = window.dologin;
+  }
+});
