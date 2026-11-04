@@ -773,8 +773,7 @@ function renderOrdersTable() {
     customerMap[cKey].orders.push({ key: k, data: d });
   }
 
-  if (getEl('dash-pending-orders')) getEl('dash-pending-orders').innerText = pendingCount;
-var areaSelect = getEl('orderAreaFilter');
+ var areaSelect = getEl('orderAreaFilter');
     if (areaSelect) {
       var currVal = areaSelect.value;
       var optH = '<option value="">সকল এলাকা</option>';
