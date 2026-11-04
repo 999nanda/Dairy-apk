@@ -789,6 +789,15 @@ cObj.orders.forEach(function(o) {
       latestTime: latestTime
     });
   }
+var areaSelect = getEl('orderAreaFilter');
+    if (areaSelect) {
+      var currVal = areaSelect.value;
+      var optH = '<option value="">সকল এলাকা</option>';
+      Object.keys(uniqueAreas).sort().forEach(function(a) {
+        optH += '<option value="' + a + '" ' + (currVal.toLowerCase() === a.toLowerCase() ? 'selected' : '') + '>' + a + '</option>';
+      });
+      areaSelect.innerHTML = optH;
+    }
   var filtered = list.filter(function(item) {
     var nameMatch = item.customerName.toLowerCase().includes(searchQ);
     var phoneMatch = item.phone.toLowerCase().includes(searchQ);
