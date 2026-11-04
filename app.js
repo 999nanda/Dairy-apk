@@ -862,24 +862,7 @@ window.showCustomerLedger = function(encName) {
       }
       getEl('ledgerModal').style.display = 'block';
     }; 
-#ledgerModal {
-      display: none; 
-      position: fixed; 
-      inset: 0; 
-      background: #f1f5f2; 
-      z-index: 2000; 
-      overflow-y: auto; 
-      padding: 10px;
-    }
-    .ledger-card {
-      background: white; 
-      max-width: 100%; 
-      min-height: 100vh; 
-      border-radius: 0; 
-      padding: 20px; 
-      position: relative; 
-      box-sizing: border-box;
-    }
+
 window.closeLedger = function() {
   getEl('ledgerModal').style.display = 'none';
   window.activeLedgerCustomerName = '';
