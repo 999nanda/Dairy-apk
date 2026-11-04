@@ -772,20 +772,14 @@ function renderOrdersTable() {
     }
     customerMap[cKey].orders.push({ key: k, data: d });
   }
-
- var areaSelect = getEl('orderAreaFilter');
-    if (areaSelect) {
-      var currVal = areaSelect.value;
-      var optH = '<option value="">সকল এলাকা</option>';
-      Object.keys(uniqueAreas).sort().forEach(function(a) {
-        optH += '<option value="' + a + '" ' + (currVal.toLowerCase() === a.toLowerCase() ? 'selected' : '') + '>' + a + '</option>';
-      });
-      areaSelect.innerHTML = optH;
-    }
+cObj.orders.forEach(function(o) {
+      var t = parseDateToTime(o.data.date);
+      if (t > latestTime) {
         latestTime = t;
         latestDate = formatDateBR(o.data.date);
       }
     });
+    
     list.push({
       customerName: cObj.customerName,
       phone: cObj.phone,
@@ -795,7 +789,6 @@ function renderOrdersTable() {
       latestTime: latestTime
     });
   }
-
   var filtered = list.filter(function(item) {
     var nameMatch = item.customerName.toLowerCase().includes(searchQ);
     var phoneMatch = item.phone.toLowerCase().includes(searchQ);
