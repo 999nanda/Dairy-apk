@@ -732,7 +732,7 @@ function toggleSubSales(subId, linkEl) {
   }
 }
 
-// সংশোধিত showInvoice ফাংশন: পণ্য, পরিমাণ, দর, মোট এবং মোট বকেয়া সঠিকভাবে দেখানোর জন্য
+// চূড়ান্ত সংশোধিত showInvoice ফাংশন: পণ্য, পরিমাণ, দর, মোট এবং লাইভ মোট বকেয়া (Total Due) দেখানোর জন্য
 window.showInvoice = function(k) {
   var d = farmStore.sales[k];
   if (!d) {
@@ -757,7 +757,7 @@ window.showInvoice = function(k) {
   var formattedDate = formatDateBR(d.date);
   var safeKey = String(k).substring(1, 6).toUpperCase();
 
-  // পণ্যের ঘরে শুধু নাম ("তরল দুধ"), পরিমাণ ঘরে শুধু সংখ্যা, দর ঘরে রেট এবং মোট ঘরে মোট দাম
+  // পণ্যের ঘরে শুধু নাম, পরিমাণ ঘরে সংখ্যা, দর এবং মোট দাম
   var itemName = (d.item || 'দুধ').replace(/\s*\([\d\.\s\w]+\)/g, '').trim();
   var itemQty = d.qty || 1;
   var itemRate = d.rate || 0;
@@ -781,7 +781,7 @@ window.showInvoice = function(k) {
     '<div style="text-align:right; margin-top:12px; font-size:13.5px; line-height:1.6;">' +
       'চালান মূল্য: <strong>₹ ' + itemTotal + '</strong><br>' +
       'নগদ পরিশোধ: <strong style="color:green;">₹ ' + (d.paid || 0) + '</strong><br>' +
-      '<span style="color:red; font-weight:bold; font-size:14.5px;">সর্বশেষ মোট বকেয়া: ₹ ' + liveDue + '</span>' +
+      '<span style="color:red; font-weight:bold; font-size:14.5px;">সর্বশেষ মোট বকেয়া (Total Due): ₹ ' + liveDue + '</span>' +
     '</div>';
   }
 
@@ -1030,6 +1030,7 @@ window.showCustomerLedger = function(encName) {
       if (ev.isOpening) {
         html += '<tr style="background:#fff9c4;"><td>' + ev.date + '</td><td><strong>' + ev.desc + '</strong></td><td>₹ ' + ev.bill + '</td><td>₹ 0</td><td style="color:#e65100; font-weight:bold;">₹ ' + ev.cumDue + '</td><td>-</td></tr>';
       } else if (ev.isSale) {
+        // খাতার ভেতরের টেবিলে প্রতিটি বিক্রয়ের ইনভয়েস বাটনে সঠিক saleKey পাস করা হচ্ছে
         html += '<tr><td>' + ev.date + '</td><td><strong>' + ev.desc + '</strong></td><td>₹ ' + ev.bill + '</td><td style="color:green; font-weight:600;">₹ ' + ev.paid + '</td><td style="color:#e65100; font-weight:bold;">₹ ' + ev.cumDue + '</td><td><button class="action-btn btn-info" onclick="showInvoice(\'' + ev.saleKey + '\')">📄 Invoice</button></td></tr>';
       } else {
         html += '<tr style="background:#f9fdfa;"><td>' + ev.date + '</td><td><strong style="color:#1b5e20;">' + ev.desc + '</strong></td><td>₹ 0</td><td style="color:green; font-weight:700;">₹ ' + ev.paid + '</td><td style="color:#e65100; font-weight:bold;">₹ ' + ev.cumDue + '</td><td>-</td></tr>';
