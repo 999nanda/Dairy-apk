@@ -532,7 +532,7 @@
         </div>
       </div>
 
-      <!-- ৮. Expenses -->
+      <!-- ۸. Expenses -->
       <div id="tab-expenses" class="tab-content" style="display: none;">
         <div class="card">
           <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
@@ -1204,7 +1204,7 @@
       body.innerHTML = html;
     }
 
-    // সেলস লেজার টেবিল রেন্ডারিং (ল্যাপটপ ও মোবাইলের জন্য একীভূত গ্রুপিং এবং ড্রপডাউন সহ)
+    // সেলস লেজার টেবিল রেন্ডারিং
     function renderSalesTable() {
       var body = getEl('salesTableBody');
       if (!body) return;
@@ -1510,7 +1510,7 @@
 
       getEl('ratSubmitBtn').innerText = 'Update Ration';
       getEl('ratCancelBtn').style.display = 'inline-flex';
-      getEl('ratCowTag').scrollIntoView({ behavior: 'smooth' });
+      switchTab('feed', document.querySelector('nav button:nth-child(8)'));
     }
 
     function cancelRationEdit() {
@@ -1530,31 +1530,6 @@
       var suppCost = parseFloat(getEl('ratSuppCost').value) || 0;
       var totalCost = (pellet * avgCost) + suppCost;
 
-      var stockMap = {};
-      for (var sk in farmStore.stock) {
-        var st = farmStore.stock[sk];
-        if (st && st.name) {
-          stockMap[st.name.trim().toLowerCase()] = { key: sk, qty: Number(st.qty) || 0 };
-        }
-      }
-
-      if (pellet > 0 && !eRatKey) {
-        var matchedKey = null;
-        var availableQty = 0;
-        for (var sName in stockMap) {
-          if (sName.includes('cattle feed') || sName.includes('feed') || sName.includes('pellets')) {
-            matchedKey = stockMap[sName].key;
-            availableQty = stockMap[sName].qty;
-            break;
-          }
-        }
-
-        if (matchedKey && availableQty < pellet) {
-          alert('⚠️ সতর্কতা (Stock Warning): স্টকে পর্যাপ্ত ফিড নেই! বর্তমান স্টক: ' + availableQty + ' kg, প্রয়োজন: ' + pellet + ' kg');
-          return;
-        }
-      }
-
       var data = {
         date: dt,
         cowTag: tag,
@@ -1569,17 +1544,6 @@
           db.ref('feedRations/' + eRatKey).update(data);
         } else {
           db.ref('feedRations').push(data);
-
-          if (pellet > 0) {
-            for (var sName in stockMap) {
-              if (sName.includes('cattle feed') || sName.includes('feed') || sName.includes('pellets')) {
-                var stkObj = farmStore.stock[stockMap[sName].key];
-                var newQty = Math.max(0, Number(stkObj.qty) - pellet);
-                db.ref('stock/' + stockMap[sName].key).update({ qty: newQty });
-                break;
-              }
-            }
-          }
         }
       }
       cancelRationEdit();
