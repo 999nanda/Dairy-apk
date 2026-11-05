@@ -141,15 +141,6 @@
         if (getEl('appBody')) getEl('appBody').style.display = 'none';
       }
     };
-
-    function autoCalcExpectedCalving() {
-      var aiVal = getEl('brAiDate').value;
-      if (aiVal) {
-        var d = new Date(aiVal);
-        d.setDate(d.getDate() + 280);
-        getEl('brExpCalvingDate').value = d.toISOString().split('T')[0];
-      }
-    }
   </script>
 
   <style>
@@ -1213,7 +1204,7 @@
       body.innerHTML = html;
     }
 
-    // সেলস লেজার টেবিল রেন্ডারিং (ল্যাপটপ ও মোবাইলে একীভূত গ্রুপিং এবং ড্রপডাউন সহ)
+    // সেলস লেজার টেবিল রেন্ডারিং (ল্যাপটপ ও মোবাইলের জন্য একীভূত গ্রুপিং এবং ড্রপডাউন সহ)
     function renderSalesTable() {
       var body = getEl('salesTableBody');
       if (!body) return;
