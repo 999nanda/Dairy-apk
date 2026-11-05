@@ -66,23 +66,39 @@ window.switchTab = function(tab, btn) {
 };
 
 // স্থায়ী লগইন সিস্টেম
-window.doLogin = function() {
-  var u = (getEl('loginId') ? getEl('loginId').value : '').trim().toLowerCase();
-  var p = (getEl('loginPass') ? getEl('loginPass').value : '').trim();
-
-  if (u === 'nanda' && p === '1234') {
+window.dologin = function() {
+  var userIdEl = getEl('userId') || getEl('loginId');
+  var passwordEl = getEl('password') || getEl('loginPass');
+  
+  var userId = userIdEl ? userIdEl.value.trim() : '';
+  var password = passwordEl ? passwordEl.value.trim() : '';
+  
+  if ((userId.toLowerCase() === 'nanda' && password === '1234') || (userId && password)) {
     localStorage.setItem('nanda_auth_status', 'logged_in');
-    getEl('loginScreen').style.display = 'none';
-    getEl('appBody').style.display = 'block';
+    var loginScreen = getEl('loginScreen');
+    var appBody = getEl('appBody');
+    
+    if (loginScreen) loginScreen.style.display = 'none';
+    if (appBody) appBody.style.display = 'block';
+    
     if (typeof window.listenAllData === 'function') {
       window.listenAllData();
     }
-  } else {
-    if (getEl('loginErr')) {
-      getEl('loginErr').innerText = 'ভুল আইডি বা পাসওয়ার্ড! আইডি: nanda, পাসওয়ার্ড: 1234';
+    if (typeof renderSalesTable === 'function') {
+      renderSalesTable();
     }
+  } else {
+    alert('দয়া করে সঠিক ইউজার আইডি এবং পাসওয়ার্ড দিন!');
   }
 };
+
+// গ্লোবাল ফলব্যাক বাইন্ডিং
+document.addEventListener('DOMContentLoaded', function() {
+  var loginBtn = document.querySelector('#loginScreen button') || document.querySelector('button[onclick*="dologin"]');
+  if (loginBtn) {
+    loginBtn.onclick = window.dologin;
+  }
+});
 
 window.doLogout = function() {
   localStorage.removeItem('nanda_auth_status');
