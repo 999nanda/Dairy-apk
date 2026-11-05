@@ -1759,6 +1759,25 @@
     }
     function editSale(k) {
       var d = farmStore.sales[k]; if (!d) return; eSaleKey = k;
+      getEl('saleDate').value = d.date || ''; 
+      getEl('saleCustomer').value = d.name || ''; 
+      getEl('salePhone').value = d.phone || '';
+      getEl('saleArea').value = d.area || ''; 
+      getEl('saleAddr').value = d.addr || ''; 
+      getEl('saleItem').value = d.item || 'Liquid Milk';
+      getEl('saleQty').value = d.qty || ''; 
+      getEl('saleRate').value = d.rate || ''; 
+      getEl('saleTotal').value = d.total || '';
+      
+      // এডিট করার সময় ওই নির্দিষ্ট এন্ট্রির সঠিক পেমেন্ট ও বকেয়া বসানো হচ্ছে
+      getEl('salePaid').value = d.paid || 0; 
+      getEl('saleDue').value = d.due || Math.max(0, (Number(d.total) || 0) - (Number(d.paid) || 0));
+
+      getEl('saleSubmitBtn').innerText = 'Update Sale'; 
+      getEl('saleCancelBtn').style.display = 'inline-flex';
+      switchTab('sales', document.querySelector('nav button:nth-child(5)'));
+    }
+      var d = farmStore.sales[k]; if (!d) return; eSaleKey = k;
       getEl('saleDate').value = d.date || ''; getEl('saleCustomer').value = d.name || ''; getEl('salePhone').value = d.phone || '';
       getEl('saleArea').value = d.area || ''; getEl('saleAddr').value = d.addr || ''; getEl('saleItem').value = d.item || 'Liquid Milk';
       getEl('saleQty').value = d.qty || ''; getEl('saleRate').value = d.rate || ''; getEl('saleTotal').value = d.total || '';
@@ -1770,10 +1789,36 @@
       eSaleKey = null; ['saleCustomer','salePhone','saleArea','saleAddr','saleQty','saleRate','saleTotal','salePaid','saleDue'].forEach(function(i){ getEl(i).value=''; });
       getEl('saleSubmitBtn').innerText = 'Save Sale'; getEl('saleCancelBtn').style.display = 'none';
     }
-    function saveSale() {
-      var name = (getEl('saleCustomer').value || '').trim(); if (!name) return alert('Customer Name দিন!');
-      var data = { date: getEl('saleDate').value, name: name, phone: (getEl('salePhone').value || '').trim(), area: (getEl('saleArea').value || '').trim(), addr: (getEl('saleAddr').value || '').trim(), item: getEl('saleItem').value, qty: parseFloat(getEl('saleQty').value)||0, rate: parseFloat(getEl('saleRate').value)||0, total: parseFloat(getEl('saleTotal').value)||0, paid: parseFloat(getEl('salePaid').value)||0, due: parseFloat(getEl('saleDue').value)||0, payments: [] };
-      if (db) eSaleKey ? db.ref('sales/' + eSaleKey).update(data) : db.ref('sales').push(data);
+   function saveSale() {
+      var name = (getEl('saleCustomer').value || '').trim(); 
+      if (!name) return alert('Customer Name দিন!');
+      
+      var totalVal = parseFloat(getEl('saleTotal').value) || 0;
+      var paidVal = parseFloat(getEl('salePaid').value) || 0;
+      var dueVal = Math.max(0, totalVal - paidVal); // সঠিকভাবে মোট বিল থেকে পরিশোধ বাদ দিয়ে বকেয়া হিসাব করা হচ্ছে
+
+      var data = { 
+        date: getEl('saleDate').value, 
+        name: name, 
+        phone: (getEl('salePhone').value || '').trim(), 
+        area: (getEl('saleArea').value || '').trim(), 
+        addr: (getEl('saleAddr').value || '').trim(), 
+        item: getEl('saleItem').value, 
+        qty: parseFloat(getEl('saleQty').value) || 0, 
+        rate: parseFloat(getEl('saleRate').value) || 0, 
+        total: totalVal, 
+        paid: paidVal, 
+        due: dueVal, 
+        payments: [] 
+      };
+
+      if (db) {
+        if (eSaleKey) {
+          db.ref('sales/' + eSaleKey).update(data);
+        } else {
+          db.ref('sales').push(data);
+        }
+      }
       cancelSaleEdit();
     }
 
