@@ -1753,16 +1753,16 @@
     }
 
     var eSaleKey = null;
-   function calcSale() {
+  function calcSale() {
       var q = parseFloat(getEl('saleQty').value) || 0;
       var r = parseFloat(getEl('saleRate').value) || 0;
       var t = q * r;
       getEl('saleTotal').value = t; 
       var paidVal = parseFloat(getEl('salePaid').value) || 0;
       getEl('saleDue').value = Math.max(0, t - paidVal);
-    } 
+    }
     
-    function editSale(k) {
+  function editSale(k) {
       var d = farmStore.sales[k]; if (!d) return; eSaleKey = k;
       getEl('saleDate').value = d.date || ''; 
       getEl('saleCustomer').value = d.name || ''; 
@@ -1770,17 +1770,23 @@
       getEl('saleArea').value = d.area || ''; 
       getEl('saleAddr').value = d.addr || ''; 
       getEl('saleItem').value = d.item || 'Liquid Milk';
-      getEl('saleQty').value = d.qty || ''; 
-      getEl('saleRate').value = d.rate || ''; 
-      getEl('saleTotal').value = d.total || '';
+      
+      var qVal = parseFloat(d.qty) || 1;
+      var tVal = parseFloat(d.total) || 0;
+      var rVal = parseFloat(d.rate) || (qVal > 0 ? tVal / qVal : 0);
+
+      getEl('saleQty').value = qVal; 
+      getEl('saleRate').value = rVal; 
+      getEl('saleTotal').value = tVal;
       getEl('salePaid').value = d.paid || 0; 
-      getEl('saleDue').value = d.due || Math.max(0, (Number(d.total) || 0) - (Number(d.paid) || 0));
+      getEl('saleDue').value = Math.max(0, tVal - (parseFloat(d.paid) || 0));
 
       getEl('saleSubmitBtn').innerText = 'Update Sale'; 
       getEl('saleCancelBtn').style.display = 'inline-flex';
       switchTab('sales', document.querySelector('nav button:nth-child(5)'));
       getEl('saleCustomer').scrollIntoView({ behavior: 'smooth' });
     }
+    
       // এডিট করার সময় ওই নির্দিষ্ট এন্ট্রির সঠিক পেমেন্ট ও বকেয়া বসানো হচ্ছে
       getEl('salePaid').value = d.paid || 0; 
       getEl('saleDue').value = d.due || Math.max(0, (Number(d.total) || 0) - (Number(d.paid) || 0));
@@ -1803,11 +1809,16 @@
       getEl('saleSubmitBtn').innerText = 'Save Sale'; getEl('saleCancelBtn').style.display = 'none';
     }
 
-    function saveSale() {
+   function saveSale() {
       var name = (getEl('saleCustomer').value || '').trim(); 
       if (!name) return alert('Customer Name দিন!');
       
-      var totalVal = parseFloat(getEl('saleTotal').value) || 0;
+      var q = parseFloat(getEl('saleQty').value) || 0;
+      var r = parseFloat(getEl('saleRate').value) || 0;
+      var totalVal = q * r;
+      if (totalVal === 0) {
+        totalVal = parseFloat(getEl('saleTotal').value) || 0;
+      }
       var paidVal = parseFloat(getEl('salePaid').value) || 0;
       var dueVal = Math.max(0, totalVal - paidVal);
 
@@ -1818,8 +1829,8 @@
         area: (getEl('saleArea').value || '').trim(), 
         addr: (getEl('saleAddr').value || '').trim(), 
         item: getEl('saleItem').value, 
-        qty: parseFloat(getEl('saleQty').value) || 0, 
-        rate: parseFloat(getEl('saleRate').value) || 0, 
+        qty: q, 
+        rate: r, 
         total: totalVal, 
         paid: paidVal, 
         due: dueVal, 
