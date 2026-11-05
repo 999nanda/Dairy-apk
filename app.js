@@ -1389,10 +1389,9 @@ function renderFeedTable() {
       '<td style="color:var(--danger); font-weight:600;">₹ ' + (d.cost || 0) + '</td>' +
       '<td>' + (d.note || '-') + '</td>' +
       '<td>' +
-        '<button class="action-btn btn-info" onclick="editFeed(\'' + k + \'\')">Edit</button>' +
-        '<button class="action-btn btn-danger" onclick="deleteRecord(\'feed\',\'' + k + \'\')">Delete</button>' +
+       '<button class="action-btn btn-info" onclick="editFeed(\'' + k + '\')">Edit</button> ' +
+        '<button class="action-btn btn-danger" onclick="deleteRecord(\'feed\',\'' + k + '\')">Delete</button>' +
       '</td>' +
-    '</tr>';
   });
   body.innerHTML = html;
 }
