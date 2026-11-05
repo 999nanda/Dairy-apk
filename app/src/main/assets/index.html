@@ -1802,13 +1802,14 @@
       eSaleKey = null; ['saleCustomer','salePhone','saleArea','saleAddr','saleQty','saleRate','saleTotal','salePaid','saleDue'].forEach(function(i){ getEl(i).value=''; });
       getEl('saleSubmitBtn').innerText = 'Save Sale'; getEl('saleCancelBtn').style.display = 'none';
     }
-   function saveSale() {
+
+    function saveSale() {
       var name = (getEl('saleCustomer').value || '').trim(); 
       if (!name) return alert('Customer Name দিন!');
       
       var totalVal = parseFloat(getEl('saleTotal').value) || 0;
       var paidVal = parseFloat(getEl('salePaid').value) || 0;
-      var dueVal = Math.max(0, totalVal - paidVal); // সঠিকভাবে মোট বিল থেকে পরিশোধ বাদ দিয়ে বকেয়া হিসাব করা হচ্ছে
+      var dueVal = Math.max(0, totalVal - paidVal);
 
       var data = { 
         date: getEl('saleDate').value, 
