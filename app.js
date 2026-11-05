@@ -1410,8 +1410,6 @@ window.toggleExpenseDate = function(safeDt) {
     }
   }
 };
-  body.innerHTML = html;
-}
   
 var eExpKey = null;
 function editExpense(k) {
