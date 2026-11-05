@@ -449,3 +449,21 @@ th {
   position: relative;
   box-sizing: border-box;
 }
+/* মোবাইল ডিভাইসের জন্য সেলস টেবিল এবং ড্রপডাউন রেসপন্সিভ ফিক্স */
+@media screen and (max-width: 768px) {
+  .table-container, table {
+    width: 100%;
+    overflow-x: auto;
+    display: block;
+  }
+  
+  /* "বিস্তারিত দেখুন ▼" বাটনটিকে মোবাইলে সুন্দর ও স্পষ্ট দেখানোর জন্য */
+  td a[onclick*="toggleSubSales"] {
+    display: inline-block !important;
+    font-size: 13px !important;
+    padding: 4px 8px;
+    background: #e1f5fe;
+    border-radius: 4px;
+    margin-top: 5px;
+  }
+}
