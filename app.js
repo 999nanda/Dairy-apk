@@ -1377,31 +1377,22 @@ function renderFeedTable() {
     if (getEl('feedNoData')) getEl('feedNoData').style.display = 'block';
     return;
   }
-  if (getEl('feedNoData')) getEl('feedNoData').style.display = 'none';
-
-  var html = '';
-  list.forEach(function(item) {
-    var k = item.key, d = item.data;
-    html += '<tr>' +
-      '<td>' + formatDateBR(d.date) + '</td>' +
-      '<td><strong>' + (d.type || '-') + '</strong></td>' +
-      '<td>' + (d.qty || '-') + '</td>' +
-      '<td style="color:var(--danger); font-weight:600;">₹ ' + (d.cost || 0) + '</td>' +
-      '<td>' + (d.note || '-') + '</td>' +
-      '<td>' +
-       '<button class="action-btn btn-info" onclick="editFeed(\'' + k + '\')">Edit</button> ' +
-        '<button class="action-btn btn-danger" onclick="deleteRecord(\'feed\',\'' + k + '\')">Delete</button>' +
-      '</td>' +
-  });
-  body.innerHTML = html;
-}
-
-window.toggleExpenseDate = function(safeDt) {
-  var row = getEl('exp-det-' + safeDt); var btn = getEl('exp-btn-' + safeDt);
-  if (row) {
-    if (row.style.display === 'none' || !row.style.display) { row.style.display = 'table-row'; if(btn) btn.innerText = 'সংকুচিত করুন ▲'; }
-    else { row.style.display = 'none'; if(btn) btn.innerText = 'বিস্তারিত দেখুন ▼'; }
-  }
+ var html = '';
+list.forEach(function(item) {
+  var k = item.key, d = item.data;
+  html += '<tr>' +
+    '<td>' + formatDateBR(d.date) + '</td>' +
+    '<td><strong>' + (d.type || '-') + '</strong></td>' +
+    '<td>' + (d.qty || '-') + '</td>' +
+    '<td style="color:var(--danger); font-weight:600;">₹ ' + (d.cost || 0) + '</td>' +
+    '<td>' + (d.note || '-') + '</td>' +
+    '<td>' +
+      '<button class="action-btn btn-info" onclick="editFeed(\'' + k + '\')">Edit</button> ' +
+      '<button class="action-btn btn-danger" onclick="deleteRecord(\'feed\',\'' + k + '\')">Delete</button>' +
+    '</td>' +
+  '</tr>';
+});
+body.innerHTML = html;
 };
 
 var eExpKey = null;
