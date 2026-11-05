@@ -610,7 +610,7 @@ function renderSalesTable(salesData) {
   filtered.forEach(function(item, idx) {
     var dateBR = formatDateBR(item.date);
     var dueVal = Math.max(0, item.totalAmount - item.totalPaid);
-    var subTableId = 'sub_sales_' + idx;
+    var subTableId = 'sub_sales_'  + idx;
     var hasMultiple = item.entries.length > 1;
     var rowStyle = item.isOverdue ? 'background:#fff3f3; border-left:5px solid #d32f2f;' : 'background:#fafafa; border-top:2px solid #e0e0e0;';
     var dueBadge = item.isOverdue && dueVal > 0 ? '<span class="badge badge-danger">₹ ' + dueVal + ' (⚠️ ' + item.diffDays + ' দিন)</span>' : (dueVal > 0 ? '<strong style="color:red;">₹ ' + dueVal + '</strong>' : '<span class="badge badge-success">পরিশোধ</span>');
@@ -638,7 +638,7 @@ function renderSalesTable(salesData) {
 
     if (hasMultiple) {
       html += '<tr id="' + subTableId + '" style="display:none; background:#f1f8e9;"><td colspan="8" style="padding:10px 15px;">' +
-        '<div style="font-size:12px; font-weight:bold; color:#2e7d32; margin-bottom:8px;">📋 আজকের পৃথক এন্ট্রিগুলোর বিবরণ ও এডিট/ডিলিট অপশন:</div>' +
+        '<div style="font-size:12px; font-weight:bold; color:#2e7d32; margin-bottom:8px;">📋 এই দিনের পৃথক এন্ট্রিগুলোর বিবরণ ও এডিট/ডিলিট অপশন:</div>' +
         '<div style="overflow-x:auto;"><table style="width:100%; font-size:12px; background:white; border:1px solid #c8e6c9; border-collapse:collapse;">' +
           '<tr style="background:#e8f5e9;"><th style="padding:6px; border:1px solid #c8e6c9;">বিবরণ</th><th style="padding:6px; border:1px solid #c8e6c9;">পরিমাণ</th><th style="padding:6px; border:1px solid #c8e6c9;">মোট দাম</th><th style="padding:6px; border:1px solid #c8e6c9;">পরিশোধ</th><th style="padding:6px; border:1px solid #c8e6c9;">কার্যক্রম</th></tr>';
       
@@ -1526,7 +1526,7 @@ window.dologin = function() {
       renderSalesTable();
     }
   } else {
-    alert('দয়া করে সঠিক ইউজার আইডি এবং পাসওয়ার্ড দিন!');
+    alert('দয়া করে সঠিক ইউজার আইডি এবং পাসওয়ার্ড দিন!');
   }
 };
 
