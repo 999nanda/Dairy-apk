@@ -92,10 +92,12 @@ window.dologin = function() {
   }
 };
 
-window.doLogout = function() {
-  localStorage.removeItem('nanda_auth_status');
-  location.reload();
-};
+document.addEventListener('DOMContentLoaded', function() {
+  var loginBtn = document.querySelector('#loginScreen button') || document.querySelector('button[onclick*="dologin"]');
+  if (loginBtn) {
+    loginBtn.onclick = window.dologin;
+  }
+});
 
 window.onload = function() {
   var todayISO = new Date().toISOString().split('T')[0];
@@ -1172,6 +1174,7 @@ function editSale(k) {
   getEl('saleQty').value = d.qty || ''; getEl('saleRate').value = d.rate || ''; getEl('saleTotal').value = d.total || '';
   getEl('salePaid').value = d.paid || ''; 
   
+  // কাস্টমারের সঠিক মোট লাইভ বকেয়া বের করে Due Amount ঘরে বসানো হচ্ছে
   var custBalances = getCustomerLiveBalances();
   var cKey = (d.name || '').trim().toLowerCase();
   var totalCustDue = custBalances[cKey] ? custBalances[cKey].currentDue : (d.due || 0);
@@ -1180,7 +1183,6 @@ function editSale(k) {
   getEl('saleSubmitBtn').innerText = 'Update Sale'; getEl('saleCancelBtn').style.display = 'inline-flex';
   getEl('saleCustomer').scrollIntoView({ behavior: 'smooth' });
 }
-
 function cancelSaleEdit() {
   eSaleKey = null; ['saleCustomer','salePhone','saleArea','saleAddr','saleQty','saleRate','saleTotal','salePaid','saleDue'].forEach(function(i){ getEl(i).value=''; });
   getEl('saleSubmitBtn').innerText = 'Save Sale'; getEl('saleCancelBtn').style.display = 'none';
