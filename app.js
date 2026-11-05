@@ -503,7 +503,7 @@ function renderGroupedMilkTable() {
   body.innerHTML = html;
 }
 
-// সেলস লেজার টেবিল রেন্ডারিং (একই কাস্টমারের একই তারিখের একাধিক এন্ট্রি গ্রুপিং ও ড্রপডাউন সহ)
+// সেলস লেজার টেবিল রেন্ডারিং (তারিখ অনুযায়ী স্বতন্ত্র এন্ট্রি এবং একই দিনে একাধিক হলে 'বিস্তারিত দেখুন' সহ)
 function renderSalesTable(salesData) {
   var body = getEl('salesTableBody');
   if (!body) return;
@@ -514,7 +514,7 @@ function renderSalesTable(salesData) {
 
   var tS = 0;
   var uniqueAreas = {};
-  var groupedMap = {};
+  var dateCustomerMap = {};
 
   for (var k in farmStore.sales) {
     var s = farmStore.sales[k];
@@ -527,46 +527,47 @@ function renderSalesTable(salesData) {
     var rawDate = (s.date || '').trim();
     var groupKey = rawDate + '_' + rawName.toLowerCase();
 
-    if (!groupedMap[groupKey]) {
-      groupedMap[groupKey] = {
+    if (!dateCustomerMap[groupKey]) {
+      dateCustomerMap[groupKey] = {
         date: rawDate,
         name: rawName,
         phone: s.phone || '',
         area: s.area || s.addr || '',
-        totalQty: 0,
-        totalAmount: 0,
-        totalPaid: 0,
         entries: [],
         latestTime: parseDateToTime(rawDate)
       };
     }
-
-    var qtyVal = parseFloat(s.qty || s.quantity || 1) || 1;
-    var amtVal = Number(s.total) || 0;
-    var paidVal = Number(s.paid) || 0;
-
-    groupedMap[groupKey].totalQty += qtyVal;
-    groupedMap[groupKey].totalAmount += amtVal;
-    groupedMap[groupKey].totalPaid += paidVal;
-    groupedMap[groupKey].entries.push({ key: k, sale: s });
+    dateCustomerMap[groupKey].entries.push({ key: k, sale: s });
   }
 
   var list = [];
-  for (var gKey in groupedMap) {
-    var g = groupedMap[gKey];
-    var cKey = g.name.toLowerCase();
-    var cBal = custBalances[cKey] || { currentDue: Math.max(0, g.totalAmount - g.totalPaid), isOverdue35: false, daysWithoutPayment: 0 };
+  for (var gKey in dateCustomerMap) {
+    var itemGroup = dateCustomerMap[gKey];
+    var cKey = itemGroup.name.toLowerCase();
+    
+    var groupTotalQty = 0;
+    var groupTotalAmount = 0;
+    var groupTotalPaid = 0;
+    
+    itemGroup.entries.forEach(function(e) {
+      groupTotalQty += parseFloat(e.sale.qty || e.sale.quantity || 1) || 1;
+      groupTotalAmount += Number(e.sale.total) || 0;
+      groupTotalPaid += Number(e.sale.paid) || 0;
+    });
+
+    var cBal = custBalances[cKey] || { currentDue: Math.max(0, groupTotalAmount - groupTotalPaid), isOverdue35: false, daysWithoutPayment: 0 };
+
     list.push({
       groupKey: gKey,
-      date: g.date,
-      name: g.name,
-      phone: g.phone,
-      area: g.area,
-      totalQty: g.totalQty,
-      totalAmount: g.totalAmount,
-      totalPaid: g.totalPaid,
-      entries: g.entries,
-      latestTime: g.latestTime,
+      date: itemGroup.date,
+      name: itemGroup.name,
+      phone: itemGroup.phone,
+      area: itemGroup.area,
+      entries: itemGroup.entries,
+      totalQty: groupTotalQty,
+      totalAmount: groupTotalAmount,
+      totalPaid: groupTotalPaid,
+      latestTime: itemGroup.latestTime,
       liveCustomerDue: cBal.currentDue,
       isOverdue: cBal.isOverdue35,
       diffDays: cBal.daysWithoutPayment
@@ -609,27 +610,40 @@ function renderSalesTable(salesData) {
   var html = '';
   filtered.forEach(function(item, idx) {
     var dateBR = formatDateBR(item.date);
-    var dueVal = Math.max(0, item.totalAmount - item.totalPaid);
+    var dueVal = Math.max(0, item.liveCustomerDue);
     var subTableId = 'sub_sales_' + idx;
     var hasMultiple = item.entries.length > 1;
     var rowStyle = item.isOverdue ? 'background:#fff3f3; border-left:5px solid #d32f2f;' : 'background:#fafafa; border-top:2px solid #e0e0e0;';
     var dueBadge = item.isOverdue && dueVal > 0 ? '<span class="badge badge-danger">₹ ' + dueVal + ' (⚠️ ' + item.diffDays + ' দিন)</span>' : (dueVal > 0 ? '<strong style="color:red;">₹ ' + dueVal + '</strong>' : '<span class="badge badge-success">পরিশোধ</span>');
 
+    var singleKey = !hasMultiple ? item.entries[0].key : '';
+
     var actionBtns = '<button class="action-btn" style="background:#455a64; color:white; padding:4px 8px; font-size:11px;" onclick="showCustomerLedger(\'' + encodeURIComponent(item.name) + '\')">খাতা</button> ';
-    if (!hasMultiple) {
-      actionBtns += '<button class="action-btn btn-info" style="padding:4px 8px; font-size:11px;" onclick="showInvoice(\'' + item.entries[0].key + '\')">Invoice</button> ' +
-                    '<button class="action-btn btn-warning" style="padding:4px 8px; font-size:11px;" onclick="editSale(\'' + item.entries[0].key + '\')">Edit</button> ' +
-                    '<button class="action-btn btn-danger" style="padding:4px 8px; font-size:11px;" onclick="deleteRecord(\'sales\',\'' + item.entries[0].key + '\')">Delete</button>';
+    
+    if (singleKey) {
+      actionBtns += '<button class="action-btn btn-info" style="padding:4px 8px; font-size:11px;" onclick="showInvoice(\'' + singleKey + '\')">Invoice</button> ' +
+                    '<button class="action-btn btn-warning" style="padding:4px 8px; font-size:11px;" onclick="editSale(\'' + singleKey + '\')">Edit</button> ' +
+                    '<button class="action-btn btn-danger" style="padding:4px 8px; font-size:11px;" onclick="deleteRecord(\'sales\',\'' + singleKey + '\')">Delete</button>';
+    } else {
+      actionBtns += '<button class="action-btn btn-info" style="padding:4px 8px; font-size:11px; opacity:0.6; cursor:not-allowed;" title="একাধিক এন্ট্রি থাকলে বিস্তারিত থেকে এডিট/ডিলিট করুন">Invoice</button> ' +
+                    '<button class="action-btn btn-warning" style="padding:4px 8px; font-size:11px; opacity:0.6; cursor:not-allowed;" title="একাধিক এন্ট্রি থাকলে বিস্তারিত থেকে এডিট/ডিলিট করুন">Edit</button> ' +
+                    '<button class="action-btn btn-danger" style="padding:4px 8px; font-size:11px; opacity:0.6; cursor:not-allowed;" title="একাধিক এন্ট্রি থাকলে বিস্তারিত থেকে এডিট/ডিলিট করুন">Delete</button>';
+    }
+
+    var productColContent = '';
+    if (hasMultiple) {
+      productColContent = '<span style="color:#1b5e20; font-weight:600;">মোট ' + item.entries.length + 'টি এন্ট্রি (' + item.totalQty + ' লিটার)</span><br>' +
+                          '<a href="javascript:void(0)" onclick="toggleSubSales(\'' + subTableId + '\', this)" style="display:inline-block; margin-top:5px; padding:4px 10px; background:#e1f5fe; color:#0288d1; font-weight:bold; font-size:12px; border-radius:4px; text-decoration:none;">বিস্তারিত দেখুন ▼</a>';
+    } else {
+      var s = item.entries[0].sale;
+      productColContent = (s.item || 'দুধ') + ' (' + (s.qty || 1) + ')';
     }
 
     html += '<tr style="' + rowStyle + '">' +
       '<td>' + dateBR + '</td>' +
       '<td><strong>' + item.name + '</strong>' + (item.phone ? '<br><small style="color:#666;">📞 ' + item.phone + '</small>' : '') + '</td>' +
       '<td>' + item.area + '</td>' +
-      '<td>' +
-        (hasMultiple ? '<span style="color:#1b5e20; font-weight:600;">মোট ' + item.entries.length + 'টি এন্ট্রি (' + item.totalQty + ' লিটার)</span>' : (item.entries[0].sale.item || 'দুধ') + ' (' + item.totalQty + ')') +
-        (hasMultiple ? '<br><a href="javascript:void(0)" onclick="toggleSubSales(\'' + subTableId + '\', this)" style="display:inline-block; margin-top:5px; padding:4px 10px; background:#e1f5fe; color:#0288d1; font-weight:bold; font-size:12px; border-radius:4px; text-decoration:none;">বিস্তারিত দেখুন ▼</a>' : '') +
-      '</td>' +
+      '<td>' + productColContent + '</td>' +
       '<td><strong>₹ ' + item.totalAmount + '</strong></td>' +
       '<td style="color:green;">₹ ' + item.totalPaid + '</td>' +
       '<td>' + dueBadge + '</td>' +
