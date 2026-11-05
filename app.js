@@ -651,6 +651,7 @@ function renderSalesTable(salesData) {
 
   var html = '';
   activeFiltered.forEach(function(item, idx) {
+    // খাতার মূল সারিতে এবং ব্যাজে সরাসরি সঠিক লাইভ মোট বকেয়া (liveCustomerDue) প্রদর্শন করা হচ্ছে
     var dueVal = item.liveCustomerDue;
     var subTableId = 'sub_sales_' + idx;
     var hasMultiple = item.salesEntries.length > 1;
@@ -732,7 +733,7 @@ function toggleSubSales(subId, linkEl) {
   }
 }
 
-// সংশোধিত showInvoice ফাংশন: পণ্য, পরিমাণ, দর, মোট এবং লাইভ মোট বকেয়া (Total Due) দেখানোর জন্য
+// ইনভয়েস পপআপ ফাংশন
 window.showInvoice = function(k) {
   var d = farmStore.sales[k];
   if (!d) {
@@ -757,7 +758,6 @@ window.showInvoice = function(k) {
   var formattedDate = formatDateBR(d.date);
   var safeKey = String(k).substring(1, 6).toUpperCase();
 
-  // পণ্যের ঘরে শুধু নাম, পরিমাণ ঘরে সংখ্যা, দর এবং মোট দাম
   var itemName = (d.item || 'দুধ').replace(/\s*\([\d\.\s\w]+\)/g, '').trim();
   var itemQty = d.qty || 1;
   var itemRate = d.rate || 0;
@@ -1153,8 +1153,20 @@ function saveMilk() {
 var eSaleKey = null;
 function calcSale() {
   var q = parseFloat(getEl('saleQty').value) || 0, r = parseFloat(getEl('saleRate').value) || 0, t = q * r;
-  getEl('saleTotal').value = t; getEl('saleDue').value = t - (parseFloat(getEl('salePaid').value) || 0);
+  getEl('saleTotal').value = t; 
+  
+  // ক্যালকুলেশনের সময়ও মোট লাইভ বকেয়া হিসাব করার লজিক
+  var custName = (getEl('saleCustomer').value || '').trim();
+  if (custName) {
+    var custBalances = getCustomerLiveBalances();
+    var cKey = custName.toLowerCase();
+    var liveDue = custBalances[cKey] ? custBalances[cKey].currentDue : (t - (parseFloat(getEl('salePaid').value) || 0));
+    getEl('saleDue').value = liveDue;
+  } else {
+    getEl('saleDue').value = t - (parseFloat(getEl('salePaid').value) || 0);
+  }
 }
+
 function editSale(k) {
   var d = farmStore.sales[k]; if (!d) return; eSaleKey = k;
   getEl('saleDate').value = d.date || ''; getEl('saleCustomer').value = d.name || ''; getEl('salePhone').value = d.phone || '';
@@ -1162,7 +1174,7 @@ function editSale(k) {
   getEl('saleQty').value = d.qty || ''; getEl('saleRate').value = d.rate || ''; getEl('saleTotal').value = d.total || '';
   getEl('salePaid').value = d.paid || ''; 
   
-  // এডিট করার সময় নির্দিষ্ট একক এন্ট্রির বকেয়া না বসিয়ে ওই গ্রাহকের মোট লাইভ বকেয়া (Total Due) বসানোর কোড
+  // এডিট বাটনে ক্লিক করার সময় ওই কাস্টমারের প্রকৃত মোট লাইভ বকেয়া (Live Total Due) বসানো হচ্ছে
   var custBalances = getCustomerLiveBalances();
   var cKey = (d.name || '').trim().toLowerCase();
   var totalCustDue = custBalances[cKey] ? custBalances[cKey].currentDue : (d.due || 0);
@@ -1170,10 +1182,12 @@ function editSale(k) {
 
   getEl('saleSubmitBtn').innerText = 'Update Sale'; getEl('saleCancelBtn').style.display = 'inline-flex';
 }
+
 function cancelSaleEdit() {
   eSaleKey = null; ['saleCustomer','salePhone','saleArea','saleAddr','saleQty','saleRate','saleTotal','salePaid','saleDue'].forEach(function(i){ getEl(i).value=''; });
   getEl('saleSubmitBtn').innerText = 'Save Sale'; getEl('saleCancelBtn').style.display = 'none';
 }
+
 function saveSale() {
   var name = (getEl('saleCustomer').value || '').trim(); if (!name) return alert('Customer Name দিন!');
   var data = { date: getEl('saleDate').value, name: name, phone: (getEl('salePhone').value || '').trim(), area: (getEl('saleArea').value || '').trim(), addr: (getEl('saleAddr').value || '').trim(), item: getEl('saleItem').value, qty: parseFloat(getEl('saleQty').value)||0, rate: parseFloat(getEl('saleRate').value)||0, total: parseFloat(getEl('saleTotal').value)||0, paid: parseFloat(getEl('salePaid').value)||0, due: parseFloat(getEl('saleDue').value)||0, payments: [] };
