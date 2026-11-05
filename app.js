@@ -65,7 +65,6 @@ window.switchTab = function(tab, btn) {
   }
 };
 
-// স্থায়ী লগইন সিস্টেম
 window.dologin = function() {
   var userIdEl = getEl('userId') || getEl('loginId');
   var passwordEl = getEl('password') || getEl('loginPass');
@@ -98,7 +97,6 @@ document.addEventListener('DOMContentLoaded', function() {
     loginBtn.onclick = window.dologin;
   }
 });
-
 window.onload = function() {
   var todayISO = new Date().toISOString().split('T')[0];
   var defaultDateIds = ['milkDate', 'saleDate', 'orderDate', 'expDate', 'brAiDate', 'hlthDate', 'ledgerPayDate', 'feedDate', 'rationDate'];
