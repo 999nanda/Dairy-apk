@@ -91,7 +91,7 @@ window.doLogout = function() {
 
 window.onload = function() {
   var todayISO = new Date().toISOString().split('T')[0];
-  var defaultDateIds = ['milkDate', 'saleDate', 'orderDate', 'expDate', 'brAiDate', 'hlthDate', 'ledgerPayDate', 'feedDate'];
+  var defaultDateIds = ['milkDate', 'saleDate', 'orderDate', 'expDate', 'brAiDate', 'hlthDate', 'ledgerPayDate', 'feedDate', 'rationDate'];
   defaultDateIds.forEach(function(id) {
     if (getEl(id)) {
       getEl(id).value = todayISO;
@@ -130,7 +130,7 @@ function autoCalcExpectedCalving() {
 var farmStore = {
   cattle: {}, breeding: {}, milk: {}, sales: {},
   customers: {}, orders: {}, expenses: {}, stock: {},
-  semen: {}, health: {}, feed: {}
+  semen: {}, health: {}, feedRations: {}, feed: {}
 };
 window.activeLedgerCustomerName = '';
 
@@ -503,7 +503,7 @@ function renderGroupedMilkTable() {
   body.innerHTML = html;
 }
 
-// সেলস লেজার টেবিল রেন্ডারিং (প্রতি কাস্টমার প্রতি একটি প্রধান সারি এবং একই দিনের একাধিক এন্ট্রি ড্রপডাউনের ভেতরে)
+// সেলস লেজার টেবিল রেন্ডারিং (একই কাস্টমারের একই তারিখের একাধিক এন্ট্রি গ্রুপিং ও ড্রপডাউন সহ)
 function renderSalesTable(salesData) {
   var body = getEl('salesTableBody');
   if (!body) return;
@@ -514,26 +514,8 @@ function renderSalesTable(salesData) {
 
   var tS = 0;
   var uniqueAreas = {};
-  var customerMap = {};
+  var groupedMap = {};
 
-  // ১. সেভ করা সকল কাস্টমার আগে তালিকায় যুক্ত করা
-  for (var ck in farmStore.customers) {
-    var cust = farmStore.customers[ck];
-    if (!cust || !cust.name) continue;
-    var rName = cust.name.trim();
-    var cKey = rName.toLowerCase();
-    customerMap[cKey] = {
-      customerName: rName,
-      phone: cust.phone || '',
-      area: cust.area || '',
-      addr: cust.addr || '',
-      salesEntries: [],
-      latestTime: 0,
-      latestDate: ''
-    };
-  }
-
-  // ২. সেলস এন্ট্রিগুলো কাস্টমার অনুযায়ী গ্রুপিং করা
   for (var k in farmStore.sales) {
     var s = farmStore.sales[k];
     if (!s || (s.isPayment && Number(s.total) === 0)) continue;
@@ -542,64 +524,49 @@ function renderSalesTable(salesData) {
 
     var rawName = (s.name || '').trim();
     if (!rawName) continue;
-    var cKey = rawName.toLowerCase();
-    var saleTime = parseDateToTime(s.date);
+    var rawDate = (s.date || '').trim();
+    var groupKey = rawDate + '_' + rawName.toLowerCase();
 
-    if (!customerMap[cKey]) {
-      customerMap[cKey] = {
-        customerName: rawName,
+    if (!groupedMap[groupKey]) {
+      groupedMap[groupKey] = {
+        date: rawDate,
+        name: rawName,
         phone: s.phone || '',
         area: s.area || s.addr || '',
-        addr: s.addr || '',
-        salesEntries: [],
-        latestTime: 0,
-        latestDate: ''
+        totalQty: 0,
+        totalAmount: 0,
+        totalPaid: 0,
+        entries: [],
+        latestTime: parseDateToTime(rawDate)
       };
     }
 
-    customerMap[cKey].salesEntries.push({ key: k, sale: s, time: saleTime });
+    var qtyVal = parseFloat(s.qty || s.quantity || 1) || 1;
+    var amtVal = Number(s.total) || 0;
+    var paidVal = Number(s.paid) || 0;
+
+    groupedMap[groupKey].totalQty += qtyVal;
+    groupedMap[groupKey].totalAmount += amtVal;
+    groupedMap[groupKey].totalPaid += paidVal;
+    groupedMap[groupKey].entries.push({ key: k, sale: s });
   }
 
   var list = [];
-  for (var cKey in customerMap) {
-    var cObj = customerMap[cKey];
-    cObj.salesEntries.sort(function(a, b) { return b.time - a.time; });
-
-    var latestTime = 0;
-    var latestDateBR = '-';
-    var totalQty = 0;
-    var totalAmount = 0;
-    var totalPaid = 0;
-    var phone = cObj.phone;
-    var area = cObj.area;
-    var addr = cObj.addr;
-
-    cObj.salesEntries.forEach(function(entry) {
-      if (entry.time > latestTime) {
-        latestTime = entry.time;
-        latestDateBR = formatDateBR(entry.sale.date);
-      }
-      totalQty += parseFloat(entry.sale.qty || entry.sale.quantity || 1) || 1;
-      totalAmount += Number(entry.sale.total) || 0;
-      totalPaid += Number(entry.sale.paid) || 0;
-      if (!phone && entry.sale.phone) phone = entry.sale.phone;
-      if (!area && entry.sale.area) area = entry.sale.area;
-      if (!addr && entry.sale.addr) addr = entry.sale.addr;
-    });
-
-    var cBal = custBalances[cKey] || { currentDue: Math.max(0, totalAmount - totalPaid), isOverdue35: false, daysWithoutPayment: 0 };
-
+  for (var gKey in groupedMap) {
+    var g = groupedMap[gKey];
+    var cKey = g.name.toLowerCase();
+    var cBal = custBalances[cKey] || { currentDue: Math.max(0, g.totalAmount - g.totalPaid), isOverdue35: false, daysWithoutPayment: 0 };
     list.push({
-      customerName: cObj.customerName,
-      phone: phone,
-      area: area,
-      addr: addr,
-      salesEntries: cObj.salesEntries,
-      latestDate: latestDateBR,
-      latestTime: latestTime,
-      totalQty: totalQty,
-      totalAmount: totalAmount,
-      totalPaid: totalPaid,
+      groupKey: gKey,
+      date: g.date,
+      name: g.name,
+      phone: g.phone,
+      area: g.area,
+      totalQty: g.totalQty,
+      totalAmount: g.totalAmount,
+      totalPaid: g.totalPaid,
+      entries: g.entries,
+      latestTime: g.latestTime,
       liveCustomerDue: cBal.currentDue,
       isOverdue: cBal.isOverdue35,
       diffDays: cBal.daysWithoutPayment
@@ -625,7 +592,7 @@ function renderSalesTable(salesData) {
   }
 
   var filtered = list.filter(function(item) {
-    var nameMatch = item.customerName.toLowerCase().includes(searchQ);
+    var nameMatch = item.name.toLowerCase().includes(searchQ);
     var phoneMatch = (item.phone || '').toLowerCase().includes(searchQ);
     return (!searchQ || nameMatch || phoneMatch) && (!areaFilter || (item.area || '').toLowerCase() === areaFilter);
   });
@@ -641,65 +608,56 @@ function renderSalesTable(salesData) {
 
   var html = '';
   filtered.forEach(function(item, idx) {
-    var dueVal = item.liveCustomerDue;
+    var dateBR = formatDateBR(item.date);
+    var dueVal = Math.max(0, item.totalAmount - item.totalPaid);
     var subTableId = 'sub_sales_' + idx;
-    var hasEntries = item.salesEntries.length > 0;
+    var hasMultiple = item.entries.length > 1;
     var rowStyle = item.isOverdue ? 'background:#fff3f3; border-left:5px solid #d32f2f;' : 'background:#fafafa; border-top:2px solid #e0e0e0;';
-    var dueBadge = item.isOverdue && dueVal > 0 ? '<span class="badge badge-danger">₹ ' + dueVal + ' (⚠️ ' + item.diffDays + ' দিন বাকি)</span>' : (dueVal > 0 ? '<strong style="color:red;">₹ ' + dueVal + '</strong>' : '<span class="badge badge-success">পরিশোধ</span>');
+    var dueBadge = item.isOverdue && dueVal > 0 ? '<span class="badge badge-danger">₹ ' + dueVal + ' (⚠️ ' + item.diffDays + ' দিন)</span>' : (dueVal > 0 ? '<strong style="color:red;">₹ ' + dueVal + '</strong>' : '<span class="badge badge-success">পরিশোধ</span>');
 
-    var productSummary = '-';
-    if (hasEntries) {
-      if (item.salesEntries.length === 1) {
-        var s = item.salesEntries[0].sale;
-        productSummary = (s.item || 'দুধ') + ' (' + (s.qty || 1) + ')';
-      } else {
-        productSummary = '<span style="color:#1b5e20; font-weight:600;">মোট ' + item.salesEntries.length + 'টি এন্ট্রি (' + item.totalQty + ' লিটার)</span><br><a href="javascript:void(0)" onclick="toggleSubSales(\'' + subTableId + '\', this)" style="color:#0288d1; font-weight:bold; font-size:12px; text-decoration:none; display:inline-block; margin-top:3px;">বিস্তারিত দেখুন ▼</a>';
-      }
-    }
-
-    var singleKey = hasEntries && item.salesEntries.length === 1 ? item.salesEntries[0].key : '';
-
-    var actionBtns = '<button class="action-btn" style="background:#455a64; color:white; padding:4px 8px; font-size:11px;" onclick="showCustomerLedger(\'' + encodeURIComponent(item.customerName) + '\')">খাতা</button> ';
-    if (singleKey) {
-      actionBtns += '<button class="action-btn btn-info" style="padding:4px 8px; font-size:11px;" onclick="showInvoice(\'' + singleKey + '\')">Invoice</button> ' +
-                    '<button class="action-btn btn-warning" style="padding:4px 8px; font-size:11px;" onclick="editSale(\'' + singleKey + '\')">Edit</button> ' +
-                    '<button class="action-btn btn-danger" style="padding:4px 8px; font-size:11px;" onclick="deleteRecord(\'sales\',\'' + singleKey + '\')">Delete</button>';
+    var actionBtns = '<button class="action-btn" style="background:#455a64; color:white; padding:4px 8px; font-size:11px;" onclick="showCustomerLedger(\'' + encodeURIComponent(item.name) + '\')">খাতা</button> ';
+    if (!hasMultiple) {
+      actionBtns += '<button class="action-btn btn-info" style="padding:4px 8px; font-size:11px;" onclick="showInvoice(\'' + item.entries[0].key + '\')">Invoice</button> ' +
+                    '<button class="action-btn btn-warning" style="padding:4px 8px; font-size:11px;" onclick="editSale(\'' + item.entries[0].key + '\')">Edit</button> ' +
+                    '<button class="action-btn btn-danger" style="padding:4px 8px; font-size:11px;" onclick="deleteRecord(\'sales\',\'' + item.entries[0].key + '\')">Delete</button>';
     }
 
     html += '<tr style="' + rowStyle + '">' +
-      '<td>' + item.latestDate + '</td>' +
-      '<td><a href="javascript:void(0)" onclick="showCustomerLedger(\'' + encodeURIComponent(item.customerName) + '\')" style="color:var(--primary); font-weight:bold; text-decoration:underline;">' + item.customerName + '</a>' + (item.phone ? '<br><small style="color:#666;">📞 ' + item.phone + '</small>' : '') + '</td>' +
-      '<td>' + (item.area ? '<span class="badge badge-warning">' + item.area + '</span><br>' : '') + (item.addr || '-') + '</td>' +
-      '<td>' + productSummary + '</td>' +
+      '<td>' + dateBR + '</td>' +
+      '<td><strong>' + item.name + '</strong>' + (item.phone ? '<br><small style="color:#666;">📞 ' + item.phone + '</small>' : '') + '</td>' +
+      '<td>' + item.area + '</td>' +
+      '<td>' +
+        (hasMultiple ? '<span style="color:#1b5e20; font-weight:600;">মোট ' + item.entries.length + 'টি এন্ট্রি (' + item.totalQty + ' লিটার)</span>' : (item.entries[0].sale.item || 'দুধ') + ' (' + item.totalQty + ')') +
+        (hasMultiple ? '<br><a href="javascript:void(0)" onclick="toggleSubSales(\'' + subTableId + '\', this)" style="display:inline-block; margin-top:5px; padding:4px 10px; background:#e1f5fe; color:#0288d1; font-weight:bold; font-size:12px; border-radius:4px; text-decoration:none;">বিস্তারিত দেখুন ▼</a>' : '') +
+      '</td>' +
       '<td><strong>₹ ' + item.totalAmount + '</strong></td>' +
       '<td style="color:green;">₹ ' + item.totalPaid + '</td>' +
       '<td>' + dueBadge + '</td>' +
       '<td>' + actionBtns + '</td>' +
     '</tr>';
 
-    if (hasEntries && item.salesEntries.length > 1) {
-      html += '<tr id="' + subTableId + '" style="display:none; background:#f1f8e9;"><td colspan="8" style="padding:10px 20px;">' +
-        '<div style="font-size:12px; font-weight:bold; color:#2e7d32; margin-bottom:5px;">📋 এই কাস্টমারের সমস্ত এন্ট্রিগুলোর বিবরণ ও এডিট/ডিলিট অপশন:</div>' +
-        '<table style="width:100%; font-size:12px; background:white; border:1px solid #c8e6c9; border-collapse:collapse;">' +
-          '<tr style="background:#e8f5e9;"><th style="padding:6px; border:1px solid #c8e6c9;">তারিখ</th><th style="padding:6px; border:1px solid #c8e6c9;">বিবরণ</th><th style="padding:6px; border:1px solid #c8e6c9;">পরিমাণ</th><th style="padding:6px; border:1px solid #c8e6c9;">মোট দাম</th><th style="padding:6px; border:1px solid #c8e6c9;">পরিশোধ</th><th style="padding:6px; border:1px solid #c8e6c9;">কার্যক্রম (Action)</th></tr>';
+    if (hasMultiple) {
+      html += '<tr id="' + subTableId + '" style="display:none; background:#f1f8e9;"><td colspan="8" style="padding:10px 15px;">' +
+        '<div style="font-size:12px; font-weight:bold; color:#2e7d32; margin-bottom:8px;">📋 এই দিনের পৃথক এন্ট্রিগুলোর বিবরণ ও এডিট/ডিলিট অপশন:</div>' +
+        '<div style="overflow-x:auto;"><table style="width:100%; font-size:12px; background:white; border:1px solid #c8e6c9; border-collapse:collapse;">' +
+          '<tr style="background:#e8f5e9;"><th style="padding:6px; border:1px solid #c8e6c9;">বিবরণ</th><th style="padding:6px; border:1px solid #c8e6c9;">পরিমাণ</th><th style="padding:6px; border:1px solid #c8e6c9;">মোট দাম</th><th style="padding:6px; border:1px solid #c8e6c9;">পরিশোধ</th><th style="padding:6px; border:1px solid #c8e6c9;">কার্যক্রম</th></tr>';
       
-      item.salesEntries.forEach(function(entry) {
-        var sItem = entry.sale;
+      item.entries.forEach(function(itemObj) {
+        var sItem = itemObj.sale;
         html += '<tr>' +
-          '<td style="padding:6px; border:1px solid #c8e6c9;">' + formatDateBR(sItem.date) + '</td>' +
           '<td style="padding:6px; border:1px solid #c8e6c9;">' + (sItem.item || 'দুধ') + '</td>' +
           '<td style="padding:6px; border:1px solid #c8e6c9;">' + (sItem.qty || 1) + '</td>' +
           '<td style="padding:6px; border:1px solid #c8e6c9;">₹ ' + (Number(sItem.total) || 0) + '</td>' +
           '<td style="padding:6px; border:1px solid #c8e6c9; color:green;">₹ ' + (Number(sItem.paid) || 0) + '</td>' +
-          '<td style="padding:6px; border:1px solid #c8e6c9;">' +
-            '<button class="action-btn" style="padding:2px 6px; font-size:10px;" onclick="showInvoice(\'' + entry.key + '\')">Invoice</button> ' +
-            '<button class="action-btn btn-warning" style="padding:2px 6px; font-size:10px;" onclick="editSale(\'' + entry.key + '\')">Edit</button> ' +
-            '<button class="action-btn btn-danger" style="padding:2px 6px; font-size:10px;" onclick="deleteRecord(\'sales\',\'' + entry.key + '\')">Delete</button>' +
+          '<td style="padding:6px; border:1px solid #c8e6c9; white-space:nowrap;">' +
+            '<button class="action-btn" style="padding:2px 5px; font-size:10px;" onclick="showInvoice(\'' + itemObj.key + '\')">Invoice</button> ' +
+            '<button class="action-btn btn-warning" style="padding:2px 5px; font-size:10px;" onclick="editSale(\'' + itemObj.key + '\')">Edit</button> ' +
+            '<button class="action-btn btn-danger" style="padding:2px 5px; font-size:10px;" onclick="deleteRecord(\'sales\',\'' + itemObj.key + '\')">Delete</button>' +
           '</td>' +
         '</tr>';
       });
 
-      html += '</table></td></tr>';
+      html += '</table></div></td></tr>';
     }
   });
 
@@ -713,9 +671,13 @@ function toggleSubSales(subId, linkEl) {
   if (row.style.display === 'none') {
     row.style.display = 'table-row';
     linkEl.innerText = 'সংক্ষিপ্ত দেখুন ▲';
+    linkEl.style.background = '#ffebee';
+    linkEl.style.color = '#c62828';
   } else {
     row.style.display = 'none';
     linkEl.innerText = 'বিস্তারিত দেখুন ▼';
+    linkEl.style.background = '#e1f5fe';
+    linkEl.style.color = '#0288d1';
   }
 }
 
@@ -1015,17 +977,61 @@ window.showPaymentInvoice = function(pDate, pAmt, pNote, custName, cPhone, cArea
 
 window.showInvoice = function(k) {
   var d = farmStore.sales[k];
-  if (!d) return;
+  if (!d) {
+    alert('দুঃখিত, এই বিক্রয়ের কোনো ডেটা পাওয়া যায়নি!');
+    return;
+  }
+  
   document.body.setAttribute('data-print', 'invoice');
-  getEl('invMainDocTitle').innerText = 'ইনভয়েস (ক্যাশ মেমো)';
-  var liveDue = getCustomerLiveBalances()[(d.name || '').trim().toLowerCase()]?.currentDue || 0;
+  var docTitleEl = getEl('invMainDocTitle');
+  if (docTitleEl) docTitleEl.innerText = 'ইনভয়েস (ক্যাশ মেমো)';
+
+  var liveDue = 0;
+  var custBalances = getCustomerLiveBalances();
+  var cKey = (d.name || '').trim().toLowerCase();
+  if (custBalances[cKey]) {
+    liveDue = custBalances[cKey].currentDue;
+  } else {
+    liveDue = Number(d.due) || 0;
+  }
+
   var timeStr = getCurrentTimeBR();
-  getEl('invoiceDetails').innerHTML = '<div style="display:flex; justify-content:space-between; margin-bottom:12px;"><div><strong>গ্রাহক:</strong> ' + d.name + '<br>মোবাইল: ' + (d.phone || '-') + '</div><div style="text-align:right;">তারিখ: ' + formatDateBR(d.date) + ' | সময়: ' + timeStr + '<br>ইনভয়েস: #NDA-' + k.substring(1, 6).toUpperCase() + '</div></div><table class="invoice-table" style="border:1px solid #ddd; width:100%;"><thead><tr style="background:#e8f5e9;"><th>পণ্য</th><th>পরিমাণ</th><th>দর</th><th style="text-align:right;">মোট</th></tr></thead><tbody><tr><td>' + d.item + '</td><td>' + d.qty + '</td><td>₹ ' + d.rate + '</td><td style="text-align:right; font-weight:bold;">₹ ' + d.total + '</td></tr></tbody></table><div style="text-align:right; margin-top:10px;">চালান মূল্য: ₹ ' + d.total + '<br>নগদ পরিশোধ: ₹ ' + d.paid + '<br><span style="color:red; font-weight:bold;">সর্বশেষ মোট বকেয়া: ₹ ' + liveDue + '</span></div>';
-  getEl('invoiceModal').style.display = 'flex';
+  var formattedDate = formatDateBR(d.date);
+  var safeKey = String(k).substring(1, 6).toUpperCase();
+
+  var detailsEl = getEl('invoiceDetails');
+  if (detailsEl) {
+    detailsEl.innerHTML = '<div style="display:flex; justify-content:space-between; margin-bottom:12px;">' +
+      '<div><strong>গ্রাহক:</strong> ' + (d.name || '-') + '<br>মোবাইল: ' + (d.phone || '-') + '<br>এলাকা: ' + (d.area || '-') + '</div>' +
+      '<div style="text-align:right;">তারিখ: ' + formattedDate + ' | সময়: ' + timeStr + '<br>ইনভয়েস: #NDA-' + safeKey + '</div>' +
+    '</div>' +
+    '<table class="invoice-table" style="border:1px solid #ddd; width:100%; border-collapse:collapse; margin-top:10px;">' +
+      '<thead><tr style="background:#e8f5e9;"><th style="padding:8px; border:1px solid #ddd;">পণ্য</th><th style="padding:8px; border:1px solid #ddd;">পরিমাণ</th><th style="padding:8px; border:1px solid #ddd;">দর</th><th style="text-align:right; padding:8px; border:1px solid #ddd;">মোট</th></tr></thead>' +
+      '<tbody><tr>' +
+        '<td style="padding:8px; border:1px solid #ddd;">' + (d.item || 'দুধ') + '</td>' +
+        '<td style="padding:8px; border:1px solid #ddd;">' + (d.qty || 1) + '</td>' +
+        '<td style="padding:8px; border:1px solid #ddd;">₹ ' + (d.rate || 0) + '</td>' +
+        '<td style="text-align:right; padding:8px; border:1px solid #ddd; font-weight:bold;">₹ ' + (d.total || 0) + '</td>' +
+      '</tr></tbody>' +
+    '</table>' +
+    '<div style="text-align:right; margin-top:12px; font-size:13.5px; line-height:1.6;">' +
+      'চালান মূল্য: <strong>₹ ' + (d.total || 0) + '</strong><br>' +
+      'নগদ পরিশোধ: <strong style="color:green;">₹ ' + (d.paid || 0) + '</strong><br>' +
+      '<span style="color:red; font-weight:bold; font-size:14.5px;">সর্বশেষ মোট বকেয়া: ₹ ' + liveDue + '</span>' +
+    '</div>';
+  }
+
+  var modal = getEl('invoiceModal');
+  if (modal) {
+    modal.style.display = 'flex';
+  }
 };
 
 window.closeInvoice = function() {
-  getEl('invoiceModal').style.display = 'none';
+  var modal = getEl('invoiceModal');
+  if (modal) {
+    modal.style.display = 'none';
+  }
   document.body.removeAttribute('data-print');
 };
 
@@ -1500,6 +1506,14 @@ window.listenAllData = function() {
     renderFeedTable();
   });
 
+  db.ref('feedRations').on('value', function(snap) {
+    farmStore.feedRations = {};
+    snap.forEach(function(c) {
+      farmStore.feedRations[c.key] = c.val();
+    });
+    renderRationTable();
+  });
+
   db.ref('expenses').on('value', function(snap) {
     farmStore.expenses = {}; snap.forEach(function(c){ farmStore.expenses[c.key] = c.val(); });
     renderGroupedExpenseTable();
@@ -1512,6 +1526,7 @@ window.listenAllData = function() {
       var isLow = Number(d.qty) <= Number(d.alertLevel);
       if (body) body.innerHTML += '<tr><td><strong>' + (d.name || '-') + '</strong></td><td style="color:' + (isLow ? 'red' : 'inherit') + ';font-weight:bold;">' + (d.qty || 0) + '</td><td>' + (d.unit || '-') + '</td><td>' + (d.alertLevel || 0) + '</td><td><button class="action-btn btn-info" onclick="editStock(\'' + k + '\')">Edit</button><button class="action-btn btn-danger" onclick="deleteRecord(\'stock\',\'' + k + '\')">Delete</button></td></tr>';
     });
+    renderStockAutocomplete();
   });
 
   db.ref('semen').on('value', function(snap) {
