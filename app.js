@@ -1628,7 +1628,7 @@ window.listenAllData = function() {
 
 function calcNet() {
   var s = parseFloat((getEl('rep-sales') ? getEl('rep-sales').innerText : '0').replace(/[^0-9.-]+/g, "")) || 0;
-  var e = parseFloat((getEl('rep-expenses') ? getEl('rep-expenses').innerText : '0').replace(/[^0-9.-]+/g, "")) => 0; // Fixed syntax
+  var e = parseFloat((getEl('rep-expenses') ? getEl('rep-expenses').innerText : '0').replace(/[^0-9.-]+/g, "")) || 0;
   var net = s - e;
   var pEl = getEl('rep-profit');
   if (pEl) {
