@@ -66,7 +66,7 @@ window.switchTab = function(tab, btn) {
 };
 
 // স্থায়ী লগইন সিস্টেম
-window.doLogin = function() {
+window.dologin = function() {
   var userIdEl = getEl('userId') || getEl('loginId');
   var passwordEl = getEl('password') || getEl('loginPass');
   
@@ -651,7 +651,7 @@ function renderSalesTable(salesData) {
 
   var html = '';
   activeFiltered.forEach(function(item, idx) {
-    var dueVal = item.liveCustomerDue; // এখানে সঠিক লাইভ মোট বকেয়া ব্যবহার করা হয়েছে
+    var dueVal = item.liveCustomerDue;
     var subTableId = 'sub_sales_' + idx;
     var hasMultiple = item.salesEntries.length > 1;
     var rowStyle = item.isOverdue ? 'background:#fff3f3; border-left:5px solid #d32f2f;' : 'background:#fafafa; border-top:2px solid #e0e0e0;';
@@ -1165,7 +1165,6 @@ function calcSale() {
   }
 }
 
-// এডিট বাটনে ক্লিক করলে সঠিক লাইভ মোট বকেয়া দেখানোর চূড়ান্ত সংশোধিত ফাংশন
 function editSale(k) {
   var d = farmStore.sales[k]; if (!d) return; eSaleKey = k;
   getEl('saleDate').value = d.date || ''; getEl('saleCustomer').value = d.name || ''; getEl('salePhone').value = d.phone || '';
@@ -1390,8 +1389,8 @@ function renderFeedTable() {
       '<td style="color:var(--danger); font-weight:600;">₹ ' + (d.cost || 0) + '</td>' +
       '<td>' + (d.note || '-') + '</td>' +
       '<td>' +
-        '<button class="action-btn btn-info" onclick="editFeed(\'' + k + '\')">Edit</button>' +
-        '<button class="action-btn btn-danger" onclick="deleteRecord(\'feed\',\'' + k + '\')">Delete</button>' +
+        '<button class="action-btn btn-info" onclick="editFeed(\'' + k + \'\')">Edit</button>' +
+        '<button class="action-btn btn-danger" onclick="deleteRecord(\'feed\',\'' + k + \'\')">Delete</button>' +
       '</td>' +
     '</tr>';
   });
@@ -1447,7 +1446,7 @@ function renderGroupedExpenseTable() {
   var html = '';
   sortedDates.forEach(function(dt) {
     var group = dateGroups[dt], safeDt = dt.replace(/[^a-zA-Z0-9]/g, '_');
-    html += '<tr style="background:#fff; cursor:pointer;" onclick="toggleExpenseDate(\'' + safeDt + \')"><td><strong>📅 ' + dt + '</strong></td><td><strong style="color:var(--danger);">₹ ' + group.total.toLocaleString() + '</strong></td><td>' + group.items.length + ' টি এন্ট্রি</td><td><button class="action-btn btn-info" id="exp-btn-' + safeDt + '" onclick="event.stopPropagation(); toggleExpenseDate(\'' + safeDt + '\')">বিস্তারিত দেখুন ▼</button></td></tr>';
+    html += '<tr style="background:#fff; cursor:pointer;" onclick="toggleExpenseDate(\'' + safeDt + '\')"><td><strong>📅 ' + dt + '</strong></td><td><strong style="color:var(--danger);">₹ ' + group.total.toLocaleString() + '</strong></td><td>' + group.items.length + ' টি এন্ট্রি</td><td><button class="action-btn btn-info" id="exp-btn-' + safeDt + '" onclick="event.stopPropagation(); toggleExpenseDate(\'' + safeDt + '\')">বিস্তারিত দেখুন ▼</button></td></tr>';
     html += '<tr id="exp-det-' + safeDt + '" style="display:none; background:#fff8f8;"><td colspan="4" style="padding:12px;"><div style="background:white; border:1px solid #ffcdd2; border-radius:8px; padding:12px;"><table style="width:100%; font-size:12px;"><thead><tr style="background:#ffebee;"><th>খাত</th><th>বিবরণ</th><th>টাকা</th><th>অ্যাকশন</th></tr></thead><tbody>';
     group.items.forEach(function(item) {
       html += '<tr><td>' + (item.data.category || '-') + '</td><td><strong>' + (item.data.title || '-') + '</strong></td><td><strong style="color:var(--danger);">₹ ' + (item.data.amount || 0) + '</strong></td><td><button class="action-btn btn-info" onclick="editExpense(\'' + item.key + '\')">Edit</button><button class="action-btn btn-danger" onclick="deleteRecord(\'expenses\',\'' + item.key + '\')">Delete</button></td></tr>';
