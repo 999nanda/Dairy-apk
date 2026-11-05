@@ -732,7 +732,7 @@ function toggleSubSales(subId, linkEl) {
   }
 }
 
-// চূড়ান্ত সংশোধিত showInvoice ফাংশন: পণ্য, পরিমাণ, দর, মোট এবং লাইভ মোট বকেয়া (Total Due) দেখানোর জন্য
+// সংশোধিত showInvoice ফাংশন: পণ্য, পরিমাণ, দর, মোট এবং লাইভ মোট বকেয়া (Total Due) দেখানোর জন্য
 window.showInvoice = function(k) {
   var d = farmStore.sales[k];
   if (!d) {
@@ -1030,7 +1030,6 @@ window.showCustomerLedger = function(encName) {
       if (ev.isOpening) {
         html += '<tr style="background:#fff9c4;"><td>' + ev.date + '</td><td><strong>' + ev.desc + '</strong></td><td>₹ ' + ev.bill + '</td><td>₹ 0</td><td style="color:#e65100; font-weight:bold;">₹ ' + ev.cumDue + '</td><td>-</td></tr>';
       } else if (ev.isSale) {
-        // খাতার ভেতরের টেবিলে প্রতিটি বিক্রয়ের ইনভয়েস বাটনে সঠিক saleKey পাস করা হচ্ছে
         html += '<tr><td>' + ev.date + '</td><td><strong>' + ev.desc + '</strong></td><td>₹ ' + ev.bill + '</td><td style="color:green; font-weight:600;">₹ ' + ev.paid + '</td><td style="color:#e65100; font-weight:bold;">₹ ' + ev.cumDue + '</td><td><button class="action-btn btn-info" onclick="showInvoice(\'' + ev.saleKey + '\')">📄 Invoice</button></td></tr>';
       } else {
         html += '<tr style="background:#f9fdfa;"><td>' + ev.date + '</td><td><strong style="color:#1b5e20;">' + ev.desc + '</strong></td><td>₹ 0</td><td style="color:green; font-weight:700;">₹ ' + ev.paid + '</td><td style="color:#e65100; font-weight:bold;">₹ ' + ev.cumDue + '</td><td>-</td></tr>';
@@ -1161,7 +1160,14 @@ function editSale(k) {
   getEl('saleDate').value = d.date || ''; getEl('saleCustomer').value = d.name || ''; getEl('salePhone').value = d.phone || '';
   getEl('saleArea').value = d.area || ''; getEl('saleAddr').value = d.addr || ''; getEl('saleItem').value = d.item || 'Liquid Milk';
   getEl('saleQty').value = d.qty || ''; getEl('saleRate').value = d.rate || ''; getEl('saleTotal').value = d.total || '';
-  getEl('salePaid').value = d.paid || ''; getEl('saleDue').value = d.due || '';
+  getEl('salePaid').value = d.paid || ''; 
+  
+  // এডিট করার সময় নির্দিষ্ট একক এন্ট্রির বকেয়া না বসিয়ে ওই গ্রাহকের মোট লাইভ বকেয়া (Total Due) বসানোর কোড
+  var custBalances = getCustomerLiveBalances();
+  var cKey = (d.name || '').trim().toLowerCase();
+  var totalCustDue = custBalances[cKey] ? custBalances[cKey].currentDue : (d.due || 0);
+  getEl('saleDue').value = totalCustDue;
+
   getEl('saleSubmitBtn').innerText = 'Update Sale'; getEl('saleCancelBtn').style.display = 'inline-flex';
 }
 function cancelSaleEdit() {
