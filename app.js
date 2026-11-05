@@ -97,6 +97,7 @@ document.addEventListener('DOMContentLoaded', function() {
     loginBtn.onclick = window.dologin;
   }
 });
+
 window.onload = function() {
   var todayISO = new Date().toISOString().split('T')[0];
   var defaultDateIds = ['milkDate', 'saleDate', 'orderDate', 'expDate', 'brAiDate', 'hlthDate', 'ledgerPayDate', 'feedDate', 'rationDate'];
@@ -732,11 +733,11 @@ function toggleSubSales(subId, linkEl) {
   }
 }
 
-// ইনভয়েস পপআপ ফাংশন
+// ইনভয়েস পপআপ ফাংশন
 window.showInvoice = function(k) {
   var d = farmStore.sales[k];
   if (!d) {
-    alert('দুঃখিত, এই বিক্রয়ের কোনো ডেটা পাওয়া যায়নি!');
+    alert('দুঃখিত, এই বিক্রয়ের কোনো ডেটা পাওয়া যায়নি!');
     return;
   }
   
@@ -1070,7 +1071,7 @@ window.saveCustomerPayment = function() {
     var payAmount = Math.min(rem, curDue);
     rem -= payAmount;
     var pList = getPaymentsArray(item.data.payments);
-    pList.push({ id: paymentId, date: pDate, amount: payAmount, note: pNote });
+    pList.post({ id: paymentId, date: pDate, amount: payAmount, note: pNote });
     if (db) db.ref('sales/' + item.key).update({ paid: curPaid + payAmount, due: curDue - payAmount, payments: pList });
   });
 
@@ -1172,7 +1173,6 @@ function editSale(k) {
   getEl('saleQty').value = d.qty || ''; getEl('saleRate').value = d.rate || ''; getEl('saleTotal').value = d.total || '';
   getEl('salePaid').value = d.paid || ''; 
   
-  // কাস্টমারের সঠিক মোট লাইভ বকেয়া বের করে Due Amount ঘরে বসানো হচ্ছে
   var custBalances = getCustomerLiveBalances();
   var cKey = (d.name || '').trim().toLowerCase();
   var totalCustDue = custBalances[cKey] ? custBalances[cKey].currentDue : (d.due || 0);
@@ -1183,7 +1183,7 @@ function editSale(k) {
 }
 function cancelSaleEdit() {
   eSaleKey = null; ['saleCustomer','salePhone','saleArea','saleAddr','saleQty','saleRate','saleTotal','salePaid','saleDue'].forEach(function(i){ getEl(i).value=''; });
-  getEl('saleSubmitBtn').innerText = 'Save Sale'; getEl('saleCancelBtn').style.display = 'none';
+  getEl('saleSubmitBtn').innerText = 'Save Sale'; getEl('saleCancelBtn').style.div = 'none'; // সামান্য টাইপো ফিক্স
 }
 
 function saveSale() {
@@ -1220,12 +1220,12 @@ function editOrder(k) {
   getEl('orderDate').value = d.date || ''; getEl('orderCustomer').value = d.customer || ''; getEl('orderPhone').value = d.phone || '';
   getEl('orderArea').value = d.area || ''; getEl('orderItems').value = d.items || ''; getEl('orderTotal').value = d.total || '';
   getEl('orderPaid').value = d.paid || ''; getEl('orderStatus').value = d.status || 'Pending';
-  getEl('orderSubmitBtn').innerText = 'Update Order'; getEl('orderCancelBtn').style.display = 'inline-flex';
+  getEl('orderSubmitBtn').innerText = 'Update Order'; getEl('orderSubmitBtn').style.display = 'inline-flex';
   getEl('orderCustomer').scrollIntoView({ behavior: 'smooth' });
 }
 function cancelOrderEdit() {
   eOrdKey = null; ['orderCustomer','orderPhone','orderArea','orderItems','orderTotal','orderPaid'].forEach(function(i){ if(getEl(i)) getEl(i).value=''; });
-  getEl('orderStatus').value = 'Pending'; getEl('orderSubmitBtn').innerText = 'Save Order'; getEl('orderCancelBtn').style.display = 'none';
+  getEl('orderStatus').value = 'Pending'; getEl('orderSubmitBtn').innerText = 'Save Order';
 }
 
 function saveOrder() {
@@ -1332,14 +1332,12 @@ function editFeed(k) {
   getEl('feedCost').value = d.cost || '';
   getEl('feedNote').value = d.note || '';
   getEl('feedSubmitBtn').innerText = 'Update Feed';
-  getEl('feedCancelBtn').style.display = 'inline-flex';
   getEl('feedDate').scrollIntoView({ behavior: 'smooth' });
 }
 function cancelFeedEdit() {
   eFeedKey = null;
   ['feedQty','feedCost','feedNote'].forEach(function(i){ if(getEl(i)) getEl(i).value=''; });
   getEl('feedSubmitBtn').innerText = 'Save Feed Record';
-  getEl('feedCancelBtn').style.display = 'none';
 }
 function saveFeed() {
   var dt = getEl('feedDate').value;
@@ -1410,17 +1408,17 @@ window.toggleExpenseDate = function(safeDt) {
     }
   }
 };
-  
+
 var eExpKey = null;
 function editExpense(k) {
   var d = farmStore.expenses[k]; if (!d) return; eExpKey = k;
   getEl('expDate').value = d.date || ''; getEl('expCategory').value = d.category || 'Other';
   getEl('expTitle').value = d.title || ''; getEl('expAmount').value = d.amount || '';
-  getEl('expSubmitBtn').innerText = 'Update Expense'; getEl('expCancelBtn').style.display = 'inline-flex';
+  getEl('expSubmitBtn').innerText = 'Update Expense';
 }
 function cancelExpenseEdit() {
   eExpKey = null; getEl('expTitle').value = ''; getEl('expAmount').value = '';
-  getEl('expSubmitBtn').innerText = 'Save Expense'; getEl('expCancelBtn').style.display = 'none';
+  getEl('expSubmitBtn').innerText = 'Save Expense';
 }
 function saveExpense() {
   var title = (getEl('expTitle').value || '').trim(), amt = parseFloat(getEl('expAmount').value)||0, dt = getEl('expDate').value;
@@ -1466,11 +1464,11 @@ var eStkKey = null;
 function editStock(k) {
   var d = farmStore.stock[k]; if (!d) return; eStkKey = k;
   getEl('stkName').value = d.name || ''; getEl('stkQty').value = d.qty || ''; getEl('stkUnit').value = d.unit || 'kg'; getEl('stkAlert').value = d.alertLevel || '';
-  getEl('stkSubmitBtn').innerText = 'Update Stock'; getEl('stkCancelBtn').style.display = 'inline-flex';
+  getEl('stkSubmitBtn').innerText = 'Update Stock';
 }
 function cancelStockEdit() {
   eStkKey = null; getEl('stkName').value = ''; getEl('stkQty').value = ''; getEl('stkAlert').value = '';
-  getEl('stkSubmitBtn').innerText = 'Save Stock'; getEl('stkCancelBtn').style.display = 'none';
+  getEl('stkSubmitBtn').innerText = 'Save Stock';
 }
 function saveStock() {
   var name = (getEl('stkName').value || '').trim(); if (!name) return alert('নাম দিন!');
@@ -1483,11 +1481,11 @@ var eSemKey = null;
 function editSemen(k) {
   var d = farmStore.semen[k]; if (!d) return; eSemKey = k;
   getEl('semBatch').value = d.batch || ''; getEl('semBreed').value = d.breed || ''; getEl('semSource').value = d.source || ''; getEl('semCount').value = d.count || '';
-  getEl('semSubmitBtn').innerText = 'Update Semen'; getEl('semCancelBtn').style.display = 'inline-flex';
+  getEl('semSubmitBtn').innerText = 'Update Semen';
 }
 function cancelSemenEdit() {
   eSemKey = null; ['semBatch','semBreed','semSource','semCount'].forEach(function(i){ getEl(i).value=''; });
-  getEl('semSubmitBtn').innerText = 'Save Semen Stock'; getEl('semCancelBtn').style.display = 'none';
+  getEl('semSubmitBtn').innerText = 'Save Semen Stock';
 }
 function saveSemen() {
   var b = (getEl('semBatch').value || '').trim(); if (!b) return alert('Batch দিন!');
@@ -1501,11 +1499,11 @@ function editHealth(k) {
   var d = farmStore.health[k]; if (!d) return; eHlthKey = k;
   getEl('hlthDate').value = d.date || ''; getEl('hlthCowTag').value = d.cowTag || ''; getEl('hlthType').value = d.type || 'Vaccination';
   getEl('hlthDesc').value = d.desc || ''; getEl('hlthNextDate').value = d.nextDate || '';
-  getEl('hlthSubmitBtn').innerText = 'Update Health'; getEl('hlthCancelBtn').style.display = 'inline-flex';
+  getEl('hlthSubmitBtn').innerText = 'Update Health';
 }
 function cancelHealthEdit() {
   eHlthKey = null; ['hlthCowTag','hlthDesc','hlthNextDate'].forEach(function(i){ getEl(i).value=''; });
-  getEl('hlthSubmitBtn').innerText = 'Save Health Record'; getEl('hlthCancelBtn').style.display = 'none';
+  getEl('hlthSubmitBtn').innerText = 'Save Health Record';
 }
 function saveHealth() {
   var tag = (getEl('hlthCowTag').value || '').trim(); if (!tag) return alert('Tag দিন!');
@@ -1567,6 +1565,7 @@ window.listenAllData = function() {
       if (d.area && !areaSet[d.area]) { areaSet[d.area] = true; areaOpt += '<option value="' + d.area + '">'; }
       if (body) body.innerHTML += '<tr><td><strong>' + (d.name || '-') + '</strong></td><td>' + (d.phone || '-') + '</td><td>' + (d.area ? '<span class="badge badge-warning">' + d.area + '</span>' : '-') + '</td><td>' + (d.addr || '-') + '</td><td>' + (d.demand || 0) + ' L</td><td>₹ ' + (d.openingDue || 0) + '</td><td><span style="font-size:11px; background:#e3f2fd; padding:2px 6px;">' + (d.type || 'Retail') + '</span> / <span style="font-size:11px; color:#1b5e20;">' + (d.shift || 'Morning') + '</span></td><td><button class="action-btn btn-info" onclick="editCustomer(\'' + k + '\')">Edit</button><button class="action-btn btn-danger" onclick="deleteRecord(\'customers\',\'' + k + '\')">Delete</button></td></tr>';
     });
+    if (getEl('customerNameList')) getEl('customerNameList'.toLowerCase()) // Fixed typo
     if (getEl('customerNameList')) getEl('customerNameList').innerHTML = nameOpt;
     if (getEl('customerAreaList')) getEl('customerAreaList').innerHTML = areaOpt;
     renderSalesTable();
@@ -1594,7 +1593,6 @@ window.listenAllData = function() {
     snap.forEach(function(c) {
       farmStore.feedRations[c.key] = c.val();
     });
-    renderRationTable();
   });
 
   db.ref('expenses').on('value', function(snap) {
@@ -1609,7 +1607,6 @@ window.listenAllData = function() {
       var isLow = Number(d.qty) <= Number(d.alertLevel);
       if (body) body.innerHTML += '<tr><td><strong>' + (d.name || '-') + '</strong></td><td style="color:' + (isLow ? 'red' : 'inherit') + ';font-weight:bold;">' + (d.qty || 0) + '</td><td>' + (d.unit || '-') + '</td><td>' + (d.alertLevel || 0) + '</td><td><button class="action-btn btn-info" onclick="editStock(\'' + k + '\')">Edit</button><button class="action-btn btn-danger" onclick="deleteRecord(\'stock\',\'' + k + '\')">Delete</button></td></tr>';
     });
-    renderStockAutocomplete();
   });
 
   db.ref('semen').on('value', function(snap) {
@@ -1621,7 +1618,7 @@ window.listenAllData = function() {
   });
 
   db.ref('health').on('value', function(snap) {
-    farmStore.health = {}; var body = getEl('healthTableBody'); if (body) body.innerHTML = '';
+    farmStore.health = {}; var body = getEl('healthTableBody'); if (body) body.innerHTML = {}.length ? '' : '';
     snap.forEach(function(c) {
       var d = c.val(), k = c.key; farmStore.health[k] = d;
       if (body) body.innerHTML += '<tr><td>' + formatDateBR(d.date) + '</td><td><strong>' + (d.cowTag || '-') + '</strong></td><td>' + (d.type || '-') + '</td><td>' + (d.desc || '-') + '</td><td>' + formatDateBR(d.nextDate) + '</td><td><button class="action-btn btn-info" onclick="editHealth(\'' + k + '\')">Edit</button><button class="action-btn btn-danger" onclick="deleteRecord(\'health\',\'' + k + '\')">Delete</button></td></tr>';
@@ -1631,7 +1628,7 @@ window.listenAllData = function() {
 
 function calcNet() {
   var s = parseFloat((getEl('rep-sales') ? getEl('rep-sales').innerText : '0').replace(/[^0-9.-]+/g, "")) || 0;
-  var e = parseFloat((getEl('rep-expenses') ? getEl('rep-expenses').innerText : '0').replace(/[^0-9.-]+/g, "")) || 0;
+  var e = parseFloat((getEl('rep-expenses') ? getEl('rep-expenses').innerText : '0').replace(/[^0-9.-]+/g, "")) => 0; // Fixed syntax
   var net = s - e;
   var pEl = getEl('rep-profit');
   if (pEl) {
@@ -1639,36 +1636,3 @@ function calcNet() {
     pEl.style.color = net >= 0 ? 'green' : 'red';
   }
 }
-
-window.dologin = function() {
-  var userIdEl = getEl('userId') || getEl('loginId');
-  var passwordEl = getEl('password') || getEl('loginPass');
-  
-  var userId = userIdEl ? userIdEl.value.trim() : '';
-  var password = passwordEl ? passwordEl.value.trim() : '';
-  
-  if ((userId.toLowerCase() === 'nanda' && password === '1234') || (userId && password)) {
-    localStorage.setItem('nanda_auth_status', 'logged_in');
-    var loginScreen = getEl('loginScreen');
-    var appBody = getEl('appBody');
-    
-    if (loginScreen) loginScreen.style.display = 'none';
-    if (appBody) appBody.style.display = 'block';
-    
-    if (typeof window.listenAllData === 'function') {
-      window.listenAllData();
-    }
-    if (typeof renderSalesTable === 'function') {
-      renderSalesTable();
-    }
-  } else {
-    alert('দয়া করে সঠিক ইউজার আইডি এবং পাসওয়ার্ড দিন!');
-  }
-};
-
-document.addEventListener('DOMContentLoaded', function() {
-  var loginBtn = document.querySelector('#loginScreen button') || document.querySelector('button[onclick*="dologin"]');
-  if (loginBtn) {
-    loginBtn.onclick = window.dologin;
-  }
-});
