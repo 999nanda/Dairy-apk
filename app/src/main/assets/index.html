@@ -1753,10 +1753,15 @@
     }
 
     var eSaleKey = null;
-    function calcSale() {
-      var q = parseFloat(getEl('saleQty').value) || 0, r = parseFloat(getEl('saleRate').value) || 0, t = q * r;
-      getEl('saleTotal').value = t; getEl('saleDue').value = t - (parseFloat(getEl('salePaid').value) || 0);
-    }
+   function calcSale() {
+      var q = parseFloat(getEl('saleQty').value) || 0;
+      var r = parseFloat(getEl('saleRate').value) || 0;
+      var t = q * r;
+      getEl('saleTotal').value = t; 
+      var paidVal = parseFloat(getEl('salePaid').value) || 0;
+      getEl('saleDue').value = Math.max(0, t - paidVal);
+    } 
+    
     function editSale(k) {
       var d = farmStore.sales[k]; if (!d) return; eSaleKey = k;
       getEl('saleDate').value = d.date || ''; 
@@ -1768,7 +1773,14 @@
       getEl('saleQty').value = d.qty || ''; 
       getEl('saleRate').value = d.rate || ''; 
       getEl('saleTotal').value = d.total || '';
-      
+      getEl('salePaid').value = d.paid || 0; 
+      getEl('saleDue').value = d.due || Math.max(0, (Number(d.total) || 0) - (Number(d.paid) || 0));
+
+      getEl('saleSubmitBtn').innerText = 'Update Sale'; 
+      getEl('saleCancelBtn').style.display = 'inline-flex';
+      switchTab('sales', document.querySelector('nav button:nth-child(5)'));
+      getEl('saleCustomer').scrollIntoView({ behavior: 'smooth' });
+    }
       // এডিট করার সময় ওই নির্দিষ্ট এন্ট্রির সঠিক পেমেন্ট ও বকেয়া বসানো হচ্ছে
       getEl('salePaid').value = d.paid || 0; 
       getEl('saleDue').value = d.due || Math.max(0, (Number(d.total) || 0) - (Number(d.paid) || 0));
@@ -1785,6 +1797,7 @@
       getEl('saleSubmitBtn').innerText = 'Update Sale'; getEl('saleCancelBtn').style.display = 'inline-flex';
       switchTab('sales', document.querySelector('nav button:nth-child(5)'));
     }
+    
     function cancelSaleEdit() {
       eSaleKey = null; ['saleCustomer','salePhone','saleArea','saleAddr','saleQty','saleRate','saleTotal','salePaid','saleDue'].forEach(function(i){ getEl(i).value=''; });
       getEl('saleSubmitBtn').innerText = 'Save Sale'; getEl('saleCancelBtn').style.display = 'none';
