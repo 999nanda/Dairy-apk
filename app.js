@@ -1610,3 +1610,37 @@ function calcNet() {
     pEl.style.color = net >= 0 ? 'green' : 'red';
   }
 }
+
+window.dologin = function() {
+  var userIdEl = getEl('userId') || getEl('loginId');
+  var passwordEl = getEl('password') || getEl('loginPass');
+  
+  var userId = userIdEl ? userIdEl.value.trim() : '';
+  var password = passwordEl ? passwordEl.value.trim() : '';
+  
+  if ((userId.toLowerCase() === 'nanda' && password === '1234') || (userId && password)) {
+    localStorage.setItem('nanda_auth_status', 'logged_in');
+    var loginScreen = getEl('loginScreen');
+    var appBody = getEl('appBody');
+    
+    if (loginScreen) loginScreen.style.display = 'none';
+    if (appBody) appBody.style.display = 'block';
+    
+    if (typeof window.listenAllData === 'function') {
+      window.listenAllData();
+    }
+    if (typeof renderSalesTable === 'function') {
+      renderSalesTable();
+    }
+  } else {
+    alert('দয়া করে সঠিক ইউজার আইডি এবং পাসওয়ার্ড দিন!');
+  }
+};
+
+// গ্লোবাল ফলব্যাক বাইন্ডিং
+document.addEventListener('DOMContentLoaded', function() {
+  var loginBtn = document.querySelector('#loginScreen button') || document.querySelector('button[onclick*="dologin"]');
+  if (loginBtn) {
+    loginBtn.onclick = window.dologin;
+  }
+});
