@@ -66,7 +66,7 @@ window.switchTab = function(tab, btn) {
 };
 
 // স্থায়ী লগইন সিস্টেম
-window.dologin = function() {
+window.doLogin = function() {
   var userIdEl = getEl('userId') || getEl('loginId');
   var passwordEl = getEl('password') || getEl('loginPass');
   
@@ -88,17 +88,9 @@ window.dologin = function() {
       renderSalesTable();
     }
   } else {
-    alert('দয়া করে সঠিক ইউজার আইডি এবং পাসওয়ার্ড দিন!');
+    alert('দয়া করে সঠিক ইউজার আইডি এবং পাসওয়ার্ড দিন!');
   }
 };
-
-// গ্লোবাল ফলব্যাক বাইন্ডিং
-document.addEventListener('DOMContentLoaded', function() {
-  var loginBtn = document.querySelector('#loginScreen button') || document.querySelector('button[onclick*="dologin"]');
-  if (loginBtn) {
-    loginBtn.onclick = window.dologin;
-  }
-});
 
 window.doLogout = function() {
   localStorage.removeItem('nanda_auth_status');
@@ -1374,8 +1366,8 @@ function renderFeedTable() {
       '<td style="color:var(--danger); font-weight:600;">₹ ' + (d.cost || 0) + '</td>' +
       '<td>' + (d.note || '-') + '</td>' +
       '<td>' +
-        '<button class="action-btn btn-info" onclick="editFeed(\'' + k + \')">Edit</button>' +
-        '<button class="action-btn btn-danger" onclick="deleteRecord(\'feed\',\'' + k + \')">Delete</button>' +
+        '<button class="action-btn btn-info" onclick="editFeed(\'' + k + '\')">Edit</button>' +
+        '<button class="action-btn btn-danger" onclick="deleteRecord(\'feed\',\'' + k + '\')">Delete</button>' +
       '</td>' +
     '</tr>';
   });
@@ -1431,7 +1423,7 @@ function renderGroupedExpenseTable() {
   var html = '';
   sortedDates.forEach(function(dt) {
     var group = dateGroups[dt], safeDt = dt.replace(/[^a-zA-Z0-9]/g, '_');
-    html += '<tr style="background:#fff; cursor:pointer;" onclick="toggleExpenseDate(\'' + safeDt + \')"><td><strong>📅 ' + dt + '</strong></td><td><strong style="color:var(--danger);">₹ ' + group.total.toLocaleString() + '</strong></td><td>' + group.items.length + ' টি এন্ট্রি</td><td><button class="action-btn btn-info" id="exp-btn-' + safeDt + '" onclick="event.stopPropagation(); toggleExpenseDate(\'' + safeDt + '\')">বিস্তারিত দেখুন ▼</button></td></tr>';
+    html += '<tr style="background:#fff; cursor:pointer;" onclick="toggleExpenseDate(\'' + safeDt + '\')"><td><strong>📅 ' + dt + '</strong></td><td><strong style="color:var(--danger);">₹ ' + group.total.toLocaleString() + '</strong></td><td>' + group.items.length + ' টি এন্ট্রি</td><td><button class="action-btn btn-info" id="exp-btn-' + safeDt + '" onclick="event.stopPropagation(); toggleExpenseDate(\'' + safeDt + '\')">বিস্তারিত দেখুন ▼</button></td></tr>';
     html += '<tr id="exp-det-' + safeDt + '" style="display:none; background:#fff8f8;"><td colspan="4" style="padding:12px;"><div style="background:white; border:1px solid #ffcdd2; border-radius:8px; padding:12px;"><table style="width:100%; font-size:12px;"><thead><tr style="background:#ffebee;"><th>খাত</th><th>বিবরণ</th><th>টাকা</th><th>অ্যাকশন</th></tr></thead><tbody>';
     group.items.forEach(function(item) {
       html += '<tr><td>' + (item.data.category || '-') + '</td><td><strong>' + (item.data.title || '-') + '</strong></td><td><strong style="color:var(--danger);">₹ ' + (item.data.amount || 0) + '</strong></td><td><button class="action-btn btn-info" onclick="editExpense(\'' + item.key + '\')">Edit</button><button class="action-btn btn-danger" onclick="deleteRecord(\'expenses\',\'' + item.key + '\')">Delete</button></td></tr>';
@@ -1618,37 +1610,3 @@ function calcNet() {
     pEl.style.color = net >= 0 ? 'green' : 'red';
   }
 }
-
-window.dologin = function() {
-  var userIdEl = getEl('userId') || getEl('loginId');
-  var passwordEl = getEl('password') || getEl('loginPass');
-  
-  var userId = userIdEl ? userIdEl.value.trim() : '';
-  var password = passwordEl ? passwordEl.value.trim() : '';
-  
-  if ((userId.toLowerCase() === 'nanda' && password === '1234') || (userId && password)) {
-    localStorage.setItem('nanda_auth_status', 'logged_in');
-    var loginScreen = getEl('loginScreen');
-    var appBody = getEl('appBody');
-    
-    if (loginScreen) loginScreen.style.display = 'none';
-    if (appBody) appBody.style.display = 'block';
-    
-    if (typeof window.listenAllData === 'function') {
-      window.listenAllData();
-    }
-    if (typeof renderSalesTable === 'function') {
-      renderSalesTable();
-    }
-  } else {
-    alert('দয়া করে সঠিক ইউজার আইডি এবং পাসওয়ার্ড দিন!');
-  }
-};
-
-// গ্লোবাল ফলব্যাক বাইন্ডিং
-document.addEventListener('DOMContentLoaded', function() {
-  var loginBtn = document.querySelector('#loginScreen button') || document.querySelector('button[onclick*="dologin"]');
-  if (loginBtn) {
-    loginBtn.onclick = window.dologin;
-  }
-});
