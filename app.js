@@ -1377,24 +1377,42 @@ function renderFeedTable() {
     if (getEl('feedNoData')) getEl('feedNoData').style.display = 'block';
     return;
   }
- var html = '';
-list.forEach(function(item) {
-  var k = item.key, d = item.data;
-  html += '<tr>' +
-    '<td>' + formatDateBR(d.date) + '</td>' +
-    '<td><strong>' + (d.type || '-') + '</strong></td>' +
-    '<td>' + (d.qty || '-') + '</td>' +
-    '<td style="color:var(--danger); font-weight:600;">₹ ' + (d.cost || 0) + '</td>' +
-    '<td>' + (d.note || '-') + '</td>' +
-    '<td>' +
-      '<button class="action-btn btn-info" onclick="editFeed(\'' + k + '\')">Edit</button> ' +
-      '<button class="action-btn btn-danger" onclick="deleteRecord(\'feed\',\'' + k + '\')">Delete</button>' +
-    '</td>' +
-  '</tr>';
-});
-body.innerHTML = html;
-};
+function renderFeedTable() {
+  var body = getEl('feedTableBody');
+  if (!body) return;
+  var list = [];
+  for (var k in farmStore.feed) {
+    list.push({ key: k, data: farmStore.feed[k] });
+  }
+  list.sort(function(a, b) {
+    return (b.data.date || '').localeCompare(a.data.date || '');
+  });
 
+  if (list.length === 0) {
+    body.innerHTML = '';
+    if (getEl('feedNoData')) getEl('feedNoData').style.display = 'block';
+    return;
+  }
+  if (getEl('feedNoData')) getEl('feedNoData').style.display = 'none';
+
+  var html = '';
+  list.forEach(function(item) {
+    var k = item.key, d = item.data;
+    html += '<tr>' +
+      '<td>' + formatDateBR(d.date) + '</td>' +
+      '<td><strong>' + (d.type || '-') + '</strong></td>' +
+      '<td>' + (d.qty || '-') + '</td>' +
+      '<td style="color:var(--danger); font-weight:600;">₹ ' + (d.cost || 0) + '</td>' +
+      '<td>' + (d.note || '-') + '</td>' +
+      '<td>' +
+        '<button class="action-btn btn-info" onclick="editFeed(\'' + k + '\')">Edit</button> ' +
+        '<button class="action-btn btn-danger" onclick="deleteRecord(\'feed\',\'' + k + '\')">Delete</button>' +
+      '</td>' +
+    '</tr>';
+  });
+  body.innerHTML = html;
+}
+  
 var eExpKey = null;
 function editExpense(k) {
   var d = farmStore.expenses[k]; if (!d) return; eExpKey = k;
