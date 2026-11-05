@@ -467,3 +467,29 @@ th {
     margin-top: 5px;
   }
 }
+/* মোবাইল ডিভাইসের জন্য সেলস লেজার টেবিল এবং হরাইজন্টাল স্ক্রোল ফিক্স */
+@media screen and (max-width: 768px) {
+  .table-container {
+    width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  
+  #tab-sales table {
+    width: 100%;
+    min-width: 650px; /* টেবিল যেন সংকুচিত হয়ে ভেঙে না যায়, বরং সহজে স্ক্রোল করা যায় */
+  }
+
+  /* "বিস্তারিত দেখুন ▼" বাটনটিকে মোবাইলে আরও স্পষ্ট ও সুন্দর করার জন্য */
+  td a[onclick*="toggleSubSales"] {
+    display: inline-block !important;
+    margin-top: 4px;
+    padding: 3px 8px;
+    background: #e1f5fe;
+    color: #0288d1;
+    font-weight: bold;
+    font-size: 11px;
+    border-radius: 4px;
+    text-decoration: none;
+  }
+}
