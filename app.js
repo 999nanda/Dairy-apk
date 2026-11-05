@@ -1152,17 +1152,25 @@ function saveMilk() {
 
 var eSaleKey = null;
 function calcSale() {
-  var q = parseFloat(getEl('saleQty').value) || 0, r = parseFloat(getEl('saleRate').value) || 0, t = q * r;
+  var q = parseFloat(getEl('saleQty').value) || 0;
+  var r = parseFloat(getEl('saleRate').value) || 0;
+  var t = q * r;
   getEl('saleTotal').value = t; 
   
+  var paidVal = parseFloat(getEl('salePaid').value) || 0;
   var custName = (getEl('saleCustomer').value || '').trim();
+  
   if (custName) {
     var custBalances = getCustomerLiveBalances();
     var cKey = custName.toLowerCase();
-    var liveDue = custBalances[cKey] ? custBalances[cKey].currentDue : (t - (parseFloat(getEl('salePaid').value) || 0));
-    getEl('saleDue').value = liveDue;
+    // যদি কাস্টমারের আগের লাইভ বকেয়া থাকে, নতুন বিল যোগ হয়ে এবং পেমেন্ট বাদ দিয়ে সঠিক বকেয়া দেখাবে
+    if (custBalances[cKey]) {
+      getEl('saleDue').value = Math.max(0, custBalances[cKey].currentDue);
+    } else {
+      getEl('saleDue').value = Math.max(0, t - paidVal);
+    }
   } else {
-    getEl('saleDue').value = t - (parseFloat(getEl('salePaid').value) || 0);
+    getEl('saleDue').value = Math.max(0, t - paidVal);
   }
 }
 
@@ -1173,14 +1181,17 @@ function editSale(k) {
   getEl('saleQty').value = d.qty || ''; getEl('saleRate').value = d.rate || ''; getEl('saleTotal').value = d.total || '';
   getEl('salePaid').value = d.paid || ''; 
   
+  // কাস্টমারের প্রকৃত মোট লাইভ বকেয়া (Current Due) একদম নিখুঁতভাবে হিসাব করে Due Amount ঘরে বসানো হচ্ছে
   var custBalances = getCustomerLiveBalances();
   var cKey = (d.name || '').trim().toLowerCase();
   var totalCustDue = custBalances[cKey] ? custBalances[cKey].currentDue : (d.due || 0);
   getEl('saleDue').value = totalCustDue;
 
-  getEl('saleSubmitBtn').innerText = 'Update Sale'; getEl('saleCancelBtn').style.display = 'inline-flex';
+  getEl('saleSubmitBtn').innerText = 'Update Sale'; 
+  getEl('saleCancelBtn').style.display = 'inline-flex';
   getEl('saleCustomer').scrollIntoView({ behavior: 'smooth' });
-}
+}  
+
 function cancelSaleEdit() {
   eSaleKey = null; ['saleCustomer','salePhone','saleArea','saleAddr','saleQty','saleRate','saleTotal','salePaid','saleDue'].forEach(function(i){ getEl(i).value=''; });
   getEl('saleSubmitBtn').innerText = 'Save Sale'; getEl('saleCancelBtn').style.div = 'none'; // সামান্য টাইপো ফিক্স
