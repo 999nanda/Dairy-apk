@@ -1377,22 +1377,6 @@ function renderFeedTable() {
     if (getEl('feedNoData')) getEl('feedNoData').style.display = 'block';
     return;
   }
-function renderFeedTable() {
-  var body = getEl('feedTableBody');
-  if (!body) return;
-  var list = [];
-  for (var k in farmStore.feed) {
-    list.push({ key: k, data: farmStore.feed[k] });
-  }
-  list.sort(function(a, b) {
-    return (b.data.date || '').localeCompare(a.data.date || '');
-  });
-
-  if (list.length === 0) {
-    body.innerHTML = '';
-    if (getEl('feedNoData')) getEl('feedNoData').style.display = 'block';
-    return;
-  }
   if (getEl('feedNoData')) getEl('feedNoData').style.display = 'none';
 
   var html = '';
@@ -1410,6 +1394,22 @@ function renderFeedTable() {
       '</td>' +
     '</tr>';
   });
+  body.innerHTML = html;
+}
+
+window.toggleExpenseDate = function(safeDt) {
+  var row = getEl('exp-det-' + safeDt); 
+  var btn = getEl('exp-btn-' + safeDt);
+  if (row) {
+    if (row.style.display === 'none' || !row.style.display) { 
+      row.style.display = 'table-row'; 
+      if(btn) btn.innerText = 'সংকুচিত করুন ▲'; 
+    } else { 
+      row.style.display = 'none'; 
+      if(btn) btn.innerText = 'বিস্তারিত দেখুন ▼'; 
+    }
+  }
+};
   body.innerHTML = html;
 }
   
