@@ -249,6 +249,7 @@ function checkAndGenerateDailyOrders() {
   });
 }
 
+// নিখুঁত লাইভ বকেয়া হিসাব করার ফাংশন
 function getCustomerLiveBalances() {
   var map = {};
   var now = new Date();
@@ -262,16 +263,7 @@ function getCustomerLiveBalances() {
     var opDue = Number(cust.openingDue) || 0;
 
     if (!map[cKey]) {
-      map[cKey] = {
-        totalBilled: opDue,
-        totalPaid: 0,
-        currentDue: opDue,
-        lastPaymentTime: 0,
-        earliestBillTime: opDue > 0 ? todayTime : Infinity,
-        phone: cust.phone || '',
-        area: cust.area || '',
-        addr: cust.addr || ''
-      };
+      map[cKey] = { totalBilled: opDue, totalPaid: 0, currentDue: opDue, lastPaymentTime: 0, earliestBillTime: opDue > 0 ? todayTime : Infinity, phone: cust.phone || '', area: cust.area || '', addr: cust.addr || '' };
     }
   }
 
@@ -288,11 +280,11 @@ function getCustomerLiveBalances() {
     if (s.area) map[cKey].area = s.area;
     if (s.addr) map[cKey].addr = s.addr;
 
-    var bTot = Number(s.total) || 0;
+    var bTot = Number(s.total) || (parseFloat(s.qty || 1) * parseFloat(s.rate || 0)) || 0;
     var bPaid = Number(s.paid) || 0;
     var billTime = parseDateToTime(s.date);
 
-    if (bTot > 0) {
+    if (bTot > 0 && !s.isPayment) {
       map[cKey].totalBilled += bTot;
       if (billTime && billTime < map[cKey].earliestBillTime) {
         map[cKey].earliestBillTime = billTime;
@@ -304,7 +296,6 @@ function getCustomerLiveBalances() {
       var subsequentSum = 0;
       pList.forEach(function(p) {
         var pAmt = Number(p.amount) || 0;
-        map[cKey].totalPaid += pAmt;
         subsequentSum += pAmt;
         if (pAmt > 0 && p.date) {
           var pTime = parseDateToTime(p.date);
@@ -313,6 +304,9 @@ function getCustomerLiveBalances() {
           }
         }
       });
+      map[cKey].totalPaid += subsequentSum;
+      
+      // যদি মোট paid এ আলাদা পেমেন্টের যোগফলের চেয়ে বেশি থাকে
       var initialPaid = Math.max(0, bPaid - subsequentSum);
       map[cKey].totalPaid += initialPaid;
       if (initialPaid > 0 && billTime && billTime > map[cKey].lastPaymentTime) {
@@ -329,26 +323,6 @@ function getCustomerLiveBalances() {
   for (var key in map) {
     var c = map[key];
     c.currentDue = Math.max(0, c.totalBilled - c.totalPaid);
-    c.isOverdue35 = false;
-    c.daysWithoutPayment = 0;
-
-    if (c.currentDue > 0) {
-      if (c.lastPaymentTime > 0) {
-        var daysSincePayment = Math.floor((todayTime - c.lastPaymentTime) / (1000 * 3600 * 24));
-        if (daysSincePayment >= 35) {
-          c.isOverdue35 = true;
-          c.daysWithoutPayment = daysSincePayment;
-        }
-      } else {
-        if (c.earliestBillTime !== Infinity) {
-          var daysSinceFirstBill = Math.floor((todayTime - c.earliestBillTime) / (1000 * 3600 * 24));
-          if (daysSinceFirstBill >= 35) {
-            c.isOverdue35 = true;
-            c.daysWithoutPayment = daysSinceFirstBill;
-          }
-        }
-      }
-    }
   }
   return map;
 }
@@ -430,7 +404,6 @@ function renderCattleTable() {
     });
   }
   if (getEl('dash-cow-count')) getEl('dash-cow-count').innerText = list.length;
-  renderBreedSummary();
 }
 
 window.toggleMilkDate = function(safeDt) {
@@ -594,7 +567,7 @@ function renderSalesTable(salesData) {
       if (!addr && entry.sale.addr) addr = entry.sale.addr;
     });
 
-    var cBal = custBalances[cKey] || { currentDue: Math.max(0, totalAmount - totalPaid), isOverdue35: false, daysWithoutPayment: 0 };
+    var cBal = custBalances[cKey] || { currentDue: Math.max(0, totalAmount - totalPaid) };
 
     list.push({
       customerName: cObj.customerName,
@@ -607,9 +580,7 @@ function renderSalesTable(salesData) {
       totalQty: totalQty,
       totalAmount: totalAmount,
       totalPaid: totalPaid,
-      liveCustomerDue: cBal.currentDue,
-      isOverdue: cBal.isOverdue35,
-      diffDays: cBal.daysWithoutPayment
+      liveCustomerDue: cBal.currentDue
     });
   }
 
@@ -655,8 +626,8 @@ function renderSalesTable(salesData) {
     var dueVal = item.liveCustomerDue;
     var subTableId = 'sub_sales_' + idx;
     var hasMultiple = item.salesEntries.length > 1;
-    var rowStyle = item.isOverdue ? 'background:#fff3f3; border-left:5px solid #d32f2f;' : 'background:#fafafa; border-top:2px solid #e0e0e0;';
-    var dueBadge = item.isOverdue && dueVal > 0 ? '<span class="badge badge-danger">₹ ' + dueVal + ' (⚠️ ' + item.diffDays + ' দিন)</span>' : (dueVal > 0 ? '<strong style="color:red;">₹ ' + dueVal + '</strong>' : '<span class="badge badge-success">পরিশোধ</span>');
+    var rowStyle = 'background:#fafafa; border-top:2px solid #e0e0e0;';
+    var dueBadge = dueVal > 0 ? '<strong style="color:red;">₹ ' + dueVal + '</strong>' : '<span class="badge badge-success">পরিশোধ</span>';
 
     var primaryKey = item.salesEntries.length > 0 ? item.salesEntries[0].key : '';
 
@@ -716,7 +687,6 @@ function renderSalesTable(salesData) {
   body.innerHTML = html;
 }
 
-// ড্রপডাউন টগল করার ফাংশন
 function toggleSubSales(subId, linkEl) {
   var row = document.getElementById(subId);
   if (!row) return;
@@ -733,13 +703,9 @@ function toggleSubSales(subId, linkEl) {
   }
 }
 
-// ইনভয়েস পপআপ ফাংশন
 window.showInvoice = function(k) {
   var d = farmStore.sales[k];
-  if (!d) {
-    alert('দুঃখিত, এই বিক্রয়ের কোনো ডেটা পাওয়া যায়নি!');
-    return;
-  }
+  if (!d) return;
   
   document.body.setAttribute('data-print', 'invoice');
   var docTitleEl = getEl('invMainDocTitle');
@@ -1071,8 +1037,11 @@ window.saveCustomerPayment = function() {
     var payAmount = Math.min(rem, curDue);
     rem -= payAmount;
     var pList = getPaymentsArray(item.data.payments);
-    pList.post({ id: paymentId, date: pDate, amount: payAmount, note: pNote });
-    if (db) db.ref('sales/' + item.key).update({ paid: curPaid + payAmount, due: curDue - payAmount, payments: pList });
+    pList.push({ id: paymentId, date: pDate, amount: payAmount, note: pNote });
+    
+    var newPaid = curPaid + payAmount;
+    var newDue = Math.max(0, Number(item.data.total || 0) - newPaid);
+    if (db) db.ref('sales/' + item.key).update({ paid: newPaid, due: newDue, payments: pList });
   });
 
   if (rem > 0) {
@@ -1158,34 +1127,28 @@ function calcSale() {
   getEl('saleTotal').value = t; 
   
   var paidVal = parseFloat(getEl('salePaid').value) || 0;
-  var custName = (getEl('saleCustomer').value || '').trim();
-  
-  if (custName) {
-    var custBalances = getCustomerLiveBalances();
-    var cKey = custName.toLowerCase();
-    // যদি কাস্টমারের আগের লাইভ বকেয়া থাকে, নতুন বিল যোগ হয়ে এবং পেমেন্ট বাদ দিয়ে সঠিক বকেয়া দেখাবে
-    if (custBalances[cKey]) {
-      getEl('saleDue').value = Math.max(0, custBalances[cKey].currentDue);
-    } else {
-      getEl('saleDue').value = Math.max(0, t - paidVal);
-    }
-  } else {
-    getEl('saleDue').value = Math.max(0, t - paidVal);
-  }
+  getEl('saleDue').value = Math.max(0, t - paidVal);
 }
 
 function editSale(k) {
   var d = farmStore.sales[k]; if (!d) return; eSaleKey = k;
-  getEl('saleDate').value = d.date || ''; getEl('saleCustomer').value = d.name || ''; getEl('salePhone').value = d.phone || '';
-  getEl('saleArea').value = d.area || ''; getEl('saleAddr').value = d.addr || ''; getEl('saleItem').value = d.item || 'Liquid Milk';
-  getEl('saleQty').value = d.qty || ''; getEl('saleRate').value = d.rate || ''; getEl('saleTotal').value = d.total || '';
-  getEl('salePaid').value = d.paid || ''; 
+  getEl('saleDate').value = d.date || ''; 
+  getEl('saleCustomer').value = d.name || ''; 
+  getEl('salePhone').value = d.phone || '';
+  getEl('saleArea').value = d.area || ''; 
+  getEl('saleAddr').value = d.addr || ''; 
+  getEl('saleItem').value = d.item || 'Liquid Milk';
   
-  // কাস্টমারের প্রকৃত মোট লাইভ বকেয়া (Current Due) একদম নিখুঁতভাবে হিসাব করে Due Amount ঘরে বসানো হচ্ছে
-  var custBalances = getCustomerLiveBalances();
-  var cKey = (d.name || '').trim().toLowerCase();
-  var totalCustDue = custBalances[cKey] ? custBalances[cKey].currentDue : (d.due || 0);
-  getEl('saleDue').value = totalCustDue;
+  var qVal = parseFloat(d.qty) || 1;
+  var tVal = parseFloat(d.total) || 0;
+  var rVal = parseFloat(d.rate) || (qVal > 0 ? tVal / qVal : 0);
+  var paidVal = parseFloat(d.paid) || 0;
+
+  getEl('saleQty').value = qVal; 
+  getEl('saleRate').value = rVal; 
+  getEl('saleTotal').value = tVal;
+  getEl('salePaid').value = paidVal; 
+  getEl('saleDue').value = Math.max(0, tVal - paidVal);
 
   getEl('saleSubmitBtn').innerText = 'Update Sale'; 
   getEl('saleCancelBtn').style.display = 'inline-flex';
@@ -1194,13 +1157,50 @@ function editSale(k) {
 
 function cancelSaleEdit() {
   eSaleKey = null; ['saleCustomer','salePhone','saleArea','saleAddr','saleQty','saleRate','saleTotal','salePaid','saleDue'].forEach(function(i){ getEl(i).value=''; });
-  getEl('saleSubmitBtn').innerText = 'Save Sale'; getEl('saleCancelBtn').style.div = 'none'; // সামান্য টাইপো ফিক্স
+  getEl('saleSubmitBtn').innerText = 'Save Sale'; 
+  if(getEl('saleCancelBtn')) getEl('saleCancelBtn').style.display = 'none';
 }
 
 function saveSale() {
-  var name = (getEl('saleCustomer').value || '').trim(); if (!name) return alert('Customer Name দিন!');
-  var data = { date: getEl('saleDate').value, name: name, phone: (getEl('salePhone').value || '').trim(), area: (getEl('saleArea').value || '').trim(), addr: (getEl('saleAddr').value || '').trim(), item: getEl('saleItem').value, qty: parseFloat(getEl('saleQty').value)||0, rate: parseFloat(getEl('saleRate').value)||0, total: parseFloat(getEl('saleTotal').value)||0, paid: parseFloat(getEl('salePaid').value)||0, due: parseFloat(getEl('saleDue').value)||0, payments: [] };
-  if (db) eSaleKey ? db.ref('sales/' + eSaleKey).update(data) : db.ref('sales').push(data);
+  var name = (getEl('saleCustomer').value || '').trim(); 
+  if (!name) return alert('Customer Name দিন!');
+  
+  var q = parseFloat(getEl('saleQty').value) || 0;
+  var r = parseFloat(getEl('saleRate').value) || 0;
+  var totalVal = q * r;
+  if (totalVal === 0) {
+    totalVal = parseFloat(getEl('saleTotal').value) || 0;
+  }
+  var paidVal = parseFloat(getEl('salePaid').value) || 0;
+  var dueVal = Math.max(0, totalVal - paidVal);
+
+  var existingPayments = [];
+  if (eSaleKey && farmStore.sales[eSaleKey] && farmStore.sales[eSaleKey].payments) {
+    existingPayments = farmStore.sales[eSaleKey].payments;
+  }
+
+  var data = { 
+    date: getEl('saleDate').value, 
+    name: name, 
+    phone: (getEl('salePhone').value || '').trim(), 
+    area: (getEl('saleArea').value || '').trim(), 
+    addr: (getEl('saleAddr').value || '').trim(), 
+    item: getEl('saleItem').value, 
+    qty: q, 
+    rate: r, 
+    total: totalVal, 
+    paid: paidVal, 
+    due: dueVal, 
+    payments: existingPayments 
+  };
+
+  if (db) {
+    if (eSaleKey) {
+      db.ref('sales/' + eSaleKey).update(data);
+    } else {
+      db.ref('sales').push(data);
+    }
+  }
   cancelSaleEdit();
 }
 
@@ -1576,7 +1576,7 @@ window.listenAllData = function() {
       if (d.area && !areaSet[d.area]) { areaSet[d.area] = true; areaOpt += '<option value="' + d.area + '">'; }
       if (body) body.innerHTML += '<tr><td><strong>' + (d.name || '-') + '</strong></td><td>' + (d.phone || '-') + '</td><td>' + (d.area ? '<span class="badge badge-warning">' + d.area + '</span>' : '-') + '</td><td>' + (d.addr || '-') + '</td><td>' + (d.demand || 0) + ' L</td><td>₹ ' + (d.openingDue || 0) + '</td><td><span style="font-size:11px; background:#e3f2fd; padding:2px 6px;">' + (d.type || 'Retail') + '</span> / <span style="font-size:11px; color:#1b5e20;">' + (d.shift || 'Morning') + '</span></td><td><button class="action-btn btn-info" onclick="editCustomer(\'' + k + '\')">Edit</button><button class="action-btn btn-danger" onclick="deleteRecord(\'customers\',\'' + k + '\')">Delete</button></td></tr>';
     });
-   
+    
     if (getEl('customerNameList')) getEl('customerNameList').innerHTML = nameOpt;
     if (getEl('customerAreaList')) getEl('customerAreaList').innerHTML = areaOpt;
     renderSalesTable();
@@ -1629,7 +1629,7 @@ window.listenAllData = function() {
   });
 
   db.ref('health').on('value', function(snap) {
-    farmStore.health = {}; var body = getEl('healthTableBody'); if (body) body.innerHTML = {}.length ? '' : '';
+    farmStore.health = {}; var body = getEl('healthTableBody'); if (body) body.innerHTML = '';
     snap.forEach(function(c) {
       var d = c.val(), k = c.key; farmStore.health[k] = d;
       if (body) body.innerHTML += '<tr><td>' + formatDateBR(d.date) + '</td><td><strong>' + (d.cowTag || '-') + '</strong></td><td>' + (d.type || '-') + '</td><td>' + (d.desc || '-') + '</td><td>' + formatDateBR(d.nextDate) + '</td><td><button class="action-btn btn-info" onclick="editHealth(\'' + k + '\')">Edit</button><button class="action-btn btn-danger" onclick="deleteRecord(\'health\',\'' + k + '\')">Delete</button></td></tr>';
