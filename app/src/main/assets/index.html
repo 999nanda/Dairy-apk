@@ -1792,7 +1792,7 @@
       getEl('saleSubmitBtn').innerText = 'Save Sale'; getEl('saleCancelBtn').style.display = 'none';
     }
 
-    function saveSale() {
+  function saveSale() {
       var name = (getEl('saleCustomer').value || '').trim(); 
       if (!name) return alert('Customer Name দিন!');
       
@@ -1804,6 +1804,12 @@
       }
       var paidVal = parseFloat(getEl('salePaid').value) || 0;
       var dueVal = Math.max(0, totalVal - paidVal);
+
+      // এডিট করার সময় আগের পেমেন্ট বা জমার হিস্ট্রি সুরক্ষিত রাখতে এটি যুক্ত করা হলো
+      var existingPayments = [];
+      if (eSaleKey && farmStore.sales[eSaleKey] && farmStore.sales[eSaleKey].payments) {
+        existingPayments = farmStore.sales[eSaleKey].payments;
+      }
 
       var data = { 
         date: getEl('saleDate').value, 
@@ -1817,7 +1823,7 @@
         total: totalVal, 
         paid: paidVal, 
         due: dueVal, 
-        payments: [] 
+        payments: existingPayments // আগের পেমেন্টগুলো অক্ষুণ্ণ রাখা হলো
       };
 
       if (db) {
