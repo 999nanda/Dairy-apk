@@ -125,7 +125,7 @@
 
     window.onload = function() {
       var todayISO = new Date().toISOString().split('T')[0];
-      var defaultDateIds = ['milkDate', 'saleDate', 'orderDate', 'expDate', 'brAiDate', 'hlthDate', 'ledgerPayDate', 'feedDate', 'rationDate'];
+      var defaultDateIds = ['milkDate', 'saleDate', 'orderDate', 'expDate', 'brAiDate', 'hlthDate', 'ledgerPayDate', 'feedDate', 'rationDate', 'heatDate', 'insAiDate', 'vacDate', 'dewDate'];
       defaultDateIds.forEach(function(id) {
         if (getEl(id)) {
           getEl(id).value = todayISO;
@@ -255,6 +255,9 @@
       <button onclick="switchTab('cattle', this)">🐄 Cattle</button>
       <button onclick="switchTab('heat', this)">🔥 Heat Register</button>
       <button onclick="switchTab('breeding', this)">🧬 Breeding</button>
+      <button onclick="switchTab('insemination', this)">🧬 Insemination</button>
+      <button onclick="switchTab('vaccine', this)">💉 Vaccination</button>
+      <button onclick="switchTab('deworm', this)">💊 Deworming</button>
       <button onclick="switchTab('milk', this)">🥛 Milk</button>
       <button onclick="switchTab('sales', this)">💰 Sales</button>
       <button onclick="switchTab('customers', this)">👥 Customer</button>
@@ -354,7 +357,131 @@
         </div>
       </div>
 
-      <!-- ৪. Milk -->
+      <!-- ৪. Heat Register -->
+      <div id="tab-heat" class="tab-content" style="display: none;">
+        <div class="card">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+            <h2 style="margin:0; border:none; padding:0;">🔥 Cattle Heat Register</h2>
+            <button class="action-btn btn-info" onclick="switchTab('dashboard', document.querySelector('nav button'))">⬅ Back</button>
+          </div>
+          <div class="form-grid">
+            <div class="input-group"><label>Cattle Tag ID *</label><input type="text" id="heatCowTag" list="cattleTagList" placeholder="NDA-001"></div>
+            <div class="input-group"><label>Heat Date *</label><input type="date" id="heatDate"></div>
+            <div class="input-group"><label>Heat Signs</label><select id="heatSigns"><option value="Standing Heat">Standing Heat</option><option value="Mucus Discharge">Mucus Discharge</option><option value="Restlessness">Restlessness</option><option value="Riding others">Riding others</option></select></div>
+            <div class="input-group"><label>Expected AI Date</label><input type="date" id="heatExpAiDate"></div>
+            <div class="input-group"><label>Note / Remarks</label><input type="text" id="heatNote" placeholder="নোট লিখুন"></div>
+          </div>
+          <div style="display:flex; gap:10px;">
+            <button class="btn" id="heatSubmitBtn" onclick="saveHeatRecord()">Save Heat Record</button>
+            <button class="btn btn-warning" id="heatCancelBtn" style="display:none;" onclick="cancelHeatEdit()">Cancel</button>
+          </div>
+        </div>
+        <div class="card">
+          <h2>হিটের খাতা তালিকা</h2>
+          <div class="table-container">
+            <table>
+              <thead><tr><th>Tag ID</th><th>Heat Date</th><th>Signs</th><th>Exp. AI Date</th><th>Note</th><th>Action</th></tr></thead>
+              <tbody id="heatTableBody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- ৫. Insemination -->
+      <div id="tab-insemination" class="tab-content" style="display: none;">
+        <div class="card">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+            <h2 style="margin:0; border:none; padding:0;">🧬 Artificial Insemination (AI) Register</h2>
+            <button class="action-btn btn-info" onclick="switchTab('dashboard', document.querySelector('nav button'))">⬅ Back</button>
+          </div>
+          <div class="form-grid">
+            <div class="input-group"><label>Cattle ID *</label><input type="text" id="insCowTag" list="cattleTagList" placeholder="Tag সিলেক্ট বা টাইপ করুন"></div>
+            <div class="input-group"><label>AI Date *</label><input type="date" id="insAiDate"></div>
+            <div class="input-group"><label>Semen/Bull ID</label><input type="text" id="insSemenId" placeholder="সিমেন বা ষাঁড়ের আইডি"></div>
+            <div class="input-group"><label>Company / Source</label><input type="text" id="insCompany" placeholder="কোম্পানি"></div>
+            <div class="input-group"><label>AI Cost ₹</label><input type="number" id="insAiCost" placeholder="₹"></div>
+            <div class="input-group"><label>Pregnancy Test (PD)</label><input type="date" id="insPdDate"></div>
+            <div class="input-group"><label>Result Status</label><select id="insStatus"><option value="Pending">Pending</option><option value="Pregnant">Pregnant</option><option value="Failed">Failed</option><option value="Calved">Calved</option></select></div>
+            <div class="input-group"><label>Exp. Calving Date</label><input type="date" id="insExpCalvingDate"></div>
+            <div class="input-group"><label>Actual Calving Date</label><input type="date" id="insActCalvingDate"></div>
+          </div>
+          <div style="display:flex; gap:10px;">
+            <button class="btn" id="insSubmitBtn" onclick="saveInseminationRecord()">Save Insemination Record</button>
+            <button class="btn btn-warning" id="insCancelBtn" style="display:none;" onclick="cancelInseminationEdit()">Cancel</button>
+          </div>
+        </div>
+        <div class="card">
+          <h2>ইনসেমিনেশন রেকর্ড তালিকা</h2>
+          <div class="table-container">
+            <table>
+              <thead><tr><th>Cattle ID</th><th>AI Date</th><th>Semen/Bull</th><th>Company</th><th>Cost</th><th>PD Date</th><th>Status</th><th>Exp. Calving</th><th>Actual Calving</th><th>Action</th></tr></thead>
+              <tbody id="inseminationTableBody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- ৬. Vaccination -->
+      <div id="tab-vaccine" class="tab-content" style="display: none;">
+        <div class="card">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+            <h2 style="margin:0; border:none; padding:0;">💉 Vaccination Register</h2>
+            <button class="action-btn btn-info" onclick="switchTab('dashboard', document.querySelector('nav button'))">⬅ Back</button>
+          </div>
+          <div class="form-grid">
+            <div class="input-group"><label>Cattle Tag ID *</label><input type="text" id="vacCowTag" list="cattleTagList" placeholder="NDA-001"></div>
+            <div class="input-group"><label>Vaccine Name *</label><input type="text" id="vacName" placeholder="FMD / BQ / HS"></div>
+            <div class="input-group"><label>Vaccination Date *</label><input type="date" id="vacDate"></div>
+            <div class="input-group"><label>Next Due Date</label><input type="date" id="vacNextDate"></div>
+            <div class="input-group"><label>Cost ₹</label><input type="number" id="vacCost" placeholder="₹"></div>
+          </div>
+          <div style="display:flex; gap:10px;">
+            <button class="btn" id="vacSubmitBtn" onclick="saveVaccineRecord()">Save Vaccine Record</button>
+            <button class="btn btn-warning" id="vacCancelBtn" style="display:none;" onclick="cancelVaccineEdit()">Cancel</button>
+          </div>
+        </div>
+        <div class="card">
+          <h2>টিকা প্রদানের তালিকা</h2>
+          <div class="table-container">
+            <table>
+              <thead><tr><th>Tag ID</th><th>Vaccine Name</th><th>Date Given</th><th>Next Due Date</th><th>Cost</th><th>Action</th></tr></thead>
+              <tbody id="vaccineTableBody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- ৭. Deworming -->
+      <div id="tab-deworm" class="tab-content" style="display: none;">
+        <div class="card">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+            <h2 style="margin:0; border:none; padding:0;">💊 Deworming Register</h2>
+            <button class="action-btn btn-info" onclick="switchTab('dashboard', document.querySelector('nav button'))">⬅ Back</button>
+          </div>
+          <div class="form-grid">
+            <div class="input-group"><label>Cattle Tag ID *</label><input type="text" id="dewCowTag" list="cattleTagList" placeholder="NDA-001"></div>
+            <div class="input-group"><label>Medicine Name *</label><input type="text" id="dewMedName" placeholder="ঔষধের নাম"></div>
+            <div class="input-group"><label>Given Date *</label><input type="date" id="dewDate"></div>
+            <div class="input-group"><label>Next Due Date</label><input type="date" id="dewNextDate"></div>
+            <div class="input-group"><label>Dosage / Weight</label><input type="text" id="dewDosage" placeholder="মাত্রা"></div>
+          </div>
+          <div style="display:flex; gap:10px;">
+            <button class="btn" id="dewSubmitBtn" onclick="saveDewormRecord()">Save Deworming Record</button>
+            <button class="btn btn-warning" id="dewCancelBtn" style="display:none;" onclick="cancelDewormEdit()">Cancel</button>
+          </div>
+        </div>
+        <div class="card">
+          <h2>কৃমির ওষুধ দেওয়ার তালিকা</h2>
+          <div class="table-container">
+            <table>
+              <thead><tr><th>Tag ID</th><th>Medicine Name</th><th>Given Date</th><th>Next Due Date</th><th>Dosage</th><th>Action</th></tr></thead>
+              <tbody id="dewormTableBody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- ৮. Milk -->
       <div id="tab-milk" class="tab-content" style="display: none;">
         <div class="card">
           <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
@@ -384,7 +511,7 @@
         </div>
       </div>
 
-      <!-- ৫. Sales -->
+      <!-- ৯. Sales -->
       <div id="tab-sales" class="tab-content" style="display: none;">
         <div class="card">
           <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
@@ -427,7 +554,7 @@
         </div>
       </div>
 
-      <!-- ৬. Customer -->
+      <!-- ১০. Customer -->
       <div id="tab-customers" class="tab-content" style="display: none;">
         <div class="card">
           <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
@@ -460,7 +587,7 @@
         </div>
       </div>
 
-      <!-- ৭. Orders -->
+      <!-- ১১. Orders -->
       <div id="tab-orders" class="tab-content" style="display: none;">
         <div class="card">
           <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
@@ -500,7 +627,7 @@
         </div>
       </div>
 
-      <!-- Feed Management -->
+      <!-- ১২. Feed -->
       <div id="tab-feed" class="tab-content" style="display: none;">
         <div class="card">
           <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
@@ -533,7 +660,7 @@
         </div>
       </div>
 
-      <!-- ৮. Expenses -->
+      <!-- ১৩. Expenses -->
       <div id="tab-expenses" class="tab-content" style="display: none;">
         <div class="card">
           <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
@@ -563,7 +690,7 @@
         </div>
       </div>
 
-      <!-- ৯. Stock -->
+      <!-- ১৪. Stock -->
       <div id="tab-stock" class="tab-content" style="display: none;">
         <div class="card">
           <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
@@ -592,7 +719,7 @@
         </div>
       </div>
 
-      <!-- ১০. Semen -->
+      <!-- ১৫. Semen -->
       <div id="tab-semen" class="tab-content" style="display: none;">
         <div class="card">
           <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
@@ -621,7 +748,7 @@
         </div>
       </div>
 
-      <!-- ১১. Health -->
+      <!-- ১৬. Health -->
       <div id="tab-health" class="tab-content" style="display: none;">
         <div class="card">
           <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
@@ -651,7 +778,7 @@
         </div>
       </div>
 
-      <!-- ১২. Reports -->
+      <!-- ১৭. Reports -->
       <div id="tab-reports" class="tab-content" style="display: none;">
         <div class="card">
           <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
@@ -668,7 +795,7 @@
         </div>
       </div>
 
-      <!-- ১৩. Backup -->
+      <!-- ১৮. Backup -->
       <div id="tab-backup" class="tab-content" style="display: none;">
         <div class="card">
           <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
@@ -681,7 +808,7 @@
     </div>
   </div>
 
-  <!-- নির্দিষ্ট গরুর প্রোফাইল ও রেশন হিস্ট্রি মোডাল -->
+  <!-- মোডালসমূহ -->
   <div id="cattleFeedModal">
     <div class="feed-modal-card">
       <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
@@ -692,7 +819,6 @@
     </div>
   </div>
 
-  <!-- ইনভয়েস মোডাল -->
   <div id="invoiceModal">
     <div class="invoice-card">
       <div id="invoicePrintArea">
@@ -727,7 +853,6 @@
     </div>
   </div>
 
-  <!-- কাস্টমার খাতা মোডাল -->
   <div id="ledgerModal">
     <div class="ledger-card">
       <div id="ledgerPrintArea">
@@ -773,7 +898,8 @@
     var farmStore = {
       cattle: {}, breeding: {}, milk: {}, sales: {},
       customers: {}, orders: {}, expenses: {}, stock: {},
-      semen: {}, health: {}, feedRations: {}, feed: {}
+      semen: {}, health: {}, feedRations: {}, feed: {},
+      heat: {}, insemination: {}, vaccine: {}, deworm: {}
     };
     window.activeLedgerCustomerName = '';
 
@@ -1205,7 +1331,6 @@
       body.innerHTML = html;
     }
 
-    // সেলস লেজার টেবিল রেন্ডারিং
     function renderSalesTable() {
       var body = getEl('salesTableBody');
       if (!body) return;
@@ -1370,7 +1495,6 @@
       body.innerHTML = html;
     }
 
-    // ড্রপডাউন টগল করার ফাংশন (Expand/Collapse)
     function toggleSubSales(subId, linkEl) {
       var row = document.getElementById(subId);
       if (!row) return;
@@ -1724,7 +1848,7 @@
       getEl('brCompany').value = d.company || ''; getEl('brAiCost').value = d.aiCost || ''; getEl('brPdDate').value = d.pdDate || '';
       getEl('brStatus').value = d.status || 'Pending'; getEl('brExpCalvingDate').value = d.expCalvingDate || d.calvingDate || ''; getEl('brActCalvingDate').value = d.actCalvingDate || '';
       getEl('brSubmitBtn').innerText = 'Update Breeding'; getEl('brCancelBtn').style.display = 'inline-flex';
-      switchTab('breeding', document.querySelector('nav button:nth-child(3)'));
+      switchTab('breeding', document.querySelector('nav button:nth-child(4)'));
     }
     function cancelBreedingEdit() {
       eBrKey = null; ['brCowTag','brSemenId','brCompany','brAiCost','brPdDate','brExpCalvingDate','brActCalvingDate'].forEach(function(id){ if(getEl(id)) getEl(id).value=''; });
@@ -1737,12 +1861,197 @@
       cancelBreedingEdit();
     }
 
+    // New 4 Feature Handlers (Heat, Insemination, Vaccine, Deworm)
+    var eHeatKey = null;
+    function editHeatRecord(k) {
+      var d = farmStore.heat ? farmStore.heat[k] : null; if (!d) return; eHeatKey = k;
+      getEl('heatCowTag').value = d.tag || '';
+      getEl('heatDate').value = d.date || '';
+      getEl('heatSigns').value = d.signs || 'Standing Heat';
+      getEl('heatExpAiDate').value = d.expAiDate || '';
+      getEl('heatNote').value = d.note || '';
+      getEl('heatSubmitBtn').innerText = 'Update Heat Record';
+      getEl('heatCancelBtn').style.display = 'inline-flex';
+      switchTab('heat', document.querySelector('nav button:nth-child(3)'));
+    }
+    function cancelHeatEdit() {
+      eHeatKey = null;
+      ['heatCowTag','heatDate','heatExpAiDate','heatNote'].forEach(function(i){ if(getEl(i)) getEl(i).value=''; });
+      getEl('heatSubmitBtn').innerText = 'Save Heat Record';
+      getEl('heatCancelBtn').style.display = 'none';
+    }
+    function saveHeatRecord() {
+      var tag = (getEl('heatCowTag').value || '').trim();
+      var dt = getEl('heatDate').value;
+      if (!tag || !dt) return alert('Tag ID এবং তারিখ দিন!');
+      var data = { tag: tag, date: dt, signs: getEl('heatSigns').value, expAiDate: getEl('heatExpAiDate').value, note: getEl('heatNote').value };
+      if (db) {
+        if (eHeatKey) db.ref('heat/' + eHeatKey).update(data);
+        else db.ref('heat').push(data);
+      }
+      cancelHeatEdit();
+    }
+    function renderHeatTable() {
+      var body = getEl('heatTableBody');
+      if (!body) return;
+      var list = [];
+      for (var k in farmStore.heat) list.push({ key: k, data: farmStore.heat[k] });
+      list.sort(function(a, b) { return (b.data.date || '').localeCompare(a.data.date || ''); });
+      if (list.length === 0) { body.innerHTML = '<tr><td colspan="6" style="text-align:center; color:#777;">কোনো হিট রেকর্ড নেই।</td></tr>'; return; }
+      var html = '';
+      list.forEach(function(item) {
+        var k = item.key, d = item.data;
+        html += '<tr><td><strong>' + (d.tag || '-') + '</strong></td><td>' + formatDateBR(d.date) + '</td><td><span class="badge badge-warning">' + (d.signs || '-') + '</span></td><td>' + formatDateBR(d.expAiDate) + '</td><td>' + (d.note || '-') + '</td><td><button class="action-btn btn-info" onclick="editHeatRecord(\'' + k + '\')">Edit</button><button class="action-btn btn-danger" onclick="deleteRecord(\'heat\',\'' + k + '\')">Delete</button></td></tr>';
+      });
+      body.innerHTML = html;
+    }
+
+    var eInsKey = null;
+    function editInseminationRecord(k) {
+      var d = farmStore.insemination ? farmStore.insemination[k] : null; if (!d) return; eInsKey = k;
+      getEl('insCowTag').value = d.tag || '';
+      getEl('insAiDate').value = d.aiDate || '';
+      getEl('insSemenId').value = d.semenId || '';
+      getEl('insCompany').value = d.company || '';
+      getEl('insAiCost').value = d.aiCost || '';
+      getEl('insPdDate').value = d.pdDate || '';
+      getEl('insStatus').value = d.status || 'Pending';
+      getEl('insExpCalvingDate').value = d.expCalvingDate || '';
+      getEl('insActCalvingDate').value = d.actCalvingDate || '';
+      getEl('insSubmitBtn').innerText = 'Update Insemination';
+      getEl('insCancelBtn').style.display = 'inline-flex';
+      switchTab('insemination', document.querySelector('nav button:nth-child(5)'));
+    }
+    function cancelInseminationEdit() {
+      eInsKey = null;
+      ['insCowTag','insSemenId','insCompany','insAiCost','insPdDate','insExpCalvingDate','insActCalvingDate'].forEach(function(id){ if(getEl(id)) getEl(id).value=''; });
+      getEl('insStatus').value = 'Pending';
+      getEl('insSubmitBtn').innerText = 'Save Insemination Record';
+      getEl('insCancelBtn').style.display = 'none';
+    }
+    function saveInseminationRecord() {
+      var tag = (getEl('insCowTag').value || '').trim();
+      var aiDt = getEl('insAiDate').value;
+      if (!tag || !aiDt) return alert('Cattle ID এবং AI Date দিন!');
+      var data = { tag: tag, aiDate: aiDt, semenId: getEl('insSemenId').value, company: getEl('insCompany').value, aiCost: parseFloat(getEl('insAiCost').value) || 0, pdDate: getEl('insPdDate').value, status: getEl('insStatus').value, expCalvingDate: getEl('insExpCalvingDate').value, actCalvingDate: getEl('insActCalvingDate').value };
+      if (db) {
+        if (eInsKey) db.ref('insemination/' + eInsKey).update(data);
+        else db.ref('insemination').push(data);
+      }
+      cancelInseminationEdit();
+    }
+    function renderInseminationTable() {
+      var body = getEl('inseminationTableBody');
+      if (!body) return;
+      var list = [];
+      for (var k in farmStore.insemination) list.push({ key: k, data: farmStore.insemination[k] });
+      list.sort(function(a, b) { return (b.data.aiDate || '').localeCompare(a.data.aiDate || ''); });
+      if (list.length === 0) { body.innerHTML = '<tr><td colspan="10" style="text-align:center; color:#777;">কোনো ইনসেমিনেশন রেকর্ড নেই।</td></tr>'; return; }
+      var html = '';
+      list.forEach(function(item) {
+        var k = item.key, d = item.data;
+        var badgeClass = d.status === 'Pregnant' ? 'badge-success' : (d.status === 'Failed' ? 'badge-danger' : 'badge-warning');
+        html += '<tr><td><strong>' + (d.tag || '-') + '</strong></td><td>' + formatDateBR(d.aiDate) + '</td><td>' + (d.semenId || '-') + '</td><td>' + (d.company || '-') + '</td><td>₹ ' + (d.aiCost || 0) + '</td><td>' + formatDateBR(d.pdDate) + '</td><td><span class="badge ' + badgeClass + '">' + (d.status || 'Pending') + '</span></td><td>' + formatDateBR(d.expCalvingDate) + '</td><td>' + formatDateBR(d.actCalvingDate) + '</td><td><button class="action-btn btn-info" onclick="editInseminationRecord(\'' + k + '\')">Edit</button><button class="action-btn btn-danger" onclick="deleteRecord(\'insemination\',\'' + k + '\')">Delete</button></td></tr>';
+      });
+      body.innerHTML = html;
+    }
+
+    var eVacKey = null;
+    function editVaccineRecord(k) {
+      var d = farmStore.vaccine ? farmStore.vaccine[k] : null; if (!d) return; eVacKey = k;
+      getEl('vacCowTag').value = d.tag || '';
+      getEl('vacName').value = d.name || '';
+      getEl('vacDate').value = d.date || '';
+      getEl('vacNextDate').value = d.nextDate || '';
+      getEl('vacCost').value = d.cost || '';
+      getEl('vacSubmitBtn').innerText = 'Update Vaccine Record';
+      getEl('vacCancelBtn').style.display = 'inline-flex';
+      switchTab('vaccine', document.querySelector('nav button:nth-child(6)'));
+    }
+    function cancelVaccineEdit() {
+      eVacKey = null;
+      ['vacCowTag','vacName','vacDate','vacNextDate','vacCost'].forEach(function(i){ if(getEl(i)) getEl(i).value=''; });
+      getEl('vacSubmitBtn').innerText = 'Save Vaccine Record';
+      getEl('vacCancelBtn').style.display = 'none';
+    }
+    function saveVaccineRecord() {
+      var tag = (getEl('vacCowTag').value || '').trim();
+      var name = (getEl('vacName').value || '').trim();
+      var dt = getEl('vacDate').value;
+      if (!tag || !name || !dt) return alert('Tag, ভ্যাকসিনের নাম ও তারিখ দিন!');
+      var data = { tag: tag, name: name, date: dt, nextDate: getEl('vacNextDate').value, cost: parseFloat(getEl('vacCost').value) || 0 };
+      if (db) {
+        if (eVacKey) db.ref('vaccine/' + eVacKey).update(data);
+        else db.ref('vaccine').push(data);
+      }
+      cancelVaccineEdit();
+    }
+    function renderVaccineTable() {
+      var body = getEl('vaccineTableBody');
+      if (!body) return;
+      var list = [];
+      for (var k in farmStore.vaccine) list.push({ key: k, data: farmStore.vaccine[k] });
+      list.sort(function(a, b) { return (b.data.date || '').localeCompare(a.data.date || ''); });
+      if (list.length === 0) { body.innerHTML = '<tr><td colspan="6" style="text-align:center; color:#777;">কোনো টিকা রেকর্ড নেই।</td></tr>'; return; }
+      var html = '';
+      list.forEach(function(item) {
+        var k = item.key, d = item.data;
+        html += '<tr><td><strong>' + (d.tag || '-') + '</strong></td><td>' + (d.name || '-') + '</td><td>' + formatDateBR(d.date) + '</td><td style="color:red; font-weight:bold;">' + formatDateBR(d.nextDate) + '</td><td>₹ ' + (d.cost || 0) + '</td><td><button class="action-btn btn-info" onclick="editVaccineRecord(\'' + k + '\')">Edit</button><button class="action-btn btn-danger" onclick="deleteRecord(\'vaccine\',\'' + k + '\')">Delete</button></td></tr>';
+      });
+      body.innerHTML = html;
+    }
+
+    var eDewKey = null;
+    function editDewormRecord(k) {
+      var d = farmStore.deworm ? farmStore.deworm[k] : null; if (!d) return; eDewKey = k;
+      getEl('dewCowTag').value = d.tag || '';
+      getEl('dewMedName').value = d.medName || '';
+      getEl('dewDate').value = d.date || '';
+      getEl('dewNextDate').value = d.nextDate || '';
+      getEl('dewDosage').value = d.dosage || '';
+      getEl('dewSubmitBtn').innerText = 'Update Deworm Record';
+      getEl('dewCancelBtn').style.display = 'inline-flex';
+      switchTab('deworm', document.querySelector('nav button:nth-child(7)'));
+    }
+    function cancelDewormEdit() {
+      eDewKey = null;
+      ['dewCowTag','dewMedName','dewDate','dewNextDate','dewDosage'].forEach(function(i){ if(getEl(i)) getEl(i).value=''; });
+      getEl('dewSubmitBtn').innerText = 'Save Deworming Record';
+      getEl('dewCancelBtn').style.display = 'none';
+    }
+    function saveDewormRecord() {
+      var tag = (getEl('dewCowTag').value || '').trim();
+      var med = (getEl('dewMedName').value || '').trim();
+      var dt = getEl('dewDate').value;
+      if (!tag || !med || !dt) return alert('Tag, ঔষধের নাম ও তারিখ দিন!');
+      var data = { tag: tag, medName: med, date: dt, nextDate: getEl('dewNextDate').value, dosage: getEl('dewDosage').value || '' };
+      if (db) {
+        if (eDewKey) db.ref('deworm/' + eDewKey).update(data);
+        else db.ref('deworm').push(data);
+      }
+      cancelDewormEdit();
+    }
+    function renderDewormTable() {
+      var body = getEl('dewormTableBody');
+      if (!body) return;
+      var list = [];
+      for (var k in farmStore.deworm) list.push({ key: k, data: farmStore.deworm[k] });
+      list.sort(function(a, b) { return (b.data.date || '').localeCompare(a.data.date || ''); });
+      if (list.length === 0) { body.innerHTML = '<tr><td colspan="6" style="text-align:center; color:#777;">কোনো কৃমির ওষুধ রেকর্ড নেই।</td></tr>'; return; }
+      var html = '';
+      list.forEach(function(item) {
+        var k = item.key, d = item.data;
+        html += '<tr><td><strong>' + (d.tag || '-') + '</strong></td><td>' + (d.medName || '-') + '</td><td>' + formatDateBR(d.date) + '</td><td style="color:red; font-weight:bold;">' + formatDateBR(d.nextDate) + '</td><td>' + (d.dosage || '-') + '</td><td><button class="action-btn btn-info" onclick="editDewormRecord(\'' + k + '\')">Edit</button><button class="action-btn btn-danger" onclick="deleteRecord(\'deworm\',\'' + k + '\')">Delete</button></td></tr>';
+      });
+      body.innerHTML = html;
+    }
+
     var eMlkKey = null;
     function editMilk(k) {
       var d = farmStore.milk[k]; if (!d) return; eMlkKey = k;
       getEl('milkDate').value = d.date || ''; getEl('milkCowTag').value = d.cow || ''; getEl('milkSession').value = d.session || 'Morning'; getEl('milkLiters').value = d.liters || '';
       getEl('milkSubmitBtn').innerText = 'Update Milk'; getEl('milkCancelBtn').style.display = 'inline-flex';
-      switchTab('milk', document.querySelector('nav button:nth-child(4)'));
+      switchTab('milk', document.querySelector('nav button:nth-child(8)'));
     }
     function cancelMilkEdit() {
       eMlkKey = null; getEl('milkCowTag').value = ''; getEl('milkLiters').value = '';
@@ -1784,7 +2093,7 @@
 
       getEl('saleSubmitBtn').innerText = 'Update Sale'; 
       getEl('saleCancelBtn').style.display = 'inline-flex';
-      switchTab('sales', document.querySelector('nav button:nth-child(5)'));
+      switchTab('sales', document.querySelector('nav button:nth-child(9)'));
       getEl('saleCustomer').scrollIntoView({ behavior: 'smooth' });
     }
 
@@ -1793,7 +2102,7 @@
       getEl('saleSubmitBtn').innerText = 'Save Sale'; getEl('saleCancelBtn').style.display = 'none';
     }
 
-  function saveSale() {
+    function saveSale() {
       var name = (getEl('saleCustomer').value || '').trim(); 
       if (!name) return alert('Customer Name দিন!');
       
@@ -1806,7 +2115,6 @@
       var paidVal = parseFloat(getEl('salePaid').value) || 0;
       var dueVal = Math.max(0, totalVal - paidVal);
 
-      // এডিট করার সময় আগের পেমেন্ট বা জমার হিস্ট্রি সুরক্ষিত রাখতে এটি যুক্ত করা হলো
       var existingPayments = [];
       if (eSaleKey && farmStore.sales[eSaleKey] && farmStore.sales[eSaleKey].payments) {
         existingPayments = farmStore.sales[eSaleKey].payments;
@@ -1824,7 +2132,7 @@
         total: totalVal, 
         paid: paidVal, 
         due: dueVal, 
-        payments: existingPayments // আগের পেমেন্টগুলো অক্ষুণ্ণ রাখা হলো
+        payments: existingPayments 
       };
 
       if (db) {
@@ -1846,7 +2154,7 @@
       if (getEl('custType')) getEl('custType').value = d.type || 'Regular Retailer';
       if (getEl('custShift')) getEl('custShift').value = d.shift || 'Morning';
       getEl('custSubmitBtn').innerText = 'Update Customer'; getEl('custCancelBtn').style.display = 'inline-flex';
-      switchTab('customers', document.querySelector('nav button:nth-child(6)'));
+      switchTab('customers', document.querySelector('nav button:nth-child(10)'));
     }
     function cancelCustomerEdit() {
       eCustKey = null; ['custName','custPhone','custArea','custAddress','custDailyDemand','custOpeningDue'].forEach(function(i){ if(getEl(i)) getEl(i).value=''; });
@@ -1866,7 +2174,7 @@
       getEl('orderArea').value = d.area || ''; getEl('orderItems').value = d.items || ''; getEl('orderTotal').value = d.total || '';
       getEl('orderPaid').value = d.paid || ''; getEl('orderStatus').value = d.status || 'Pending';
       getEl('orderSubmitBtn').innerText = 'Update Order'; getEl('orderCancelBtn').style.display = 'inline-flex';
-      switchTab('orders', document.querySelector('nav button:nth-child(7)'));
+      switchTab('orders', document.querySelector('nav button:nth-child(11)'));
     }
     function cancelOrderEdit() {
       eOrdKey = null; ['orderCustomer','orderPhone','orderArea','orderItems','orderTotal','orderPaid'].forEach(function(i){ if(getEl(i)) getEl(i).value=''; });
@@ -1974,7 +2282,7 @@
       getEl('feedNote').value = d.note || '';
       getEl('feedSubmitBtn').innerText = 'Update Feed';
       getEl('feedCancelBtn').style.display = 'inline-flex';
-      switchTab('feed', document.querySelector('nav button:nth-child(8)'));
+      switchTab('feed', document.querySelector('nav button:nth-child(12)'));
     }
     function cancelFeedEdit() {
       eFeedKey = null;
@@ -2052,7 +2360,7 @@
       getEl('expDate').value = d.date || ''; getEl('expCategory').value = d.category || 'Other';
       getEl('expTitle').value = d.title || ''; getEl('expAmount').value = d.amount || '';
       getEl('expSubmitBtn').innerText = 'Update Expense'; getEl('expCancelBtn').style.display = 'inline-flex';
-      switchTab('expenses', document.querySelector('nav button:nth-child(9)'));
+      switchTab('expenses', document.querySelector('nav button:nth-child(13)'));
     }
     function cancelExpenseEdit() {
       eExpKey = null; getEl('expTitle').value = ''; getEl('expAmount').value = '';
@@ -2103,7 +2411,7 @@
       var d = farmStore.stock[k]; if (!d) return; eStkKey = k;
       getEl('stkName').value = d.name || ''; getEl('stkQty').value = d.qty || ''; getEl('stkUnit').value = d.unit || 'kg'; getEl('stkAlert').value = d.alertLevel || '';
       getEl('stkSubmitBtn').innerText = 'Update Stock'; getEl('stkCancelBtn').style.display = 'inline-flex';
-      switchTab('stock', document.querySelector('nav button:nth-child(10)'));
+      switchTab('stock', document.querySelector('nav button:nth-child(14)'));
     }
     function cancelStockEdit() {
       eStkKey = null; getEl('stkName').value = ''; getEl('stkQty').value = ''; getEl('stkAlert').value = '';
@@ -2121,7 +2429,7 @@
       var d = farmStore.semen[k]; if (!d) return; eSemKey = k;
       getEl('semBatch').value = d.batch || ''; getEl('semBreed').value = d.breed || ''; getEl('semSource').value = d.source || ''; getEl('semCount').value = d.count || '';
       getEl('semSubmitBtn').innerText = 'Update Semen'; getEl('semCancelBtn').style.display = 'inline-flex';
-      switchTab('semen', document.querySelector('nav button:nth-child(11)'));
+      switchTab('semen', document.querySelector('nav button:nth-child(15)'));
     }
     function cancelSemenEdit() {
       eSemKey = null; ['semBatch','semBreed','semSource','semCount'].forEach(function(i){ getEl(i).value=''; });
@@ -2140,10 +2448,10 @@
       getEl('hlthDate').value = d.date || ''; getEl('hlthCowTag').value = d.cowTag || ''; getEl('hlthType').value = d.type || 'Vaccination';
       getEl('hlthDesc').value = d.desc || ''; getEl('hlthNextDate').value = d.nextDate || '';
       getEl('hlthSubmitBtn').innerText = 'Update Health'; getEl('hlthCancelBtn').style.display = 'inline-flex';
-      switchTab('health', document.querySelector('nav button:nth-child(12)'));
+      switchTab('health', document.querySelector('nav button:nth-child(16)'));
     }
     function cancelHealthEdit() {
-      eHlthKey = null; ['hlthCowTag','hlthDesc','hlthNextDate'].forEach(function(i){ getEl(i).value=''; });
+      eHlthKey = null; ['hlthCowTag','hlthDesc','hlthNextDate'].forEach(function(i){ if(getEl(i)) getEl(i).value=''; });
       getEl('hlthSubmitBtn').innerText = 'Save Health Record'; getEl('hlthCancelBtn').style.display = 'none';
     }
     function saveHealth() {
@@ -2175,6 +2483,24 @@
           if (body) body.innerHTML += '<tr><td><strong>' + (d.tag || '-') + '</strong></td><td>' + formatDateBR(d.aiDate) + '</td><td>' + (d.semenId || '-') + '</td><td>' + (d.company || '-') + '</td><td>₹ ' + (d.aiCost || 0) + '</td><td>' + formatDateBR(d.pdDate) + '</td><td><span class="badge ' + badgeClass + '">' + (d.status || 'Pending') + '</span></td><td>' + formatDateBR(d.expCalvingDate || d.calvingDate) + '</td><td>' + formatDateBR(d.actCalvingDate) + '</td><td><button class="action-btn btn-info" onclick="editBreeding(\'' + k + '\')">Edit</button><button class="action-btn btn-danger" onclick="deleteRecord(\'breeding\',\'' + k + '\')">Delete</button></td></tr>';
         });
         if (getEl('breedingNoData')) getEl('breedingNoData').style.display = count === 0 ? 'block' : 'none';
+      });
+
+      // New 4 Feature Listeners
+      db.ref('heat').on('value', function(snap) {
+        farmStore.heat = {}; snap.forEach(function(c){ farmStore.heat[c.key] = c.val(); });
+        renderHeatTable();
+      });
+      db.ref('insemination').on('value', function(snap) {
+        farmStore.insemination = {}; snap.forEach(function(c){ farmStore.insemination[c.key] = c.val(); });
+        renderInseminationTable();
+      });
+      db.ref('vaccine').on('value', function(snap) {
+        farmStore.vaccine = {}; snap.forEach(function(c){ farmStore.vaccine[c.key] = c.val(); });
+        renderVaccineTable();
+      });
+      db.ref('deworm').on('value', function(snap) {
+        farmStore.deworm = {}; snap.forEach(function(c){ farmStore.deworm[c.key] = c.val(); });
+        renderDewormTable();
       });
 
       db.ref('sales').on('value', function(snap) {
