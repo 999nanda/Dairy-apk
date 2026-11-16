@@ -1486,8 +1486,8 @@
       }
     }
 
-    // ==========================================
-    // UPDATED ORDERS TABLE RENDER LOGIC
+// ==========================================
+    // UPDATED ORDERS TABLE RENDER LOGIC (Compact & Proportionate Action Column)
     // ==========================================
     function renderOrdersTable() {
       var body = getEl('ordersTableBody');
@@ -1514,7 +1514,7 @@
           if (custArea) uniqueAreas[custArea] = true;
 
           var rawName = custName;
-          var groupKey = rawName.toLowerCase(); // Group only by Customer Name
+          var groupKey = rawName.toLowerCase(); 
 
           if (!groupedMap[groupKey]) {
             groupedMap[groupKey] = {
@@ -1589,18 +1589,24 @@
           orderSummary = '<span style="font-size:12px;">' + (singleOrder.items || '-') + '</span><br><span style="font-size:11px; color:#555;">মূল্য:</span> <strong>₹ ' + (singleOrder.total || item.totalAmount) + '</strong>';
         }
 
+        // বাটনগুলোকে ফ্লেক্সবক্স দিয়ে পাশাপাশি সাজানো হয়েছে যাতে এরা শুধু নিজেদের সাইজ অনুযায়ী মাপে জায়গা নেয়
         var detailsBtn = hasMultiple ? 
-          '<button class="action-btn btn-info" id="ord-btn-' + subTableId + '" onclick="toggleSubOrders(\'' + subTableId + '\', this)" style="width:100%; text-align:center; padding:5px; margin-bottom:5px;">বিস্তারিত (' + totalEntries + ') ▼</button>' : 
+          '<button class="action-btn btn-info" id="ord-btn-' + subTableId + '" onclick="toggleSubOrders(\'' + subTableId + '\', this)" style="padding:4px 8px; font-size:11px; white-space:nowrap; margin:0;">বিস্তারিত (' + totalEntries + ') ▼</button>' : 
           '';
 
         var actionCol = '';
         if (!hasMultiple) {
           var singleKey = item.entries[0].key;
-          actionCol = '<button class="action-btn" style="background:#455a64; color:white; padding:3px 7px; font-size:11px;" onclick="showCustomerLedger(\'' + encodeURIComponent(item.customer) + '\')">খাতা</button> ' +
-                      '<button class="action-btn btn-info" style="padding:3px 7px; font-size:11px;" onclick="editOrder(\'' + singleKey + '\')">Edit</button> ' +
-                      '<button class="action-btn btn-danger" style="padding:3px 7px; font-size:11px;" onclick="deleteRecord(\'orders\',\'' + singleKey + '\')">Delete</button>';
+          actionCol = '<div style="display:flex; gap:6px; flex-wrap:nowrap;">' +
+                      '<button class="action-btn" style="background:#455a64; color:white; padding:4px 8px; font-size:11px; margin:0;" onclick="showCustomerLedger(\'' + encodeURIComponent(item.customer) + '\')">খাতা</button>' +
+                      '<button class="action-btn btn-info" style="padding:4px 8px; font-size:11px; margin:0;" onclick="editOrder(\'' + singleKey + '\')">Edit</button>' +
+                      '<button class="action-btn btn-danger" style="padding:4px 8px; font-size:11px; margin:0;" onclick="deleteRecord(\'orders\',\'' + singleKey + '\')">Delete</button>' +
+                      '</div>';
         } else {
-          actionCol = detailsBtn + '<button class="action-btn" style="background:#455a64; color:white; padding:4px 8px; font-size:11px; width:100%;" onclick="showCustomerLedger(\'' + encodeURIComponent(item.customer) + '\')">কাস্টমার খাতা দেখুন</button>';
+          actionCol = '<div style="display:flex; gap:6px; flex-wrap:nowrap;">' + 
+                      detailsBtn + 
+                      '<button class="action-btn" style="background:#455a64; color:white; padding:4px 8px; font-size:11px; margin:0; white-space:nowrap;" onclick="showCustomerLedger(\'' + encodeURIComponent(item.customer) + '\')">খাতা</button>' + 
+                      '</div>';
         }
 
         html += '<tr style="' + rowStyle + '">' +
@@ -1628,8 +1634,8 @@
               '<td style="padding:6px; border:1px solid #c8e6c9;">₹ ' + (Number(oItem.total) || 0) + '</td>' +
               '<td style="padding:6px; border:1px solid #c8e6c9;"><span class="badge badge-danger">' + (oItem.status || 'Pending') + '</span></td>' +
               '<td style="padding:6px; border:1px solid #c8e6c9; white-space:nowrap;">' +
-                '<button class="action-btn btn-info" style="padding:2px 5px; font-size:10px;" onclick="editOrder(\'' + itemObj.key + '\')">Edit</button> ' +
-                '<button class="action-btn btn-danger" style="padding:2px 5px; font-size:10px;" onclick="deleteRecord(\'orders\',\'' + itemObj.key + '\')">Delete</button>' +
+                '<button class="action-btn btn-info" style="padding:3px 7px; font-size:11px;" onclick="editOrder(\'' + itemObj.key + '\')">Edit</button> ' +
+                '<button class="action-btn btn-danger" style="padding:3px 7px; font-size:11px;" onclick="deleteRecord(\'orders\',\'' + itemObj.key + '\')">Delete</button>' +
               '</td>' +
             '</tr>';
           });
@@ -1657,8 +1663,6 @@
         linkEl.style.color = 'white';
       }
     }
-    // ==========================================
-
     var eRatKey = null;
     function editRation(k) {
       var d = farmStore.feedRations[k]; if (!d) return; eRatKey = k;
