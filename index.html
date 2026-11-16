@@ -562,7 +562,7 @@
         </div>
       </div>
 
-      <!-- ৯. Orders (Grouped Summary with "বিস্তারিত" column like Milk tab) -->
+      <!-- ৯. Orders (Fixed table rendering & flexible status check) -->
       <div id="tab-orders" class="tab-content" style="display: none;">
         <div class="card">
           <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
@@ -932,8 +932,8 @@
         
         Object.keys(existingOrders).forEach(function(k) {
           var o = existingOrders[k];
-          if (o && o.date === todayISO && o.customer) {
-            todayProcessedMap[o.customer.trim().toLowerCase()] = true;
+          if (o && o.date === todayISO && (o.customer || o.name)) {
+            todayProcessedMap[(o.customer || o.name).trim().toLowerCase()] = true;
           }
         });
 
@@ -941,8 +941,8 @@
           var existingSales = saleSnap.val() || {};
           Object.keys(existingSales).forEach(function(k) {
             var s = existingSales[k];
-            if (s && s.date === todayISO && s.name) {
-              todayProcessedMap[s.name.trim().toLowerCase()] = true;
+            if (s && s.date === todayISO && (s.name || s.customer)) {
+              todayProcessedMap[(s.name || s.customer).trim().toLowerCase()] = true;
             }
           });
 
@@ -1486,7 +1486,7 @@
       }
     }
 
-    // Orders Table Rendering with Grouped Summary & Details View
+    // Flexible and robust renderOrdersTable with Details Toggle
     function renderOrdersTable() {
       var body = getEl('ordersTableBody');
       if (!body) return;
@@ -1505,7 +1505,8 @@
         if (!custName) continue;
         
         var stat = String(d.status || 'Pending').trim();
-        if (stat.toLowerCase() === 'pending') {
+        // Relaxed condition to catch any pending/active orders regardless of extra text in status
+        if (stat.toLowerCase().includes('pending') || stat === 'Pending' || stat === '' || !d.status) {
           pendingCount++;
           var custArea = d.area || '';
           if (custArea) uniqueAreas[custArea] = true;
@@ -1526,7 +1527,7 @@
             };
           }
 
-          var totVal = Number(d.total) || 0;
+          var totVal = Number(d.total) || Number(d.amount) || 0;
           groupedMap[groupKey].totalAmount += totVal;
           if (d.phone && !groupedMap[groupKey].phone) groupedMap[groupKey].phone = d.phone;
           if (d.area && !groupedMap[groupKey].area) groupedMap[groupKey].area = d.area;
@@ -2107,7 +2108,7 @@
         route: getEl('vacRoute') ? getEl('vacRoute').value : 'Subcutaneous',
         batchNo: getEl('vacBatchNo') ? getEl('vacBatchNo').value : '',
         expiry: getEl('vacExpiry') ? getEl('vacExpiry').value : '',
-        withdrawalDays: parseInt(getEl('vacWithdrawalDays') ? getEl('vacWithdrawalDays'].value : 0) || 0
+        withdrawalDays: parseInt(getEl('vacWithdrawalDays') ? getEl('vacWithdrawalDays').value : 0) || 0
       };
 
       if (db) {
@@ -2660,11 +2661,11 @@
     }
 
     function renderFeedTable() {
-      var body = getEl('feedTableBody');
+      var body = getEl('rationTableBody');
       if (!body) return;
       var list = [];
-      for (var k in farmStore.feed) {
-        list.push({ key: k, data: farmStore.feed[k] });
+      for (var k in farmStore.feedRations) {
+        list.push({ key: k, data: farmStore.feedRations[k] });
       }
       list.sort(function(a, b) {
         return (b.data.date || '').localeCompare(a.data.date || '');
@@ -2672,23 +2673,24 @@
 
       if (list.length === 0) {
         body.innerHTML = '';
-        if (getEl('feedNoData')) getEl('feedNoData').style.display = 'block';
+        if (getEl('rationNoData')) getEl('rationNoData').style.display = 'block';
         return;
       }
-      if (getEl('feedNoData')) getEl('feedNoData').style.display = 'none';
+      if (getEl('rationNoData')) getEl('rationNoData').style.display = 'none';
 
       var html = '';
       list.forEach(function(item) {
         var k = item.key, d = item.data;
         html += '<tr>' +
           '<td>' + formatDateBR(d.date) + '</td>' +
-          '<td><strong>' + (d.type || '-') + '</strong></td>' +
-          '<td>' + (d.qty || '-') + '</td>' +
-          '<td style="color:var(--danger); font-weight:600;">₹ ' + (d.cost || 0) + '</td>' +
-          '<td>' + (d.note || '-') + '</td>' +
+          '<td><strong style="color:var(--primary);">Tag: ' + (d.cowTag || '-') + '</strong></td>' +
+          '<td>' + (d.pellet || 0) + ' kg</td>' +
+          '<td>₹ ' + (d.avgCostPerKg || 0) + '</td>' +
+          '<td>₹ ' + (d.suppCost || 0) + '</td>' +
+          '<td style="color:green; font-weight:bold;">₹ ' + (d.totalCost || 0) + '</td>' +
           '<td>' +
-            '<button class="action-btn btn-info" onclick="editFeed(\'' + k + \')">Edit</button>' +
-            '<button class="action-btn btn-danger" onclick="deleteRecord(\'feed\',\'' + k + \')">Delete</button>' +
+            '<button class="action-btn btn-info" onclick="editRation(\'' + k + '\')">Edit</button>' +
+            '<button class="action-btn btn-danger" onclick="deleteRecord(\'feedRations\',\'' + k + '\')">Delete</button>' +
           '</td>' +
         '</tr>';
       });
@@ -2912,7 +2914,7 @@
       });
 
       db.ref('health').on('value', function(snap) {
-        farmStore.health = {}; var body = getEl('healthTableBody'); if (body) body.innerHTML = **ok**; // handled
+        farmStore.health = {}; var body = getEl('healthTableBody'); if (body) body.innerHTML = '';
         snap.forEach(function(c) {
           var d = c.val(), k = c.key; farmStore.health[k] = d;
           if (body) body.innerHTML += '<tr><td>' + formatDateBR(d.date) + '</td><td><strong>' + (d.cowTag || '-') + '</strong></td><td>' + (d.type || '-') + '</td><td>' + (d.desc || '-') + '</td><td>' + formatDateBR(d.nextDate) + '</td><td><button class="action-btn btn-info" onclick="editHealth(\'' + k + '\')">Edit</button><button class="action-btn btn-danger" onclick="deleteRecord(\'health\',\'' + k + '\')">Delete</button></td></tr>';
