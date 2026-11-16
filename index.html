@@ -456,7 +456,7 @@
         </div>
       </div>
 
-      <!-- ৬. Milk -->
+      <!-- ৬. Milk (আপডেট করা সেকশন) -->
       <div id="tab-milk" class="tab-content" style="display: none;">
         <div class="card">
           <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
@@ -474,15 +474,43 @@
             <button class="btn btn-warning" id="milkCancelBtn" style="display:none;" onclick="cancelMilkEdit()">Cancel</button>
           </div>
         </div>
+        
+        <!-- নতুন আপডেট করা ডেটা টেবিল, ফিল্টার, ও এক্সপোর্ট কার্ড -->
         <div class="card">
-          <h2>দুধ উৎপাদন খাতা (দৈনিক সারসংক্ষেপ)</h2>
+          <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; margin-bottom:12px;">
+            <h2 style="margin:0; border:none; padding:0;">দুধ উৎপাদন খাতা (দৈনিক সারসংক্ষেপ)</h2>
+            <div style="display:flex; gap:8px; flex-wrap:wrap;">
+              <button class="action-btn" style="background:#1d6f42; color:white; padding:6px 10px; border-radius:6px;" onclick="exportMilk('csv')">📥 Excel (CSV)</button>
+              <button class="action-btn" style="background:#2b579a; color:white; padding:6px 10px; border-radius:6px;" onclick="exportMilk('doc')">📥 Word</button>
+              <button class="action-btn" style="background:#424242; color:white; padding:6px 10px; border-radius:6px;" onclick="exportMilk('txt')">📥 Text</button>
+            </div>
+          </div>
+
+          <!-- Filters (Year & Specific Date) -->
+          <div style="display:flex; flex-wrap:wrap; gap:15px; margin-bottom:15px; background:#f4fbf5; padding:12px; border-radius:8px; border:1px solid #c8e6c9; align-items:center;">
+            <div style="display:flex; align-items:center; gap:8px;">
+              <label style="font-size:12px; font-weight:bold; color:var(--primary);">বছর নির্বাচন:</label>
+              <select id="milkFilterYear" onchange="applyMilkFilter()" style="padding:6px 10px; border-radius:6px; border:1px solid #bbb; outline:none; font-weight:bold;"></select>
+            </div>
+            <div style="display:flex; align-items:center; gap:8px;">
+              <label style="font-size:12px; font-weight:bold; color:var(--primary);">নির্দিষ্ট তারিখ খুঁজুন:</label>
+              <input type="date" id="milkFilterDate" onchange="applyMilkFilter()" style="padding:6px; border-radius:6px; border:1px solid #bbb; outline:none;">
+              <button class="action-btn btn-warning" onclick="clearMilkDateFilter()" style="padding:6px 12px;">Clear/Reset</button>
+            </div>
+          </div>
+
+          <!-- 12-Month Tabs -->
+          <div id="milkMonthTabs" style="display:flex; gap:8px; overflow-x:auto; margin-bottom:15px; padding-bottom:5px; -webkit-overflow-scrolling: touch; white-space:nowrap;">
+            <!-- Tabs will be injected here via JavaScript -->
+          </div>
+
           <div class="table-container">
             <table>
               <thead><tr><th>তারিখ (Date)</th><th>মোট দুধ</th><th>গাভীর সংখ্যা</th><th>এন্ট্রি</th><th>বিস্তারিত</th></tr></thead>
               <tbody id="milkGroupTableBody"></tbody>
             </table>
           </div>
-          <p id="milkNoData" style="text-align: center; color: #777; font-size: 13px; margin-top: 15px; display: none;">কোনো রেকর্ড নেই।</p>
+          <p id="milkNoData" style="text-align: center; color: #777; font-size: 13px; margin-top: 15px; display: none;">এই মাস বা তারিখে কোনো রেকর্ড নেই।</p>
         </div>
       </div>
 
@@ -531,7 +559,7 @@
               <tbody id="salesTableBody"></tbody>
             </table>
           </div>
-          <p id="salesNoData" style="text-align: center; color: #777; font-size: 13px; margin-top: 15px; display: none;">কোনো বিক্রয় রেকর্ড নেই।</p>
+          <p id="salesNoData" style="text-align: center; color: #777; font-size: 13px; margin-top: 15px; display: none;">কোনো বিক্রয় রেকর্ড নেই。</p>
         </div>
       </div>
 
@@ -901,11 +929,10 @@
       }, 1000);
     };
 
-    // কাস্টমারের নাম লিখলে অটো লাইভ বকেয়া দেখানোর নতুন লজিক
     function onSaleCustomerInput() {
       var val = (getEl('saleCustomer').value || '').trim().toLowerCase();
       var lbl = document.getElementById('lblSaleCustomer');
-      if(lbl) lbl.innerHTML = 'Customer Name *'; // রিফ্রেশ লেবেল
+      if(lbl) lbl.innerHTML = 'Customer Name *';
 
       if (!val) return;
       var cBalMap = getCustomerLiveBalances();
@@ -921,15 +948,14 @@
           
           if(lbl && cBalMap[val]) {
             var currentDue = cBalMap[val].currentDue;
-            lbl.innerHTML = 'Customer Name * <span style="color:red; font-size:11.5px; margin-left:8px;">(বর্তমান মোট বকেয়া: ₹ ' + currentDue + ')</span>';
+            lbl.innerHTML = 'Customer Name * <span style="color:red; font-size:11.5px; margin-left:8px;">(বর্তমান মোট বকেয়া: ₹ ' + currentDue + ')</span>';
           }
           break;
         }
       }
       
-      // কাস্টমার ডিরেক্টরিতে নাম না থাকলেও লেজারে বকেয়া থাকলে দেখাবে
       if(!matched && cBalMap[val] && lbl) {
-         lbl.innerHTML = 'Customer Name * <span style="color:red; font-size:11.5px; margin-left:8px;">(বর্তমান মোট বকেয়া: ₹ ' + cBalMap[val].currentDue + ')</span>';
+         lbl.innerHTML = 'Customer Name * <span style="color:red; font-size:11.5px; margin-left:8px;">(বর্তমান মোট বকেয়া: ₹ ' + cBalMap[val].currentDue + ')</span>';
       }
     }
 
@@ -1265,9 +1291,174 @@
       }
     };
 
+    // ==========================================
+    // MILK SECTION ADVANCED LOGIC (Filtering, Tabs, Export)
+    // ==========================================
+    window.currentMilkYear = "";
+    window.currentMilkMonth = "";
+    window.specificMilkDate = "";
+
+    window.initMilkFilters = function() {
+      if (!window.currentMilkYear) {
+        var d = new Date();
+        window.currentMilkYear = d.getFullYear().toString();
+        window.currentMilkMonth = ('0' + (d.getMonth() + 1)).slice(-2);
+      }
+      var yearSelect = getEl('milkFilterYear');
+      if (yearSelect && yearSelect.options.length === 0) {
+        var curY = new Date().getFullYear();
+        for (var i = 0; i < 5; i++) {
+          var y = (curY - i).toString();
+          yearSelect.options.add(new Option(y, y));
+        }
+        yearSelect.value = window.currentMilkYear;
+      }
+      renderMilkMonthTabs();
+    };
+
+    window.renderMilkMonthTabs = function() {
+      var tabsContainer = getEl('milkMonthTabs');
+      if (!tabsContainer) return;
+      var months = [
+        { val: '01', name: 'Jan' }, { val: '02', name: 'Feb' }, { val: '03', name: 'Mar' },
+        { val: '04', name: 'Apr' }, { val: '05', name: 'May' }, { val: '06', name: 'Jun' },
+        { val: '07', name: 'Jul' }, { val: '08', name: 'Aug' }, { val: '09', name: 'Sep' },
+        { val: '10', name: 'Oct' }, { val: '11', name: 'Nov' }, { val: '12', name: 'Dec' }
+      ];
+      var html = '';
+      months.forEach(function(m) {
+        var isActive = (m.val === window.currentMilkMonth) && !window.specificMilkDate;
+        var bg = isActive ? 'var(--primary)' : '#e0e0e0';
+        var color = isActive ? 'white' : '#333';
+        html += '<button onclick="setMilkMonth(\'' + m.val + '\')" style="padding:6px 14px; border:none; border-radius:20px; font-size:12px; font-weight:bold; cursor:pointer; background:' + bg + '; color:' + color + '; min-width:60px; transition:0.2s;">' + m.name + '</button>';
+      });
+      tabsContainer.innerHTML = html;
+    };
+
+    window.setMilkMonth = function(mVal) {
+      window.currentMilkMonth = mVal;
+      window.specificMilkDate = "";
+      if (getEl('milkFilterDate')) getEl('milkFilterDate').value = "";
+      renderMilkMonthTabs();
+      renderGroupedMilkTable();
+    };
+
+    window.applyMilkFilter = function() {
+      if (getEl('milkFilterYear')) window.currentMilkYear = getEl('milkFilterYear').value;
+      var d = getEl('milkFilterDate') ? getEl('milkFilterDate').value : "";
+      if (d) {
+        window.specificMilkDate = d;
+        var dateObj = new Date(d);
+        window.currentMilkYear = dateObj.getFullYear().toString();
+        window.currentMilkMonth = ('0' + (dateObj.getMonth() + 1)).slice(-2);
+        if (getEl('milkFilterYear')) getEl('milkFilterYear').value = window.currentMilkYear;
+      } else {
+        window.specificMilkDate = "";
+      }
+      renderMilkMonthTabs();
+      renderGroupedMilkTable();
+    };
+
+    window.clearMilkDateFilter = function() {
+      if (getEl('milkFilterDate')) getEl('milkFilterDate').value = "";
+      window.specificMilkDate = "";
+      renderMilkMonthTabs();
+      renderGroupedMilkTable();
+    };
+
+    window.exportMilk = function(format) {
+      var targetYear = window.currentMilkYear;
+      var targetMonth = window.currentMilkMonth;
+      var targetDate = window.specificMilkDate;
+
+      var exportData = [];
+      exportData.push(["Date", "Cow Tag", "Session", "Quantity (Liters)"]);
+
+      var list = [];
+      for (var k in farmStore.milk) {
+        var m = farmStore.milk[k];
+        if (!m.date) continue;
+        var match = false;
+        if (targetDate) {
+          if (m.date === targetDate) match = true;
+        } else {
+          if (m.date.substring(0, 4) === targetYear && m.date.substring(5, 7) === targetMonth) {
+            match = true;
+          }
+        }
+        if (match) list.push(m);
+      }
+
+      list.sort(function(a, b) { return parseDateToTime(b.date) - parseDateToTime(a.date); });
+
+      if (list.length === 0) {
+        alert('বর্তমান ভিউতে এক্সপোর্ট করার মতো কোনো ডেটা নেই!');
+        return;
+      }
+
+      list.forEach(function(m) {
+        exportData.push([formatDateBR(m.date), m.cow, m.session, m.liters]);
+      });
+
+      var fileName = "Milk_Record_" + (targetDate ? targetDate : (targetYear + "_" + targetMonth));
+
+      if (format === 'csv') {
+        var csvContent = "data:text/csv;charset=utf-8,\uFEFF"; // \uFEFF for Excel to read UTF-8 properly
+        exportData.forEach(function(rowArray) {
+          csvContent += rowArray.join(",") + "\r\n";
+        });
+        var encodedUri = encodeURI(csvContent);
+        var link = document.createElement("a");
+        link.setAttribute("href", encodedUri);
+        link.setAttribute("download", fileName + ".csv");
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+      } else if (format === 'txt') {
+        var txtContent = "data:text/plain;charset=utf-8,\uFEFF";
+        exportData.forEach(function(rowArray) {
+          txtContent += rowArray.join(" \t ") + "\r\n";
+        });
+        var encodedUri = encodeURI(txtContent);
+        var link = document.createElement("a");
+        link.setAttribute("href", encodedUri);
+        link.setAttribute("download", fileName + ".txt");
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+      } else if (format === 'doc') {
+        var docHtml = "<html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'><head><meta charset='utf-8'><title>Milk Record</title></head><body><h2 style='color:#1b5e20;'>NANDA DAIRY & AGRO - Milk Production Record</h2><p><strong>Period/Date:</strong> " + (targetDate ? targetDate : (targetMonth + "/" + targetYear)) + "</p><table border='1' style='border-collapse:collapse; width:100%; text-align:left; font-family:sans-serif;'>";
+        exportData.forEach(function(rowArray, idx) {
+          docHtml += "<tr>";
+          rowArray.forEach(function(cell) {
+            if (idx === 0) docHtml += "<th style='padding:8px; background:#e8f5e9;'>" + cell + "</th>";
+            else docHtml += "<td style='padding:8px;'>" + cell + "</td>";
+          });
+          docHtml += "</tr>";
+        });
+        docHtml += "</table></body></html>";
+        var blob = new Blob(['\ufeff', docHtml], { type: 'application/msword' });
+        var url = URL.createObjectURL(blob);
+        var link = document.createElement("a");
+        link.href = url;
+        link.download = fileName + ".doc";
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+      }
+    };
+
+    // ==========================================
+    // UPDATED MILK RENDER FUNCTION (1-Month / Filter View)
+    // ==========================================
     function renderGroupedMilkTable() {
       var body = getEl('milkGroupTableBody');
       if (!body) return;
+
+      // Initialize UI Tabs if empty
+      if (!window.currentMilkYear) {
+        initMilkFilters();
+      }
 
       var dateGroups = {};
       var totalMilkAll = 0;
@@ -1275,23 +1466,50 @@
       var todayBR = formatDateBR(todayISO);
       var todayTotal = 0;
 
+      // Target filter states
+      var targetYear = window.currentMilkYear;
+      var targetMonth = window.currentMilkMonth;
+      var targetDate = window.specificMilkDate;
+
       for (var k in farmStore.milk) {
         var m = farmStore.milk[k];
-        var dt = formatDateBR(m.date) || 'Unknown';
-        var lit = Number(m.liters) || 0;
-        totalMilkAll += lit;
-        if (m.date === todayISO || dt === todayBR) todayTotal += lit;
+        var dtISO = m.date; 
+        if (!dtISO) continue;
 
-        if (!dateGroups[dt]) dateGroups[dt] = { date: dt, total: 0, cows: {}, items: [] };
-        dateGroups[dt].total += lit;
-        if (m.cow) dateGroups[dt].cows[m.cow.trim().toUpperCase()] = true;
-        dateGroups[dt].items.push({ key: k, data: m });
+        var dt = formatDateBR(dtISO) || 'Unknown';
+        var lit = Number(m.liters) || 0;
+        
+        // Overall Dashboard Stats always calculate for all records
+        totalMilkAll += lit;
+        if (dtISO === todayISO || dt === todayBR) todayTotal += lit;
+
+        // View Filtering Logic 
+        var match = false;
+        if (targetDate) {
+          if (dtISO === targetDate) match = true;
+        } else {
+          var mYear = dtISO.substring(0, 4);
+          var mMonth = dtISO.substring(5, 7);
+          if (mYear === targetYear && mMonth === targetMonth) {
+            match = true;
+          }
+        }
+
+        if (match) {
+          if (!dateGroups[dt]) dateGroups[dt] = { date: dt, dateISO: dtISO, total: 0, cows: {}, items: [] };
+          dateGroups[dt].total += lit;
+          if (m.cow) dateGroups[dt].cows[m.cow.trim().toUpperCase()] = true;
+          dateGroups[dt].items.push({ key: k, data: m });
+        }
       }
 
       if (getEl('dash-milk-today')) getEl('dash-milk-today').innerText = todayTotal.toFixed(1) + ' L';
       if (getEl('rep-milk')) getEl('rep-milk').innerText = totalMilkAll.toFixed(1);
 
-      var sortedDates = Object.keys(dateGroups).sort(function(a, b) { return parseDateToTime(b) - parseDateToTime(a); });
+      // Strict Descending Order (নতুন তারিখগুলো ওপরে)
+      var sortedDates = Object.keys(dateGroups).sort(function(a, b) { 
+        return parseDateToTime(dateGroups[b].dateISO) - parseDateToTime(dateGroups[a].dateISO); 
+      });
 
       if (sortedDates.length === 0) {
         body.innerHTML = '';
@@ -1329,6 +1547,7 @@
       });
       body.innerHTML = html;
     }
+
 
     // ==========================================
     // UPDATED SALES TABLE RENDER LOGIC (Customer Grouping & Compact Action)
@@ -1861,7 +2080,6 @@
       document.body.removeAttribute('data-print');
     };
 
-    // ফিক্স করা পেমেন্ট সেভ লজিক
     window.saveCustomerPayment = function() {
       var amt = parseFloat(getEl('ledgerPayAmount').value) || 0;
       if (amt <= 0) return alert('জমার পরিমাণ দিন!');
@@ -1876,7 +2094,6 @@
         if (s && (s.name || '').trim().toLowerCase() === custName.toLowerCase()) {
           var sTot = Number(s.total) || 0;
           var sPd = Number(s.paid) || 0;
-          // বকেয়া ঠিকঠাক বের করার সেফ লজিক
           var actualDue = sTot - sPd; 
           if (actualDue > 0) {
             unpaidSales.push({ key: k, data: s, actualDue: actualDue });
