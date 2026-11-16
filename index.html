@@ -415,7 +415,7 @@
         </div>
       </div>
 
-      <!-- ৫. Deworming (Updated with Advanced Deworming Register Module) -->
+      <!-- ৫. Deworming -->
       <div id="tab-deworm" class="tab-content" style="display: none;">
         <div class="card">
           <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
@@ -428,7 +428,7 @@
             <div class="input-group"><label>Body Weight (kg)</label><input type="number" id="dewormWeight" oninput="autoCalcDewormDose()" placeholder="450"></div>
             <div class="input-group"><label>Medicine Name *</label><input type="text" id="dewormMedName" list="dewormMedList" placeholder="ওষুধের নাম"></div>
             <div class="input-group"><label>Form Type</label><select id="dewormFormType" onchange="autoCalcDewormDose()"><option value="Syrup">Syrup (লিকুইড)</option><option value="Bolus / Tablet">Bolus / Tablet (ব্যাটিকা)</option><option value="Pour-On / Injection">Pour-On / Injection</option></select></div>
-            <div class="input-group"><label>Calculated / Actual Dose</label><input type="text" id="dewormCalculatedDose" placeholder="যেমন: 225 mL বা 2 Bolus"></div>
+            <div class="input-group"><label>Calculated / Actual Dose</label><input type="text" id="dewormCalculatedDose" placeholder="যেমন: 150 mL বা 2 Bolus"></div>
             <div class="input-group"><label>Next Due Date (Booster/Gap 90 Days)</label><input type="date" id="dewormNextDate"></div>
             <div class="input-group"><label>Cost ₹</label><input type="number" id="dewormCost" placeholder="₹"></div>
             <div class="input-group"><label>Note / Remarks</label><input type="text" id="dewormNote" placeholder="নোট লিখুন"></div>
@@ -529,7 +529,7 @@
         </div>
       </div>
 
-      <!-- ৮. Customer -->
+      <!-- ۸. Customer -->
       <div id="tab-customers" class="tab-content" style="display: none;">
         <div class="card">
           <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
@@ -2023,7 +2023,7 @@
       body.innerHTML = html;
     }
 
-    // Advanced Deworming Register Module Functions
+    // Advanced Deworming Register Module Functions (Updated: 1 mL per 3 kg body weight)
     var eDewormKey = null;
 
     function onDewormTagChange() {
@@ -2062,13 +2062,13 @@
       var calcResult = '';
       if (wt > 0) {
         if (formType === 'Syrup') {
-          var ml = (wt / 10) * 5;
+          var ml = wt / 3; // প্রতি ৩ কেজি ওজনের জন্য ১ মিলি (1 mL for every 3 kg body weight)
           calcResult = ml.toFixed(1) + ' mL (মিলি)';
         } else if (formType === 'Bolus / Tablet') {
           var tabs = Math.ceil(wt / 300);
           calcResult = tabs + ' Bolus / Tablet (টি)';
         } else {
-          calcResult = (wt * 0.1).toFixed(1) + ' mL / Gram';
+          calcResult = (wt / 3).toFixed(1) + ' mL / Gram';
         }
       } else {
         calcResult = '';
