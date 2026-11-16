@@ -123,9 +123,25 @@
       location.reload();
     };
 
+    window.autoCalcExpectedCalving = function() {
+      var aiDateVal = getEl('brAiDate').value;
+      if (!aiDateVal) return;
+      var d = new Date(aiDateVal);
+      if (isNaN(d.getTime())) return;
+      d.setDate(d.getDate() + 283);
+      var year = d.getFullYear();
+      var month = ('0' + (d.getMonth() + 1)).slice(-2);
+      var day = ('0' + d.getDate()).slice(-2);
+      var expDateStr = year + '-' + month + '-' + day;
+      var expCalvingEl = getEl('brExpCalvingDate');
+      if (expCalvingEl) {
+        expCalvingEl.value = expDateStr;
+      }
+    };
+
     window.onload = function() {
       var todayISO = new Date().toISOString().split('T')[0];
-      var defaultDateIds = ['milkDate', 'saleDate', 'orderDate', 'expDate', 'brAiDate', 'hlthDate', 'ledgerPayDate', 'feedDate', 'rationDate', 'heatDate', 'insAiDate', 'vacDate', 'dewDate'];
+      var defaultDateIds = ['milkDate', 'saleDate', 'orderDate', 'expDate', 'brAiDate', 'hlthDate', 'ledgerPayDate', 'feedDate', 'rationDate', 'vacDate', 'dewormDate'];
       defaultDateIds.forEach(function(id) {
         if (getEl(id)) {
           getEl(id).value = todayISO;
@@ -228,7 +244,7 @@
   <div id="loginScreen">
     <div class="login-box">
       <img src="logo.png" alt="Logo" onerror="this.onerror=null; this.src='https://cdn-icons-png.flaticon.com/512/2395/2395796.png';">
-      <h2>Nanda Dairy Agro</h2>
+      <h2>NANDA Dairy & Agro</h2>
       <p style="font-size: 13px; color: #666; margin-bottom: 20px;">ফার্ম ম্যানেজমেন্ট সিস্টেমে স্বাগতম</p>
       <div style="text-align: left; margin-bottom: 14px;"><label style="font-size: 12px; font-weight:600;">User ID</label><input type="text" id="loginId" placeholder="ইউজার আইডি"></div>
       <div style="text-align: left; margin-bottom: 20px;"><label style="font-size: 12px; font-weight:600;">Password</label><input type="password" id="loginPass" placeholder="পাসওয়ার্ড"></div>
@@ -253,9 +269,7 @@
     <nav>
       <button class="active" onclick="switchTab('dashboard', this)">📊 Dashboard</button>
       <button onclick="switchTab('cattle', this)">🐄 Cattle</button>
-      <button onclick="switchTab('heat', this)">🔥 Heat Register</button>
       <button onclick="switchTab('breeding', this)">🧬 Breeding</button>
-      <button onclick="switchTab('insemination', this)">🧬 Insemination</button>
       <button onclick="switchTab('vaccine', this)">💉 Vaccination</button>
       <button onclick="switchTab('deworm', this)">💊 Deworming</button>
       <button onclick="switchTab('milk', this)">🥛 Milk</button>
@@ -332,6 +346,7 @@
           <div class="form-grid">
             <div class="input-group"><label>Cattle ID *</label><input type="text" id="brCowTag" list="cattleTagList" placeholder="Tag সিলেক্ট বা টাইপ করুন"></div>
             <div class="input-group"><label>AI Date *</label><input type="date" id="brAiDate" onchange="autoCalcExpectedCalving()"></div>
+            <div class="input-group"><label>Heat Signs</label><select id="brHeatSigns"><option value="-">-</option><option value="Standing Heat">Standing Heat</option><option value="Mucus Discharge">Mucus Discharge</option><option value="Restlessness">Restlessness</option><option value="Riding others">Riding others</option></select></div>
             <div class="input-group"><label>Semen/Bull</label><input type="text" id="brSemenId" placeholder="ষাঁড় বা সিমেন আইডি"></div>
             <div class="input-group"><label>Company</label><input type="text" id="brCompany" placeholder="কোম্পানির নাম"></div>
             <div class="input-group"><label>AI Cost ₹</label><input type="number" id="brAiCost" placeholder="₹"></div>
@@ -339,6 +354,7 @@
             <div class="input-group"><label>Result</label><select id="brStatus"><option value="Pending">Pending</option><option value="Pregnant">Pregnant</option><option value="Failed">Failed</option><option value="Calved">Calved</option></select></div>
             <div class="input-group"><label>Exp. Calving</label><input type="date" id="brExpCalvingDate"></div>
             <div class="input-group"><label>Actual Calving</label><input type="date" id="brActCalvingDate"></div>
+            <div class="input-group"><label>Note / Remarks</label><input type="text" id="brNote" placeholder="নোট লিখুন"></div>
           </div>
           <div style="display:flex; gap:10px;">
             <button class="btn" id="brSubmitBtn" onclick="saveBreeding()">Save Breeding Record</button>
@@ -349,7 +365,7 @@
           <h2>প্রজনন রেকর্ড তালিকা</h2>
           <div class="table-container">
             <table>
-              <thead><tr><th>Cattle ID</th><th>AI Date</th><th>Semen/Bull</th><th>Company</th><th>AI Cost</th><th>Pregnancy Test</th><th>Result</th><th>Exp. Calving</th><th>Actual Calving</th><th>Action</th></tr></thead>
+              <thead><tr><th>Cattle ID</th><th>AI Date</th><th>Heat Signs</th><th>Semen/Bull</th><th>Company</th><th>AI Cost</th><th>Pregnancy Test</th><th>Result</th><th>Exp. Calving</th><th>Actual Calving</th><th>Note</th><th>Action</th></tr></thead>
               <tbody id="breedingTableBody"></tbody>
             </table>
           </div>
@@ -357,131 +373,90 @@
         </div>
       </div>
 
-      <!-- ৪. Heat Register -->
-      <div id="tab-heat" class="tab-content" style="display: none;">
-        <div class="card">
-          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
-            <h2 style="margin:0; border:none; padding:0;">🔥 Cattle Heat Register</h2>
-            <button class="action-btn btn-info" onclick="switchTab('dashboard', document.querySelector('nav button'))">⬅ Back</button>
-          </div>
-          <div class="form-grid">
-            <div class="input-group"><label>Cattle Tag ID *</label><input type="text" id="heatCowTag" list="cattleTagList" placeholder="NDA-001"></div>
-            <div class="input-group"><label>Heat Date *</label><input type="date" id="heatDate"></div>
-            <div class="input-group"><label>Heat Signs</label><select id="heatSigns"><option value="Standing Heat">Standing Heat</option><option value="Mucus Discharge">Mucus Discharge</option><option value="Restlessness">Restlessness</option><option value="Riding others">Riding others</option></select></div>
-            <div class="input-group"><label>Expected AI Date</label><input type="date" id="heatExpAiDate"></div>
-            <div class="input-group"><label>Note / Remarks</label><input type="text" id="heatNote" placeholder="নোট লিখুন"></div>
-          </div>
-          <div style="display:flex; gap:10px;">
-            <button class="btn" id="heatSubmitBtn" onclick="saveHeatRecord()">Save Heat Record</button>
-            <button class="btn btn-warning" id="heatCancelBtn" style="display:none;" onclick="cancelHeatEdit()">Cancel</button>
-          </div>
-        </div>
-        <div class="card">
-          <h2>হিটের খাতা তালিকা</h2>
-          <div class="table-container">
-            <table>
-              <thead><tr><th>Tag ID</th><th>Heat Date</th><th>Signs</th><th>Exp. AI Date</th><th>Note</th><th>Action</th></tr></thead>
-              <tbody id="heatTableBody"></tbody>
-            </table>
-          </div>
-        </div>
-      </div>
-
-      <!-- ৫. Insemination -->
-      <div id="tab-insemination" class="tab-content" style="display: none;">
-        <div class="card">
-          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
-            <h2 style="margin:0; border:none; padding:0;">🧬 Artificial Insemination (AI) Register</h2>
-            <button class="action-btn btn-info" onclick="switchTab('dashboard', document.querySelector('nav button'))">⬅ Back</button>
-          </div>
-          <div class="form-grid">
-            <div class="input-group"><label>Cattle ID *</label><input type="text" id="insCowTag" list="cattleTagList" placeholder="Tag সিলেক্ট বা টাইপ করুন"></div>
-            <div class="input-group"><label>AI Date *</label><input type="date" id="insAiDate"></div>
-            <div class="input-group"><label>Semen/Bull ID</label><input type="text" id="insSemenId" placeholder="সিমেন বা ষাঁড়ের আইডি"></div>
-            <div class="input-group"><label>Company / Source</label><input type="text" id="insCompany" placeholder="কোম্পানি"></div>
-            <div class="input-group"><label>AI Cost ₹</label><input type="number" id="insAiCost" placeholder="₹"></div>
-            <div class="input-group"><label>Pregnancy Test (PD)</label><input type="date" id="insPdDate"></div>
-            <div class="input-group"><label>Result Status</label><select id="insStatus"><option value="Pending">Pending</option><option value="Pregnant">Pregnant</option><option value="Failed">Failed</option><option value="Calved">Calved</option></select></div>
-            <div class="input-group"><label>Exp. Calving Date</label><input type="date" id="insExpCalvingDate"></div>
-            <div class="input-group"><label>Actual Calving Date</label><input type="date" id="insActCalvingDate"></div>
-          </div>
-          <div style="display:flex; gap:10px;">
-            <button class="btn" id="insSubmitBtn" onclick="saveInseminationRecord()">Save Insemination Record</button>
-            <button class="btn btn-warning" id="insCancelBtn" style="display:none;" onclick="cancelInseminationEdit()">Cancel</button>
-          </div>
-        </div>
-        <div class="card">
-          <h2>ইনসেমিনেশন রেকর্ড তালিকা</h2>
-          <div class="table-container">
-            <table>
-              <thead><tr><th>Cattle ID</th><th>AI Date</th><th>Semen/Bull</th><th>Company</th><th>Cost</th><th>PD Date</th><th>Status</th><th>Exp. Calving</th><th>Actual Calving</th><th>Action</th></tr></thead>
-              <tbody id="inseminationTableBody"></tbody>
-            </table>
-          </div>
-        </div>
-      </div>
-
-      <!-- ৬. Vaccination -->
+      <!-- ৪. Vaccination -->
       <div id="tab-vaccine" class="tab-content" style="display: none;">
         <div class="card">
           <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
-            <h2 style="margin:0; border:none; padding:0;">💉 Vaccination Register</h2>
+            <h2 style="margin:0; border:none; padding:0;">💉 Advanced Vaccination Register</h2>
             <button class="action-btn btn-info" onclick="switchTab('dashboard', document.querySelector('nav button'))">⬅ Back</button>
           </div>
           <div class="form-grid">
-            <div class="input-group"><label>Cattle Tag ID *</label><input type="text" id="vacCowTag" list="cattleTagList" placeholder="NDA-001"></div>
-            <div class="input-group"><label>Vaccine Name *</label><input type="text" id="vacName" placeholder="FMD / BQ / HS"></div>
-            <div class="input-group"><label>Vaccination Date *</label><input type="date" id="vacDate"></div>
-            <div class="input-group"><label>Next Due Date</label><input type="date" id="vacNextDate"></div>
+            <div class="input-group"><label>Cattle Tag ID *</label><input type="text" id="vacCowTag" list="cattleTagList" oninput="onVaccineTagChange()" onchange="onVaccineTagChange()" placeholder="NDA-001"></div>
+            <div class="input-group"><label>Vaccine Name *</label><input type="text" id="vacName" list="vaccineNameList" oninput="onVaccineTypeSelect()" onchange="onVaccineTypeSelect()" placeholder="FMD / BQ / HS"></div>
+            <div class="input-group"><label>Vaccination Date *</label><input type="date" id="vacDate" onchange="onVaccineTypeSelect()"></div>
+            <div class="input-group"><label>Next Due Date (Booster)</label><input type="date" id="vacNextDate"></div>
             <div class="input-group"><label>Cost ₹</label><input type="number" id="vacCost" placeholder="₹"></div>
+            <div class="input-group"><label>Dose (mL)</label><input type="number" step="0.1" id="vacDose" placeholder="5.0"></div>
+            <div class="input-group"><label>Route</label><select id="vacRoute"><option value="Subcutaneous (S/C)">Subcutaneous (S/C)</option><option value="Intramuscular (I/M)">Intramuscular (I/M)</option><option value="Intranasal">Intranasal</option></select></div>
+            <div class="input-group"><label>Batch No</label><input type="text" id="vacBatchNo" placeholder="BATCH-001"></div>
+            <div class="input-group"><label>Expiry Date</label><input type="date" id="vacExpiry"></div>
+            <div class="input-group"><label>Milk Withdrawal (Days)</label><input type="number" id="vacWithdrawalDays" placeholder="0"></div>
           </div>
-          <div style="display:flex; gap:10px;">
+          <datalist id="vaccineNameList">
+            <option value="FMD (Foot and Mouth Disease)">
+            <option value="BQ (Black Quarter)">
+            <option value="HS (Haemorrhagic Septicaemia)">
+            <option value="Theileriosis">
+            <option value="Brucellosis">
+          </datalist>
+          <div style="display:flex; gap:10px; margin-top:10px;">
             <button class="btn" id="vacSubmitBtn" onclick="saveVaccineRecord()">Save Vaccine Record</button>
             <button class="btn btn-warning" id="vacCancelBtn" style="display:none;" onclick="cancelVaccineEdit()">Cancel</button>
           </div>
         </div>
         <div class="card">
-          <h2>টিকা প্রদানের তালিকা</h2>
+          <h2>টিকা প্রদানের তালিকা (Digital Passbook)</h2>
           <div class="table-container">
             <table>
-              <thead><tr><th>Tag ID</th><th>Vaccine Name</th><th>Date Given</th><th>Next Due Date</th><th>Cost</th><th>Action</th></tr></thead>
+              <thead><tr><th>Tag ID</th><th>Vaccine Name & Batch</th><th>Dose & Route</th><th>Date Given</th><th>Next Due Date</th><th>Cost</th><th>Passbook</th><th>Action</th></tr></thead>
               <tbody id="vaccineTableBody"></tbody>
             </table>
           </div>
         </div>
       </div>
 
-      <!-- ৭. Deworming -->
+      <!-- ৫. Deworming -->
       <div id="tab-deworm" class="tab-content" style="display: none;">
         <div class="card">
           <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
-            <h2 style="margin:0; border:none; padding:0;">💊 Deworming Register</h2>
+            <h2 style="margin:0; border:none; padding:0;">💊 Advanced Deworming Register</h2>
             <button class="action-btn btn-info" onclick="switchTab('dashboard', document.querySelector('nav button'))">⬅ Back</button>
           </div>
           <div class="form-grid">
-            <div class="input-group"><label>Cattle Tag ID *</label><input type="text" id="dewCowTag" list="cattleTagList" placeholder="NDA-001"></div>
-            <div class="input-group"><label>Medicine Name *</label><input type="text" id="dewMedName" placeholder="ঔষধের নাম"></div>
-            <div class="input-group"><label>Given Date *</label><input type="date" id="dewDate"></div>
-            <div class="input-group"><label>Next Due Date</label><input type="date" id="dewNextDate"></div>
-            <div class="input-group"><label>Dosage / Weight</label><input type="text" id="dewDosage" placeholder="মাত্রা"></div>
+            <div class="input-group"><label>Cattle Tag ID *</label><input type="text" id="dewormCowTag" list="cattleTagList" oninput="onDewormTagChange()" onchange="onDewormTagChange()" placeholder="NDA-001"></div>
+            <div class="input-group"><label>Given Date *</label><input type="date" id="dewormDate" onchange="autoCalcNextDewormDate()"></div>
+            <div class="input-group"><label>Body Weight (kg)</label><input type="number" id="dewormWeight" oninput="autoCalcDewormDose()" placeholder="450"></div>
+            <div class="input-group"><label>Medicine Name *</label><input type="text" id="dewormMedName" list="dewormMedList" placeholder="ওষুধের নাম"></div>
+            <div class="input-group"><label>Form Type</label><select id="dewormFormType" onchange="autoCalcDewormDose()"><option value="Syrup">Syrup (লিকুইড)</option><option value="Bolus / Tablet">Bolus / Tablet (ব্যাটিকা)</option><option value="Pour-On / Injection">Pour-On / Injection</option></select></div>
+            <div class="input-group"><label>Calculated / Actual Dose</label><input type="text" id="dewormCalculatedDose" placeholder="যেমন: 150 mL বা 2 Bolus"></div>
+            <div class="input-group"><label>Next Due Date (Booster/Gap 90 Days)</label><input type="date" id="dewormNextDate"></div>
+            <div class="input-group"><label>Cost ₹</label><input type="number" id="dewormCost" placeholder="₹"></div>
+            <div class="input-group"><label>Note / Remarks</label><input type="text" id="dewormNote" placeholder="নোট লিখুন"></div>
           </div>
-          <div style="display:flex; gap:10px;">
-            <button class="btn" id="dewSubmitBtn" onclick="saveDewormRecord()">Save Deworming Record</button>
-            <button class="btn btn-warning" id="dewCancelBtn" style="display:none;" onclick="cancelDewormEdit()">Cancel</button>
+          <datalist id="dewormMedList">
+            <option value="Albendazole">
+            <option value="Ivermectin">
+            <option value="Fenbendazole">
+            <option value="Oxfendazole">
+            <option value="Levamisole">
+          </datalist>
+          <div style="display:flex; gap:10px; margin-top:10px;">
+            <button class="btn" id="dewormSubmitBtn" onclick="saveDewormingRecord()">Save Deworming Record</button>
+            <button class="btn btn-warning" id="dewormCancelBtn" style="display:none;" onclick="cancelDewormEdit()">Cancel</button>
           </div>
         </div>
         <div class="card">
-          <h2>কৃমির ওষুধ দেওয়ার তালিকা</h2>
+          <h2>কৃমির ওষুধ দেওয়ার তালিকা</h2>
           <div class="table-container">
             <table>
-              <thead><tr><th>Tag ID</th><th>Medicine Name</th><th>Given Date</th><th>Next Due Date</th><th>Dosage</th><th>Action</th></tr></thead>
+              <thead><tr><th>Tag ID</th><th>Date & Weight</th><th>Medicine & Dose</th><th>Next Due Date</th><th>Cost</th><th>Note</th><th>Action</th></tr></thead>
               <tbody id="dewormTableBody"></tbody>
             </table>
           </div>
         </div>
       </div>
 
-      <!-- ৮. Milk -->
+      <!-- ৬. Milk -->
       <div id="tab-milk" class="tab-content" style="display: none;">
         <div class="card">
           <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
@@ -511,7 +486,7 @@
         </div>
       </div>
 
-      <!-- ৯. Sales -->
+      <!-- ৭. Sales -->
       <div id="tab-sales" class="tab-content" style="display: none;">
         <div class="card">
           <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
@@ -520,16 +495,22 @@
           </div>
           <div class="form-grid">
             <div class="input-group"><label>Date *</label><input type="date" id="saleDate"></div>
-            <div class="input-group"><label>Customer Name *</label><input type="text" id="saleCustomer" list="customerNameList" oninput="onSaleCustomerInput()" placeholder="নাম লিখুন"></div>
+            <div class="input-group">
+                <!-- Customer Name-এর সাথে বকেয়া দেখানোর ব্যবস্থা -->
+                <label id="lblSaleCustomer">Customer Name *</label>
+                <input type="text" id="saleCustomer" list="customerNameList" oninput="onSaleCustomerInput()" placeholder="নাম লিখুন">
+            </div>
             <div class="input-group"><label>Phone</label><input type="text" id="salePhone" placeholder="মোবাইল"></div>
             <div class="input-group"><label>Area / Route</label><input type="text" id="saleArea" list="customerAreaList" placeholder="এলাকা"></div>
             <div class="input-group"><label>Address</label><input type="text" id="saleAddr" placeholder="ঠিকানা"></div>
             <div class="input-group"><label>Item</label><select id="saleItem"><option value="Liquid Milk">Liquid Milk</option><option value="Ghee">Ghee</option><option value="Butter">Butter</option><option value="Paneer">Paneer</option><option value="Manure">Manure</option></select></div>
             <div class="input-group"><label>Quantity</label><input type="number" id="saleQty" oninput="calcSale()" placeholder="০"></div>
             <div class="input-group"><label>Rate ₹</label><input type="number" id="saleRate" oninput="calcSale()" placeholder="₹"></div>
-            <div class="input-group"><label>Total Bill ₹</label><input type="number" id="saleTotal" readonly style="background:#eee;"></div>
+            <div class="input-group"><label>Total Bill ₹</label><input type="number" id="saleTotal" oninput="calcSale()" placeholder="₹"></div>
             <div class="input-group"><label>Paid Amount ₹</label><input type="number" id="salePaid" oninput="calcSale()" placeholder="₹"></div>
-            <div class="input-group"><label>Due Amount ₹</label><input type="number" id="saleDue" readonly style="background:#ffebee; color:red; font-weight:bold;"></div>
+            
+            <!-- পরিষ্কার করার জন্য লেবেল পরিবর্তন করা হলো -->
+            <div class="input-group"><label>Due Amount ₹ (এই বিলের)</label><input type="number" id="saleDue" readonly style="background:#ffebee; color:red; font-weight:bold;"></div>
           </div>
           <div style="display:flex; gap:10px;">
             <button class="btn" id="saleSubmitBtn" onclick="saveSale()">Save Sale</button>
@@ -554,7 +535,7 @@
         </div>
       </div>
 
-      <!-- ১০. Customer -->
+      <!-- ৮. Customer -->
       <div id="tab-customers" class="tab-content" style="display: none;">
         <div class="card">
           <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
@@ -587,7 +568,7 @@
         </div>
       </div>
 
-      <!-- ১১. Orders -->
+      <!-- ৯. Orders -->
       <div id="tab-orders" class="tab-content" style="display: none;">
         <div class="card">
           <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
@@ -619,7 +600,7 @@
           </div>
           <div class="table-container">
             <table>
-              <thead><tr><th>তারিখ</th><th>Customer Name</th><th>Area & Address</th><th>Total Orders / Items</th><th>Status</th><th>Action</th></tr></thead>
+              <thead><tr><th>তারিখ</th><th>Customer Name</th><th>Area & Address</th><th>Total Orders / Items</th><th>Status</th><th>বিস্তারিত / অ্যাকশন</th></tr></thead>
               <tbody id="ordersTableBody"></tbody>
             </table>
           </div>
@@ -627,7 +608,7 @@
         </div>
       </div>
 
-      <!-- ১২. Feed -->
+      <!-- ১০. Feed -->
       <div id="tab-feed" class="tab-content" style="display: none;">
         <div class="card">
           <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
@@ -660,7 +641,7 @@
         </div>
       </div>
 
-      <!-- ১৩. Expenses -->
+      <!-- ১১. Expenses -->
       <div id="tab-expenses" class="tab-content" style="display: none;">
         <div class="card">
           <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
@@ -690,7 +671,7 @@
         </div>
       </div>
 
-      <!-- ১৪. Stock -->
+      <!-- ১২. Stock -->
       <div id="tab-stock" class="tab-content" style="display: none;">
         <div class="card">
           <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
@@ -719,7 +700,7 @@
         </div>
       </div>
 
-      <!-- ১৫. Semen -->
+      <!-- ১৩. Semen -->
       <div id="tab-semen" class="tab-content" style="display: none;">
         <div class="card">
           <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
@@ -748,7 +729,7 @@
         </div>
       </div>
 
-      <!-- ১৬. Health -->
+      <!-- ১৪. Health -->
       <div id="tab-health" class="tab-content" style="display: none;">
         <div class="card">
           <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
@@ -778,7 +759,7 @@
         </div>
       </div>
 
-      <!-- ১৭. Reports -->
+      <!-- ১৫. Reports -->
       <div id="tab-reports" class="tab-content" style="display: none;">
         <div class="card">
           <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
@@ -795,7 +776,7 @@
         </div>
       </div>
 
-      <!-- ১৮. Backup -->
+      <!-- ১৬. Backup -->
       <div id="tab-backup" class="tab-content" style="display: none;">
         <div class="card">
           <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
@@ -899,7 +880,7 @@
       cattle: {}, breeding: {}, milk: {}, sales: {},
       customers: {}, orders: {}, expenses: {}, stock: {},
       semen: {}, health: {}, feedRations: {}, feed: {},
-      heat: {}, insemination: {}, vaccine: {}, deworm: {}
+      vaccine: {}, deworm: {}
     };
     window.activeLedgerCustomerName = '';
 
@@ -920,17 +901,35 @@
       }, 1000);
     };
 
+    // কাস্টমারের নাম লিখলে অটো লাইভ বকেয়া দেখানোর নতুন লজিক
     function onSaleCustomerInput() {
       var val = (getEl('saleCustomer').value || '').trim().toLowerCase();
+      var lbl = document.getElementById('lblSaleCustomer');
+      if(lbl) lbl.innerHTML = 'Customer Name *'; // রিফ্রেশ লেবেল
+
       if (!val) return;
+      var cBalMap = getCustomerLiveBalances();
+      var matched = false;
+
       for (var k in farmStore.customers) {
         var c = farmStore.customers[k];
         if ((c.name || '').trim().toLowerCase() === val) {
+          matched = true;
           if (c.phone) getEl('salePhone').value = c.phone;
           if (c.area) getEl('saleArea').value = c.area;
           if (c.addr) getEl('saleAddr').value = c.addr;
+          
+          if(lbl && cBalMap[val]) {
+            var currentDue = cBalMap[val].currentDue;
+            lbl.innerHTML = 'Customer Name * <span style="color:red; font-size:11.5px; margin-left:8px;">(বর্তমান মোট বকেয়া: ₹ ' + currentDue + ')</span>';
+          }
           break;
         }
+      }
+      
+      // কাস্টমার ডিরেক্টরিতে নাম না থাকলেও লেজারে বকেয়া থাকলে দেখাবে
+      if(!matched && cBalMap[val] && lbl) {
+         lbl.innerHTML = 'Customer Name * <span style="color:red; font-size:11.5px; margin-left:8px;">(বর্তমান মোট বকেয়া: ₹ ' + cBalMap[val].currentDue + ')</span>';
       }
     }
 
@@ -957,8 +956,8 @@
         
         Object.keys(existingOrders).forEach(function(k) {
           var o = existingOrders[k];
-          if (o && o.date === todayISO && o.customer) {
-            todayProcessedMap[o.customer.trim().toLowerCase()] = true;
+          if (o && o.date === todayISO && (o.customer || o.name)) {
+            todayProcessedMap[(o.customer || o.name).trim().toLowerCase()] = true;
           }
         });
 
@@ -966,8 +965,8 @@
           var existingSales = saleSnap.val() || {};
           Object.keys(existingSales).forEach(function(k) {
             var s = existingSales[k];
-            if (s && s.date === todayISO && s.name) {
-              todayProcessedMap[s.name.trim().toLowerCase()] = true;
+            if (s && s.date === todayISO && (s.name || s.customer)) {
+              todayProcessedMap[(s.name || s.customer).trim().toLowerCase()] = true;
             }
           });
 
@@ -1331,6 +1330,9 @@
       body.innerHTML = html;
     }
 
+    // ==========================================
+    // UPDATED SALES TABLE RENDER LOGIC (Customer Grouping & Compact Action)
+    // ==========================================
     function renderSalesTable() {
       var body = getEl('salesTableBody');
       if (!body) return;
@@ -1351,12 +1353,11 @@
 
         var rawName = (s.name || '').trim();
         if (!rawName) continue;
-        var rawDate = (s.date || '').trim();
-        var groupKey = rawDate + '_' + rawName.toLowerCase();
+        
+        var groupKey = rawName.toLowerCase(); 
 
         if (!groupedMap[groupKey]) {
           groupedMap[groupKey] = {
-            date: rawDate,
             name: rawName,
             phone: s.phone || '',
             area: s.area || s.addr || '',
@@ -1364,28 +1365,37 @@
             totalAmount: 0,
             totalPaid: 0,
             entries: [],
-            latestTime: parseDateToTime(rawDate)
+            latestDate: (s.date || '').trim(),
+            latestTime: parseDateToTime(s.date || '')
           };
         }
 
-        var qtyVal = parseFloat(s.qty || s.quantity || 1) || 1;
-        var amtVal = Number(s.total) || (parseFloat(s.qty || 1) * parseFloat(s.rate || 0));
+        var qtyVal = (s.qty !== undefined && s.qty !== '') ? parseFloat(s.qty) : 1;
+        var amtVal = (s.total !== undefined && s.total !== '') ? Number(s.total) : (qtyVal * (parseFloat(s.rate) || 0));
         var paidVal = Number(s.paid) || 0;
 
         groupedMap[groupKey].totalQty += qtyVal;
         groupedMap[groupKey].totalAmount += amtVal;
         groupedMap[groupKey].totalPaid += paidVal;
+        
+        if (s.phone && !groupedMap[groupKey].phone) groupedMap[groupKey].phone = s.phone;
+        if (s.area && !groupedMap[groupKey].area) groupedMap[groupKey].area = s.area;
+
+        var curTime = parseDateToTime(s.date || '');
+        if (curTime > groupedMap[groupKey].latestTime) {
+           groupedMap[groupKey].latestTime = curTime;
+           groupedMap[groupKey].latestDate = (s.date || '').trim();
+        }
+
         groupedMap[groupKey].entries.push({ key: k, sale: s });
       }
 
       var list = [];
       for (var gKey in groupedMap) {
         var g = groupedMap[gKey];
-        var cKey = g.name.toLowerCase();
-        var cBal = custBalances[cKey] || { currentDue: Math.max(0, g.totalAmount - g.totalPaid) };
+        var cBal = custBalances[gKey] || { currentDue: Math.max(0, g.totalAmount - g.totalPaid) };
         list.push({
           groupKey: gKey,
-          date: g.date,
           name: g.name,
           phone: g.phone,
           area: g.area,
@@ -1393,6 +1403,7 @@
           totalAmount: g.totalAmount,
           totalPaid: g.totalPaid,
           entries: g.entries,
+          latestDate: g.latestDate,
           latestTime: g.latestTime,
           liveCustomerDue: cBal.currentDue
         });
@@ -1433,56 +1444,74 @@
 
       var html = '';
       filtered.forEach(function(item, idx) {
-        var dateBR = formatDateBR(item.date);
+        var dateBR = formatDateBR(item.latestDate);
         var dueVal = Math.max(0, item.liveCustomerDue);
         var subTableId = 'sub_sales_' + idx;
-        var hasMultiple = item.entries.length > 1;
+        var totalEntries = item.entries.length;
+        var hasMultiple = totalEntries > 1;
         var rowStyle = 'background:#fafafa; border-top:2px solid #e0e0e0;';
         var dueBadge = dueVal > 0 ? '<strong style="color:red;">₹ ' + dueVal + '</strong>' : '<span class="badge badge-success">পরিশোধ</span>';
 
         var productSummary = '';
         if (hasMultiple) {
-          productSummary = '<span style="color:#1b5e20; font-weight:600;">মোট ' + item.entries.length + 'টি এন্ট্রি (' + item.totalQty + ' লিটার)</span><br>' +
-                           '<a href="javascript:void(0)" onclick="toggleSubSales(\'' + subTableId + '\', this)" style="display:inline-block; margin-top:5px; padding:4px 10px; background:#e1f5fe; color:#0288d1; font-weight:bold; font-size:12px; border-radius:4px; text-decoration:none;">বিস্তারিত দেখুন ▼</a>';
+          productSummary = '<span style="color:#1b5e20; font-weight:600;">মোট ' + totalEntries + 'টি এন্ট্রি</span><br><span style="font-size:11px; color:#555;">মোট পরিমাণ:</span> <strong>' + item.totalQty + '</strong>';
         } else {
           var singleSale = item.entries[0].sale;
           productSummary = (singleSale.item || 'দুধ') + ' (' + (singleSale.qty || 1) + ')';
         }
 
-        var actionBtns = '<button class="action-btn" style="background:#455a64; color:white; padding:4px 8px; font-size:11px;" onclick="showCustomerLedger(\'' + encodeURIComponent(item.name) + '\')">খাতা</button> ';
+        // Action Buttons Setup (Compact Design)
+        var detailsBtn = hasMultiple ? 
+          '<button class="action-btn btn-info" id="sale-btn-' + subTableId + '" onclick="toggleSubSales(\'' + subTableId + '\', this)" style="padding:4px 8px; font-size:11px; white-space:nowrap; margin:0;">বিস্তারিত (' + totalEntries + ') ▼</button>' : 
+          '';
+
+        var actionCol = '';
         if (!hasMultiple) {
-          actionBtns += '<button class="action-btn btn-info" style="padding:4px 8px; font-size:11px;" onclick="showInvoice(\'' + item.entries[0].key + '\')">Invoice</button> ' +
-                        '<button class="action-btn btn-warning" style="padding:4px 8px; font-size:11px;" onclick="editSale(\'' + item.entries[0].key + '\')">Edit</button> ' +
-                        '<button class="action-btn btn-danger" style="padding:4px 8px; font-size:11px;" onclick="deleteRecord(\'sales\',\'' + item.entries[0].key + '\')">Delete</button>';
+          var singleKey = item.entries[0].key;
+          actionCol = '<div style="display:flex; gap:6px; flex-wrap:nowrap;">' +
+                      '<button class="action-btn" style="background:#455a64; color:white; padding:4px 8px; font-size:11px; margin:0;" onclick="showCustomerLedger(\'' + encodeURIComponent(item.name) + '\')">খাতা</button>' +
+                      '<button class="action-btn btn-info" style="padding:4px 8px; font-size:11px; margin:0;" onclick="showInvoice(\'' + singleKey + '\')">Invoice</button>' +
+                      '<button class="action-btn btn-warning" style="padding:4px 8px; font-size:11px; margin:0;" onclick="editSale(\'' + singleKey + '\')">Edit</button>' +
+                      '<button class="action-btn btn-danger" style="padding:4px 8px; font-size:11px; margin:0;" onclick="deleteRecord(\'sales\',\'' + singleKey + '\')">Delete</button>' +
+                      '</div>';
+        } else {
+          actionCol = '<div style="display:flex; gap:6px; flex-wrap:nowrap;">' + 
+                      detailsBtn + 
+                      '<button class="action-btn" style="background:#455a64; color:white; padding:4px 8px; font-size:11px; margin:0; white-space:nowrap;" onclick="showCustomerLedger(\'' + encodeURIComponent(item.name) + '\')">খাতা</button>' + 
+                      '</div>';
         }
 
         html += '<tr style="' + rowStyle + '">' +
           '<td>' + dateBR + '</td>' +
           '<td><strong>' + item.name + '</strong>' + (item.phone ? '<br><small style="color:#666;">📞 ' + item.phone + '</small>' : '') + '</td>' +
-          '<td>' + item.area + '</td>' +
+          '<td>' + (item.area ? '<span class="badge badge-warning">' + item.area + '</span>' : '-') + '</td>' +
           '<td>' + productSummary + '</td>' +
           '<td><strong>₹ ' + item.totalAmount + '</strong></td>' +
           '<td style="color:green;">₹ ' + item.totalPaid + '</td>' +
           '<td>' + dueBadge + '</td>' +
-          '<td>' + actionBtns + '</td>' +
+          '<td>' + actionCol + '</td>' +
         '</tr>';
 
+        // বিস্তারিত / Details ড্রপডাউন সারি
         if (hasMultiple) {
           html += '<tr id="' + subTableId + '" style="display:none; background:#f1f8e9;"><td colspan="8" style="padding:10px 15px;">' +
-            '<div style="font-size:12px; font-weight:bold; color:#2e7d32; margin-bottom:8px;">📋 এই দিনের পৃথক এন্ট্রিগুলোর বিবরণ ও এডিট/ডিলিট অপশন:</div>' +
+            '<div style="font-size:12px; font-weight:bold; color:#2e7d32; margin-bottom:8px;">📋 এই গ্রাহকের সমস্ত বিক্রয় রেকর্ড ও অপশন:</div>' +
             '<div style="overflow-x:auto;"><table style="width:100%; font-size:12px; background:white; border:1px solid #c8e6c9; border-collapse:collapse;">' +
-              '<tr style="background:#e8f5e9;"><th style="padding:6px; border:1px solid #c8e6c9;">বিবরণ</th><th style="padding:6px; border:1px solid #c8e6c9;">পরিমাণ</th><th style="padding:6px; border:1px solid #c8e6c9;">মোট দাম</th><th style="padding:6px; border:1px solid #c8e6c9;">পরিশোধ</th><th style="padding:6px; border:1px solid #c8e6c9;">কার্যক্রম</th></tr>';
+              '<tr style="background:#e8f5e9;"><th style="padding:6px; border:1px solid #c8e6c9;">তারিখ</th><th style="padding:6px; border:1px solid #c8e6c9;">বিবরণ / আইটেম</th><th style="padding:6px; border:1px solid #c8e6c9;">পরিমাণ</th><th style="padding:6px; border:1px solid #c8e6c9;">মোট দাম</th><th style="padding:6px; border:1px solid #c8e6c9;">পরিশোধ</th><th style="padding:6px; border:1px solid #c8e6c9;">কার্যক্রম</th></tr>';
           
+          item.entries.sort(function(a,b){ return parseDateToTime(b.sale.date) - parseDateToTime(a.sale.date); });
+
           item.entries.forEach(function(itemObj) {
             var sItem = itemObj.sale;
             html += '<tr>' +
+              '<td style="padding:6px; border:1px solid #c8e6c9;">' + formatDateBR(sItem.date) + '</td>' +
               '<td style="padding:6px; border:1px solid #c8e6c9;">' + (sItem.item || 'দুধ') + '</td>' +
               '<td style="padding:6px; border:1px solid #c8e6c9;">' + (sItem.qty || 1) + '</td>' +
               '<td style="padding:6px; border:1px solid #c8e6c9;">₹ ' + (Number(sItem.total) || 0) + '</td>' +
               '<td style="padding:6px; border:1px solid #c8e6c9; color:green;">₹ ' + (Number(sItem.paid) || 0) + '</td>' +
               '<td style="padding:6px; border:1px solid #c8e6c9; white-space:nowrap;">' +
-                '<button class="action-btn" style="padding:2px 5px; font-size:10px;" onclick="showInvoice(\'' + itemObj.key + '\')">Invoice</button> ' +
-                '<button class="action-btn btn-warning" style="padding:2px 5px; font-size:10px;" onclick="editSale(\'' + itemObj.key + '\')">Edit</button> ' +
+                '<button class="action-btn btn-info" style="padding:2px 5px; font-size:10px; margin-right:4px;" onclick="showInvoice(\'' + itemObj.key + '\')">Invoice</button>' +
+                '<button class="action-btn btn-warning" style="padding:2px 5px; font-size:10px; margin-right:4px;" onclick="editSale(\'' + itemObj.key + '\')">Edit</button>' +
                 '<button class="action-btn btn-danger" style="padding:2px 5px; font-size:10px;" onclick="deleteRecord(\'sales\',\'' + itemObj.key + '\')">Delete</button>' +
               '</td>' +
             '</tr>';
@@ -1494,23 +1523,28 @@
 
       body.innerHTML = html;
     }
-
+    
     function toggleSubSales(subId, linkEl) {
       var row = document.getElementById(subId);
       if (!row) return;
+      var countMatch = linkEl.innerText.match(/\d+/);
+      var count = countMatch ? countMatch[0] : '';
       if (row.style.display === 'none') {
         row.style.display = 'table-row';
-        linkEl.innerText = 'সংক্ষিপ্ত দেখুন ▲';
+        linkEl.innerText = 'সংকুচিত করুন ▲';
         linkEl.style.background = '#ffebee';
         linkEl.style.color = '#c62828';
       } else {
         row.style.display = 'none';
-        linkEl.innerText = 'বিস্তারিত দেখুন ▼';
-        linkEl.style.background = '#e1f5fe';
-        linkEl.style.color = '#0288d1';
+        linkEl.innerText = 'বিস্তারিত (' + count + ') ▼';
+        linkEl.style.background = '#0288d1';
+        linkEl.style.color = 'white';
       }
     }
 
+    // ==========================================
+    // UPDATED ORDERS TABLE RENDER LOGIC (Compact & Proportionate Action Column)
+    // ==========================================
     function renderOrdersTable() {
       var body = getEl('ordersTableBody');
       if (!body) return;
@@ -1519,28 +1553,49 @@
       var areaFilter = (getEl('orderAreaFilter') ? getEl('orderAreaFilter').value : '').trim().toLowerCase();
 
       var uniqueAreas = {};
-      var list = [];
+      var groupedMap = {};
       var pendingCount = 0;
 
       for (var k in farmStore.orders) {
         var d = farmStore.orders[k];
-        if (!d || !d.customer) continue;
+        if (!d) continue;
+        var custName = (d.customer || d.name || d.customerName || '').trim();
+        if (!custName) continue;
         
-        var stat = String(d.status || '').trim();
-        if (stat === 'Pending') {
+        var stat = String(d.status || 'Pending').trim();
+        
+        if (stat.toLowerCase().includes('pending') || stat === 'Pending' || stat === '' || !d.status) {
           pendingCount++;
           var custArea = d.area || '';
           if (custArea) uniqueAreas[custArea] = true;
 
-          list.push({
-            key: k,
-            date: d.date || '',
-            customer: d.customer.trim(),
-            phone: d.phone || '',
-            area: custArea,
-            items: d.items || '',
-            total: Number(d.total) || 0
-          });
+          var rawName = custName;
+          var groupKey = rawName.toLowerCase(); 
+
+          if (!groupedMap[groupKey]) {
+            groupedMap[groupKey] = {
+              customer: rawName,
+              phone: d.phone || '',
+              area: custArea,
+              totalAmount: 0,
+              entries: [],
+              latestDate: (d.date || '').trim(),
+              latestTime: parseDateToTime(d.date || '')
+            };
+          }
+
+          var totVal = Number(d.total) || Number(d.amount) || 0;
+          groupedMap[groupKey].totalAmount += totVal;
+          if (d.phone && !groupedMap[groupKey].phone) groupedMap[groupKey].phone = d.phone;
+          if (d.area && !groupedMap[groupKey].area) groupedMap[groupKey].area = d.area;
+          
+          var curTime = parseDateToTime(d.date || '');
+          if (curTime > groupedMap[groupKey].latestTime) {
+             groupedMap[groupKey].latestTime = curTime;
+             groupedMap[groupKey].latestDate = (d.date || '').trim();
+          }
+
+          groupedMap[groupKey].entries.push({ key: k, order: d });
         }
       }
 
@@ -1556,71 +1611,114 @@
         areaSelect.innerHTML = optH;
       }
 
+      var list = [];
+      for (var gKey in groupedMap) {
+        list.push(groupedMap[gKey]);
+      }
+
       var filtered = list.filter(function(item) {
         return (!searchQ || item.customer.toLowerCase().includes(searchQ) || item.phone.toLowerCase().includes(searchQ)) && (!areaFilter || item.area.toLowerCase() === areaFilter.toLowerCase());
       });
 
-      filtered.sort(function(a, b) { return parseDateToTime(b.date) - parseDateToTime(a.date); });
+      filtered.sort(function(a, b) { return b.latestTime - a.latestTime; });
 
       if (filtered.length === 0) {
-        body.innerHTML = '';
+        body.innerHTML = '<tr><td colspan="6" style="text-align:center; color:#888;">কোনো অর্ডার রেকর্ড নেই।</td></tr>';
         if (getEl('ordersNoData')) getEl('ordersNoData').style.display = 'block';
         return;
       }
       if (getEl('ordersNoData')) getEl('ordersNoData').style.display = 'none';
 
       var html = '';
-      filtered.forEach(function(item) {
-        html += '<tr style="background: #fff8f8; border-left: 4px solid #d32f2f;">' +
-          '<td>' + formatDateBR(item.date) + '</td>' +
-          '<td><a href="javascript:void(0)" onclick="showCustomerLedger(\'' + encodeURIComponent(item.customer) + '\')" style="color:var(--primary); font-weight:bold; text-decoration:underline;">' + item.customer + '</a>' + (item.phone ? '<br><small>📞 ' + item.phone + '</small>' : '') + '</td>' +
+      filtered.forEach(function(item, idx) {
+        var dateBR = formatDateBR(item.latestDate);
+        var subTableId = 'sub_orders_' + idx;
+        var totalEntries = item.entries.length;
+        var hasMultiple = totalEntries > 1;
+        var rowStyle = 'background:#fafafa; border-top:2px solid #e0e0e0;';
+
+        var orderSummary = '';
+        if (hasMultiple) {
+          orderSummary = '<span style="color:#1b5e20; font-weight:600;">মোট ' + totalEntries + 'টি এন্ট্রি</span><br><span style="font-size:11px; color:#555;">মোট মূল্য:</span> <strong>₹ ' + item.totalAmount + '</strong>';
+        } else {
+          var singleOrder = item.entries[0].order;
+          orderSummary = '<span style="font-size:12px;">' + (singleOrder.items || '-') + '</span><br><span style="font-size:11px; color:#555;">মূল্য:</span> <strong>₹ ' + (singleOrder.total || item.totalAmount) + '</strong>';
+        }
+
+        var detailsBtn = hasMultiple ? 
+          '<button class="action-btn btn-info" id="ord-btn-' + subTableId + '" onclick="toggleSubOrders(\'' + subTableId + '\', this)" style="padding:4px 8px; font-size:11px; white-space:nowrap; margin:0;">বিস্তারিত (' + totalEntries + ') ▼</button>' : 
+          '';
+
+        var actionCol = '';
+        if (!hasMultiple) {
+          var singleKey = item.entries[0].key;
+          actionCol = '<div style="display:flex; gap:6px; flex-wrap:nowrap;">' +
+                      '<button class="action-btn" style="background:#455a64; color:white; padding:4px 8px; font-size:11px; margin:0;" onclick="showCustomerLedger(\'' + encodeURIComponent(item.customer) + '\')">খাতা</button>' +
+                      '<button class="action-btn btn-info" style="padding:4px 8px; font-size:11px; margin:0;" onclick="editOrder(\'' + singleKey + '\')">Edit</button>' +
+                      '<button class="action-btn btn-danger" style="padding:4px 8px; font-size:11px; margin:0;" onclick="deleteRecord(\'orders\',\'' + singleKey + '\')">Delete</button>' +
+                      '</div>';
+        } else {
+          actionCol = '<div style="display:flex; gap:6px; flex-wrap:nowrap;">' + 
+                      detailsBtn + 
+                      '<button class="action-btn" style="background:#455a64; color:white; padding:4px 8px; font-size:11px; margin:0; white-space:nowrap;" onclick="showCustomerLedger(\'' + encodeURIComponent(item.customer) + '\')">খাতা</button>' + 
+                      '</div>';
+        }
+
+        html += '<tr style="' + rowStyle + '">' +
+          '<td>' + dateBR + '</td>' +
+          '<td><strong>' + item.customer + '</strong>' + (item.phone ? '<br><small style="color:#666;">📞 ' + item.phone + '</small>' : '') + '</td>' +
           '<td>' + (item.area ? '<span class="badge badge-warning">' + item.area + '</span>' : '-') + '</td>' +
-          '<td>' + item.items + '<br><strong>মোট: ₹ ' + item.total + '</strong></td>' +
+          '<td>' + orderSummary + '</td>' +
           '<td><span class="badge badge-danger">Pending</span></td>' +
-          '<td>' +
-            '<button class="action-btn" style="background:#455a64; color:white;" onclick="showCustomerLedger(\'' + encodeURIComponent(item.customer) + '\')">খাতা</button>' +
-            '<button class="action-btn btn-info" onclick="editOrder(\'' + item.key + '\')">Edit</button>' +
-            '<button class="action-btn btn-danger" onclick="deleteRecord(\'orders\',\'' + item.key + '\')">Delete</button>' +
-          '</td>' +
+          '<td>' + actionCol + '</td>' +
         '</tr>';
+
+        // বিস্তারিত / Details ড্রপডাউন সারি
+        if (hasMultiple) {
+          html += '<tr id="' + subTableId + '" style="display:none; background:#f1f8e9;"><td colspan="6" style="padding:10px 15px;">' +
+            '<div style="font-size:12px; font-weight:bold; color:#2e7d32; margin-bottom:8px;">📋 এই গ্রাহকের সমস্ত পেন্ডিং অর্ডার ও এডিট/ডিলিট অপশন:</div>' +
+            '<div style="overflow-x:auto;"><table style="width:100%; font-size:12px; background:white; border:1px solid #c8e6c9; border-collapse:collapse;">' +
+              '<tr style="background:#e8f5e9;"><th style="padding:6px; border:1px solid #c8e6c9;">তারিখ</th><th style="padding:6px; border:1px solid #c8e6c9;">বিবরণ / আইটেম</th><th style="padding:6px; border:1px solid #c8e6c9;">টাকা</th><th style="padding:6px; border:1px solid #c8e6c9;">স্ট্যাটাস</th><th style="padding:6px; border:1px solid #c8e6c9;">কার্যক্রম</th></tr>';
+          
+          item.entries.sort(function(a,b){ return parseDateToTime(b.order.date) - parseDateToTime(a.order.date); });
+
+          item.entries.forEach(function(itemObj) {
+            var oItem = itemObj.order;
+            html += '<tr>' +
+              '<td style="padding:6px; border:1px solid #c8e6c9;">' + formatDateBR(oItem.date) + '</td>' +
+              '<td style="padding:6px; border:1px solid #c8e6c9;">' + (oItem.items || '-') + '</td>' +
+              '<td style="padding:6px; border:1px solid #c8e6c9;">₹ ' + (Number(oItem.total) || 0) + '</td>' +
+              '<td style="padding:6px; border:1px solid #c8e6c9;"><span class="badge badge-danger">' + (oItem.status || 'Pending') + '</span></td>' +
+              '<td style="padding:6px; border:1px solid #c8e6c9; white-space:nowrap;">' +
+                '<button class="action-btn btn-info" style="padding:3px 7px; font-size:11px;" onclick="editOrder(\'' + itemObj.key + '\')">Edit</button> ' +
+                '<button class="action-btn btn-danger" style="padding:3px 7px; font-size:11px;" onclick="deleteRecord(\'orders\',\'' + itemObj.key + '\')">Delete</button>' +
+              '</td>' +
+            '</tr>';
+          });
+
+          html += '</table></div></td></tr>';
+        }
       });
 
       body.innerHTML = html;
     }
 
-    function renderRationTable() {
-      var body = getEl('rationTableBody');
-      if (!body) return;
-      var list = [];
-      for (var k in farmStore.feedRations) {
-        list.push({ key: k, data: farmStore.feedRations[k] });
+    function toggleSubOrders(subId, linkEl) {
+      var row = document.getElementById(subId);
+      if (!row) return;
+      var countMatch = linkEl.innerText.match(/\d+/);
+      var count = countMatch ? countMatch[0] : '';
+      if (row.style.display === 'none') {
+        row.style.display = 'table-row';
+        linkEl.innerText = 'সংকুচিত করুন ▲';
+        linkEl.style.background = '#ffebee';
+        linkEl.style.color = '#c62828';
+      } else {
+        row.style.display = 'none';
+        linkEl.innerText = 'বিস্তারিত (' + count + ') ▼';
+        linkEl.style.background = '#0288d1';
+        linkEl.style.color = 'white';
       }
-      list.sort(function(a, b) { return (b.data.date || '').localeCompare(a.data.date || ''); });
-
-      if (list.length === 0) {
-        body.innerHTML = '';
-        if (getEl('rationNoData')) getEl('rationNoData').style.display = 'block';
-        return;
-      }
-      if (getEl('rationNoData')) getEl('rationNoData').style.display = 'none';
-
-      var html = '';
-      list.forEach(function(item) {
-        var k = item.key, d = item.data;
-        html += '<tr>' +
-          '<td>' + formatDateBR(d.date) + '</td>' +
-          '<td><strong style="color:var(--primary);">Tag: ' + (d.cowTag || '-') + '</strong></td>' +
-          '<td>' + (d.pellet || 0) + ' kg</td>' +
-          '<td>₹ ' + (d.avgCostPerKg || 0) + '</td>' +
-          '<td>₹ ' + (d.suppCost || 0) + '</td>' +
-          '<td style="color:green; font-weight:bold;">₹ ' + (d.totalCost || 0) + '</td>' +
-          '<td>' +
-            '<button class="action-btn btn-info" onclick="editRation(\'' + k + '\')">Edit</button>' +
-            '<button class="action-btn btn-danger" onclick="deleteRecord(\'feedRations\',\'' + k + '\')">Delete</button>' +
-          '</td>' +
-        '</tr>';
-      });
-      body.innerHTML = html;
     }
 
     var eRatKey = null;
@@ -1635,7 +1733,7 @@
 
       getEl('ratSubmitBtn').innerText = 'Update Ration';
       getEl('ratCancelBtn').style.display = 'inline-flex';
-      switchTab('feed', document.querySelector('nav button:nth-child(8)'));
+      switchTab('feed', document.querySelector('nav button:nth-child(10)'));
     }
 
     function cancelRationEdit() {
@@ -1763,46 +1861,71 @@
       document.body.removeAttribute('data-print');
     };
 
+    // ফিক্স করা পেমেন্ট সেভ লজিক
     window.saveCustomerPayment = function() {
       var amt = parseFloat(getEl('ledgerPayAmount').value) || 0;
       if (amt <= 0) return alert('জমার পরিমাণ দিন!');
       var pDate = getEl('ledgerPayDate').value || new Date().toISOString().split('T')[0];
       var pNote = (getEl('ledgerPayNote').value || 'নগদ জমা').trim();
       var custName = window.activeLedgerCustomerName;
+      if (!custName) return alert('গ্রাহক নির্বাচন ত্রুটি!');
 
       var unpaidSales = [];
       for (var k in farmStore.sales) {
         var s = farmStore.sales[k];
-        if (s && (s.name || '').trim().toLowerCase() === custName.toLowerCase() && Number(s.due) > 0) {
-          unpaidSales.push({ key: k, data: s });
+        if (s && (s.name || '').trim().toLowerCase() === custName.toLowerCase()) {
+          var sTot = Number(s.total) || 0;
+          var sPd = Number(s.paid) || 0;
+          // বকেয়া ঠিকঠাক বের করার সেফ লজিক
+          var actualDue = sTot - sPd; 
+          if (actualDue > 0) {
+            unpaidSales.push({ key: k, data: s, actualDue: actualDue });
+          }
         }
       }
-      unpaidSales.sort(function(a, b) { return (a.data.date || '').localeCompare(b.data.date || ''); });
+      unpaidSales.sort(function(a, b) { 
+        return parseDateToTime(a.data.date) - parseDateToTime(b.data.date); 
+      });
 
       var paymentId = 'PAY-' + Date.now();
       var rem = amt;
+
       unpaidSales.forEach(function(item) {
         if (rem <= 0) return;
-        var curDue = Number(item.data.due) || 0;
+        var curDue = item.actualDue;
         var curPaid = Number(item.data.paid) || 0;
         var payAmount = Math.min(rem, curDue);
         rem -= payAmount;
+        
         var pList = getPaymentsArray(item.data.payments);
         pList.push({ id: paymentId, date: pDate, amount: payAmount, note: pNote });
         
         var newPaid = curPaid + payAmount;
-        var newDue = Math.max(0, Number(item.data.total || 0) - newPaid);
-        if (db) db.ref('sales/' + item.key).update({ paid: newPaid, due: newDue, payments: pList });
+        var newDue = Math.max(0, (Number(item.data.total) || 0) - newPaid);
+        
+        if (db) {
+          db.ref('sales/' + item.key).update({ paid: newPaid, due: newDue, payments: pList });
+        }
       });
 
       if (rem > 0) {
-        var advRecord = { date: pDate, name: custName, phone: '', area: '', addr: '', item: 'অগ্রিম জমা (' + pNote + ')', qty: 1, rate: 0, total: 0, paid: rem, due: 0, isPayment: true, payments: [{ id: paymentId, date: pDate, amount: rem, note: pNote }] };
+        var advRecord = { 
+          date: pDate, 
+          name: custName, 
+          phone: '', area: '', addr: '', 
+          item: 'অগ্রিম/অতিরিক্ত জমা (' + pNote + ')', 
+          qty: 1, rate: 0, total: 0, 
+          paid: rem, due: 0, 
+          isPayment: true, 
+          payments: [{ id: paymentId, date: pDate, amount: rem, note: pNote }] 
+        };
         if (db) db.ref('sales').push(advRecord);
       }
 
       alert('পেমেন্ট সফলভাবে জমা হয়েছে!');
-      getEl('ledgerPayAmount').value = ''; getEl('ledgerPayNote').value = '';
-      setTimeout(function() { showCustomerLedger(encodeURIComponent(custName)); }, 300);
+      getEl('ledgerPayAmount').value = ''; 
+      getEl('ledgerPayNote').value = '';
+      setTimeout(function() { showCustomerLedger(encodeURIComponent(custName)); }, 500);
     };
 
     window.showInvoice = function(k) {
@@ -1844,116 +1967,46 @@
     var eBrKey = null;
     function editBreeding(k) {
       var d = farmStore.breeding[k]; if (!d) return; eBrKey = k;
-      getEl('brCowTag').value = d.tag || ''; getEl('brAiDate').value = d.aiDate || ''; getEl('brSemenId').value = d.semenId || '';
-      getEl('brCompany').value = d.company || ''; getEl('brAiCost').value = d.aiCost || ''; getEl('brPdDate').value = d.pdDate || '';
-      getEl('brStatus').value = d.status || 'Pending'; getEl('brExpCalvingDate').value = d.expCalvingDate || d.calvingDate || ''; getEl('brActCalvingDate').value = d.actCalvingDate || '';
-      getEl('brSubmitBtn').innerText = 'Update Breeding'; getEl('brCancelBtn').style.display = 'inline-flex';
-      switchTab('breeding', document.querySelector('nav button:nth-child(4)'));
+      getEl('brCowTag').value = d.tag || ''; 
+      getEl('brAiDate').value = d.aiDate || ''; 
+      getEl('brHeatSigns').value = d.heatSigns || '-';
+      getEl('brSemenId').value = d.semenId || ''; 
+      getEl('brCompany').value = d.company || ''; 
+      getEl('brAiCost').value = d.aiCost || ''; 
+      getEl('brPdDate').value = d.pdDate || '';
+      getEl('brStatus').value = d.status || 'Pending'; 
+      getEl('brExpCalvingDate').value = d.expCalvingDate || d.calvingDate || ''; 
+      getEl('brActCalvingDate').value = d.actCalvingDate || '';
+      getEl('brNote').value = d.note || '';
+      getEl('brSubmitBtn').innerText = 'Update Breeding'; 
+      getEl('brCancelBtn').style.display = 'inline-flex';
+      switchTab('breeding', document.querySelector('nav button:nth-child(3)'));
     }
     function cancelBreedingEdit() {
-      eBrKey = null; ['brCowTag','brSemenId','brCompany','brAiCost','brPdDate','brExpCalvingDate','brActCalvingDate'].forEach(function(id){ if(getEl(id)) getEl(id).value=''; });
-      getEl('brStatus').value = 'Pending'; getEl('brSubmitBtn').innerText = 'Save Breeding Record'; getEl('brCancelBtn').style.display = 'none';
+      eBrKey = null; 
+      ['brCowTag','brSemenId','brCompany','brAiCost','brPdDate','brExpCalvingDate','brActCalvingDate','brNote'].forEach(function(id){ if(getEl(id)) getEl(id).value=''; });
+      if(getEl('brHeatSigns')) getEl('brHeatSigns').value = '-';
+      getEl('brStatus').value = 'Pending'; 
+      getEl('brSubmitBtn').innerText = 'Save Breeding Record'; 
+      getEl('brCancelBtn').style.display = 'none';
     }
     function saveBreeding() {
       var tag = (getEl('brCowTag').value || '').trim(); if (!tag) return alert('Cattle ID দিন!');
-      var data = { tag: tag, aiDate: getEl('brAiDate').value, semenId: getEl('brSemenId').value, company: getEl('brCompany').value, aiCost: parseFloat(getEl('brAiCost').value)||0, pdDate: getEl('brPdDate').value, status: getEl('brStatus').value, expCalvingDate: getEl('brExpCalvingDate').value, actCalvingDate: getEl('brActCalvingDate').value };
+      var data = { 
+        tag: tag, 
+        aiDate: getEl('brAiDate').value, 
+        heatSigns: getEl('brHeatSigns').value,
+        semenId: getEl('brSemenId').value, 
+        company: getEl('brCompany').value, 
+        aiCost: parseFloat(getEl('brAiCost').value)||0, 
+        pdDate: getEl('brPdDate').value, 
+        status: getEl('brStatus').value, 
+        expCalvingDate: getEl('brExpCalvingDate').value, 
+        actCalvingDate: getEl('brActCalvingDate').value,
+        note: getEl('brNote').value || ''
+      };
       if (db) eBrKey ? db.ref('breeding/' + eBrKey).update(data) : db.ref('breeding').push(data);
       cancelBreedingEdit();
-    }
-
-    // New 4 Feature Handlers (Heat, Insemination, Vaccine, Deworm)
-    var eHeatKey = null;
-    function editHeatRecord(k) {
-      var d = farmStore.heat ? farmStore.heat[k] : null; if (!d) return; eHeatKey = k;
-      getEl('heatCowTag').value = d.tag || '';
-      getEl('heatDate').value = d.date || '';
-      getEl('heatSigns').value = d.signs || 'Standing Heat';
-      getEl('heatExpAiDate').value = d.expAiDate || '';
-      getEl('heatNote').value = d.note || '';
-      getEl('heatSubmitBtn').innerText = 'Update Heat Record';
-      getEl('heatCancelBtn').style.display = 'inline-flex';
-      switchTab('heat', document.querySelector('nav button:nth-child(3)'));
-    }
-    function cancelHeatEdit() {
-      eHeatKey = null;
-      ['heatCowTag','heatDate','heatExpAiDate','heatNote'].forEach(function(i){ if(getEl(i)) getEl(i).value=''; });
-      getEl('heatSubmitBtn').innerText = 'Save Heat Record';
-      getEl('heatCancelBtn').style.display = 'none';
-    }
-    function saveHeatRecord() {
-      var tag = (getEl('heatCowTag').value || '').trim();
-      var dt = getEl('heatDate').value;
-      if (!tag || !dt) return alert('Tag ID এবং তারিখ দিন!');
-      var data = { tag: tag, date: dt, signs: getEl('heatSigns').value, expAiDate: getEl('heatExpAiDate').value, note: getEl('heatNote').value };
-      if (db) {
-        if (eHeatKey) db.ref('heat/' + eHeatKey).update(data);
-        else db.ref('heat').push(data);
-      }
-      cancelHeatEdit();
-    }
-    function renderHeatTable() {
-      var body = getEl('heatTableBody');
-      if (!body) return;
-      var list = [];
-      for (var k in farmStore.heat) list.push({ key: k, data: farmStore.heat[k] });
-      list.sort(function(a, b) { return (b.data.date || '').localeCompare(a.data.date || ''); });
-      if (list.length === 0) { body.innerHTML = '<tr><td colspan="6" style="text-align:center; color:#777;">কোনো হিট রেকর্ড নেই।</td></tr>'; return; }
-      var html = '';
-      list.forEach(function(item) {
-        var k = item.key, d = item.data;
-        html += '<tr><td><strong>' + (d.tag || '-') + '</strong></td><td>' + formatDateBR(d.date) + '</td><td><span class="badge badge-warning">' + (d.signs || '-') + '</span></td><td>' + formatDateBR(d.expAiDate) + '</td><td>' + (d.note || '-') + '</td><td><button class="action-btn btn-info" onclick="editHeatRecord(\'' + k + '\')">Edit</button><button class="action-btn btn-danger" onclick="deleteRecord(\'heat\',\'' + k + '\')">Delete</button></td></tr>';
-      });
-      body.innerHTML = html;
-    }
-
-    var eInsKey = null;
-    function editInseminationRecord(k) {
-      var d = farmStore.insemination ? farmStore.insemination[k] : null; if (!d) return; eInsKey = k;
-      getEl('insCowTag').value = d.tag || '';
-      getEl('insAiDate').value = d.aiDate || '';
-      getEl('insSemenId').value = d.semenId || '';
-      getEl('insCompany').value = d.company || '';
-      getEl('insAiCost').value = d.aiCost || '';
-      getEl('insPdDate').value = d.pdDate || '';
-      getEl('insStatus').value = d.status || 'Pending';
-      getEl('insExpCalvingDate').value = d.expCalvingDate || '';
-      getEl('insActCalvingDate').value = d.actCalvingDate || '';
-      getEl('insSubmitBtn').innerText = 'Update Insemination';
-      getEl('insCancelBtn').style.display = 'inline-flex';
-      switchTab('insemination', document.querySelector('nav button:nth-child(5)'));
-    }
-    function cancelInseminationEdit() {
-      eInsKey = null;
-      ['insCowTag','insSemenId','insCompany','insAiCost','insPdDate','insExpCalvingDate','insActCalvingDate'].forEach(function(id){ if(getEl(id)) getEl(id).value=''; });
-      getEl('insStatus').value = 'Pending';
-      getEl('insSubmitBtn').innerText = 'Save Insemination Record';
-      getEl('insCancelBtn').style.display = 'none';
-    }
-    function saveInseminationRecord() {
-      var tag = (getEl('insCowTag').value || '').trim();
-      var aiDt = getEl('insAiDate').value;
-      if (!tag || !aiDt) return alert('Cattle ID এবং AI Date দিন!');
-      var data = { tag: tag, aiDate: aiDt, semenId: getEl('insSemenId').value, company: getEl('insCompany').value, aiCost: parseFloat(getEl('insAiCost').value) || 0, pdDate: getEl('insPdDate').value, status: getEl('insStatus').value, expCalvingDate: getEl('insExpCalvingDate').value, actCalvingDate: getEl('insActCalvingDate').value };
-      if (db) {
-        if (eInsKey) db.ref('insemination/' + eInsKey).update(data);
-        else db.ref('insemination').push(data);
-      }
-      cancelInseminationEdit();
-    }
-    function renderInseminationTable() {
-      var body = getEl('inseminationTableBody');
-      if (!body) return;
-      var list = [];
-      for (var k in farmStore.insemination) list.push({ key: k, data: farmStore.insemination[k] });
-      list.sort(function(a, b) { return (b.data.aiDate || '').localeCompare(a.data.aiDate || ''); });
-      if (list.length === 0) { body.innerHTML = '<tr><td colspan="10" style="text-align:center; color:#777;">কোনো ইনসেমিনেশন রেকর্ড নেই।</td></tr>'; return; }
-      var html = '';
-      list.forEach(function(item) {
-        var k = item.key, d = item.data;
-        var badgeClass = d.status === 'Pregnant' ? 'badge-success' : (d.status === 'Failed' ? 'badge-danger' : 'badge-warning');
-        html += '<tr><td><strong>' + (d.tag || '-') + '</strong></td><td>' + formatDateBR(d.aiDate) + '</td><td>' + (d.semenId || '-') + '</td><td>' + (d.company || '-') + '</td><td>₹ ' + (d.aiCost || 0) + '</td><td>' + formatDateBR(d.pdDate) + '</td><td><span class="badge ' + badgeClass + '">' + (d.status || 'Pending') + '</span></td><td>' + formatDateBR(d.expCalvingDate) + '</td><td>' + formatDateBR(d.actCalvingDate) + '</td><td><button class="action-btn btn-info" onclick="editInseminationRecord(\'' + k + '\')">Edit</button><button class="action-btn btn-danger" onclick="deleteRecord(\'insemination\',\'' + k + '\')">Delete</button></td></tr>';
-      });
-      body.innerHTML = html;
     }
 
     var eVacKey = null;
@@ -1964,13 +2017,20 @@
       getEl('vacDate').value = d.date || '';
       getEl('vacNextDate').value = d.nextDate || '';
       getEl('vacCost').value = d.cost || '';
+      
+      if(getEl('vacDose')) getEl('vacDose').value = d.dose || '5.0';
+      if(getEl('vacRoute')) getEl('vacRoute').value = d.route || 'Subcutaneous (S/C)';
+      if(getEl('vacBatchNo')) getEl('vacBatchNo').value = d.batchNo || '';
+      if(getEl('vacExpiry')) getEl('vacExpiry').value = d.expiry || '';
+      if(getEl('vacWithdrawalDays')) getEl('vacWithdrawalDays').value = d.withdrawalDays || '0';
+
       getEl('vacSubmitBtn').innerText = 'Update Vaccine Record';
       getEl('vacCancelBtn').style.display = 'inline-flex';
-      switchTab('vaccine', document.querySelector('nav button:nth-child(6)'));
+      switchTab('vaccine', document.querySelector('nav button:nth-child(4)'));
     }
     function cancelVaccineEdit() {
       eVacKey = null;
-      ['vacCowTag','vacName','vacDate','vacNextDate','vacCost'].forEach(function(i){ if(getEl(i)) getEl(i).value=''; });
+      ['vacCowTag','vacName','vacDate','vacNextDate','vacCost','vacDose','vacBatchNo','vacExpiry','vacWithdrawalDays'].forEach(function(i){ if(getEl(i)) getEl(i).value=''; });
       getEl('vacSubmitBtn').innerText = 'Save Vaccine Record';
       getEl('vacCancelBtn').style.display = 'none';
     }
@@ -1979,71 +2039,228 @@
       var name = (getEl('vacName').value || '').trim();
       var dt = getEl('vacDate').value;
       if (!tag || !name || !dt) return alert('Tag, ভ্যাকসিনের নাম ও তারিখ দিন!');
-      var data = { tag: tag, name: name, date: dt, nextDate: getEl('vacNextDate').value, cost: parseFloat(getEl('vacCost').value) || 0 };
+
+      var cost = parseFloat(getEl('vacCost').value) || 0;
+      var dose = parseFloat(getEl('vacDose') ? getEl('vacDose').value : 5) || 5;
+
+      var data = {
+        tag: tag,
+        name: name,
+        date: dt,
+        nextDate: getEl('vacNextDate').value,
+        cost: cost,
+        dose: dose,
+        route: getEl('vacRoute') ? getEl('vacRoute').value : 'Subcutaneous',
+        batchNo: getEl('vacBatchNo') ? getEl('vacBatchNo').value : '',
+        expiry: getEl('vacExpiry') ? getEl('vacExpiry').value : '',
+        withdrawalDays: parseInt(getEl('vacWithdrawalDays') ? getEl('vacWithdrawalDays').value : 0) || 0
+      };
+
       if (db) {
-        if (eVacKey) db.ref('vaccine/' + eVacKey).update(data);
-        else db.ref('vaccine').push(data);
+        if (eVacKey) {
+          db.ref('vaccine/' + eVacKey).update(data);
+        } else {
+          db.ref('vaccine').push(data);
+          if (cost > 0) {
+            db.ref('expenses').push({
+              date: dt,
+              category: 'Medicine & Health',
+              title: 'Vaccine Expense (' + name + ') - Tag: ' + tag,
+              amount: cost
+            });
+          }
+        }
       }
       cancelVaccineEdit();
     }
-    function renderVaccineTable() {
-      var body = getEl('vaccineTableBody');
-      if (!body) return;
-      var list = [];
-      for (var k in farmStore.vaccine) list.push({ key: k, data: farmStore.vaccine[k] });
-      list.sort(function(a, b) { return (b.data.date || '').localeCompare(a.data.date || ''); });
-      if (list.length === 0) { body.innerHTML = '<tr><td colspan="6" style="text-align:center; color:#777;">কোনো টিকা রেকর্ড নেই।</td></tr>'; return; }
-      var html = '';
-      list.forEach(function(item) {
-        var k = item.key, d = item.data;
-        html += '<tr><td><strong>' + (d.tag || '-') + '</strong></td><td>' + (d.name || '-') + '</td><td>' + formatDateBR(d.date) + '</td><td style="color:red; font-weight:bold;">' + formatDateBR(d.nextDate) + '</td><td>₹ ' + (d.cost || 0) + '</td><td><button class="action-btn btn-info" onclick="editVaccineRecord(\'' + k + '\')">Edit</button><button class="action-btn btn-danger" onclick="deleteRecord(\'vaccine\',\'' + k + '\')">Delete</button></td></tr>';
-      });
-      body.innerHTML = html;
+
+    window.downloadHealthPassport = function(tag) {
+      var content = getEl('passportContent').innerHTML;
+      var blob = new Blob(['<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Health Passport - ' + tag + '</title></head><body style="font-family:sans-serif; padding:20px;">' + content + '</body></html>'], {type: 'text/html'});
+      var url = URL.createObjectURL(blob);
+      var a = document.createElement('a');
+      a.href = url;
+      a.download = 'Health_Passport_' + tag + '.html';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+    };
+
+    window.showDigitalHealthPassport = function(encTag) {
+      var tag = decodeURIComponent(encTag).trim();
+      var cow = farmStore.cattle ? farmStore.cattle[tag] : null;
+      
+      var historyHtml = '<div style="font-family:sans-serif; padding:15px;">';
+      historyHtml += '<div style="text-align:center; border-bottom:2px solid #1b5e20; padding-bottom:10px; margin-bottom:15px;">';
+      historyHtml += '<h2 style="color:#1b5e20; margin:0;">NANDA DAIRY & AGRO</h2>';
+      historyHtml += '<p style="font-size:13px; font-weight:bold; margin:3px 0;">Digital Health Passport & Vaccination Passbook</p>';
+      historyHtml += '</div>';
+
+      historyHtml += '<div style="display:flex; justify-content:space-between; font-size:13px; margin-bottom:15px; background:#f1f8e9; padding:10px; border-radius:6px;">';
+      historyHtml += '<div><strong>Cattle Tag ID:</strong> ' + tag + '<br><strong>Breed:</strong> ' + (cow ? cow.breed : 'N/A') + '</div>';
+      historyHtml += '<div><strong>Status:</strong> ' + (cow ? cow.status : 'N/A') + '<br><strong>Lactation:</strong> ' + (cow ? cow.lactation : 'N/A') + '</div>';
+      historyHtml += '</div>';
+
+      historyHtml += '<h3 style="font-size:14px; color:#1b5e20; border-bottom:1px solid #ddd; padding-bottom:4px;">সকল টিকাদানের ইতিহাস (Vaccination History):</h3>';
+      historyHtml += '<table style="width:100%; border-collapse:collapse; font-size:12px; margin-top:8px;">';
+      historyHtml += '<tr style="background:#e8f5e9;"><th style="border:1px solid #c8e6c9; padding:6px;">তারিখ</th><th style="border:1px solid #c8e6c9; padding:6px;">ভ্যাকসিনের নাম</th><th style="border:1px solid #c8e6c9; padding:6px;">ডোজ ও রুট</th><th style="border:1px solid #c8e6c9; padding:6px;">ব্যাচ ও মেয়াদ</th><th style="border:1px solid #c8e6c9; padding:6px;">পরবর্তী ডোজ</th></tr>';
+
+      for (var k in farmStore.vaccine) {
+        var v = farmStore.vaccine[k];
+        if (v && (v.tag || '').trim().toLowerCase() === tag.toLowerCase()) {
+          historyHtml += '<tr>';
+          historyHtml += '<td style="border:1px solid #c8e6c9; padding:6px;">' + formatDateBR(v.date) + '</td>';
+          historyHtml += '<td style="border:1px solid #c8e6c9; padding:6px;"><strong>' + v.name + '</strong></td>';
+          historyHtml += '<td style="border:1px solid #c8e6c9; padding:6px;">' + (v.dose || 5) + ' mL (' + (v.route || 'S/C') + ')</td>';
+          historyHtml += '<td style="border:1px solid #c8e6c9; padding:6px;">' + (v.batchNo || '-') + '</td>';
+          historyHtml += '<td style="border:1px solid #c8e6c9; padding:6px; color:red;">' + formatDateBR(v.nextDate) + '</td>';
+          historyHtml += '</tr>';
+        }
+      }
+      historyHtml += '</table>';
+      historyHtml += '<div style="margin-top:30px; text-align:right; font-size:12px;"><p>Authorized Signatory</p><p><strong>Nanda Dairy & Agro</strong></p></div>';
+      historyHtml += '</div>';
+
+      var modal = getEl('digitalPassportModal');
+      if (!modal) {
+        modal = document.createElement('div');
+        modal.id = 'digitalPassportModal';
+        modal.style.cssText = "display:flex; position:fixed; inset:0; background:rgba(0,0,0,0.65); z-index:3000; align-items:center; justify-content:center; padding:15px;";
+        modal.innerHTML = '<div style="background:white; max-width:700px; width:100%; border-radius:12px; padding:25px; max-height:90vh; overflow-y:auto;"><div id="passportContent"></div><div style="text-align:right; margin-top:15px; display:flex; justify-content:flex-end; gap:10px;"><button class="btn btn-info" onclick="window.print()">🖨️ প্রিন্ট করুন</button><button class="btn btn-success" onclick="downloadHealthPassport(\'' + tag + '\')" style="background:#2e7d32; color:white; border:none; padding:8px 14px; border-radius:6px; cursor:pointer;">📥 ডাউনলোড করুন</button><button class="btn btn-danger" onclick="document.getElementById(\'digitalPassportModal\').style.display=\'none\'">বন্ধ করুন</button></div></div>';
+        document.body.appendChild(modal);
+      }
+      getEl('passportContent').innerHTML = historyHtml;
+      modal.style.display = 'flex';
+    };
+
+    var eDewormKey = null;
+
+    function onDewormTagChange() {
+      var tag = (getEl('dewormCowTag').value || '').trim();
+      if (!tag) return;
+
+      var cow = farmStore.cattle ? farmStore.cattle[tag] : null;
+      var alertBox = getEl('dewormPregnancyAlertBox');
+      if (!alertBox) {
+        alertBox = document.createElement('div');
+        alertBox.id = 'dewormPregnancyAlertBox';
+        var formGrid = document.querySelector('#tab-deworm .form-grid');
+        if (formGrid) formGrid.parentNode.insertBefore(alertBox, formGrid.nextSibling);
+      }
+
+      if (cow) {
+        if (getEl('dewormWeight')) getEl('dewormWeight').value = cow.weight || '';
+        
+        if (cow.status === 'Pregnant' || (cow.status || '').toLowerCase() === 'pregnant') {
+          alertBox.innerHTML = '<div style="background:#ffebee; color:#c62828; padding:10px; border-radius:8px; border:1px solid #ef9a9a; margin-bottom:12px; font-weight:bold;">⚠️ প্রেগন্যান্সি হাইলাইট অ্যালার্ট: এই গাভীটি গর্ভবতী (Pregnant)! অনুগ্রহ করে গর্ভকালীন নিরাপদ (Safe for Pregnant Cattle) কৃমিনাশক ব্যবহার করুন।</div>';
+        } else {
+          alertBox.innerHTML = '<div style="background:#e8f5e9; color:#2e7d32; padding:8px; border-radius:6px; margin-bottom:12px; font-size:12.5px;">✔ গাভীর স্বাস্থ্য স্বাভাবিক। সাধারণ কৃমিনাশক ব্যবহার উপযোগী।</div>';
+        }
+
+        autoCalcDewormDose();
+      }
     }
 
-    var eDewKey = null;
+    function autoCalcDewormDose() {
+      var wt = parseFloat(getEl('dewormWeight').value) || 0;
+      var formTypeSelect = getEl('dewormFormType');
+      var formType = formTypeSelect ? formTypeSelect.value : 'Syrup';
+      var doseField = getEl('dewormCalculatedDose');
+      if (!doseField) return;
+
+      var calcResult = '';
+      if (wt > 0) {
+        if (formType === 'Syrup') {
+          var ml = wt / 3;
+          calcResult = ml.toFixed(1) + ' mL (মিলি)';
+        } else if (formType === 'Bolus / Tablet') {
+          var tabs = Math.ceil(wt / 300);
+          calcResult = tabs + ' Bolus / Tablet (টি)';
+        } else {
+          calcResult = (wt / 3).toFixed(1) + ' mL / Gram';
+        }
+      }
+      doseField.value = calcResult;
+      autoCalcNextDewormDate();
+    }
+
+    function autoCalcNextDewormDate() {
+      var dtVal = getEl('dewormDate').value;
+      if (!dtVal) return;
+
+      var d = new Date(dtVal);
+      if (isNaN(d.getTime())) return;
+
+      d.setDate(d.getDate() + 90);
+      var nextDateInput = getEl('dewormNextDate');
+      if (nextDateInput) {
+        nextDateInput.value = d.toISOString().split('T')[0];
+      }
+    }
+
     function editDewormRecord(k) {
-      var d = farmStore.deworm ? farmStore.deworm[k] : null; if (!d) return; eDewKey = k;
-      getEl('dewCowTag').value = d.tag || '';
-      getEl('dewMedName').value = d.medName || '';
-      getEl('dewDate').value = d.date || '';
-      getEl('dewNextDate').value = d.nextDate || '';
-      getEl('dewDosage').value = d.dosage || '';
-      getEl('dewSubmitBtn').innerText = 'Update Deworm Record';
-      getEl('dewCancelBtn').style.display = 'inline-flex';
-      switchTab('deworm', document.querySelector('nav button:nth-child(7)'));
+      var d = farmStore.deworm ? farmStore.deworm[k] : null; if (!d) return; eDewormKey = k;
+      getEl('dewormCowTag').value = d.tag || '';
+      getEl('dewormDate').value = d.date || '';
+      if(getEl('dewormWeight')) getEl('dewormWeight').value = d.weight || '';
+      getEl('dewormMedName').value = d.medName || '';
+      if(getEl('dewormFormType')) getEl('dewormFormType').value = d.formType || 'Syrup';
+      if(getEl('dewormCalculatedDose')) getEl('dewormCalculatedDose').value = d.dose || '';
+      if(getEl('dewormNextDate')) getEl('dewormNextDate').value = d.nextDate || '';
+      getEl('dewormCost').value = d.cost || '';
+      getEl('dewormNote').value = d.note || '';
+
+      getEl('dewormSubmitBtn').innerText = 'Update Deworming';
+      getEl('dewormCancelBtn').style.display = 'inline-flex';
+      switchTab('deworm', document.querySelector('nav button:nth-child(5)'));
+      onDewormTagChange();
     }
+
     function cancelDewormEdit() {
-      eDewKey = null;
-      ['dewCowTag','dewMedName','dewDate','dewNextDate','dewDosage'].forEach(function(i){ if(getEl(i)) getEl(i).value=''; });
-      getEl('dewSubmitBtn').innerText = 'Save Deworming Record';
-      getEl('dewCancelBtn').style.display = 'none';
+      eDewormKey = null;
+      ['dewormCowTag','dewormDate','dewormWeight','dewormMedName','dewormCalculatedDose','dewormNextDate','dewormCost','dewormNote'].forEach(function(id){ if(getEl(id)) getEl(id).value=''; });
+      getEl('dewormSubmitBtn').innerText = 'Save Deworming Record';
+      getEl('dewormCancelBtn').style.display = 'none';
+      var alertBox = getEl('dewormPregnancyAlertBox'); if(alertBox) alertBox.innerHTML = '';
     }
-    function saveDewormRecord() {
-      var tag = (getEl('dewCowTag').value || '').trim();
-      var med = (getEl('dewMedName').value || '').trim();
-      var dt = getEl('dewDate').value;
-      if (!tag || !med || !dt) return alert('Tag, ঔষধের নাম ও তারিখ দিন!');
-      var data = { tag: tag, medName: med, date: dt, nextDate: getEl('dewNextDate').value, dosage: getEl('dewDosage').value || '' };
+
+    function saveDewormingRecord() {
+      var tag = (getEl('dewormCowTag').value || '').trim();
+      var dt = getEl('dewormDate').value;
+      var medName = (getEl('dewormMedName').value || '').trim();
+      if (!tag || !dt || !medName) return alert('Tag ID, তারিখ এবং ওষুধের নাম দিন!');
+
+      var cost = parseFloat(getEl('dewormCost').value) || 0;
+      var formTypeSelect = getEl('dewormFormType');
+
+      var data = {
+        tag: tag,
+        date: dt,
+        weight: parseFloat(getEl('dewormWeight').value) || 0,
+        medName: medName,
+        formType: formTypeSelect ? formTypeSelect.value : 'Syrup',
+        dose: getEl('dewormCalculatedDose') ? getEl('dewormCalculatedDose').value : '',
+        nextDate: getEl('dewormNextDate') ? getEl('dewormNextDate').value : '',
+        cost: cost,
+        note: getEl('dewormNote').value
+      };
+
       if (db) {
-        if (eDewKey) db.ref('deworm/' + eDewKey).update(data);
-        else db.ref('deworm').push(data);
+        if (eDewormKey) {
+          db.ref('deworm/' + eDewormKey).update(data);
+        } else {
+          db.ref('deworm').push(data);
+          if (cost > 0) {
+            db.ref('expenses').push({
+              date: dt,
+              category: 'Medicine & Health',
+              title: 'Deworming Expense (' + medName + ') - Tag: ' + tag,
+              amount: cost
+            });
+          }
+        }
       }
       cancelDewormEdit();
-    }
-    function renderDewormTable() {
-      var body = getEl('dewormTableBody');
-      if (!body) return;
-      var list = [];
-      for (var k in farmStore.deworm) list.push({ key: k, data: farmStore.deworm[k] });
-      list.sort(function(a, b) { return (b.data.date || '').localeCompare(a.data.date || ''); });
-      if (list.length === 0) { body.innerHTML = '<tr><td colspan="6" style="text-align:center; color:#777;">কোনো কৃমির ওষুধ রেকর্ড নেই।</td></tr>'; return; }
-      var html = '';
-      list.forEach(function(item) {
-        var k = item.key, d = item.data;
-        html += '<tr><td><strong>' + (d.tag || '-') + '</strong></td><td>' + (d.medName || '-') + '</td><td>' + formatDateBR(d.date) + '</td><td style="color:red; font-weight:bold;">' + formatDateBR(d.nextDate) + '</td><td>' + (d.dosage || '-') + '</td><td><button class="action-btn btn-info" onclick="editDewormRecord(\'' + k + '\')">Edit</button><button class="action-btn btn-danger" onclick="deleteRecord(\'deworm\',\'' + k + '\')">Delete</button></td></tr>';
-      });
-      body.innerHTML = html;
     }
 
     var eMlkKey = null;
@@ -2051,7 +2268,7 @@
       var d = farmStore.milk[k]; if (!d) return; eMlkKey = k;
       getEl('milkDate').value = d.date || ''; getEl('milkCowTag').value = d.cow || ''; getEl('milkSession').value = d.session || 'Morning'; getEl('milkLiters').value = d.liters || '';
       getEl('milkSubmitBtn').innerText = 'Update Milk'; getEl('milkCancelBtn').style.display = 'inline-flex';
-      switchTab('milk', document.querySelector('nav button:nth-child(8)'));
+      switchTab('milk', document.querySelector('nav button:nth-child(6)'));
     }
     function cancelMilkEdit() {
       eMlkKey = null; getEl('milkCowTag').value = ''; getEl('milkLiters').value = '';
@@ -2068,7 +2285,8 @@
     var eSaleKey = null;
     function calcSale() {
       var q = parseFloat(getEl('saleQty').value) || 0, r = parseFloat(getEl('saleRate').value) || 0, t = q * r;
-      getEl('saleTotal').value = t; getEl('saleDue').value = Math.max(0, t - (parseFloat(getEl('salePaid').value) || 0));
+      getEl('saleTotal').value = t; 
+      getEl('saleDue').value = Math.max(0, t - (parseFloat(getEl('salePaid').value) || 0));
     }
     
     function editSale(k) {
@@ -2093,13 +2311,16 @@
 
       getEl('saleSubmitBtn').innerText = 'Update Sale'; 
       getEl('saleCancelBtn').style.display = 'inline-flex';
-      switchTab('sales', document.querySelector('nav button:nth-child(9)'));
+      switchTab('sales', document.querySelector('nav button:nth-child(7)'));
       getEl('saleCustomer').scrollIntoView({ behavior: 'smooth' });
+      onSaleCustomerInput(); // বকেয়া আপডেট করার জন্য
     }
 
     function cancelSaleEdit() {
       eSaleKey = null; ['saleCustomer','salePhone','saleArea','saleAddr','saleQty','saleRate','saleTotal','salePaid','saleDue'].forEach(function(i){ getEl(i).value=''; });
       getEl('saleSubmitBtn').innerText = 'Save Sale'; getEl('saleCancelBtn').style.display = 'none';
+      var lbl = document.getElementById('lblSaleCustomer');
+      if(lbl) lbl.innerHTML = 'Customer Name *';
     }
 
     function saveSale() {
@@ -2154,7 +2375,7 @@
       if (getEl('custType')) getEl('custType').value = d.type || 'Regular Retailer';
       if (getEl('custShift')) getEl('custShift').value = d.shift || 'Morning';
       getEl('custSubmitBtn').innerText = 'Update Customer'; getEl('custCancelBtn').style.display = 'inline-flex';
-      switchTab('customers', document.querySelector('nav button:nth-child(10)'));
+      switchTab('customers', document.querySelector('nav button:nth-child(8)'));
     }
     function cancelCustomerEdit() {
       eCustKey = null; ['custName','custPhone','custArea','custAddress','custDailyDemand','custOpeningDue'].forEach(function(i){ if(getEl(i)) getEl(i).value=''; });
@@ -2170,15 +2391,20 @@
     var eOrdKey = null;
     function editOrder(k) {
       var d = farmStore.orders[k]; if (!d) return; eOrdKey = k;
-      getEl('orderDate').value = d.date || ''; getEl('orderCustomer').value = d.customer || ''; getEl('orderPhone').value = d.phone || '';
+      getEl('orderDate').value = d.date || ''; getEl('orderCustomer').value = d.customer || d.name || ''; getEl('orderPhone').value = d.phone || '';
       getEl('orderArea').value = d.area || ''; getEl('orderItems').value = d.items || ''; getEl('orderTotal').value = d.total || '';
       getEl('orderPaid').value = d.paid || ''; getEl('orderStatus').value = d.status || 'Pending';
       getEl('orderSubmitBtn').innerText = 'Update Order'; getEl('orderCancelBtn').style.display = 'inline-flex';
-      switchTab('orders', document.querySelector('nav button:nth-child(11)'));
+      switchTab('orders', document.querySelector('nav button:nth-child(9)'));
+      getEl('orderCustomer').scrollIntoView({ behavior: 'smooth' });
     }
+
     function cancelOrderEdit() {
-      eOrdKey = null; ['orderCustomer','orderPhone','orderArea','orderItems','orderTotal','orderPaid'].forEach(function(i){ if(getEl(i)) getEl(i).value=''; });
-      getEl('orderStatus').value = 'Pending'; getEl('orderSubmitBtn').innerText = 'Save Order'; getEl('orderCancelBtn').style.display = 'none';
+      eOrdKey = null; 
+      ['orderCustomer','orderPhone','orderArea','orderItems','orderTotal','orderPaid'].forEach(function(i){ if(getEl(i)) getEl(i).value=''; });
+      getEl('orderStatus').value = 'Pending'; 
+      getEl('orderSubmitBtn').innerText = 'Save Order'; 
+      getEl('orderCancelBtn').style.display = 'none';
     }
     
     function saveOrder() {
@@ -2209,31 +2435,16 @@
           if (status === 'Delivered') {
             if (total > 0) {
               db.ref('sales').push({ 
-                date: deliveryDate, 
-                name: cust, 
-                phone: phone, 
-                area: area, 
-                addr: '', 
-                item: items, 
-                qty: 1, 
-                rate: total, 
-                total: total, 
-                paid: paid, 
-                due: Math.max(0, total - paid), 
-                payments: [] 
+                date: deliveryDate, name: cust, phone: phone, area: area, addr: '', 
+                item: items, qty: 1, rate: total, total: total, paid: paid, 
+                due: Math.max(0, total - paid), payments: [] 
               });
             }
           } 
           else if (status === 'Pending') {
             db.ref('orders').push({ 
-              date: deliveryDate, 
-              customer: cust, 
-              phone: phone, 
-              area: area, 
-              items: items, 
-              total: total, 
-              paid: paid, 
-              status: status 
+              date: deliveryDate, customer: cust, phone: phone, area: area, 
+              items: items, total: total, paid: paid, status: status 
             });
           }
           eOrdKey = null; 
@@ -2241,30 +2452,15 @@
           if (status === 'Delivered') {
             if (total > 0) {
               db.ref('sales').push({ 
-                date: deliveryDate, 
-                name: cust, 
-                phone: phone, 
-                area: area, 
-                addr: '', 
-                item: items, 
-                qty: 1, 
-                rate: total, 
-                total: total, 
-                paid: paid, 
-                due: Math.max(0, total - paid), 
-                payments: [] 
+                date: deliveryDate, name: cust, phone: phone, area: area, addr: '', 
+                item: items, qty: 1, rate: total, total: total, paid: paid, 
+                due: Math.max(0, total - paid), payments: [] 
               });
             }
           } else if (status === 'Pending') {
             db.ref('orders').push({ 
-              date: deliveryDate, 
-              customer: cust, 
-              phone: phone, 
-              area: area, 
-              items: items, 
-              total: total, 
-              paid: paid, 
-              status: status 
+              date: deliveryDate, customer: cust, phone: phone, area: area, 
+              items: items, total: total, paid: paid, status: status 
             });
           }
         }
@@ -2282,7 +2478,7 @@
       getEl('feedNote').value = d.note || '';
       getEl('feedSubmitBtn').innerText = 'Update Feed';
       getEl('feedCancelBtn').style.display = 'inline-flex';
-      switchTab('feed', document.querySelector('nav button:nth-child(12)'));
+      switchTab('feed', document.querySelector('nav button:nth-child(10)'));
     }
     function cancelFeedEdit() {
       eFeedKey = null;
@@ -2311,11 +2507,11 @@
     }
 
     function renderFeedTable() {
-      var body = getEl('feedTableBody');
+      var body = getEl('rationTableBody');
       if (!body) return;
       var list = [];
-      for (var k in farmStore.feed) {
-        list.push({ key: k, data: farmStore.feed[k] });
+      for (var k in farmStore.feedRations) {
+        list.push({ key: k, data: farmStore.feedRations[k] });
       }
       list.sort(function(a, b) {
         return (b.data.date || '').localeCompare(a.data.date || '');
@@ -2323,23 +2519,24 @@
 
       if (list.length === 0) {
         body.innerHTML = '';
-        if (getEl('feedNoData')) getEl('feedNoData').style.display = 'block';
+        if (getEl('rationNoData')) getEl('rationNoData').style.display = 'block';
         return;
       }
-      if (getEl('feedNoData')) getEl('feedNoData').style.display = 'none';
+      if (getEl('rationNoData')) getEl('rationNoData').style.display = 'none';
 
       var html = '';
       list.forEach(function(item) {
         var k = item.key, d = item.data;
         html += '<tr>' +
           '<td>' + formatDateBR(d.date) + '</td>' +
-          '<td><strong>' + (d.type || '-') + '</strong></td>' +
-          '<td>' + (d.qty || '-') + '</td>' +
-          '<td style="color:var(--danger); font-weight:600;">₹ ' + (d.cost || 0) + '</td>' +
-          '<td>' + (d.note || '-') + '</td>' +
+          '<td><strong style="color:var(--primary);">Tag: ' + (d.cowTag || '-') + '</strong></td>' +
+          '<td>' + (d.pellet || 0) + ' kg</td>' +
+          '<td>₹ ' + (d.avgCostPerKg || 0) + '</td>' +
+          '<td>₹ ' + (d.suppCost || 0) + '</td>' +
+          '<td style="color:green; font-weight:bold;">₹ ' + (d.totalCost || 0) + '</td>' +
           '<td>' +
-            '<button class="action-btn btn-info" onclick="editFeed(\'' + k + '\')">Edit</button>' +
-            '<button class="action-btn btn-danger" onclick="deleteRecord(\'feed\',\'' + k + '\')">Delete</button>' +
+            '<button class="action-btn btn-info" onclick="editRation(\'' + k + '\')">Edit</button>' +
+            '<button class="action-btn btn-danger" onclick="deleteRecord(\'feedRations\',\'' + k + '\')">Delete</button>' +
           '</td>' +
         '</tr>';
       });
@@ -2360,7 +2557,7 @@
       getEl('expDate').value = d.date || ''; getEl('expCategory').value = d.category || 'Other';
       getEl('expTitle').value = d.title || ''; getEl('expAmount').value = d.amount || '';
       getEl('expSubmitBtn').innerText = 'Update Expense'; getEl('expCancelBtn').style.display = 'inline-flex';
-      switchTab('expenses', document.querySelector('nav button:nth-child(13)'));
+      switchTab('expenses', document.querySelector('nav button:nth-child(11)'));
     }
     function cancelExpenseEdit() {
       eExpKey = null; getEl('expTitle').value = ''; getEl('expAmount').value = '';
@@ -2411,7 +2608,7 @@
       var d = farmStore.stock[k]; if (!d) return; eStkKey = k;
       getEl('stkName').value = d.name || ''; getEl('stkQty').value = d.qty || ''; getEl('stkUnit').value = d.unit || 'kg'; getEl('stkAlert').value = d.alertLevel || '';
       getEl('stkSubmitBtn').innerText = 'Update Stock'; getEl('stkCancelBtn').style.display = 'inline-flex';
-      switchTab('stock', document.querySelector('nav button:nth-child(14)'));
+      switchTab('stock', document.querySelector('nav button:nth-child(12)'));
     }
     function cancelStockEdit() {
       eStkKey = null; getEl('stkName').value = ''; getEl('stkQty').value = ''; getEl('stkAlert').value = '';
@@ -2429,7 +2626,7 @@
       var d = farmStore.semen[k]; if (!d) return; eSemKey = k;
       getEl('semBatch').value = d.batch || ''; getEl('semBreed').value = d.breed || ''; getEl('semSource').value = d.source || ''; getEl('semCount').value = d.count || '';
       getEl('semSubmitBtn').innerText = 'Update Semen'; getEl('semCancelBtn').style.display = 'inline-flex';
-      switchTab('semen', document.querySelector('nav button:nth-child(15)'));
+      switchTab('semen', document.querySelector('nav button:nth-child(13)'));
     }
     function cancelSemenEdit() {
       eSemKey = null; ['semBatch','semBreed','semSource','semCount'].forEach(function(i){ getEl(i).value=''; });
@@ -2448,7 +2645,7 @@
       getEl('hlthDate').value = d.date || ''; getEl('hlthCowTag').value = d.cowTag || ''; getEl('hlthType').value = d.type || 'Vaccination';
       getEl('hlthDesc').value = d.desc || ''; getEl('hlthNextDate').value = d.nextDate || '';
       getEl('hlthSubmitBtn').innerText = 'Update Health'; getEl('hlthCancelBtn').style.display = 'inline-flex';
-      switchTab('health', document.querySelector('nav button:nth-child(16)'));
+      switchTab('health', document.querySelector('nav button:nth-child(14)'));
     }
     function cancelHealthEdit() {
       eHlthKey = null; ['hlthCowTag','hlthDesc','hlthNextDate'].forEach(function(i){ if(getEl(i)) getEl(i).value=''; });
@@ -2480,20 +2677,11 @@
         snap.forEach(function(c) {
           count++; var d = c.val(), k = c.key; farmStore.breeding[k] = d;
           var badgeClass = d.status === 'Pregnant' ? 'badge-success' : (d.status === 'Failed' ? 'badge-danger' : 'badge-warning');
-          if (body) body.innerHTML += '<tr><td><strong>' + (d.tag || '-') + '</strong></td><td>' + formatDateBR(d.aiDate) + '</td><td>' + (d.semenId || '-') + '</td><td>' + (d.company || '-') + '</td><td>₹ ' + (d.aiCost || 0) + '</td><td>' + formatDateBR(d.pdDate) + '</td><td><span class="badge ' + badgeClass + '">' + (d.status || 'Pending') + '</span></td><td>' + formatDateBR(d.expCalvingDate || d.calvingDate) + '</td><td>' + formatDateBR(d.actCalvingDate) + '</td><td><button class="action-btn btn-info" onclick="editBreeding(\'' + k + '\')">Edit</button><button class="action-btn btn-danger" onclick="deleteRecord(\'breeding\',\'' + k + '\')">Delete</button></td></tr>';
+          if (body) body.innerHTML += '<tr><td><strong>' + (d.tag || '-') + '</strong></td><td>' + formatDateBR(d.aiDate) + '</td><td><span class="badge badge-warning">' + (d.heatSigns || '-') + '</span></td><td>' + (d.semenId || '-') + '</td><td>' + (d.company || '-') + '</td><td>₹ ' + (d.aiCost || 0) + '</td><td>' + formatDateBR(d.pdDate) + '</td><td><span class="badge ' + badgeClass + '">' + (d.status || 'Pending') + '</span></td><td>' + formatDateBR(d.expCalvingDate || d.calvingDate) + '</td><td>' + formatDateBR(d.actCalvingDate) + '</td><td>' + (d.note || '-') + '</td><td><button class="action-btn btn-info" onclick="editBreeding(\'' + k + '\')">Edit</button><button class="action-btn btn-danger" onclick="deleteRecord(\'breeding\',\'' + k + '\')">Delete</button></td></tr>';
         });
         if (getEl('breedingNoData')) getEl('breedingNoData').style.display = count === 0 ? 'block' : 'none';
       });
 
-      // New 4 Feature Listeners
-      db.ref('heat').on('value', function(snap) {
-        farmStore.heat = {}; snap.forEach(function(c){ farmStore.heat[c.key] = c.val(); });
-        renderHeatTable();
-      });
-      db.ref('insemination').on('value', function(snap) {
-        farmStore.insemination = {}; snap.forEach(function(c){ farmStore.insemination[c.key] = c.val(); });
-        renderInseminationTable();
-      });
       db.ref('vaccine').on('value', function(snap) {
         farmStore.vaccine = {}; snap.forEach(function(c){ farmStore.vaccine[c.key] = c.val(); });
         renderVaccineTable();
