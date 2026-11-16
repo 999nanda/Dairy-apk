@@ -562,7 +562,7 @@
         </div>
       </div>
 
-      <!-- ৯. Orders -->
+      <!-- ৯. Orders (Updated with full provided Order Logic & Auto Generation) -->
       <div id="tab-orders" class="tab-content" style="display: none;">
         <div class="card">
           <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
@@ -909,6 +909,7 @@
       }
     }
 
+    // Updated Order Customer Input Logic
     function onOrderCustomerInput() {
       var val = (getEl('orderCustomer').value || '').trim().toLowerCase();
       if (!val) return;
@@ -922,6 +923,7 @@
       }
     }
 
+    // Daily Orders Generator
     function checkAndGenerateDailyOrders() {
       if (!db) return;
       var todayISO = new Date().toISOString().split('T')[0];
@@ -2023,7 +2025,6 @@
       body.innerHTML = html;
     }
 
-    // Advanced Deworming Register Module Functions (Updated: 1 mL per 3 kg body weight)
     var eDewormKey = null;
 
     function onDewormTagChange() {
@@ -2062,7 +2063,7 @@
       var calcResult = '';
       if (wt > 0) {
         if (formType === 'Syrup') {
-          var ml = wt / 3; // প্রতি ৩ কেজি ওজনের জন্য ১ মিলি (1 mL for every 3 kg body weight)
+          var ml = wt / 3;
           calcResult = ml.toFixed(1) + ' mL (মিলি)';
         } else if (formType === 'Bolus / Tablet') {
           var tabs = Math.ceil(wt / 300);
@@ -2331,6 +2332,7 @@
       getEl('orderStatus').value = 'Pending'; getEl('orderSubmitBtn').innerText = 'Save Order'; getEl('orderCancelBtn').style.display = 'none';
     }
     
+    // Updated saveOrder function with robust order/sales logic
     function saveOrder() {
       var cust = (getEl('orderCustomer').value || '').trim(); 
       var items = (getEl('orderItems').value || '').trim();
