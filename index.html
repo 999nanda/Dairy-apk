@@ -244,7 +244,7 @@
   <div id="loginScreen">
     <div class="login-box">
       <img src="logo.png" alt="Logo" onerror="this.onerror=null; this.src='https://cdn-icons-png.flaticon.com/512/2395/2395796.png';">
-      <h2>Nanda Dairy & Agro</h2>
+      <h2>NANDA Dairy & Agro</h2>
       <p style="font-size: 13px; color: #666; margin-bottom: 20px;">ফার্ম ম্যানেজমেন্ট সিস্টেমে স্বাগতম</p>
       <div style="text-align: left; margin-bottom: 14px;"><label style="font-size: 12px; font-weight:600;">User ID</label><input type="text" id="loginId" placeholder="ইউজার আইডি"></div>
       <div style="text-align: left; margin-bottom: 20px;"><label style="font-size: 12px; font-weight:600;">Password</label><input type="password" id="loginPass" placeholder="পাসওয়ার্ড"></div>
@@ -369,7 +369,7 @@
               <tbody id="breedingTableBody"></tbody>
             </table>
           </div>
-          <p id="breedingNoData" style="text-align: center; color: #777; font-size: 13px; margin-top: 15px; display: none;">কোনো record নেই。</p>
+          <p id="breedingNoData" style="text-align: center; color: #777; font-size: 13px; margin-top: 15px; display: none;">কোনো record নেই।</p>
         </div>
       </div>
 
@@ -495,16 +495,22 @@
           </div>
           <div class="form-grid">
             <div class="input-group"><label>Date *</label><input type="date" id="saleDate"></div>
-            <div class="input-group"><label>Customer Name *</label><input type="text" id="saleCustomer" list="customerNameList" oninput="onSaleCustomerInput()" placeholder="নাম লিখুন"></div>
+            <div class="input-group">
+                <!-- Customer Name-এর সাথে বকেয়া দেখানোর ব্যবস্থা -->
+                <label id="lblSaleCustomer">Customer Name *</label>
+                <input type="text" id="saleCustomer" list="customerNameList" oninput="onSaleCustomerInput()" placeholder="নাম লিখুন">
+            </div>
             <div class="input-group"><label>Phone</label><input type="text" id="salePhone" placeholder="মোবাইল"></div>
             <div class="input-group"><label>Area / Route</label><input type="text" id="saleArea" list="customerAreaList" placeholder="এলাকা"></div>
             <div class="input-group"><label>Address</label><input type="text" id="saleAddr" placeholder="ঠিকানা"></div>
             <div class="input-group"><label>Item</label><select id="saleItem"><option value="Liquid Milk">Liquid Milk</option><option value="Ghee">Ghee</option><option value="Butter">Butter</option><option value="Paneer">Paneer</option><option value="Manure">Manure</option></select></div>
             <div class="input-group"><label>Quantity</label><input type="number" id="saleQty" oninput="calcSale()" placeholder="০"></div>
             <div class="input-group"><label>Rate ₹</label><input type="number" id="saleRate" oninput="calcSale()" placeholder="₹"></div>
-            <div class="input-group"><label>Total Bill ₹</label><input type="number" id="saleTotal" readonly style="background:#eee;"></div>
+            <div class="input-group"><label>Total Bill ₹</label><input type="number" id="saleTotal" oninput="calcSale()" placeholder="₹"></div>
             <div class="input-group"><label>Paid Amount ₹</label><input type="number" id="salePaid" oninput="calcSale()" placeholder="₹"></div>
-            <div class="input-group"><label>Due Amount ₹</label><input type="number" id="saleDue" readonly style="background:#ffebee; color:red; font-weight:bold;"></div>
+            
+            <!-- পরিষ্কার করার জন্য লেবেল পরিবর্তন করা হলো -->
+            <div class="input-group"><label>Due Amount ₹ (এই বিলের)</label><input type="number" id="saleDue" readonly style="background:#ffebee; color:red; font-weight:bold;"></div>
           </div>
           <div style="display:flex; gap:10px;">
             <button class="btn" id="saleSubmitBtn" onclick="saveSale()">Save Sale</button>
@@ -895,17 +901,35 @@
       }, 1000);
     };
 
+    // কাস্টমারের নাম লিখলে অটো লাইভ বকেয়া দেখানোর নতুন লজিক
     function onSaleCustomerInput() {
       var val = (getEl('saleCustomer').value || '').trim().toLowerCase();
+      var lbl = document.getElementById('lblSaleCustomer');
+      if(lbl) lbl.innerHTML = 'Customer Name *'; // রিফ্রেশ লেবেল
+
       if (!val) return;
+      var cBalMap = getCustomerLiveBalances();
+      var matched = false;
+
       for (var k in farmStore.customers) {
         var c = farmStore.customers[k];
         if ((c.name || '').trim().toLowerCase() === val) {
+          matched = true;
           if (c.phone) getEl('salePhone').value = c.phone;
           if (c.area) getEl('saleArea').value = c.area;
           if (c.addr) getEl('saleAddr').value = c.addr;
+          
+          if(lbl && cBalMap[val]) {
+            var currentDue = cBalMap[val].currentDue;
+            lbl.innerHTML = 'Customer Name * <span style="color:red; font-size:11.5px; margin-left:8px;">(বর্তমান মোট বকেয়া: ₹ ' + currentDue + ')</span>';
+          }
           break;
         }
+      }
+      
+      // কাস্টমার ডিরেক্টরিতে নাম না থাকলেও লেজারে বকেয়া থাকলে দেখাবে
+      if(!matched && cBalMap[val] && lbl) {
+         lbl.innerHTML = 'Customer Name * <span style="color:red; font-size:11.5px; margin-left:8px;">(বর্তমান মোট বকেয়া: ₹ ' + cBalMap[val].currentDue + ')</span>';
       }
     }
 
@@ -1346,8 +1370,8 @@
           };
         }
 
-        var qtyVal = parseFloat(s.qty || s.quantity || 1) || 1;
-        var amtVal = Number(s.total) || (parseFloat(s.qty || 1) * parseFloat(s.rate || 0));
+        var qtyVal = (s.qty !== undefined && s.qty !== '') ? parseFloat(s.qty) : 1;
+        var amtVal = (s.total !== undefined && s.total !== '') ? Number(s.total) : (qtyVal * (parseFloat(s.rate) || 0));
         var paidVal = Number(s.paid) || 0;
 
         groupedMap[groupKey].totalQty += qtyVal;
@@ -1436,7 +1460,7 @@
           productSummary = (singleSale.item || 'দুধ') + ' (' + (singleSale.qty || 1) + ')';
         }
 
-        // Action Buttons Setup (Compact Design like Orders)
+        // Action Buttons Setup (Compact Design)
         var detailsBtn = hasMultiple ? 
           '<button class="action-btn btn-info" id="sale-btn-' + subTableId + '" onclick="toggleSubSales(\'' + subTableId + '\', this)" style="padding:4px 8px; font-size:11px; white-space:nowrap; margin:0;">বিস্তারিত (' + totalEntries + ') ▼</button>' : 
           '';
@@ -1621,7 +1645,6 @@
           orderSummary = '<span style="font-size:12px;">' + (singleOrder.items || '-') + '</span><br><span style="font-size:11px; color:#555;">মূল্য:</span> <strong>₹ ' + (singleOrder.total || item.totalAmount) + '</strong>';
         }
 
-        // Action Buttons Setup (Compact Design)
         var detailsBtn = hasMultiple ? 
           '<button class="action-btn btn-info" id="ord-btn-' + subTableId + '" onclick="toggleSubOrders(\'' + subTableId + '\', this)" style="padding:4px 8px; font-size:11px; white-space:nowrap; margin:0;">বিস্তারিত (' + totalEntries + ') ▼</button>' : 
           '';
@@ -1838,46 +1861,71 @@
       document.body.removeAttribute('data-print');
     };
 
+    // ফিক্স করা পেমেন্ট সেভ লজিক
     window.saveCustomerPayment = function() {
       var amt = parseFloat(getEl('ledgerPayAmount').value) || 0;
       if (amt <= 0) return alert('জমার পরিমাণ দিন!');
       var pDate = getEl('ledgerPayDate').value || new Date().toISOString().split('T')[0];
       var pNote = (getEl('ledgerPayNote').value || 'নগদ জমা').trim();
       var custName = window.activeLedgerCustomerName;
+      if (!custName) return alert('গ্রাহক নির্বাচন ত্রুটি!');
 
       var unpaidSales = [];
       for (var k in farmStore.sales) {
         var s = farmStore.sales[k];
-        if (s && (s.name || '').trim().toLowerCase() === custName.toLowerCase() && Number(s.due) > 0) {
-          unpaidSales.push({ key: k, data: s });
+        if (s && (s.name || '').trim().toLowerCase() === custName.toLowerCase()) {
+          var sTot = Number(s.total) || 0;
+          var sPd = Number(s.paid) || 0;
+          // বকেয়া ঠিকঠাক বের করার সেফ লজিক
+          var actualDue = sTot - sPd; 
+          if (actualDue > 0) {
+            unpaidSales.push({ key: k, data: s, actualDue: actualDue });
+          }
         }
       }
-      unpaidSales.sort(function(a, b) { return (a.data.date || '').localeCompare(b.data.date || ''); });
+      unpaidSales.sort(function(a, b) { 
+        return parseDateToTime(a.data.date) - parseDateToTime(b.data.date); 
+      });
 
       var paymentId = 'PAY-' + Date.now();
       var rem = amt;
+
       unpaidSales.forEach(function(item) {
         if (rem <= 0) return;
-        var curDue = Number(item.data.due) || 0;
+        var curDue = item.actualDue;
         var curPaid = Number(item.data.paid) || 0;
         var payAmount = Math.min(rem, curDue);
         rem -= payAmount;
+        
         var pList = getPaymentsArray(item.data.payments);
         pList.push({ id: paymentId, date: pDate, amount: payAmount, note: pNote });
         
         var newPaid = curPaid + payAmount;
-        var newDue = Math.max(0, Number(item.data.total || 0) - newPaid);
-        if (db) db.ref('sales/' + item.key).update({ paid: newPaid, due: newDue, payments: pList });
+        var newDue = Math.max(0, (Number(item.data.total) || 0) - newPaid);
+        
+        if (db) {
+          db.ref('sales/' + item.key).update({ paid: newPaid, due: newDue, payments: pList });
+        }
       });
 
       if (rem > 0) {
-        var advRecord = { date: pDate, name: custName, phone: '', area: '', addr: '', item: 'অগ্রিম জমা (' + pNote + ')', qty: 1, rate: 0, total: 0, paid: rem, due: 0, isPayment: true, payments: [{ id: paymentId, date: pDate, amount: rem, note: pNote }] };
+        var advRecord = { 
+          date: pDate, 
+          name: custName, 
+          phone: '', area: '', addr: '', 
+          item: 'অগ্রিম/অতিরিক্ত জমা (' + pNote + ')', 
+          qty: 1, rate: 0, total: 0, 
+          paid: rem, due: 0, 
+          isPayment: true, 
+          payments: [{ id: paymentId, date: pDate, amount: rem, note: pNote }] 
+        };
         if (db) db.ref('sales').push(advRecord);
       }
 
       alert('পেমেন্ট সফলভাবে জমা হয়েছে!');
-      getEl('ledgerPayAmount').value = ''; getEl('ledgerPayNote').value = '';
-      setTimeout(function() { showCustomerLedger(encodeURIComponent(custName)); }, 300);
+      getEl('ledgerPayAmount').value = ''; 
+      getEl('ledgerPayNote').value = '';
+      setTimeout(function() { showCustomerLedger(encodeURIComponent(custName)); }, 500);
     };
 
     window.showInvoice = function(k) {
@@ -2237,7 +2285,8 @@
     var eSaleKey = null;
     function calcSale() {
       var q = parseFloat(getEl('saleQty').value) || 0, r = parseFloat(getEl('saleRate').value) || 0, t = q * r;
-      getEl('saleTotal').value = t; getEl('saleDue').value = Math.max(0, t - (parseFloat(getEl('salePaid').value) || 0));
+      getEl('saleTotal').value = t; 
+      getEl('saleDue').value = Math.max(0, t - (parseFloat(getEl('salePaid').value) || 0));
     }
     
     function editSale(k) {
@@ -2264,11 +2313,14 @@
       getEl('saleCancelBtn').style.display = 'inline-flex';
       switchTab('sales', document.querySelector('nav button:nth-child(7)'));
       getEl('saleCustomer').scrollIntoView({ behavior: 'smooth' });
+      onSaleCustomerInput(); // বকেয়া আপডেট করার জন্য
     }
 
     function cancelSaleEdit() {
       eSaleKey = null; ['saleCustomer','salePhone','saleArea','saleAddr','saleQty','saleRate','saleTotal','salePaid','saleDue'].forEach(function(i){ getEl(i).value=''; });
       getEl('saleSubmitBtn').innerText = 'Save Sale'; getEl('saleCancelBtn').style.display = 'none';
+      var lbl = document.getElementById('lblSaleCustomer');
+      if(lbl) lbl.innerHTML = 'Customer Name *';
     }
 
     function saveSale() {
