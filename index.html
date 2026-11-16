@@ -562,7 +562,7 @@
         </div>
       </div>
 
-      <!-- ৯. Orders (Updated with grouped summary & Details toggle view) -->
+      <!-- ৯. Orders (Grouped Summary with "বিস্তারিত" column like Milk tab) -->
       <div id="tab-orders" class="tab-content" style="display: none;">
         <div class="card">
           <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
@@ -1486,7 +1486,7 @@
       }
     }
 
-    // Updated renderOrdersTable with Grouped Summary & Details View Toggle
+    // Orders Table Rendering with Grouped Summary & Details View
     function renderOrdersTable() {
       var body = getEl('ordersTableBody');
       if (!body) return;
@@ -1500,15 +1500,17 @@
 
       for (var k in farmStore.orders) {
         var d = farmStore.orders[k];
-        if (!d || !d.customer) continue;
+        if (!d) continue;
+        var custName = (d.customer || d.name || d.customerName || '').trim();
+        if (!custName) continue;
         
-        var stat = String(d.status || '').trim();
-        if (stat === 'Pending') {
+        var stat = String(d.status || 'Pending').trim();
+        if (stat.toLowerCase() === 'pending') {
           pendingCount++;
           var custArea = d.area || '';
           if (custArea) uniqueAreas[custArea] = true;
 
-          var rawName = d.customer.trim();
+          var rawName = custName;
           var rawDate = (d.date || '').trim();
           var groupKey = rawDate + '_' + rawName.toLowerCase();
 
@@ -1581,12 +1583,15 @@
 
         var orderSummary = '';
         if (hasMultiple) {
-          orderSummary = '<span style="color:#1b5e20; font-weight:600;">মোট ' + item.entries.length + 'টি অর্ডার</span><br><strong>মোট: ₹ ' + item.totalAmount + '</strong><br>' +
-                         '<a href="javascript:void(0)" onclick="toggleSubOrders(\'' + subTableId + '\', this)" style="display:inline-block; margin-top:5px; padding:4px 10px; background:#e1f5fe; color:#0288d1; font-weight:bold; font-size:12px; border-radius:4px; text-decoration:none;">বিস্তারিত দেখুন ▼</a>';
+          orderSummary = '<span style="color:#1b5e20; font-weight:600;">মোট ' + item.entries.length + 'টি অর্ডার</span><br><strong>মোট: ₹ ' + item.totalAmount + '</strong>';
         } else {
           var singleOrder = item.entries[0].order;
           orderSummary = (singleOrder.items || '-') + '<br><strong>মোট: ₹ ' + (singleOrder.total || item.totalAmount) + '</strong>';
         }
+
+        var detailsBtn = hasMultiple ? 
+          '<button class="action-btn btn-info" id="ord-btn-' + subTableId + '" onclick="toggleSubOrders(\'' + subTableId + '\', this)">বিস্তারিত দেখুন ▼</button>' : 
+          '<span style="color:#666; font-size:11px;">সিঙ্গেল এন্ট্রি</span>';
 
         var actionCol = '';
         if (!hasMultiple) {
@@ -1595,7 +1600,10 @@
                       '<button class="action-btn btn-info" style="padding:3px 7px; font-size:11px;" onclick="editOrder(\'' + singleKey + '\')">Edit</button> ' +
                       '<button class="action-btn btn-danger" style="padding:3px 7px; font-size:11px;" onclick="deleteRecord(\'orders\',\'' + singleKey + '\')">Delete</button>';
         } else {
-          actionCol = '<button class="action-btn" style="background:#455a64; color:white; padding:3px 7px; font-size:11px;" onclick="showCustomerLedger(\'' + encodeURIComponent(item.customer) + '\')">খাতা</button>';
+          var singleKey = item.entries[0].key;
+          actionCol = '<button class="action-btn" style="background:#455a64; color:white; padding:3px 7px; font-size:11px;" onclick="showCustomerLedger(\'' + encodeURIComponent(item.customer) + '\')">খাতা</button> ' +
+                      '<button class="action-btn btn-info" style="padding:3px 7px; font-size:11px;" onclick="editOrder(\'' + singleKey + '\')">Edit</button> ' +
+                      '<button class="action-btn btn-danger" style="padding:3px 7px; font-size:11px;" onclick="deleteRecord(\'orders\',\'' + singleKey + '\')">Delete</button>';
         }
 
         html += '<tr style="' + rowStyle + '">' +
@@ -1604,7 +1612,7 @@
           '<td>' + (item.area ? '<span class="badge badge-warning">' + item.area + '</span>' : '-') + '</td>' +
           '<td>' + orderSummary + '</td>' +
           '<td><span class="badge badge-danger">Pending</span></td>' +
-          '<td>' + actionCol + '</td>' +
+          '<td>' + detailsBtn + '<br><div style="margin-top:4px;">' + actionCol + '</div></td>' +
         '</tr>';
 
         if (hasMultiple) {
@@ -1638,7 +1646,7 @@
       if (!row) return;
       if (row.style.display === 'none') {
         row.style.display = 'table-row';
-        linkEl.innerText = 'সংক্ষিপ্ত দেখুন ▲';
+        linkEl.innerText = 'সংকুচিত করুন ▲';
         linkEl.style.background = '#ffebee';
         linkEl.style.color = '#c62828';
       } else {
@@ -1647,6 +1655,112 @@
         linkEl.style.background = '#e1f5fe';
         linkEl.style.color = '#0288d1';
       }
+    }
+
+    var eOrdKey = null;
+    function editOrder(k) {
+      var d = farmStore.orders[k]; if (!d) return; eOrdKey = k;
+      getEl('orderDate').value = d.date || ''; getEl('orderCustomer').value = d.customer || d.name || ''; getEl('orderPhone').value = d.phone || '';
+      getEl('orderArea').value = d.area || ''; getEl('orderItems').value = d.items || ''; getEl('orderTotal').value = d.total || '';
+      getEl('orderPaid').value = d.paid || ''; getEl('orderStatus').value = d.status || 'Pending';
+      getEl('orderSubmitBtn').innerText = 'Update Order'; getEl('orderCancelBtn').style.display = 'inline-flex';
+      switchTab('orders', document.querySelector('nav button:nth-child(9)'));
+    }
+
+    function cancelOrderEdit() {
+      eOrdKey = null; ['orderCustomer','orderPhone','orderArea','orderItems','orderTotal','orderPaid'].forEach(function(i){ if(getEl(i)) getEl(i).value=''; });
+      getEl('orderStatus').value = 'Pending'; getEl('orderSubmitBtn').innerText = 'Save Order'; getEl('orderCancelBtn').style.display = 'none';
+    }
+
+    function saveOrder() {
+      var cust = (getEl('orderCustomer').value || '').trim(); 
+      var items = (getEl('orderItems').value || '').trim();
+      if (!cust || !items) return alert('নাম ও বিবরণ দিন!');
+      
+      var status = getEl('orderStatus').value; 
+      var total = parseFloat(getEl('orderTotal').value) || 0; 
+      var paid = parseFloat(getEl('orderPaid').value) || 0;
+      var deliveryDate = getEl('orderDate').value;
+      var phone = (getEl('orderPhone') ? getEl('orderPhone').value : '').trim();
+      var area = (getEl('orderArea') ? getEl('orderArea').value : '').trim();
+
+      for (var ck in farmStore.customers) {
+        var cObj = farmStore.customers[ck];
+        if (cObj && cObj.name && cObj.name.trim().toLowerCase() === cust.toLowerCase()) {
+          if (!phone && cObj.phone) phone = cObj.phone;
+          if (!area && cObj.area) area = cObj.area.trim();
+          break;
+        }
+      }
+
+      if (db) {
+        if (eOrdKey) {
+          db.ref('orders/' + eOrdKey).remove();
+          
+          if (status === 'Delivered') {
+            if (total > 0) {
+              db.ref('sales').push({ 
+                date: deliveryDate, 
+                name: cust, 
+                phone: phone, 
+                area: area, 
+                addr: '', 
+                item: items, 
+                qty: 1, 
+                rate: total, 
+                total: total, 
+                paid: paid, 
+                due: Math.max(0, total - paid), 
+                payments: [] 
+              });
+            }
+          } 
+          else if (status === 'Pending') {
+            db.ref('orders').push({ 
+              date: deliveryDate, 
+              customer: cust, 
+              phone: phone, 
+              area: area, 
+              items: items, 
+              total: total, 
+              paid: paid, 
+              status: status 
+            });
+          }
+          eOrdKey = null; 
+        } else {
+          if (status === 'Delivered') {
+            if (total > 0) {
+              db.ref('sales').push({ 
+                date: deliveryDate, 
+                name: cust, 
+                phone: phone, 
+                area: area, 
+                addr: '', 
+                item: items, 
+                qty: 1, 
+                rate: total, 
+                total: total, 
+                paid: paid, 
+                due: Math.max(0, total - paid), 
+                payments: [] 
+              });
+            }
+          } else if (status === 'Pending') {
+            db.ref('orders').push({ 
+              date: deliveryDate, 
+              customer: cust, 
+              phone: phone, 
+              area: area, 
+              items: items, 
+              total: total, 
+              paid: paid, 
+              status: status 
+            });
+          }
+        }
+      }
+      cancelOrderEdit();
     }
 
     function renderRationTable() {
@@ -2147,7 +2261,7 @@
       var calcResult = '';
       if (wt > 0) {
         if (formType === 'Syrup') {
-          var ml = wt / 3; // প্রতি ৩ কেজি ওজনের জন্য ১ মিলি
+          var ml = wt / 3;
           calcResult = ml.toFixed(1) + ' mL (মিলি)';
         } else if (formType === 'Bolus / Tablet') {
           var tabs = Math.ceil(wt / 300);
@@ -2405,7 +2519,7 @@
     var eOrdKey = null;
     function editOrder(k) {
       var d = farmStore.orders[k]; if (!d) return; eOrdKey = k;
-      getEl('orderDate').value = d.date || ''; getEl('orderCustomer').value = d.customer || ''; getEl('orderPhone').value = d.phone || '';
+      getEl('orderDate').value = d.date || ''; getEl('orderCustomer').value = d.customer || d.name || ''; getEl('orderPhone').value = d.phone || '';
       getEl('orderArea').value = d.area || ''; getEl('orderItems').value = d.items || ''; getEl('orderTotal').value = d.total || '';
       getEl('orderPaid').value = d.paid || ''; getEl('orderStatus').value = d.status || 'Pending';
       getEl('orderSubmitBtn').innerText = 'Update Order'; getEl('orderCancelBtn').style.display = 'inline-flex';
@@ -2573,8 +2687,8 @@
           '<td style="color:var(--danger); font-weight:600;">₹ ' + (d.cost || 0) + '</td>' +
           '<td>' + (d.note || '-') + '</td>' +
           '<td>' +
-            '<button class="action-btn btn-info" onclick="editFeed(\'' + k + '\')">Edit</button>' +
-            '<button class="action-btn btn-danger" onclick="deleteRecord(\'feed\',\'' + k + '\')">Delete</button>' +
+            '<button class="action-btn btn-info" onclick="editFeed(\'' + k + \')">Edit</button>' +
+            '<button class="action-btn btn-danger" onclick="deleteRecord(\'feed\',\'' + k + \')">Delete</button>' +
           '</td>' +
         '</tr>';
       });
@@ -2798,7 +2912,7 @@
       });
 
       db.ref('health').on('value', function(snap) {
-        farmStore.health = {}; var body = getEl('healthTableBody'); if (body) body.innerHTML = '';
+        farmStore.health = {}; var body = getEl('healthTableBody'); if (body) body.innerHTML = **ok**; // handled
         snap.forEach(function(c) {
           var d = c.val(), k = c.key; farmStore.health[k] = d;
           if (body) body.innerHTML += '<tr><td>' + formatDateBR(d.date) + '</td><td><strong>' + (d.cowTag || '-') + '</strong></td><td>' + (d.type || '-') + '</td><td>' + (d.desc || '-') + '</td><td>' + formatDateBR(d.nextDate) + '</td><td><button class="action-btn btn-info" onclick="editHealth(\'' + k + '\')">Edit</button><button class="action-btn btn-danger" onclick="deleteRecord(\'health\',\'' + k + '\')">Delete</button></td></tr>';
