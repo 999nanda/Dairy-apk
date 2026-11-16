@@ -142,7 +142,7 @@
 
     window.onload = function() {
       var todayISO = new Date().toISOString().split('T')[0];
-      var defaultDateIds = ['milkDate', 'saleDate', 'orderDate', 'expDate', 'brAiDate', 'hlthDate', 'ledgerPayDate', 'feedDate', 'rationDate', 'insAiDate', 'vacDate', 'dewDate'];
+      var defaultDateIds = ['milkDate', 'saleDate', 'orderDate', 'expDate', 'brAiDate', 'hlthDate', 'ledgerPayDate', 'feedDate', 'rationDate', 'vacDate', 'dewDate'];
       defaultDateIds.forEach(function(id) {
         if (getEl(id)) {
           getEl(id).value = todayISO;
@@ -271,7 +271,6 @@
       <button class="active" onclick="switchTab('dashboard', this)">📊 Dashboard</button>
       <button onclick="switchTab('cattle', this)">🐄 Cattle</button>
       <button onclick="switchTab('breeding', this)">🧬 Breeding</button>
-      <button onclick="switchTab('insemination', this)">🧬 Insemination</button>
       <button onclick="switchTab('vaccine', this)">💉 Vaccination</button>
       <button onclick="switchTab('deworm', this)">💊 Deworming</button>
       <button onclick="switchTab('milk', this)">🥛 Milk</button>
@@ -338,7 +337,7 @@
         </div>
       </div>
 
-      <!-- ৩. Breeding (Updated with Note / Remarks) -->
+      <!-- ৩. Breeding (With Heat Signs, Auto-Calving & Note / Remarks) -->
       <div id="tab-breeding" class="tab-content" style="display: none;">
         <div class="card">
           <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
@@ -375,41 +374,7 @@
         </div>
       </div>
 
-      <!-- ৪. Insemination -->
-      <div id="tab-insemination" class="tab-content" style="display: none;">
-        <div class="card">
-          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
-            <h2 style="margin:0; border:none; padding:0;">🧬 Artificial Insemination (AI) Register</h2>
-            <button class="action-btn btn-info" onclick="switchTab('dashboard', document.querySelector('nav button'))">⬅ Back</button>
-          </div>
-          <div class="form-grid">
-            <div class="input-group"><label>Cattle ID *</label><input type="text" id="insCowTag" list="cattleTagList" placeholder="Tag সিলেক্ট বা টাইপ করুন"></div>
-            <div class="input-group"><label>AI Date *</label><input type="date" id="insAiDate"></div>
-            <div class="input-group"><label>Semen/Bull ID</label><input type="text" id="insSemenId" placeholder="সিমেন বা ষাঁড়ের আইডি"></div>
-            <div class="input-group"><label>Company / Source</label><input type="text" id="insCompany" placeholder="কোম্পানি"></div>
-            <div class="input-group"><label>AI Cost ₹</label><input type="number" id="insAiCost" placeholder="₹"></div>
-            <div class="input-group"><label>Pregnancy Test (PD)</label><input type="date" id="insPdDate"></div>
-            <div class="input-group"><label>Result Status</label><select id="insStatus"><option value="Pending">Pending</option><option value="Pregnant">Pregnant</option><option value="Failed">Failed</option><option value="Calved">Calved</option></select></div>
-            <div class="input-group"><label>Exp. Calving Date</label><input type="date" id="insExpCalvingDate"></div>
-            <div class="input-group"><label>Actual Calving Date</label><input type="date" id="insActCalvingDate"></div>
-          </div>
-          <div style="display:flex; gap:10px;">
-            <button class="btn" id="insSubmitBtn" onclick="saveInseminationRecord()">Save Insemination Record</button>
-            <button class="btn btn-warning" id="insCancelBtn" style="display:none;" onclick="cancelInseminationEdit()">Cancel</button>
-          </div>
-        </div>
-        <div class="card">
-          <h2>ইনসেমিনেশন রেকর্ড তালিকা</h2>
-          <div class="table-container">
-            <table>
-              <thead><tr><th>Cattle ID</th><th>AI Date</th><th>Semen/Bull</th><th>Company</th><th>Cost</th><th>PD Date</th><th>Status</th><th>Exp. Calving</th><th>Actual Calving</th><th>Action</th></tr></thead>
-              <tbody id="inseminationTableBody"></tbody>
-            </table>
-          </div>
-        </div>
-      </div>
-
-      <!-- ৫. Vaccination -->
+      <!-- ৪. Vaccination -->
       <div id="tab-vaccine" class="tab-content" style="display: none;">
         <div class="card">
           <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
@@ -439,7 +404,7 @@
         </div>
       </div>
 
-      <!-- ৬. Deworming -->
+      <!-- ৫. Deworming -->
       <div id="tab-deworm" class="tab-content" style="display: none;">
         <div class="card">
           <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
@@ -469,7 +434,7 @@
         </div>
       </div>
 
-      <!-- ৭. Milk -->
+      <!-- ৬. Milk -->
       <div id="tab-milk" class="tab-content" style="display: none;">
         <div class="card">
           <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
@@ -499,7 +464,7 @@
         </div>
       </div>
 
-      <!-- ৮. Sales -->
+      <!-- ৭. Sales -->
       <div id="tab-sales" class="tab-content" style="display: none;">
         <div class="card">
           <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
@@ -542,7 +507,7 @@
         </div>
       </div>
 
-      <!-- ৯. Customer -->
+      <!-- ৮. Customer -->
       <div id="tab-customers" class="tab-content" style="display: none;">
         <div class="card">
           <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
@@ -575,7 +540,7 @@
         </div>
       </div>
 
-      <!-- ১০. Orders -->
+      <!-- ৯. Orders -->
       <div id="tab-orders" class="tab-content" style="display: none;">
         <div class="card">
           <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
@@ -615,7 +580,7 @@
         </div>
       </div>
 
-      <!-- ১১. Feed -->
+      <!-- ১০. Feed -->
       <div id="tab-feed" class="tab-content" style="display: none;">
         <div class="card">
           <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
@@ -648,7 +613,7 @@
         </div>
       </div>
 
-      <!-- ১২. Expenses -->
+      <!-- ১১. Expenses -->
       <div id="tab-expenses" class="tab-content" style="display: none;">
         <div class="card">
           <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
@@ -678,7 +643,7 @@
         </div>
       </div>
 
-      <!-- ১৩. Stock -->
+      <!-- ১২. Stock -->
       <div id="tab-stock" class="tab-content" style="display: none;">
         <div class="card">
           <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
@@ -707,7 +672,7 @@
         </div>
       </div>
 
-      <!-- ১৪. Semen -->
+      <!-- ১৩. Semen -->
       <div id="tab-semen" class="tab-content" style="display: none;">
         <div class="card">
           <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
@@ -736,7 +701,7 @@
         </div>
       </div>
 
-      <!-- ১৫. Health -->
+      <!-- ১৪. Health -->
       <div id="tab-health" class="tab-content" style="display: none;">
         <div class="card">
           <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
@@ -766,7 +731,7 @@
         </div>
       </div>
 
-      <!-- ১৬. Reports -->
+      <!-- ১৫. Reports -->
       <div id="tab-reports" class="tab-content" style="display: none;">
         <div class="card">
           <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
@@ -783,7 +748,7 @@
         </div>
       </div>
 
-      <!-- ১৭. Backup -->
+      <!-- ১৬. Backup -->
       <div id="tab-backup" class="tab-content" style="display: none;">
         <div class="card">
           <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
@@ -887,7 +852,7 @@
       cattle: {}, breeding: {}, milk: {}, sales: {},
       customers: {}, orders: {}, expenses: {}, stock: {},
       semen: {}, health: {}, feedRations: {}, feed: {},
-      insemination: {}, vaccine: {}, deworm: {}
+      vaccine: {}, deworm: {}
     };
     window.activeLedgerCustomerName = '';
 
@@ -1623,7 +1588,7 @@
 
       getEl('ratSubmitBtn').innerText = 'Update Ration';
       getEl('ratCancelBtn').style.display = 'inline-flex';
-      switchTab('feed', document.querySelector('nav button:nth-child(8)'));
+      switchTab('feed', document.querySelector('nav button:nth-child(10)'));
     }
 
     function cancelRationEdit() {
@@ -1874,56 +1839,6 @@
       cancelBreedingEdit();
     }
 
-    var eInsKey = null;
-    function editInseminationRecord(k) {
-      var d = farmStore.insemination ? farmStore.insemination[k] : null; if (!d) return; eInsKey = k;
-      getEl('insCowTag').value = d.tag || '';
-      getEl('insAiDate').value = d.aiDate || '';
-      getEl('insSemenId').value = d.semenId || '';
-      getEl('insCompany').value = d.company || '';
-      getEl('insAiCost').value = d.aiCost || '';
-      getEl('insPdDate').value = d.pdDate || '';
-      getEl('insStatus').value = d.status || 'Pending';
-      getEl('insExpCalvingDate').value = d.expCalvingDate || '';
-      getEl('insActCalvingDate').value = d.actCalvingDate || '';
-      getEl('insSubmitBtn').innerText = 'Update Insemination';
-      getEl('insCancelBtn').style.display = 'inline-flex';
-      switchTab('insemination', document.querySelector('nav button:nth-child(4)'));
-    }
-    function cancelInseminationEdit() {
-      eInsKey = null;
-      ['insCowTag','insSemenId','insCompany','insAiCost','insPdDate','insExpCalvingDate','insActCalvingDate'].forEach(function(id){ if(getEl(id)) getEl(id).value=''; });
-      getEl('insStatus').value = 'Pending';
-      getEl('insSubmitBtn').innerText = 'Save Insemination Record';
-      getEl('insCancelBtn').style.display = 'none';
-    }
-    function saveInseminationRecord() {
-      var tag = (getEl('insCowTag').value || '').trim();
-      var aiDt = getEl('insAiDate').value;
-      if (!tag || !aiDt) return alert('Cattle ID এবং AI Date দিন!');
-      var data = { tag: tag, aiDate: aiDt, semenId: getEl('insSemenId').value, company: getEl('insCompany').value, aiCost: parseFloat(getEl('insAiCost').value) || 0, pdDate: getEl('insPdDate').value, status: getEl('insStatus').value, expCalvingDate: getEl('insExpCalvingDate').value, actCalvingDate: getEl('insActCalvingDate').value };
-      if (db) {
-        if (eInsKey) db.ref('insemination/' + eInsKey).update(data);
-        else db.ref('insemination').push(data);
-      }
-      cancelInseminationEdit();
-    }
-    function renderInseminationTable() {
-      var body = getEl('inseminationTableBody');
-      if (!body) return;
-      var list = [];
-      for (var k in farmStore.insemination) list.push({ key: k, data: farmStore.insemination[k] });
-      list.sort(function(a, b) { return (b.data.aiDate || '').localeCompare(a.data.aiDate || ''); });
-      if (list.length === 0) { body.innerHTML = '<tr><td colspan="10" style="text-align:center; color:#777;">কোনো ইনসেমিনেশন রেকর্ড নেই।</td></tr>'; return; }
-      var html = '';
-      list.forEach(function(item) {
-        var k = item.key, d = item.data;
-        var badgeClass = d.status === 'Pregnant' ? 'badge-success' : (d.status === 'Failed' ? 'badge-danger' : 'badge-warning');
-        html += '<tr><td><strong>' + (d.tag || '-') + '</strong></td><td>' + formatDateBR(d.aiDate) + '</td><td>' + (d.semenId || '-') + '</td><td>' + (d.company || '-') + '</td><td>₹ ' + (d.aiCost || 0) + '</td><td>' + formatDateBR(d.pdDate) + '</td><td><span class="badge ' + badgeClass + '">' + (d.status || 'Pending') + '</span></td><td>' + formatDateBR(d.expCalvingDate) + '</td><td>' + formatDateBR(d.actCalvingDate) + '</td><td><button class="action-btn btn-info" onclick="editInseminationRecord(\'' + k + '\')">Edit</button><button class="action-btn btn-danger" onclick="deleteRecord(\'insemination\',\'' + k + '\')">Delete</button></td></tr>';
-      });
-      body.innerHTML = html;
-    }
-
     var eVacKey = null;
     function editVaccineRecord(k) {
       var d = farmStore.vaccine ? farmStore.vaccine[k] : null; if (!d) return; eVacKey = k;
@@ -1934,7 +1849,7 @@
       getEl('vacCost').value = d.cost || '';
       getEl('vacSubmitBtn').innerText = 'Update Vaccine Record';
       getEl('vacCancelBtn').style.display = 'inline-flex';
-      switchTab('vaccine', document.querySelector('nav button:nth-child(5)'));
+      switchTab('vaccine', document.querySelector('nav button:nth-child(4)'));
     }
     function cancelVaccineEdit() {
       eVacKey = null;
@@ -1979,7 +1894,7 @@
       getEl('dewDosage').value = d.dosage || '';
       getEl('dewSubmitBtn').innerText = 'Update Deworm Record';
       getEl('dewCancelBtn').style.display = 'inline-flex';
-      switchTab('deworm', document.querySelector('nav button:nth-child(6)'));
+      switchTab('deworm', document.querySelector('nav button:nth-child(5)'));
     }
     function cancelDewormEdit() {
       eDewKey = null;
@@ -2019,7 +1934,7 @@
       var d = farmStore.milk[k]; if (!d) return; eMlkKey = k;
       getEl('milkDate').value = d.date || ''; getEl('milkCowTag').value = d.cow || ''; getEl('milkSession').value = d.session || 'Morning'; getEl('milkLiters').value = d.liters || '';
       getEl('milkSubmitBtn').innerText = 'Update Milk'; getEl('milkCancelBtn').style.display = 'inline-flex';
-      switchTab('milk', document.querySelector('nav button:nth-child(7)'));
+      switchTab('milk', document.querySelector('nav button:nth-child(6)'));
     }
     function cancelMilkEdit() {
       eMlkKey = null; getEl('milkCowTag').value = ''; getEl('milkLiters').value = '';
@@ -2061,7 +1976,7 @@
 
       getEl('saleSubmitBtn').innerText = 'Update Sale'; 
       getEl('saleCancelBtn').style.display = 'inline-flex';
-      switchTab('sales', document.querySelector('nav button:nth-child(8)'));
+      switchTab('sales', document.querySelector('nav button:nth-child(7)'));
       getEl('saleCustomer').scrollIntoView({ behavior: 'smooth' });
     }
 
@@ -2122,7 +2037,7 @@
       if (getEl('custType')) getEl('custType').value = d.type || 'Regular Retailer';
       if (getEl('custShift')) getEl('custShift').value = d.shift || 'Morning';
       getEl('custSubmitBtn').innerText = 'Update Customer'; getEl('custCancelBtn').style.display = 'inline-flex';
-      switchTab('customers', document.querySelector('nav button:nth-child(9)'));
+      switchTab('customers', document.querySelector('nav button:nth-child(8)'));
     }
     function cancelCustomerEdit() {
       eCustKey = null; ['custName','custPhone','custArea','custAddress','custDailyDemand','custOpeningDue'].forEach(function(i){ if(getEl(i)) getEl(i).value=''; });
@@ -2142,7 +2057,7 @@
       getEl('orderArea').value = d.area || ''; getEl('orderItems').value = d.items || ''; getEl('orderTotal').value = d.total || '';
       getEl('orderPaid').value = d.paid || ''; getEl('orderStatus').value = d.status || 'Pending';
       getEl('orderSubmitBtn').innerText = 'Update Order'; getEl('orderCancelBtn').style.display = 'inline-flex';
-      switchTab('orders', document.querySelector('nav button:nth-child(10)'));
+      switchTab('orders', document.querySelector('nav button:nth-child(9)'));
     }
     function cancelOrderEdit() {
       eOrdKey = null; ['orderCustomer','orderPhone','orderArea','orderItems','orderTotal','orderPaid'].forEach(function(i){ if(getEl(i)) getEl(i).value=''; });
@@ -2250,7 +2165,7 @@
       getEl('feedNote').value = d.note || '';
       getEl('feedSubmitBtn').innerText = 'Update Feed';
       getEl('feedCancelBtn').style.display = 'inline-flex';
-      switchTab('feed', document.querySelector('nav button:nth-child(11)'));
+      switchTab('feed', document.querySelector('nav button:nth-child(10)'));
     }
     function cancelFeedEdit() {
       eFeedKey = null;
@@ -2328,7 +2243,7 @@
       getEl('expDate').value = d.date || ''; getEl('expCategory').value = d.category || 'Other';
       getEl('expTitle').value = d.title || ''; getEl('expAmount').value = d.amount || '';
       getEl('expSubmitBtn').innerText = 'Update Expense'; getEl('expCancelBtn').style.display = 'inline-flex';
-      switchTab('expenses', document.querySelector('nav button:nth-child(12)'));
+      switchTab('expenses', document.querySelector('nav button:nth-child(11)'));
     }
     function cancelExpenseEdit() {
       eExpKey = null; getEl('expTitle').value = ''; getEl('expAmount').value = '';
@@ -2379,7 +2294,7 @@
       var d = farmStore.stock[k]; if (!d) return; eStkKey = k;
       getEl('stkName').value = d.name || ''; getEl('stkQty').value = d.qty || ''; getEl('stkUnit').value = d.unit || 'kg'; getEl('stkAlert').value = d.alertLevel || '';
       getEl('stkSubmitBtn').innerText = 'Update Stock'; getEl('stkCancelBtn').style.display = 'inline-flex';
-      switchTab('stock', document.querySelector('nav button:nth-child(13)'));
+      switchTab('stock', document.querySelector('nav button:nth-child(12)'));
     }
     function cancelStockEdit() {
       eStkKey = null; getEl('stkName').value = ''; getEl('stkQty').value = ''; getEl('stkAlert').value = '';
@@ -2397,7 +2312,7 @@
       var d = farmStore.semen[k]; if (!d) return; eSemKey = k;
       getEl('semBatch').value = d.batch || ''; getEl('semBreed').value = d.breed || ''; getEl('semSource').value = d.source || ''; getEl('semCount').value = d.count || '';
       getEl('semSubmitBtn').innerText = 'Update Semen'; getEl('semCancelBtn').style.display = 'inline-flex';
-      switchTab('semen', document.querySelector('nav button:nth-child(14)'));
+      switchTab('semen', document.querySelector('nav button:nth-child(13)'));
     }
     function cancelSemenEdit() {
       eSemKey = null; ['semBatch','semBreed','semSource','semCount'].forEach(function(i){ getEl(i).value=''; });
@@ -2416,7 +2331,7 @@
       getEl('hlthDate').value = d.date || ''; getEl('hlthCowTag').value = d.cowTag || ''; getEl('hlthType').value = d.type || 'Vaccination';
       getEl('hlthDesc').value = d.desc || ''; getEl('hlthNextDate').value = d.nextDate || '';
       getEl('hlthSubmitBtn').innerText = 'Update Health'; getEl('hlthCancelBtn').style.display = 'inline-flex';
-      switchTab('health', document.querySelector('nav button:nth-child(15)'));
+      switchTab('health', document.querySelector('nav button:nth-child(14)'));
     }
     function cancelHealthEdit() {
       eHlthKey = null; ['hlthCowTag','hlthDesc','hlthNextDate'].forEach(function(i){ if(getEl(i)) getEl(i).value=''; });
@@ -2453,10 +2368,6 @@
         if (getEl('breedingNoData')) getEl('breedingNoData').style.display = count === 0 ? 'block' : 'none';
       });
 
-      db.ref('insemination').on('value', function(snap) {
-        farmStore.insemination = {}; snap.forEach(function(c){ farmStore.insemination[c.key] = c.val(); });
-        renderInseminationTable();
-      });
       db.ref('vaccine').on('value', function(snap) {
         farmStore.vaccine = {}; snap.forEach(function(c){ farmStore.vaccine[c.key] = c.val(); });
         renderVaccineTable();
