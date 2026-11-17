@@ -524,7 +524,6 @@
           <div class="form-grid">
             <div class="input-group"><label>Date *</label><input type="date" id="saleDate"></div>
             <div class="input-group">
-                <!-- Customer Name-এর সাথে বকেয়া দেখানোর ব্যবস্থা -->
                 <label id="lblSaleCustomer">Customer Name *</label>
                 <input type="text" id="saleCustomer" list="customerNameList" oninput="onSaleCustomerInput()" placeholder="নাম লিখুন">
             </div>
@@ -537,8 +536,8 @@
             <div class="input-group"><label>Total Bill ₹</label><input type="number" id="saleTotal" oninput="calcSale()" placeholder="₹"></div>
             <div class="input-group"><label>Paid Amount ₹</label><input type="number" id="salePaid" oninput="calcSale()" placeholder="₹"></div>
             
-            <!-- পরিষ্কার করার জন্য লেবেল পরিবর্তন করা হলো -->
-            <div class="input-group"><label>Due Amount ₹ (এই বিলের)</label><input type="number" id="saleDue" readonly style="background:#ffebee; color:red; font-weight:bold;"></div>
+            <div class="input-group"><label>Previous Due ₹ (আগের বকেয়া)</label><input type="number" id="salePrevDue" readonly style="background:#f1f5f2; color:#555; font-weight:bold;" value="0"></div>
+            <div class="input-group"><label>Total Due ₹ (বর্তমান মোট বকেয়া)</label><input type="number" id="saleDue" readonly style="background:#ffebee; color:red; font-weight:bold;"></div>
           </div>
           <div style="display:flex; gap:10px;">
             <button class="btn" id="saleSubmitBtn" onclick="saveSale()">Save Sale</button>
@@ -933,8 +932,10 @@
       var val = (getEl('saleCustomer').value || '').trim().toLowerCase();
       var lbl = document.getElementById('lblSaleCustomer');
       if(lbl) lbl.innerHTML = 'Customer Name *';
+      var prevDueInput = getEl('salePrevDue');
+      if(prevDueInput) prevDueInput.value = 0;
 
-      if (!val) return;
+      if (!val) { calcSale(); return; }
       var cBalMap = getCustomerLiveBalances();
       var matched = false;
 
@@ -946,17 +947,20 @@
           if (c.area) getEl('saleArea').value = c.area;
           if (c.addr) getEl('saleAddr').value = c.addr;
           
-          if(lbl && cBalMap[val]) {
+          if(cBalMap[val]) {
             var currentDue = cBalMap[val].currentDue;
-            lbl.innerHTML = 'Customer Name * <span style="color:red; font-size:11.5px; margin-left:8px;">(বর্তমান মোট বকেয়া: ₹ ' + currentDue + ')</span>';
+            if(lbl) lbl.innerHTML = 'Customer Name * <span style="color:red; font-size:11.5px; margin-left:8px;">(পূর্বের বকেয়া: ₹ ' + currentDue + ')</span>';
+            if(prevDueInput) prevDueInput.value = currentDue;
           }
           break;
         }
       }
       
-      if(!matched && cBalMap[val] && lbl) {
-         lbl.innerHTML = 'Customer Name * <span style="color:red; font-size:11.5px; margin-left:8px;">(বর্তমান মোট বকেয়া: ₹ ' + cBalMap[val].currentDue + ')</span>';
+      if(!matched && cBalMap[val]) {
+         if(lbl) lbl.innerHTML = 'Customer Name * <span style="color:red; font-size:11.5px; margin-left:8px;">(পূর্বের বকেয়া: ₹ ' + cBalMap[val].currentDue + ')</span>';
+         if(prevDueInput) prevDueInput.value = cBalMap[val].currentDue;
       }
+      calcSale();
     }
 
     function onOrderCustomerInput() {
@@ -1403,7 +1407,7 @@
       var fileName = "Milk_Record_" + (targetDate ? targetDate : (targetYear + "_" + targetMonth));
 
       if (format === 'csv') {
-        var csvContent = "data:text/csv;charset=utf-8,\uFEFF"; // \uFEFF for Excel to read UTF-8 properly
+        var csvContent = "data:text/csv;charset=utf-8,\uFEFF"; 
         exportData.forEach(function(rowArray) {
           csvContent += rowArray.join(",") + "\r\n";
         });
@@ -1455,7 +1459,6 @@
       var body = getEl('milkGroupTableBody');
       if (!body) return;
 
-      // Initialize UI Tabs if empty
       if (!window.currentMilkYear) {
         initMilkFilters();
       }
@@ -1466,7 +1469,6 @@
       var todayBR = formatDateBR(todayISO);
       var todayTotal = 0;
 
-      // Target filter states
       var targetYear = window.currentMilkYear;
       var targetMonth = window.currentMilkMonth;
       var targetDate = window.specificMilkDate;
@@ -1479,11 +1481,9 @@
         var dt = formatDateBR(dtISO) || 'Unknown';
         var lit = Number(m.liters) || 0;
         
-        // Overall Dashboard Stats always calculate for all records
         totalMilkAll += lit;
         if (dtISO === todayISO || dt === todayBR) todayTotal += lit;
 
-        // View Filtering Logic 
         var match = false;
         if (targetDate) {
           if (dtISO === targetDate) match = true;
@@ -1506,7 +1506,6 @@
       if (getEl('dash-milk-today')) getEl('dash-milk-today').innerText = todayTotal.toFixed(1) + ' L';
       if (getEl('rep-milk')) getEl('rep-milk').innerText = totalMilkAll.toFixed(1);
 
-      // Strict Descending Order (নতুন তারিখগুলো ওপরে)
       var sortedDates = Object.keys(dateGroups).sort(function(a, b) { 
         return parseDateToTime(dateGroups[b].dateISO) - parseDateToTime(dateGroups[a].dateISO); 
       });
@@ -1550,7 +1549,7 @@
 
 
     // ==========================================
-    // UPDATED SALES TABLE RENDER LOGIC (Customer Grouping & Compact Action)
+    // UPDATED SALES TABLE RENDER LOGIC
     // ==========================================
     function renderSalesTable() {
       var body = getEl('salesTableBody');
@@ -1679,7 +1678,6 @@
           productSummary = (singleSale.item || 'দুধ') + ' (' + (singleSale.qty || 1) + ')';
         }
 
-        // Action Buttons Setup (Compact Design)
         var detailsBtn = hasMultiple ? 
           '<button class="action-btn btn-info" id="sale-btn-' + subTableId + '" onclick="toggleSubSales(\'' + subTableId + '\', this)" style="padding:4px 8px; font-size:11px; white-space:nowrap; margin:0;">বিস্তারিত (' + totalEntries + ') ▼</button>' : 
           '';
@@ -1711,7 +1709,6 @@
           '<td>' + actionCol + '</td>' +
         '</tr>';
 
-        // বিস্তারিত / Details ড্রপডাউন সারি
         if (hasMultiple) {
           html += '<tr id="' + subTableId + '" style="display:none; background:#f1f8e9;"><td colspan="8" style="padding:10px 15px;">' +
             '<div style="font-size:12px; font-weight:bold; color:#2e7d32; margin-bottom:8px;">📋 এই গ্রাহকের সমস্ত বিক্রয় রেকর্ড ও অপশন:</div>' +
@@ -1735,11 +1732,9 @@
               '</td>' +
             '</tr>';
           });
-
           html += '</table></div></td></tr>';
         }
       });
-
       body.innerHTML = html;
     }
     
@@ -1762,7 +1757,7 @@
     }
 
     // ==========================================
-    // UPDATED ORDERS TABLE RENDER LOGIC (Compact & Proportionate Action Column)
+    // UPDATED ORDERS TABLE RENDER LOGIC 
     // ==========================================
     function renderOrdersTable() {
       var body = getEl('ordersTableBody');
@@ -1892,7 +1887,6 @@
           '<td>' + actionCol + '</td>' +
         '</tr>';
 
-        // বিস্তারিত / Details ড্রপডাউন সারি
         if (hasMultiple) {
           html += '<tr id="' + subTableId + '" style="display:none; background:#f1f8e9;"><td colspan="6" style="padding:10px 15px;">' +
             '<div style="font-size:12px; font-weight:bold; color:#2e7d32; margin-bottom:8px;">📋 এই গ্রাহকের সমস্ত পেন্ডিং অর্ডার ও এডিট/ডিলিট অপশন:</div>' +
@@ -1914,11 +1908,9 @@
               '</td>' +
             '</tr>';
           });
-
           html += '</table></div></td></tr>';
         }
       });
-
       body.innerHTML = html;
     }
 
@@ -2029,14 +2021,36 @@
           pList.forEach(function(p) { subsequentSum += (Number(p.amount) || 0); });
           var initialPaid = Math.max(0, bCurPaid - subsequentSum);
 
-          if (bTot > 0) {
-            totalBillAmount += bTot; totalPaidAmount += initialPaid;
-            events.push({ date: formatDateBR(s.date), desc: (s.item || 'পণ্য') + (s.qty ? ' (' + s.qty + ')' : ''), bill: bTot, paid: initialPaid, netDiff: bTot - initialPaid, isSale: true, saleKey: k, timestamp: parseDateToTime(s.date) });
+          // Fix: Include initial payments even if bTot is 0 (like manual advance payments)
+          if (bTot > 0 || initialPaid > 0) {
+            totalBillAmount += bTot; 
+            totalPaidAmount += initialPaid;
+            events.push({ 
+              date: formatDateBR(s.date), 
+              desc: (s.item || 'পণ্য') + (s.qty ? ' (' + s.qty + ')' : ''), 
+              bill: bTot, 
+              paid: initialPaid, 
+              netDiff: bTot - initialPaid, 
+              isSale: true, 
+              saleKey: k, 
+              timestamp: parseDateToTime(s.date) 
+            });
           }
 
           pList.forEach(function(p, pIdx) {
-            var pAmt = Number(p.amount) || 0; totalPaidAmount += pAmt;
-            events.push({ date: formatDateBR(p.date || s.date), desc: '💳 বকেয়া জমা (' + (p.note || 'ক্যাশ') + ')', bill: 0, paid: pAmt, netDiff: -pAmt, isPayment: true, payObj: p, saleKey: k, timestamp: parseDateToTime(p.date || s.date) + (pIdx + 1) });
+            var pAmt = Number(p.amount) || 0; 
+            totalPaidAmount += pAmt;
+            events.push({ 
+              date: formatDateBR(p.date || s.date), 
+              desc: '💳 বকেয়া জমা (' + (p.note || 'ক্যাশ') + ')', 
+              bill: 0, 
+              paid: pAmt, 
+              netDiff: -pAmt, 
+              isPayment: true, 
+              payObj: p, 
+              saleKey: k, 
+              timestamp: parseDateToTime(p.date || s.date) + (pIdx + 1) 
+            });
           });
         }
       }
@@ -2142,7 +2156,7 @@
       alert('পেমেন্ট সফলভাবে জমা হয়েছে!');
       getEl('ledgerPayAmount').value = ''; 
       getEl('ledgerPayNote').value = '';
-      setTimeout(function() { showCustomerLedger(encodeURIComponent(custName)); }, 500);
+      // Firebase on('value') listener will automatically refresh the ledger!
     };
 
     window.showInvoice = function(k) {
@@ -2151,7 +2165,7 @@
       document.body.setAttribute('data-print', 'invoice');
       getEl('invMainDocTitle').innerText = 'ইনভয়েস (ক্যাশ মেমো)';
       var liveDue = getCustomerLiveBalances()[(d.name || '').trim().toLowerCase()]?.currentDue || 0;
-      getEl('invoiceDetails').innerHTML = '<div style="display:flex; justify-content:space-between; margin-bottom:12px;"><div><strong>গ্রাহক:</strong> ' + d.name + '<br>মোবাইল: ' + (d.phone || '-') + '</div><div style="text-align:right;">তারিখ: ' + formatDateBR(d.date) + '<br>ইনভয়েস: #NDA-' + k.substring(1, 6).toUpperCase() + '</div></div><table class="invoice-table" style="border:1px solid #ddd; width:100%;"><thead><tr style="background:#e8f5e9;"><th>পণ্য</th><th>পরিমাণ</th><th>দর</th><th style="text-align:right;">মোট</th></tr></thead><tbody><tr><td>' + d.item + '</td><td>' + d.qty + '</td><td>₹ ' + d.rate + '</td><td style="text-align:right; font-weight:bold;">₹ ' + d.total + '</td></tr></tbody></table><div style="text-align:right; margin-top:10px;">চালান মূল্য: ₹ ' + d.total + '<br>নগদ পরিশোধ: ₹ ' + d.paid + '<br><span style="color:red; font-weight:bold;">মোট বকেয়া: ₹ ' + liveDue + '</span></div>';
+      getEl('invoiceDetails').innerHTML = '<div style="display:flex; justify-content:space-between; margin-bottom:12px;"><div><strong>গ্রাহক:</strong> ' + d.name + '<br>মোবাইল: ' + (d.phone || '-') + '</div><div style="text-align:right;">তারিখ: ' + formatDateBR(d.date) + '<br>ইনভয়েস: #NDA-' + k.substring(1, 6).toUpperCase() + '</div></div><table class="invoice-table" style="border:1px solid #ddd; width:100%;"><thead><tr style="background:#e8f5e9;"><th>পণ্য</th><th>পরিমাণ</th><th>দর</th><th style="text-align:right;">মোট</th></tr></thead><tbody><tr><td>' + d.item + '</td><td>' + d.qty + '</td><td>₹ ' + d.rate + '</td><td style="text-align:right; font-weight:bold;">₹ ' + d.total + '</td></tr></tbody></table><div style="text-align:right; margin-top:10px;">চালান মূল্য: ₹ ' + d.total + '<br>ন নগদ পরিশোধ: ₹ ' + d.paid + '<br><span style="color:red; font-weight:bold;">মোট বকেয়া: ₹ ' + liveDue + '</span></div>';
       getEl('invoiceModal').style.display = 'flex';
     };
 
@@ -2501,9 +2515,18 @@
 
     var eSaleKey = null;
     function calcSale() {
-      var q = parseFloat(getEl('saleQty').value) || 0, r = parseFloat(getEl('saleRate').value) || 0, t = q * r;
-      getEl('saleTotal').value = t; 
-      getEl('saleDue').value = Math.max(0, t - (parseFloat(getEl('salePaid').value) || 0));
+      var q = parseFloat(getEl('saleQty').value) || 0;
+      var r = parseFloat(getEl('saleRate').value) || 0;
+      var t = q * r;
+      if (q === 0 && r === 0) {
+         t = parseFloat(getEl('saleTotal').value) || 0;
+      } else {
+         getEl('saleTotal').value = t; 
+      }
+      var paid = parseFloat(getEl('salePaid').value) || 0;
+      var thisBillDue = Math.max(0, t - paid);
+      var prevDue = parseFloat(getEl('salePrevDue').value) || 0;
+      getEl('saleDue').value = thisBillDue + prevDue;
     }
     
     function editSale(k) {
@@ -2524,17 +2547,19 @@
       getEl('saleRate').value = rVal; 
       getEl('saleTotal').value = tVal;
       getEl('salePaid').value = paidVal; 
-      getEl('saleDue').value = Math.max(0, tVal - paidVal);
+      
+      var prevDueInput = getEl('salePrevDue');
+      if(prevDueInput) prevDueInput.value = 0;
 
       getEl('saleSubmitBtn').innerText = 'Update Sale'; 
       getEl('saleCancelBtn').style.display = 'inline-flex';
       switchTab('sales', document.querySelector('nav button:nth-child(7)'));
       getEl('saleCustomer').scrollIntoView({ behavior: 'smooth' });
-      onSaleCustomerInput(); // বকেয়া আপডেট করার জন্য
+      onSaleCustomerInput(); 
     }
 
     function cancelSaleEdit() {
-      eSaleKey = null; ['saleCustomer','salePhone','saleArea','saleAddr','saleQty','saleRate','saleTotal','salePaid','saleDue'].forEach(function(i){ getEl(i).value=''; });
+      eSaleKey = null; ['saleCustomer','salePhone','saleArea','saleAddr','saleQty','saleRate','saleTotal','salePaid','saleDue','salePrevDue'].forEach(function(i){ if(getEl(i)) getEl(i).value=''; });
       getEl('saleSubmitBtn').innerText = 'Save Sale'; getEl('saleCancelBtn').style.display = 'none';
       var lbl = document.getElementById('lblSaleCustomer');
       if(lbl) lbl.innerHTML = 'Customer Name *';
@@ -2911,7 +2936,10 @@
       db.ref('sales').on('value', function(snap) {
         farmStore.sales = {}; snap.forEach(function(c){ farmStore.sales[c.key] = c.val(); });
         renderSalesTable();
-        if (window.activeLedgerCustomerName) showCustomerLedger(encodeURIComponent(window.activeLedgerCustomerName));
+        // Ledger update automatically after adding payment
+        if (window.activeLedgerCustomerName && getEl('ledgerModal') && getEl('ledgerModal').style.display !== 'none') {
+           showCustomerLedger(encodeURIComponent(window.activeLedgerCustomerName));
+        }
       });
 
       db.ref('customers').on('value', function(snap) {
