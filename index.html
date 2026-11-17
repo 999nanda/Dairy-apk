@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>NANDA Dairy & Agro - Enterprise Farm ERP</title>
+  <title>Nanda Dairy & Agro - Enterprise Farm ERP</title>
   <link rel="icon" type="image/png" href="logo.png">
   <link rel="manifest" href="manifest.json">
 
@@ -64,8 +64,12 @@
     };
 
     window.parseDateToTime = function(dtStr) {
-      if (!dtStr) return 0;
+      if (!dtStr || dtStr === '-' || dtStr === 'শুরু') return 0;
       var clean = String(dtStr).trim();
+      var parts = clean.split('-');
+      if (parts.length === 3 && parts[2].length === 4) {
+        clean = parts[2] + '-' + parts[1] + '-' + parts[0];
+      }
       var t = new Date(clean).getTime();
       return isNaN(t) ? 0 : t;
     };
@@ -147,6 +151,9 @@
           getEl(id).value = todayISO;
         }
       });
+
+      if (typeof autoCalcRation === 'function') autoCalcRation();
+      if (typeof autoCalcNextDewormDate === 'function') autoCalcNextDewormDate();
 
       if (localStorage.getItem('nanda_auth_status') === 'logged_in') {
         if (getEl('loginScreen')) getEl('loginScreen').style.display = 'none';
@@ -231,6 +238,34 @@
     .invoice-card, .ledger-card, .feed-modal-card {
       background: white; max-width: 850px; width: 100%; border-radius: 16px; padding: 32px; position: relative; box-shadow: 0 15px 40px rgba(0,0,0,0.35); max-height: 95vh; overflow-y: auto; box-sizing: border-box;
     }
+    #invoicePrintArea { position: relative; overflow: hidden; }
+    .invoice-watermark {
+      position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+      width: 260px; height: 260px; opacity: 0.06; pointer-events: none; z-index: 0; object-fit: contain;
+    }
+    .invoice-content { position: relative; z-index: 1; }
+
+    @media print {
+      body * { visibility: hidden; }
+      .no-print { display: none !important; }
+      body[data-print="invoice"] #invoiceModal,
+      body[data-print="invoice"] #invoicePrintArea,
+      body[data-print="invoice"] #invoicePrintArea * { visibility: visible; }
+      body[data-print="invoice"] #invoiceModal { position: absolute; left: 0; top: 0; width: 100%; background: white; padding: 0; }
+      body[data-print="invoice"] .invoice-card { box-shadow: none; max-height: none; width: 100%; max-width: 100%; padding: 10px; }
+
+      body[data-print="ledger"] #ledgerModal,
+      body[data-print="ledger"] #ledgerPrintArea,
+      body[data-print="ledger"] #ledgerPrintArea * { visibility: visible; }
+      body[data-print="ledger"] #ledgerModal { position: absolute; left: 0; top: 0; width: 100%; background: white; padding: 0; }
+      body[data-print="ledger"] .ledger-card { box-shadow: none; max-height: none; width: 100%; max-width: 100%; padding: 10px; }
+      body[data-print="ledger"] .table-container { max-height: none !important; overflow: visible !important; }
+
+      body[data-print="passport"] #digitalPassportModal,
+      body[data-print="passport"] #passportContent,
+      body[data-print="passport"] #passportContent * { visibility: visible; }
+      body[data-print="passport"] #digitalPassportModal { position: absolute; left: 0; top: 0; width: 100%; background: white; padding: 0; }
+    }
   </style>
 </head>
 <body>
@@ -244,7 +279,7 @@
   <div id="loginScreen">
     <div class="login-box">
       <img src="logo.png" alt="Logo" onerror="this.onerror=null; this.src='https://cdn-icons-png.flaticon.com/512/2395/2395796.png';">
-      <h2>NANDA Dairy & Agro</h2>
+      <h2>Nanda Dairy & Agro</h2>
       <p style="font-size: 13px; color: #666; margin-bottom: 20px;">ফার্ম ম্যানেজমেন্ট সিস্টেমে স্বাগতম</p>
       <div style="text-align: left; margin-bottom: 14px;"><label style="font-size: 12px; font-weight:600;">User ID</label><input type="text" id="loginId" placeholder="ইউজার আইডি"></div>
       <div style="text-align: left; margin-bottom: 20px;"><label style="font-size: 12px; font-weight:600;">Password</label><input type="password" id="loginPass" placeholder="পাসওয়ার্ড"></div>
@@ -258,7 +293,7 @@
     <header>
       <div class="header-title">
         <img src="logo.png" alt="Logo" onerror="this.onerror=null; this.src='https://cdn-icons-png.flaticon.com/512/2395/2395796.png';">
-        <div><h1>NANDA Dairy & Agro</h1><span style="font-size: 11px; opacity: 0.85;">Owner / Admin</span></div>
+        <div><h1>Nanda Dairy & Agro</h1><span style="font-size: 11px; opacity: 0.85;">Owner / Admin</span></div>
       </div>
       <div class="header-right">
         <span class="sync-badge">● Online Cloud Sync</span>
@@ -456,7 +491,7 @@
         </div>
       </div>
 
-      <!-- ৬. Milk (আপডেট করা সেকশন) -->
+      <!-- ৬. Milk -->
       <div id="tab-milk" class="tab-content" style="display: none;">
         <div class="card">
           <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
@@ -475,7 +510,6 @@
           </div>
         </div>
         
-        <!-- নতুন আপডেট করা ডেটা টেবিল, ফিল্টার, ও এক্সপোর্ট কার্ড -->
         <div class="card">
           <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; margin-bottom:12px;">
             <h2 style="margin:0; border:none; padding:0;">দুধ উৎপাদন খাতা (দৈনিক সারসংক্ষেপ)</h2>
@@ -500,9 +534,7 @@
           </div>
 
           <!-- 12-Month Tabs -->
-          <div id="milkMonthTabs" style="display:flex; gap:8px; overflow-x:auto; margin-bottom:15px; padding-bottom:5px; -webkit-overflow-scrolling: touch; white-space:nowrap;">
-            <!-- Tabs will be injected here via JavaScript -->
-          </div>
+          <div id="milkMonthTabs" style="display:flex; gap:8px; overflow-x:auto; margin-bottom:15px; padding-bottom:5px; -webkit-overflow-scrolling: touch; white-space:nowrap;"></div>
 
           <div class="table-container">
             <table>
@@ -514,7 +546,7 @@
         </div>
       </div>
 
-      <!-- ৭. Sales -->
+      <!-- ৭. Sales (আপডেট করা সেকশন - Total Due ঘরটি মুছে ফেলা হয়েছে) -->
       <div id="tab-sales" class="tab-content" style="display: none;">
         <div class="card">
           <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
@@ -535,9 +567,7 @@
             <div class="input-group"><label>Rate ₹</label><input type="number" id="saleRate" oninput="calcSale()" placeholder="₹"></div>
             <div class="input-group"><label>Total Bill ₹</label><input type="number" id="saleTotal" oninput="calcSale()" placeholder="₹"></div>
             <div class="input-group"><label>Paid Amount ₹</label><input type="number" id="salePaid" oninput="calcSale()" placeholder="₹"></div>
-            
             <div class="input-group"><label>Previous Due ₹ (আগের বকেয়া)</label><input type="number" id="salePrevDue" readonly style="background:#f1f5f2; color:#555; font-weight:bold;" value="0"></div>
-            <div class="input-group"><label>Total Due ₹ (বর্তমান মোট বকেয়া)</label><input type="number" id="saleDue" readonly style="background:#ffebee; color:red; font-weight:bold;"></div>
           </div>
           <div style="display:flex; gap:10px;">
             <button class="btn" id="saleSubmitBtn" onclick="saveSale()">Save Sale</button>
@@ -558,7 +588,7 @@
               <tbody id="salesTableBody"></tbody>
             </table>
           </div>
-          <p id="salesNoData" style="text-align: center; color: #777; font-size: 13px; margin-top: 15px; display: none;">কোনো বিক্রয় রেকর্ড নেই。</p>
+          <p id="salesNoData" style="text-align: center; color: #777; font-size: 13px; margin-top: 15px; display: none;">কোনো বিক্রয় রেকর্ড নেই।</p>
         </div>
       </div>
 
@@ -830,13 +860,13 @@
   <div id="invoiceModal">
     <div class="invoice-card">
       <div id="invoicePrintArea">
-        <img src="logo.png" class="invoice-watermark" alt="Logo">
+        <img src="logo.png" class="invoice-watermark" alt="Logo" onerror="this.style.display='none';">
         <div class="invoice-content">
           <div style="display:flex; justify-content:space-between; align-items:center; border-bottom: 2.5px solid #1b5e20; padding-bottom: 14px; margin-bottom: 18px;">
             <div style="display:flex; align-items:center; gap:14px;">
-              <img src="logo.png" style="height:60px; width:60px; border-radius:50%; object-fit:cover;">
+              <img src="logo.png" style="height:60px; width:60px; border-radius:50%; object-fit:cover;" onerror="this.onerror=null; this.src='https://cdn-icons-png.flaticon.com/512/2395/2395796.png';">
               <div>
-                <h2 style="margin:0; color:#1b5e20; font-size:22px; font-weight:800; border:none; padding:0;">NANDA DAIRY & AGRO</h2>
+                <h2 style="margin:0; color:#1b5e20; font-size:22px; font-weight:800; border:none; padding:0;">Nanda Dairy & Agro</h2>
                 <p id="invMainDocTitle" style="font-size:12.5px; color:#333; margin:3px 0 0 0; font-weight:600;">ইনভয়েস / INVOICE (ক্যাশ মেমো)</p>
               </div>
             </div>
@@ -910,6 +940,19 @@
       vaccine: {}, deworm: {}
     };
     window.activeLedgerCustomerName = '';
+
+    // Helper: Tag ID দিয়ে গরুর তথ্য খোঁজার ফাংশন
+    function findCattleByTag(tag) {
+      if (!tag || !farmStore.cattle) return null;
+      var tClean = String(tag).trim().toUpperCase();
+      for (var k in farmStore.cattle) {
+        var c = farmStore.cattle[k];
+        if (c && (c.tag || '').trim().toUpperCase() === tClean) {
+          return c;
+        }
+      }
+      return null;
+    }
 
     function deleteRecord(path, id) {
       if (confirm('আপনি কি নিশ্চিতভাবে এই তথ্যটি মুছে ফেলতে চান?')) {
@@ -1073,9 +1116,9 @@
     };
 
     function autoCalcRation() {
-      var pellet = parseFloat(getEl('ratPellet').value) || 0;
-      var avgCost = parseFloat(getEl('ratAvgCostPerKg').value) || 0;
-      var suppCost = parseFloat(getEl('ratSuppCost').value) || 0;
+      var pellet = parseFloat(getEl('ratPellet') ? getEl('ratPellet').value : 0) || 0;
+      var avgCost = parseFloat(getEl('ratAvgCostPerKg') ? getEl('ratAvgCostPerKg').value : 0) || 0;
+      var suppCost = parseFloat(getEl('ratSuppCost') ? getEl('ratSuppCost').value : 0) || 0;
 
       var totalCost = (pellet * avgCost) + suppCost;
       if (getEl('ratTotalCost')) getEl('ratTotalCost').value = totalCost.toFixed(2);
@@ -1174,13 +1217,7 @@
     }
 
     window.openCattleFeedModal = function(tag) {
-      var cowInfo = null;
-      for (var k in farmStore.cattle) {
-        if ((farmStore.cattle[k].tag || '').trim().toUpperCase() === tag.toUpperCase()) {
-          cowInfo = farmStore.cattle[k];
-          break;
-        }
-      }
+      var cowInfo = findCattleByTag(tag);
 
       var titleEl = getEl('modalCattleTitle');
       var contentEl = getEl('modalCattleContent');
@@ -1189,11 +1226,11 @@
       titleEl.innerText = 'গরুর খাদ্য ও পুষ্টি প্রোফাইল (Tag: ' + tag + ')';
 
       var profileHtml = '<div style="background:#e8f5e9; padding:12px; border-radius:8px; margin-bottom:12px;">' +
-        '<strong>জাত (Breed):</strong> ' + (cowInfo?.breed || '-') + ' | ' +
-        '<strong>জেনারেশন:</strong> ' + (cowInfo?.generation || '-') + ' | ' +
-        '<strong>স্ট্যাটাস:</strong> ' + (cowInfo?.status || '-') + '<br>' +
-        '<strong>ওজন:</strong> ' + (cowInfo?.weight || 0) + ' kg | ' +
-        '<strong>বিয়ান:</strong> ' + (cowInfo?.lactation || 0) +
+        '<strong>জাত (Breed):</strong> ' + (cowInfo ? (cowInfo.breed || '-') : '-') + ' | ' +
+        '<strong>জেনারেশন:</strong> ' + (cowInfo ? (cowInfo.generation || '-') : '-') + ' | ' +
+        '<strong>স্ট্যাটাস:</strong> ' + (cowInfo ? (cowInfo.status || '-') : '-') + '<br>' +
+        '<strong>ওজন:</strong> ' + (cowInfo ? (cowInfo.weight || 0) : 0) + ' kg | ' +
+        '<strong>বিয়ান:</strong> ' + (cowInfo ? (cowInfo.lactation || 0) : 0) +
       '</div>';
 
       profileHtml += '<strong>সাম্প্রতিক খাদ্য বরাদ্দ ও খরচ (Feeding History):</strong>';
@@ -1431,7 +1468,7 @@
         link.click();
         document.body.removeChild(link);
       } else if (format === 'doc') {
-        var docHtml = "<html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'><head><meta charset='utf-8'><title>Milk Record</title></head><body><h2 style='color:#1b5e20;'>NANDA DAIRY & AGRO - Milk Production Record</h2><p><strong>Period/Date:</strong> " + (targetDate ? targetDate : (targetMonth + "/" + targetYear)) + "</p><table border='1' style='border-collapse:collapse; width:100%; text-align:left; font-family:sans-serif;'>";
+        var docHtml = "<html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'><head><meta charset='utf-8'><title>Milk Record</title></head><body><h2 style='color:#1b5e20;'>Nanda Dairy & Agro - Milk Production Record</h2><p><strong>Period/Date:</strong> " + (targetDate ? targetDate : (targetMonth + "/" + targetYear)) + "</p><table border='1' style='border-collapse:collapse; width:100%; text-align:left; font-family:sans-serif;'>";
         exportData.forEach(function(rowArray, idx) {
           docHtml += "<tr>";
           rowArray.forEach(function(cell) {
@@ -1950,6 +1987,10 @@
     function cancelRationEdit() {
       eRatKey = null;
       ['ratCowTag','ratPellet','ratAvgCostPerKg','ratSuppCost','ratTotalCost'].forEach(function(i){ if(getEl(i)) getEl(i).value=''; });
+      if (getEl('ratPellet')) getEl('ratPellet').value = '2.0';
+      if (getEl('ratAvgCostPerKg')) getEl('ratAvgCostPerKg').value = '32';
+      if (getEl('ratSuppCost')) getEl('ratSuppCost').value = '0';
+      autoCalcRation();
       getEl('ratSubmitBtn').innerText = 'Save & Deduct Stock';
       getEl('ratCancelBtn').style.display = 'none';
     }
@@ -1978,6 +2019,17 @@
           db.ref('feedRations/' + eRatKey).update(data);
         } else {
           db.ref('feedRations').push(data);
+          // নতুন রেশন সেভ করলে স্টক থেকে Cattle Feed অটোমেটিক মাইনাস হবে
+          if (pellet > 0 && farmStore.stock) {
+            for (var sk in farmStore.stock) {
+              var st = farmStore.stock[sk];
+              if (st && st.name && (st.name.toLowerCase().includes('cattle feed') || st.name.toLowerCase().includes('pellet') || st.name.toLowerCase().includes('ফিড'))) {
+                var newQty = Math.max(0, (Number(st.qty) || 0) - pellet);
+                db.ref('stock/' + sk).update({ qty: parseFloat(newQty.toFixed(2)) });
+                break;
+              }
+            }
+          }
         }
       }
       cancelRationEdit();
@@ -2021,7 +2073,6 @@
           pList.forEach(function(p) { subsequentSum += (Number(p.amount) || 0); });
           var initialPaid = Math.max(0, bCurPaid - subsequentSum);
 
-          // Fix: Include initial payments even if bTot is 0 (like manual advance payments)
           if (bTot > 0 || initialPaid > 0) {
             totalBillAmount += bTot; 
             totalPaidAmount += initialPaid;
@@ -2156,7 +2207,6 @@
       alert('পেমেন্ট সফলভাবে জমা হয়েছে!');
       getEl('ledgerPayAmount').value = ''; 
       getEl('ledgerPayNote').value = '';
-      // Firebase on('value') listener will automatically refresh the ledger!
     };
 
     window.showInvoice = function(k) {
@@ -2165,7 +2215,7 @@
       document.body.setAttribute('data-print', 'invoice');
       getEl('invMainDocTitle').innerText = 'ইনভয়েস (ক্যাশ মেমো)';
       var liveDue = getCustomerLiveBalances()[(d.name || '').trim().toLowerCase()]?.currentDue || 0;
-      getEl('invoiceDetails').innerHTML = '<div style="display:flex; justify-content:space-between; margin-bottom:12px;"><div><strong>গ্রাহক:</strong> ' + d.name + '<br>মোবাইল: ' + (d.phone || '-') + '</div><div style="text-align:right;">তারিখ: ' + formatDateBR(d.date) + '<br>ইনভয়েস: #NDA-' + k.substring(1, 6).toUpperCase() + '</div></div><table class="invoice-table" style="border:1px solid #ddd; width:100%;"><thead><tr style="background:#e8f5e9;"><th>পণ্য</th><th>পরিমাণ</th><th>দর</th><th style="text-align:right;">মোট</th></tr></thead><tbody><tr><td>' + d.item + '</td><td>' + d.qty + '</td><td>₹ ' + d.rate + '</td><td style="text-align:right; font-weight:bold;">₹ ' + d.total + '</td></tr></tbody></table><div style="text-align:right; margin-top:10px;">চালান মূল্য: ₹ ' + d.total + '<br>ন নগদ পরিশোধ: ₹ ' + d.paid + '<br><span style="color:red; font-weight:bold;">মোট বকেয়া: ₹ ' + liveDue + '</span></div>';
+      getEl('invoiceDetails').innerHTML = '<div style="display:flex; justify-content:space-between; margin-bottom:12px;"><div><strong>গ্রাহক:</strong> ' + d.name + '<br>মোবাইল: ' + (d.phone || '-') + '</div><div style="text-align:right;">তারিখ: ' + formatDateBR(d.date) + '<br>ইনভয়েস: #NDA-' + k.substring(1, 6).toUpperCase() + '</div></div><table class="invoice-table" style="border:1px solid #ddd; width:100%; min-width:unset;"><thead><tr style="background:#e8f5e9;"><th>পণ্য</th><th>পরিমাণ</th><th>দর</th><th style="text-align:right;">মোট</th></tr></thead><tbody><tr><td>' + d.item + '</td><td>' + d.qty + '</td><td>₹ ' + d.rate + '</td><td style="text-align:right; font-weight:bold;">₹ ' + d.total + '</td></tr></tbody></table><div style="text-align:right; margin-top:10px;">চালান মূল্য: ₹ ' + d.total + '<br>নগদ পরিশোধ: ₹ ' + d.paid + '<br><span style="color:red; font-weight:bold;">মোট বকেয়া: ₹ ' + liveDue + '</span></div>';
       getEl('invoiceModal').style.display = 'flex';
     };
 
@@ -2240,7 +2290,90 @@
       cancelBreedingEdit();
     }
 
+    // ==========================================
+    // VACCINATION FUNCTIONS (Missing functions added)
+    // ==========================================
     var eVacKey = null;
+
+    window.onVaccineTagChange = function() {
+      var tag = (getEl('vacCowTag') ? getEl('vacCowTag').value : '').trim();
+      if (!tag) return;
+      if (getEl('vacName') && getEl('vacName').value) {
+        onVaccineTypeSelect();
+      }
+    };
+
+    window.onVaccineTypeSelect = function() {
+      var vName = (getEl('vacName') ? getEl('vacName').value : '').trim().toLowerCase();
+      var vDate = getEl('vacDate') ? getEl('vacDate').value : '';
+      var gapDays = 180; // ডিফল্ট ৬ মাস
+
+      if (vName.includes('fmd')) {
+        gapDays = 180;
+        if (getEl('vacDose') && !getEl('vacDose').value) getEl('vacDose').value = '2.0';
+        if (getEl('vacRoute')) getEl('vacRoute').value = 'Intramuscular (I/M)';
+      } else if (vName.includes('bq') || vName.includes('hs')) {
+        gapDays = 365;
+        if (getEl('vacDose') && !getEl('vacDose').value) getEl('vacDose').value = '5.0';
+        if (getEl('vacRoute')) getEl('vacRoute').value = 'Subcutaneous (S/C)';
+      } else if (vName.includes('theileria') || vName.includes('theileriosis')) {
+        gapDays = 365;
+        if (getEl('vacDose') && !getEl('vacDose').value) getEl('vacDose').value = '3.0';
+        if (getEl('vacRoute')) getEl('vacRoute').value = 'Subcutaneous (S/C)';
+      } else if (vName.includes('brucella') || vName.includes('brucellosis')) {
+        gapDays = 0;
+        if (getEl('vacDose') && !getEl('vacDose').value) getEl('vacDose').value = '2.0';
+        if (getEl('vacRoute')) getEl('vacRoute').value = 'Subcutaneous (S/C)';
+      }
+
+      if (vDate && gapDays > 0) {
+        var d = new Date(vDate);
+        if (!isNaN(d.getTime())) {
+          d.setDate(d.getDate() + gapDays);
+          if (getEl('vacNextDate')) {
+            getEl('vacNextDate').value = d.toISOString().split('T')[0];
+          }
+        }
+      }
+    };
+
+    function renderVaccineTable() {
+      var body = getEl('vaccineTableBody');
+      if (!body) return;
+      var list = [];
+      for (var k in farmStore.vaccine) {
+        if (farmStore.vaccine[k]) list.push({ key: k, data: farmStore.vaccine[k] });
+      }
+      list.sort(function(a, b) {
+        return parseDateToTime(b.data.date) - parseDateToTime(a.data.date);
+      });
+
+      if (list.length === 0) {
+        body.innerHTML = '<tr><td colspan="8" style="text-align:center; color:#888;">কোনো টিকাদান রেকর্ড নেই।</td></tr>';
+        return;
+      }
+
+      var html = '';
+      list.forEach(function(item) {
+        var d = item.data, k = item.key;
+        var batchInfo = d.batchNo ? '<br><small style="color:#666;">Batch: ' + d.batchNo + (d.expiry ? ' (Exp: ' + formatDateBR(d.expiry) + ')' : '') + '</small>' : '';
+        html += '<tr>' +
+          '<td><strong>🐄 ' + (d.tag || '-') + '</strong></td>' +
+          '<td><strong>' + (d.name || '-') + '</strong>' + batchInfo + '</td>' +
+          '<td>' + (d.dose || 5) + ' mL<br><small style="color:#555;">' + (d.route || 'S/C') + '</small></td>' +
+          '<td>' + formatDateBR(d.date) + '</td>' +
+          '<td><span class="badge badge-warning">' + formatDateBR(d.nextDate) + '</span></td>' +
+          '<td>₹ ' + (d.cost || 0) + '</td>' +
+          '<td><button class="action-btn" style="background:#2e7d32; color:white;" onclick="showDigitalHealthPassport(\'' + encodeURIComponent(d.tag || '') + '\')">📘 Passbook</button></td>' +
+          '<td>' +
+            '<button class="action-btn btn-info" onclick="editVaccineRecord(\'' + k + '\')">Edit</button>' +
+            '<button class="action-btn btn-danger" onclick="deleteRecord(\'vaccine\',\'' + k + '\')">Delete</button>' +
+          '</td>' +
+        '</tr>';
+      });
+      body.innerHTML = html;
+    }
+
     function editVaccineRecord(k) {
       var d = farmStore.vaccine ? farmStore.vaccine[k] : null; if (!d) return; eVacKey = k;
       getEl('vacCowTag').value = d.tag || '';
@@ -2261,7 +2394,8 @@
     }
     function cancelVaccineEdit() {
       eVacKey = null;
-      ['vacCowTag','vacName','vacDate','vacNextDate','vacCost','vacDose','vacBatchNo','vacExpiry','vacWithdrawalDays'].forEach(function(i){ if(getEl(i)) getEl(i).value=''; });
+      ['vacCowTag','vacName','vacNextDate','vacCost','vacDose','vacBatchNo','vacExpiry','vacWithdrawalDays'].forEach(function(i){ if(getEl(i)) getEl(i).value=''; });
+      if (getEl('vacDate')) getEl('vacDate').value = new Date().toISOString().split('T')[0];
       getEl('vacSubmitBtn').innerText = 'Save Vaccine Record';
       getEl('vacCancelBtn').style.display = 'none';
     }
@@ -2281,7 +2415,7 @@
         nextDate: getEl('vacNextDate').value,
         cost: cost,
         dose: dose,
-        route: getEl('vacRoute') ? getEl('vacRoute').value : 'Subcutaneous',
+        route: getEl('vacRoute') ? getEl('vacRoute').value : 'Subcutaneous (S/C)',
         batchNo: getEl('vacBatchNo') ? getEl('vacBatchNo').value : '',
         expiry: getEl('vacExpiry') ? getEl('vacExpiry').value : '',
         withdrawalDays: parseInt(getEl('vacWithdrawalDays') ? getEl('vacWithdrawalDays').value : 0) || 0
@@ -2319,21 +2453,21 @@
 
     window.showDigitalHealthPassport = function(encTag) {
       var tag = decodeURIComponent(encTag).trim();
-      var cow = farmStore.cattle ? farmStore.cattle[tag] : null;
+      var cow = findCattleByTag(tag);
       
       var historyHtml = '<div style="font-family:sans-serif; padding:15px;">';
       historyHtml += '<div style="text-align:center; border-bottom:2px solid #1b5e20; padding-bottom:10px; margin-bottom:15px;">';
-      historyHtml += '<h2 style="color:#1b5e20; margin:0;">NANDA DAIRY & AGRO</h2>';
+      historyHtml += '<h2 style="color:#1b5e20; margin:0;">Nanda Dairy & Agro</h2>';
       historyHtml += '<p style="font-size:13px; font-weight:bold; margin:3px 0;">Digital Health Passport & Vaccination Passbook</p>';
       historyHtml += '</div>';
 
       historyHtml += '<div style="display:flex; justify-content:space-between; font-size:13px; margin-bottom:15px; background:#f1f8e9; padding:10px; border-radius:6px;">';
-      historyHtml += '<div><strong>Cattle Tag ID:</strong> ' + tag + '<br><strong>Breed:</strong> ' + (cow ? cow.breed : 'N/A') + '</div>';
-      historyHtml += '<div><strong>Status:</strong> ' + (cow ? cow.status : 'N/A') + '<br><strong>Lactation:</strong> ' + (cow ? cow.lactation : 'N/A') + '</div>';
+      historyHtml += '<div><strong>Cattle Tag ID:</strong> ' + tag + '<br><strong>Breed:</strong> ' + (cow ? (cow.breed || 'N/A') : 'N/A') + '</div>';
+      historyHtml += '<div><strong>Status:</strong> ' + (cow ? (cow.status || 'N/A') : 'N/A') + '<br><strong>Lactation:</strong> ' + (cow ? (cow.lactation || '0') : 'N/A') + '</div>';
       historyHtml += '</div>';
 
       historyHtml += '<h3 style="font-size:14px; color:#1b5e20; border-bottom:1px solid #ddd; padding-bottom:4px;">সকল টিকাদানের ইতিহাস (Vaccination History):</h3>';
-      historyHtml += '<table style="width:100%; border-collapse:collapse; font-size:12px; margin-top:8px;">';
+      historyHtml += '<table style="width:100%; min-width:unset; border-collapse:collapse; font-size:12px; margin-top:8px;">';
       historyHtml += '<tr style="background:#e8f5e9;"><th style="border:1px solid #c8e6c9; padding:6px;">তারিখ</th><th style="border:1px solid #c8e6c9; padding:6px;">ভ্যাকসিনের নাম</th><th style="border:1px solid #c8e6c9; padding:6px;">ডোজ ও রুট</th><th style="border:1px solid #c8e6c9; padding:6px;">ব্যাচ ও মেয়াদ</th><th style="border:1px solid #c8e6c9; padding:6px;">পরবর্তী ডোজ</th></tr>';
 
       for (var k in farmStore.vaccine) {
@@ -2357,20 +2491,59 @@
         modal = document.createElement('div');
         modal.id = 'digitalPassportModal';
         modal.style.cssText = "display:flex; position:fixed; inset:0; background:rgba(0,0,0,0.65); z-index:3000; align-items:center; justify-content:center; padding:15px;";
-        modal.innerHTML = '<div style="background:white; max-width:700px; width:100%; border-radius:12px; padding:25px; max-height:90vh; overflow-y:auto;"><div id="passportContent"></div><div style="text-align:right; margin-top:15px; display:flex; justify-content:flex-end; gap:10px;"><button class="btn btn-info" onclick="window.print()">🖨️ প্রিন্ট করুন</button><button class="btn btn-success" onclick="downloadHealthPassport(\'' + tag + '\')" style="background:#2e7d32; color:white; border:none; padding:8px 14px; border-radius:6px; cursor:pointer;">📥 ডাউনলোড করুন</button><button class="btn btn-danger" onclick="document.getElementById(\'digitalPassportModal\').style.display=\'none\'">বন্ধ করুন</button></div></div>';
+        modal.innerHTML = '<div style="background:white; max-width:700px; width:100%; border-radius:12px; padding:25px; max-height:90vh; overflow-y:auto;"><div id="passportContent"></div><div class="no-print" style="text-align:right; margin-top:15px; display:flex; justify-content:flex-end; gap:10px;"><button class="btn btn-info" onclick="printSpecificModal(\'passport\')">🖨️ প্রিন্ট করুন</button><button class="btn btn-success" id="passportDownloadBtn" style="background:#2e7d32; color:white; border:none; padding:8px 14px; border-radius:6px; cursor:pointer;">📥 ডাউনলোড করুন</button><button class="btn btn-danger" onclick="document.getElementById(\'digitalPassportModal\').style.display=\'none\'">বন্ধ করুন</button></div></div>';
         document.body.appendChild(modal);
       }
       getEl('passportContent').innerHTML = historyHtml;
+      var dlBtn = getEl('passportDownloadBtn');
+      if (dlBtn) {
+        dlBtn.onclick = function() { downloadHealthPassport(tag); };
+      }
       modal.style.display = 'flex';
     };
 
+    // ==========================================
+    // DEWORMING FUNCTIONS (Missing renderDewormTable added)
+    // ==========================================
     var eDewormKey = null;
+
+    function renderDewormTable() {
+      var body = getEl('dewormTableBody');
+      if (!body) return;
+      var list = [];
+      for (var k in farmStore.deworm) {
+        if (farmStore.deworm[k]) list.push({ key: k, data: farmStore.deworm[k] });
+      }
+      list.sort(function(a, b) {
+        return parseDateToTime(b.data.date) - parseDateToTime(a.data.date);
+      });
+
+      if (list.length === 0) {
+        body.innerHTML = '<tr><td colspan="7" style="text-align:center; color:#888;">কোনো কৃমিনাশক রেকর্ড নেই।</td></tr>';
+        return;
+      }
+
+      var html = '';
+      list.forEach(function(item) {
+        var d = item.data, k = item.key;
+        html += '<tr>' +
+          '<td><strong>🐄 ' + (d.tag || '-') + '</strong></td>' +
+          '<td>' + formatDateBR(d.date) + '<br><small style="color:#666;">ওজন: ' + (d.weight || 0) + ' kg</small></td>' +
+          '<td><strong>' + (d.medName || '-') + '</strong> (' + (d.formType || 'Syrup') + ')<br><small style="color:var(--primary); font-weight:600;">ডোজ: ' + (d.dose || '-') + '</small></td>' +
+          '<td><span class="badge badge-warning">' + formatDateBR(d.nextDate) + '</span></td>' +
+          '<td>₹ ' + (d.cost || 0) + '</td>' +
+          '<td>' + (d.note || '-') + '</td>' +
+          '<td>' +
+            '<button class="action-btn btn-info" onclick="editDewormRecord(\'' + k + '\')">Edit</button>' +
+            '<button class="action-btn btn-danger" onclick="deleteRecord(\'deworm\',\'' + k + '\')">Delete</button>' +
+          '</td>' +
+        '</tr>';
+      });
+      body.innerHTML = html;
+    }
 
     function onDewormTagChange() {
       var tag = (getEl('dewormCowTag').value || '').trim();
-      if (!tag) return;
-
-      var cow = farmStore.cattle ? farmStore.cattle[tag] : null;
       var alertBox = getEl('dewormPregnancyAlertBox');
       if (!alertBox) {
         alertBox = document.createElement('div');
@@ -2379,6 +2552,12 @@
         if (formGrid) formGrid.parentNode.insertBefore(alertBox, formGrid.nextSibling);
       }
 
+      if (!tag) {
+        alertBox.innerHTML = '';
+        return;
+      }
+
+      var cow = findCattleByTag(tag);
       if (cow) {
         if (getEl('dewormWeight')) getEl('dewormWeight').value = cow.weight || '';
         
@@ -2389,11 +2568,13 @@
         }
 
         autoCalcDewormDose();
+      } else {
+        alertBox.innerHTML = '';
       }
     }
 
     function autoCalcDewormDose() {
-      var wt = parseFloat(getEl('dewormWeight').value) || 0;
+      var wt = parseFloat(getEl('dewormWeight') ? getEl('dewormWeight').value : 0) || 0;
       var formTypeSelect = getEl('dewormFormType');
       var formType = formTypeSelect ? formTypeSelect.value : 'Syrup';
       var doseField = getEl('dewormCalculatedDose');
@@ -2416,10 +2597,10 @@
     }
 
     function autoCalcNextDewormDate() {
-      var dtVal = getEl('dewormDate').value;
-      if (!dtVal) return;
+      var dtEl = getEl('dewormDate');
+      if (!dtEl || !dtEl.value) return;
 
-      var d = new Date(dtVal);
+      var d = new Date(dtEl.value);
       if (isNaN(d.getTime())) return;
 
       d.setDate(d.getDate() + 90);
@@ -2449,7 +2630,9 @@
 
     function cancelDewormEdit() {
       eDewormKey = null;
-      ['dewormCowTag','dewormDate','dewormWeight','dewormMedName','dewormCalculatedDose','dewormNextDate','dewormCost','dewormNote'].forEach(function(id){ if(getEl(id)) getEl(id).value=''; });
+      ['dewormCowTag','dewormWeight','dewormMedName','dewormCalculatedDose','dewormNextDate','dewormCost','dewormNote'].forEach(function(id){ if(getEl(id)) getEl(id).value=''; });
+      if (getEl('dewormDate')) getEl('dewormDate').value = new Date().toISOString().split('T')[0];
+      autoCalcNextDewormDate();
       getEl('dewormSubmitBtn').innerText = 'Save Deworming Record';
       getEl('dewormCancelBtn').style.display = 'none';
       var alertBox = getEl('dewormPregnancyAlertBox'); if(alertBox) alertBox.innerHTML = '';
@@ -2513,20 +2696,16 @@
       cancelMilkEdit();
     }
 
+    // ==========================================
+    // SALES FORM LOGIC (Updated without saleDue field)
+    // ==========================================
     var eSaleKey = null;
     function calcSale() {
       var q = parseFloat(getEl('saleQty').value) || 0;
       var r = parseFloat(getEl('saleRate').value) || 0;
-      var t = q * r;
-      if (q === 0 && r === 0) {
-         t = parseFloat(getEl('saleTotal').value) || 0;
-      } else {
-         getEl('saleTotal').value = t; 
+      if (q > 0 || r > 0) {
+        getEl('saleTotal').value = q * r;
       }
-      var paid = parseFloat(getEl('salePaid').value) || 0;
-      var thisBillDue = Math.max(0, t - paid);
-      var prevDue = parseFloat(getEl('salePrevDue').value) || 0;
-      getEl('saleDue').value = thisBillDue + prevDue;
     }
     
     function editSale(k) {
@@ -2559,8 +2738,11 @@
     }
 
     function cancelSaleEdit() {
-      eSaleKey = null; ['saleCustomer','salePhone','saleArea','saleAddr','saleQty','saleRate','saleTotal','salePaid','saleDue','salePrevDue'].forEach(function(i){ if(getEl(i)) getEl(i).value=''; });
-      getEl('saleSubmitBtn').innerText = 'Save Sale'; getEl('saleCancelBtn').style.display = 'none';
+      eSaleKey = null;
+      ['saleCustomer','salePhone','saleArea','saleAddr','saleQty','saleRate','saleTotal','salePaid','salePrevDue'].forEach(function(i){ if(getEl(i)) getEl(i).value=''; });
+      if (getEl('salePrevDue')) getEl('salePrevDue').value = '0';
+      getEl('saleSubmitBtn').innerText = 'Save Sale';
+      getEl('saleCancelBtn').style.display = 'none';
       var lbl = document.getElementById('lblSaleCustomer');
       if(lbl) lbl.innerHTML = 'Customer Name *';
     }
@@ -2713,27 +2895,27 @@
     var eFeedKey = null;
     function editFeed(k) {
       var d = farmStore.feed[k]; if (!d) return; eFeedKey = k;
-      getEl('feedDate').value = d.date || '';
-      getEl('feedType').value = d.type || 'Cattle Feed / Pellets';
-      getEl('feedQty').value = d.qty || '';
-      getEl('feedCost').value = d.cost || '';
-      getEl('feedNote').value = d.note || '';
-      getEl('feedSubmitBtn').innerText = 'Update Feed';
-      getEl('feedCancelBtn').style.display = 'inline-flex';
+      if (getEl('feedDate')) getEl('feedDate').value = d.date || '';
+      if (getEl('feedType')) getEl('feedType').value = d.type || 'Cattle Feed / Pellets';
+      if (getEl('feedQty')) getEl('feedQty').value = d.qty || '';
+      if (getEl('feedCost')) getEl('feedCost').value = d.cost || '';
+      if (getEl('feedNote')) getEl('feedNote').value = d.note || '';
+      if (getEl('feedSubmitBtn')) getEl('feedSubmitBtn').innerText = 'Update Feed';
+      if (getEl('feedCancelBtn')) getEl('feedCancelBtn').style.display = 'inline-flex';
       switchTab('feed', document.querySelector('nav button:nth-child(10)'));
     }
     function cancelFeedEdit() {
       eFeedKey = null;
       ['feedQty','feedCost','feedNote'].forEach(function(i){ if(getEl(i)) getEl(i).value=''; });
-      getEl('feedSubmitBtn').innerText = 'Save Feed Record';
-      getEl('feedCancelBtn').style.display = 'none';
+      if (getEl('feedSubmitBtn')) getEl('feedSubmitBtn').innerText = 'Save Feed Record';
+      if (getEl('feedCancelBtn')) getEl('feedCancelBtn').style.display = 'none';
     }
     function saveFeed() {
-      var dt = getEl('feedDate').value;
-      var type = getEl('feedType').value;
-      var qty = (getEl('feedQty').value || '').trim();
-      var cost = parseFloat(getEl('feedCost').value) || 0;
-      var note = (getEl('feedNote').value || '').trim();
+      var dt = getEl('feedDate') ? getEl('feedDate').value : '';
+      var type = getEl('feedType') ? getEl('feedType').value : '';
+      var qty = (getEl('feedQty') ? getEl('feedQty').value : '').trim();
+      var cost = parseFloat(getEl('feedCost') ? getEl('feedCost').value : 0) || 0;
+      var note = (getEl('feedNote') ? getEl('feedNote').value : '').trim();
 
       if (!dt || !qty || cost <= 0) return alert('তারিখ, পরিমাণ ও মোট খরচ দিন!');
 
@@ -2785,6 +2967,9 @@
       body.innerHTML = html;
     }
 
+    // Alias function so both renderRationTable() and renderFeedTable() work seamlessly
+    var renderRationTable = renderFeedTable;
+
     window.toggleExpenseDate = function(safeDt) {
       var row = getEl('exp-det-' + safeDt); var btn = getEl('exp-btn-' + safeDt);
       if (row) {
@@ -2820,7 +3005,7 @@
         var e = farmStore.expenses[k]; if (!e) continue;
         var dtBR = formatDateBR(e.date) || 'Unknown', amt = Number(e.amount) || 0;
         totalExpAll += amt;
-        if (!dateGroups[dtBR]) dateGroups[dtBR] = { date: dtBR, total: 0, items: [] };
+        if (!dateGroups[dtBR]) dateGroups[dtBR] = { date: dtBR, dateISO: e.date || '', total: 0, items: [] };
         dateGroups[dtBR].total += amt;
         dateGroups[dtBR].items.push({ key: k, data: e });
       }
@@ -2828,7 +3013,7 @@
       if (getEl('rep-expenses')) getEl('rep-expenses').innerText = '₹ ' + totalExpAll.toLocaleString();
       calcNet();
 
-      var sortedDates = Object.keys(dateGroups).sort(function(a, b) { return parseDateToTime(b) - parseDateToTime(a); });
+      var sortedDates = Object.keys(dateGroups).sort(function(a, b) { return parseDateToTime(dateGroups[b].dateISO) - parseDateToTime(dateGroups[a].dateISO); });
       if (sortedDates.length === 0) { body.innerHTML = ''; if(getEl('expenseNoData')) getEl('expenseNoData').style.display = 'block'; return; }
       if(getEl('expenseNoData')) getEl('expenseNoData').style.display = 'none';
 
@@ -2872,7 +3057,7 @@
     }
     function cancelSemenEdit() {
       eSemKey = null; ['semBatch','semBreed','semSource','semCount'].forEach(function(i){ getEl(i).value=''; });
-      getEl('semSubmitBtn').innerText = 'Save Semen Stock'; getEl('semCancelBtn').style.display = 'none';
+      getEl('semSubmitBtn').innerText = 'Save Semen'; getEl('semCancelBtn').style.display = 'none';
     }
     function saveSemen() {
       var b = (getEl('semBatch').value || '').trim(); if (!b) return alert('Batch দিন!');
@@ -2936,7 +3121,6 @@
       db.ref('sales').on('value', function(snap) {
         farmStore.sales = {}; snap.forEach(function(c){ farmStore.sales[c.key] = c.val(); });
         renderSalesTable();
-        // Ledger update automatically after adding payment
         if (window.activeLedgerCustomerName && getEl('ledgerModal') && getEl('ledgerModal').style.display !== 'none') {
            showCustomerLedger(encodeURIComponent(window.activeLedgerCustomerName));
         }
