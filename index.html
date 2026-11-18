@@ -1198,6 +1198,7 @@
             <div class="input-group"><label>Tag ID *</label><input type="text" id="hlthCowTag" list="cattleTagList" placeholder="Tag"></div>
             <div class="input-group"><label>Type</label><select id="hlthType"><option value="Vaccination">Vaccination</option><option value="Deworming">Deworming</option><option value="General Treatment">General Treatment</option><option value="Doctor Checkup">Doctor Checkup</option></select></div>
             <div class="input-group"><label>Description</label><input type="text" id="hlthDesc" placeholder="বিবরণ"></div>
+            <div class="input-group"><label>Cost ₹ (খরচ)</label><input type="number" id="hlthCost" placeholder="₹"></div>
             <div class="input-group"><label>Next Dose</label><input type="date" id="hlthNextDate"></div>
           </div>
           <div style="display:flex; gap:10px;">
@@ -3597,19 +3598,20 @@
       };
 
       if (db) {
+        var ratId = eRatKey;
         if (eRatKey) {
           db.ref('feedRations/' + eRatKey).update(data);
         } else {
-          db.ref('feedRations').push(data);
+          ratId = db.ref('feedRations').push(data).key;
           deductFeedStock(pellet);
-          if (autoExp && totalCost > 0) {
-            db.ref('expenses').push({
-              date: dt,
-              category: 'Feed & Fodder',
-              title: 'Cattle Feed (' + tag + ') - ' + pellet + ' kg',
-              amount: parseFloat(totalCost.toFixed(2))
-            });
-          }
+        }
+        if (autoExp) {
+          syncAutoExpense('ration_' + ratId, {
+            date: dt,
+            category: 'Feed & Fodder',
+            title: 'Cattle Feed (' + tag + ') - ' + pellet + ' kg',
+            amount: totalCost
+          });
         }
       }
       showAppToast('রেশন সফলভাবে সেভ হয়েছে!');
@@ -3975,6 +3977,39 @@
       }
     };
 
+    window.syncAutoExpense = function(sourceRefId, expObj) {
+      if (!db || !sourceRefId) return;
+      var existingKey = null;
+      for (var ek in farmStore.expenses) {
+        if (farmStore.expenses[ek] && farmStore.expenses[ek].sourceRef === sourceRefId) {
+          existingKey = ek;
+          break;
+        }
+      }
+      var amt = parseFloat(expObj.amount) || 0;
+      if (amt <= 0) {
+        if (existingKey) db.ref('expenses/' + existingKey).remove();
+        return;
+      }
+      var payload = {
+        date: expObj.date || new Date().toISOString().split('T')[0],
+        category: expObj.category || 'Other',
+        title: expObj.title || 'Auto Expense',
+        amount: parseFloat(amt.toFixed(2)),
+        paidAmount: parseFloat(amt.toFixed(2)),
+        dueAmount: 0,
+        vendor: expObj.vendor || '',
+        payMode: expObj.payMode || 'Cash',
+        status: 'Paid',
+        sourceRef: sourceRefId
+      };
+      if (existingKey) {
+        db.ref('expenses/' + existingKey).update(payload);
+      } else {
+        db.ref('expenses').push(payload);
+      }
+    };
+
     function saveBreeding() {
       var tag = (getEl('brCowTag').value || '').trim(); if (!tag) return showAppToast('Cattle ID দিন!');
       var semId = (getEl('brSemenId').value || '').trim();
@@ -3992,24 +4027,12 @@
         note: getEl('brNote').value || ''
       };
       if (db) {
+        var brId = eBrKey;
         if (eBrKey) {
           db.ref('breeding/' + eBrKey).update(data);
         } else {
-          db.ref('breeding').push(data);
-          if (data.aiCost > 0) {
-            db.ref('expenses').push({
-              date: data.aiDate || new Date().toISOString().split('T')[0],
-              category: 'Medicine & Health',
-              title: 'AI / Breeding Expense (Tag: ' + tag + ')' + (semId ? ' - ' + semId : ''),
-              amount: data.aiCost,
-              paidAmount: data.aiCost,
-              dueAmount: 0,
-              vendor: data.company || '',
-              payMode: 'Cash',
-              status: 'Paid'
-            });
-          }
-          // Auto-deduct 1 straw from matching semen batch
+          var pushedRef = db.ref('breeding').push(data);
+          brId = pushedRef.key;
           if (semId) {
             var sLow = semId.toLowerCase();
             for (var sk in farmStore.semen) {
@@ -4021,7 +4044,15 @@
             }
           }
         }
+        syncAutoExpense('breeding_' + brId, {
+          date: data.aiDate || new Date().toISOString().split('T')[0],
+          category: 'Medicine & Health',
+          title: 'AI / Breeding Expense (Tag: ' + tag + ')' + (semId ? ' - ' + semId : ''),
+          amount: data.aiCost,
+          vendor: data.company || ''
+        });
       }
+      showAppToast('Breeding রেকর্ড ও খরচ সফলভাবে সেভ হয়েছে!');
       if (getEl('brInbreedingWarningBox')) getEl('brInbreedingWarningBox').innerHTML = '';
       cancelBreedingEdit();
     }
@@ -4158,19 +4189,18 @@
       };
 
       if (db) {
+        var vacId = eVacKey;
         if (eVacKey) {
           db.ref('vaccine/' + eVacKey).update(data);
         } else {
-          db.ref('vaccine').push(data);
-          if (cost > 0) {
-            db.ref('expenses').push({
-              date: dt,
-              category: 'Medicine & Health',
-              title: 'Vaccine Expense (' + name + ') - Tag: ' + tag,
-              amount: cost
-            });
-          }
+          vacId = db.ref('vaccine').push(data).key;
         }
+        syncAutoExpense('vaccine_' + vacId, {
+          date: dt,
+          category: 'Medicine & Health',
+          title: 'Vaccine Expense (' + name + ') - Tag: ' + tag,
+          amount: cost
+        });
       }
       cancelVaccineEdit();
     }
@@ -4396,19 +4426,18 @@
       };
 
       if (db) {
+        var dwId = eDewormKey;
         if (eDewormKey) {
           db.ref('deworm/' + eDewormKey).update(data);
         } else {
-          db.ref('deworm').push(data);
-          if (cost > 0) {
-            db.ref('expenses').push({
-              date: dt,
-              category: 'Medicine & Health',
-              title: 'Deworming Expense (' + medName + ') - Tag: ' + tag,
-              amount: cost
-            });
-          }
+          dwId = db.ref('deworm').push(data).key;
         }
+        syncAutoExpense('deworm_' + dwId, {
+          date: dt,
+          category: 'Medicine & Health',
+          title: 'Deworming Expense (' + medName + ') - Tag: ' + tag,
+          amount: cost
+        });
       }
       cancelDewormEdit();
     }
@@ -6225,24 +6254,21 @@
         alertLevel: parseFloat(getEl('semAlert') ? getEl('semAlert').value : 0) || 0
       };
       if (db) {
+        var semIdKey = eSemKey;
         if (eSemKey) {
           db.ref('semen/' + eSemKey).update(data);
         } else {
-          db.ref('semen').push(data);
-          var totalSemCost = data.count * data.cost;
-          if (getEl('semAutoExpense') && getEl('semAutoExpense').checked && totalSemCost > 0) {
-            db.ref('expenses').push({
-              date: new Date().toISOString().split('T')[0],
-              category: 'Medicine & Health',
-              title: 'Semen Purchase: ' + b + ' (' + data.count + ' Straws - ' + (data.breed || '') + ')',
-              amount: parseFloat(totalSemCost.toFixed(2)),
-              paidAmount: parseFloat(totalSemCost.toFixed(2)),
-              dueAmount: 0,
-              vendor: data.source || '',
-              payMode: 'Cash',
-              status: 'Paid'
-            });
-          }
+          semIdKey = db.ref('semen').push(data).key;
+        }
+        var totalSemCost = data.count * data.cost;
+        if (getEl('semAutoExpense') && getEl('semAutoExpense').checked) {
+          syncAutoExpense('semen_' + semIdKey, {
+            date: new Date().toISOString().split('T')[0],
+            category: 'Medicine & Health',
+            title: 'Semen Purchase: ' + b + ' (' + data.count + ' Straws - ' + (data.breed || '') + ')',
+            amount: totalSemCost,
+            vendor: data.source || ''
+          });
         }
       }
       showAppToast('সিমেন তথ্য সফলভাবে সেভ হয়েছে!');
@@ -6383,18 +6409,35 @@
     function editHealth(k) {
       var d = farmStore.health[k]; if (!d) return; eHlthKey = k;
       getEl('hlthDate').value = d.date || ''; getEl('hlthCowTag').value = d.cowTag || ''; getEl('hlthType').value = d.type || 'Vaccination';
-      getEl('hlthDesc').value = d.desc || ''; getEl('hlthNextDate').value = d.nextDate || '';
+      getEl('hlthDesc').value = d.desc || '';
+      if (getEl('hlthCost')) getEl('hlthCost').value = d.cost || '';
+      getEl('hlthNextDate').value = d.nextDate || '';
       getEl('hlthSubmitBtn').innerText = 'Update Health'; getEl('hlthCancelBtn').style.display = 'inline-flex';
-      switchTab('health', document.querySelector('nav button:nth-child(14)'));
+      switchTab('health', document.querySelectorAll('nav button')[13]);
     }
     function cancelHealthEdit() {
-      eHlthKey = null; ['hlthCowTag','hlthDesc','hlthNextDate'].forEach(function(i){ if(getEl(i)) getEl(i).value=''; });
+      eHlthKey = null; ['hlthCowTag','hlthDesc','hlthCost','hlthNextDate'].forEach(function(i){ if(getEl(i)) getEl(i).value=''; });
       getEl('hlthSubmitBtn').innerText = 'Save Health Record'; getEl('hlthCancelBtn').style.display = 'none';
     }
     function saveHealth() {
       var tag = (getEl('hlthCowTag').value || '').trim(); if (!tag) return showAppToast('Tag দিন!');
-      var data = { date: getEl('hlthDate').value, cowTag: tag, type: getEl('hlthType').value, desc: getEl('hlthDesc').value, nextDate: getEl('hlthNextDate').value };
-      if (db) eHlthKey ? db.ref('health/' + eHlthKey).update(data) : db.ref('health').push(data);
+      var hCost = parseFloat(getEl('hlthCost') ? getEl('hlthCost').value : 0) || 0;
+      var data = { date: getEl('hlthDate').value, cowTag: tag, type: getEl('hlthType').value, desc: getEl('hlthDesc').value, cost: hCost, nextDate: getEl('hlthNextDate').value };
+      if (db) {
+        var hId = eHlthKey;
+        if (eHlthKey) {
+          db.ref('health/' + eHlthKey).update(data);
+        } else {
+          hId = db.ref('health').push(data).key;
+        }
+        syncAutoExpense('health_' + hId, {
+          date: data.date || new Date().toISOString().split('T')[0],
+          category: 'Medicine & Health',
+          title: 'Health (' + data.type + ') - Tag: ' + tag + (data.desc ? ' (' + data.desc + ')' : ''),
+          amount: hCost
+        });
+      }
+      showAppToast('স্বাস্থ্য রেকর্ড ও খরচ সেভ হয়েছে!');
       cancelHealthEdit();
     }
 
