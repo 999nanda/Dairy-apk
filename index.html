@@ -375,6 +375,10 @@
     <option value="SAG">
     <option value="CRV">
     <option value="PBGS / Govt">
+    <option value="CRI Genetics">
+    <option value="STgenetics">
+    <option value="WWS">
+    <option value="PDFA">
   </datalist>
 
   <!-- লগইন স্ক্রিন -->
@@ -3993,7 +3997,7 @@
             var sLow = semId.toLowerCase();
             for (var sk in farmStore.semen) {
               var sm = farmStore.semen[sk];
-              if (sm && (sm.batch || '').trim().toLowerCase() === sLow && (Number(sm.count) || 0) > 0) {
+              if (sm && ((sm.batch || '').trim().toLowerCase() === sLow || (sm.bullName || '').trim().toLowerCase() === sLow) && (Number(sm.count) || 0) > 0) {
                 db.ref('semen/' + sk).update({ count: Math.max(0, (Number(sm.count) || 0) - 1) });
                 break;
               }
