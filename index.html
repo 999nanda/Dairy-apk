@@ -151,7 +151,7 @@
         testImg.src = imgEl.getAttribute('data-local-logo');
       });
       var todayISO = new Date().toISOString().split('T')[0];
-      var defaultDateIds = ['milkDate', 'saleDate', 'orderDate', 'expDate', 'brAiDate', 'hlthDate', 'ledgerPayDate', 'feedDate', 'rationDate', 'vacDate', 'dewormDate'];
+      var defaultDateIds = ['milkDate', 'saleDate', 'orderDate', 'expDate', 'brAiDate', 'hlthDate', 'ledgerPayDate', 'feedDate', 'rationDate', 'vacDate', 'dewormDate', 'labJoinDate', 'labPayDate'];
       defaultDateIds.forEach(function(id) {
         if (getEl(id)) {
           getEl(id).value = todayISO;
@@ -880,32 +880,62 @@
             <div class="input-group"><label>Category</label><select id="expCategory"><option value="Feed & Fodder">Feed & Fodder</option><option value="Medicine & Health">Medicine & Health</option><option value="Labour Salary">Labour Salary</option><option value="Electricity / Utilities">Electricity / Utilities</option><option value="Other">Other</option></select></div>
             <div class="input-group"><label>Description *</label><input type="text" id="expTitle" placeholder="বিবরণ"></div>
             <div class="input-group"><label>Amount ₹ *</label><input type="number" id="expAmount" placeholder="₹"></div>
+            <div class="input-group"><label>দোকান / ব্যক্তি (Paid To)</label><input type="text" id="expVendor" placeholder="দোকান বা ব্যক্তির নাম"></div>
+            <div class="input-group"><label>Payment Mode</label><select id="expPayMode"><option value="Cash">Cash (নগদ)</option><option value="UPI / Online">UPI / Online</option><option value="Bank Transfer">Bank Transfer</option><option value="Credit (বাকি)">Credit (বাকি)</option></select></div>
+            <div class="input-group"><label>Payment Status</label><select id="expStatus"><option value="Paid">Paid (পরিশোধ)</option><option value="Unpaid">Unpaid (বাকি)</option></select></div>
           </div>
-          <div style="display:flex; gap:10px;">
+          <div style="display:flex; gap:10px; flex-wrap:wrap;">
             <button class="btn" id="expSubmitBtn" onclick="saveExpense()">Save Expense</button>
+            <button class="btn btn-info" type="button" onclick="repeatFixedExpenses()">🔁 আগের মাসের স্থায়ী খরচ কপি</button>
             <button class="btn btn-warning" id="expCancelBtn" style="display:none;" onclick="cancelExpenseEdit()">Cancel</button>
           </div>
         </div>
+
         <div class="card">
           <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; margin-bottom:12px;">
-            <h2 style="margin:0; border:none; padding:0;">খরচের তালিকা (Expense List)</h2>
+            <h2 style="margin:0; border:none; padding:0;">খরচের তালিকা ও মাসিক বিশ্লেষণ (Expense List)</h2>
             <div style="display:flex; gap:8px; flex-wrap:wrap;">
+              <button class="action-btn" style="background:#7b1fa2; color:white; padding:6px 12px; border-radius:6px;" onclick="showMonthlyExpenseStatement()">📄 মাসিক রিপোর্ট (Print)</button>
               <button class="action-btn" style="background:#1d6f42; color:white; padding:6px 10px; border-radius:6px;" onclick="exportExpenses('csv')">📥 Excel (CSV)</button>
               <button class="action-btn" style="background:#2b579a; color:white; padding:6px 10px; border-radius:6px;" onclick="exportExpenses('doc')">📥 Word</button>
               <button class="action-btn" style="background:#424242; color:white; padding:6px 10px; border-radius:6px;" onclick="exportExpenses('txt')">📥 Text</button>
             </div>
           </div>
 
-          <!-- Expense Filters (Year & Specific Date) -->
-          <div style="display:flex; flex-wrap:wrap; gap:15px; margin-bottom:15px; background:#f4fbf5; padding:12px; border-radius:8px; border:1px solid #c8e6c9; align-items:center;">
-            <div style="display:flex; align-items:center; gap:8px;">
-              <label style="font-size:12px; font-weight:bold; color:var(--primary);">বছর নির্বাচন:</label>
-              <select id="expFilterYear" onchange="applyExpenseFilter()" style="padding:6px 10px; border-radius:6px; border:1px solid #bbb; outline:none; font-weight:bold; width:auto;"></select>
+          <!-- Monthly Budget Limit & Category Summary -->
+          <div style="display:flex; flex-wrap:wrap; gap:10px; align-items:center; justify-content:space-between; background:#fffdf9; border:1px solid #ffe0b2; padding:10px 14px; border-radius:8px; margin-bottom:14px;">
+            <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+              <label style="font-size:12px; font-weight:700; color:#e65100;">মাসিক বাজেট সীমা (₹):</label>
+              <input type="number" id="expMonthlyBudgetInput" placeholder="যেমন: 50000" style="width:130px; padding:5px 8px; font-size:12.5px;" onchange="saveMonthlyBudget()">
             </div>
-            <div style="display:flex; align-items:center; gap:8px;">
-              <label style="font-size:12px; font-weight:bold; color:var(--primary);">নির্দিষ্ট তারিখ খুঁজুন:</label>
-              <input type="date" id="expFilterDate" onchange="applyExpenseFilter()" style="padding:6px; border-radius:6px; border:1px solid #bbb; outline:none; width:auto;">
-              <button class="action-btn btn-warning" onclick="clearExpenseDateFilter()" style="padding:6px 12px;">Clear/Reset</button>
+            <div id="expBudgetStatusText" style="font-size:12.5px; font-weight:600; color:#555;"></div>
+          </div>
+
+          <div id="expCategorySummaryGrid" style="display:grid; grid-template-columns:repeat(auto-fit, minmax(145px, 1fr)); gap:10px; margin-bottom:15px;"></div>
+
+          <!-- Expense Filters (Year, Date, Category & Search) -->
+          <div style="display:flex; flex-wrap:wrap; justify-content:space-between; gap:12px; margin-bottom:15px; background:#f4fbf5; padding:12px; border-radius:8px; border:1px solid #c8e6c9; align-items:center;">
+            <div style="display:flex; flex-wrap:wrap; gap:12px; align-items:center;">
+              <div style="display:flex; align-items:center; gap:6px;">
+                <label style="font-size:12px; font-weight:bold; color:var(--primary);">বছর:</label>
+                <select id="expFilterYear" onchange="applyExpenseFilter()" style="padding:6px 10px; border-radius:6px; border:1px solid #bbb; outline:none; font-weight:bold; width:auto;"></select>
+              </div>
+              <div style="display:flex; align-items:center; gap:6px;">
+                <label style="font-size:12px; font-weight:bold; color:var(--primary);">তারিখ:</label>
+                <input type="date" id="expFilterDate" onchange="applyExpenseFilter()" style="padding:6px; border-radius:6px; border:1px solid #bbb; outline:none; width:auto;">
+                <button class="action-btn btn-warning" onclick="clearExpenseDateFilter()" style="padding:6px 10px;">Clear/Reset</button>
+              </div>
+            </div>
+            <div style="display:flex; gap:8px; flex-wrap:wrap;">
+              <select id="expFilterCategory" onchange="renderGroupedExpenseTable()" style="width:155px; padding:7px;">
+                <option value="">সকল খাত (Category)</option>
+                <option value="Feed & Fodder">Feed & Fodder</option>
+                <option value="Medicine & Health">Medicine & Health</option>
+                <option value="Labour Salary">Labour Salary</option>
+                <option value="Electricity / Utilities">Electricity / Utilities</option>
+                <option value="Other">Other</option>
+              </select>
+              <input type="text" id="expSearchInput" oninput="renderGroupedExpenseTable()" placeholder="🔍 বিবরণ / দোকান..." style="width:165px; padding:7px;">
             </div>
           </div>
 
@@ -914,11 +944,50 @@
 
           <div class="table-container">
             <table>
-              <thead><tr><th>তারিখ (Date)</th><th>মোট খরচ</th><th>এন্ট্রি</th><th>বিস্তারিত</th></tr></thead>
+              <thead><tr><th>তারিখ (Date)</th><th>মোট খরচ</th><th>বাকি (Unpaid)</th><th>এন্ট্রি</th><th>বিস্তারিত</th></tr></thead>
               <tbody id="expenseGroupTableBody"></tbody>
             </table>
           </div>
           <p id="expenseNoData" style="text-align: center; color: #777; font-size: 13px; margin-top: 15px; display: none;">এই মাস বা তারিখে কোনো খরচের রেকর্ড নেই।</p>
+        </div>
+
+        <!-- 👷 Labour Salary & Advance Tracker -->
+        <div class="card">
+          <h2>👷 Labour Salary & Advance (কর্মচারীর বেতন ও অগ্রিম হিসাব)</h2>
+          <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(280px, 1fr)); gap:18px; margin-bottom:18px;">
+            <!-- নতুন লেবার যোগ -->
+            <div style="background:#f9fdfa; border:1px solid #c8e6c9; border-radius:10px; padding:14px;">
+              <strong style="color:var(--primary); font-size:13.5px; display:block; margin-bottom:10px;">➕ নতুন কর্মচারী / লেবার সেভ করুন</strong>
+              <div class="form-grid" style="grid-template-columns:1fr 1fr; gap:10px; margin-bottom:10px;">
+                <div class="input-group"><label>নাম *</label><input type="text" id="labName" placeholder="কর্মচারীর নাম"></div>
+                <div class="input-group"><label>মোবাইল</label><input type="text" id="labPhone" placeholder="মোবাইল নম্বর"></div>
+                <div class="input-group"><label>মাসিক বেতন (₹) *</label><input type="number" id="labSalary" placeholder="যেমন: 10000"></div>
+                <div class="input-group"><label>যোগদানের তারিখ</label><input type="date" id="labJoinDate"></div>
+              </div>
+              <button class="btn" style="padding:8px 16px; font-size:12.5px;" onclick="saveLabour()">Save Labour</button>
+            </div>
+
+            <!-- বেতন বা অগ্রিম প্রদান -->
+            <div style="background:#fffdf9; border:1px solid #ffe0b2; border-radius:10px; padding:14px;">
+              <strong style="color:#e65100; font-size:13.5px; display:block; margin-bottom:10px;">💳 বেতন / অগ্রিম (Advance) প্রদান করুন</strong>
+              <div class="form-grid" style="grid-template-columns:1fr 1fr; gap:10px; margin-bottom:10px;">
+                <div class="input-group"><label>কর্মচারী নির্বাচন *</label><select id="labPayWorker"><option value="">কর্মচারী বেছে নিন</option></select></div>
+                <div class="input-group"><label>তারিখ *</label><input type="date" id="labPayDate"></div>
+                <div class="input-group"><label>ধরন (Type)</label><select id="labPayType"><option value="Advance">Advance (অগ্রিম)</option><option value="Salary">Monthly Salary (বেতন)</option></select></div>
+                <div class="input-group"><label>টাকার পরিমাণ (₹) *</label><input type="number" id="labPayAmount" placeholder="₹"></div>
+              </div>
+              <div class="input-group" style="margin-bottom:10px;"><label>নোট (ঐচ্ছিক)</label><input type="text" id="labPayNote" placeholder="নোট লিখুন"></div>
+              <button class="btn btn-warning" style="padding:8px 16px; font-size:12.5px;" onclick="saveLabourPayment()">✔ পেমেন্ট সেভ ও খরচে যোগ</button>
+            </div>
+          </div>
+
+          <div class="table-container">
+            <table>
+              <thead><tr><th>কর্মচারীর নাম</th><th>মাসিক বেতন</th><th>এই মাসে অগ্রিম</th><th>এই মাসে বেতন পরিশোধ</th><th>বাকি পাওনা বেতন</th><th>বিস্তারিত / অ্যাকশন</th></tr></thead>
+              <tbody id="labourTableBody"></tbody>
+            </table>
+          </div>
+          <p id="labourNoData" style="text-align:center; color:#777; font-size:13px; margin-top:12px; display:none;">কোনো কর্মচারী সেভ করা নেই।</p>
         </div>
       </div>
 
@@ -1191,7 +1260,7 @@
       cattle: {}, breeding: {}, milk: {}, sales: {},
       customers: {}, orders: {}, expenses: {}, stock: {},
       semen: {}, health: {}, feedRations: {}, feed: {},
-      vaccine: {}, deworm: {}
+      vaccine: {}, deworm: {}, labours: {}, labourPayments: {}
     };
     window.activeLedgerCustomerName = '';
 
@@ -4733,14 +4802,116 @@
       renderGroupedExpenseTable();
     };
 
+    window.saveMonthlyBudget = function() {
+      var val = parseFloat(getEl('expMonthlyBudgetInput') ? getEl('expMonthlyBudgetInput').value : 0) || 0;
+      try { localStorage.setItem('nanda_exp_monthly_budget', val); } catch(e) {}
+      renderGroupedExpenseTable();
+    };
+
+    window.markExpensePaid = function(expKey) {
+      if (db && expKey) {
+        db.ref('expenses/' + expKey).update({ status: 'Paid' });
+        showAppToast('খরচটি পরিশোধিত (Paid) হিসেবে চিহ্নিত করা হয়েছে।');
+      }
+    };
+
+    window.repeatFixedExpenses = function() {
+      if (!window.currentExpYear) initExpenseFilters();
+      var yr = parseInt(window.currentExpYear);
+      var mn = parseInt(window.currentExpMonth);
+      var prevMn = mn - 1;
+      var prevYr = yr;
+      if (prevMn === 0) { prevMn = 12; prevYr = yr - 1; }
+      var prevPrefix = prevYr + '-' + ('0' + prevMn).slice(-2);
+      var todayISO = new Date().toISOString().split('T')[0];
+
+      var copied = 0;
+      for (var k in farmStore.expenses) {
+        var e = farmStore.expenses[k];
+        if (!e || !(e.date || '').startsWith(prevPrefix)) continue;
+        if (e.category === 'Labour Salary' || e.category === 'Electricity / Utilities') {
+          if (db) {
+            db.ref('expenses').push({
+              date: todayISO,
+              category: e.category,
+              title: e.title + ' (কপি)',
+              amount: Number(e.amount) || 0,
+              vendor: e.vendor || '',
+              payMode: e.payMode || 'Cash',
+              status: 'Paid'
+            });
+          }
+          copied++;
+        }
+      }
+      if (copied === 0) showAppToast('আগের মাসে কোনো বেতন বা বিদ্যুৎ বিল পাওয়া যায়নি।');
+      else showAppToast(copied + ' টি স্থায়ী খরচ আজকের তারিখে কপি করা হয়েছে!');
+    };
+
+    window.showMonthlyExpenseStatement = function() {
+      if (!window.currentExpYear) initExpenseFilters();
+      var yr = window.currentExpYear;
+      var mn = window.currentExpMonth;
+      var prefix = yr + '-' + mn;
+      var items = [];
+      var catTotals = {};
+      var grandTotal = 0;
+
+      for (var k in farmStore.expenses) {
+        var e = farmStore.expenses[k];
+        if (e && (e.date || '').startsWith(prefix)) {
+          items.push(e);
+          var c = e.category || 'Other';
+          var amt = Number(e.amount) || 0;
+          catTotals[c] = (catTotals[c] || 0) + amt;
+          grandTotal += amt;
+        }
+      }
+      if (items.length === 0) {
+        return showAppToast(mn + '/' + yr + ' মাসে কোনো খরচের রেকর্ড পাওয়া যায়নি।');
+      }
+      items.sort(function(a, b) { return parseDateToTime(a.date) - parseDateToTime(b.date); });
+
+      document.body.setAttribute('data-print', 'invoice');
+      getEl('invMainDocTitle').innerText = 'মাসিক খরচ রিপোর্ট / MONTHLY EXPENSE STATEMENT (' + mn + '/' + yr + ')';
+
+      var catRows = '';
+      for (var cat in catTotals) {
+        var pct = grandTotal > 0 ? ((catTotals[cat] / grandTotal) * 100).toFixed(1) : '0.0';
+        catRows += '<tr><td><strong>' + cat + '</strong></td><td>' + pct + '%</td><td style="text-align:right; font-weight:bold;">₹ ' + catTotals[cat].toLocaleString() + '</td></tr>';
+      }
+
+      var detRows = '';
+      items.forEach(function(it) {
+        detRows += '<tr><td>' + formatDateBR(it.date) + '</td><td>' + (it.category || '-') + '</td><td>' + (it.title || '-') + (it.vendor ? ' (' + it.vendor + ')' : '') + '</td><td>' + (it.payMode || 'Cash') + '</td><td style="text-align:right; font-weight:bold;">₹ ' + (Number(it.amount) || 0) + '</td></tr>';
+      });
+
+      getEl('invoiceDetails').innerHTML =
+        '<div style="margin-bottom:12px;"><strong>খাত-ভিত্তিক সারসংক্ষেপ (Category Summary):</strong></div>' +
+        '<table class="invoice-table" style="border:1px solid #ddd; width:100%; min-width:unset; margin-bottom:16px;">' +
+          '<thead><tr style="background:#ffebee;"><th>খাত</th><th>অংশ (%)</th><th style="text-align:right;">মোট খরচ</th></tr></thead>' +
+          '<tbody>' + catRows + '</tbody>' +
+        '</table>' +
+        '<div style="margin-bottom:8px;"><strong>তারিখভিত্তিক বিস্তারিত তালিকা:</strong></div>' +
+        '<table class="invoice-table" style="border:1px solid #ddd; width:100%; min-width:unset;">' +
+          '<thead><tr style="background:#f5f5f5;"><th>তারিখ</th><th>খাত</th><th>বিবরণ ও দোকান</th><th>মাধ্যম</th><th style="text-align:right;">টাকা</th></tr></thead>' +
+          '<tbody>' + detRows + '</tbody>' +
+        '</table>' +
+        '<div style="text-align:right; margin-top:14px; font-size:16px; color:#c62828; font-weight:bold;">মাসিক সর্বমোট খরচ: ₹ ' + grandTotal.toLocaleString() + '</div>';
+
+      getEl('invoiceModal').style.display = 'flex';
+    };
+
     window.exportExpenses = function(format) {
       if (!window.currentExpYear) initExpenseFilters();
       var targetYear = window.currentExpYear;
       var targetMonth = window.currentExpMonth;
       var targetDate = window.specificExpDate;
+      var catFilter = (getEl('expFilterCategory') ? getEl('expFilterCategory').value : '').trim();
+      var searchQ = (getEl('expSearchInput') ? getEl('expSearchInput').value : '').trim().toLowerCase();
 
       var exportData = [];
-      exportData.push(["Date", "Category", "Description", "Amount (Rs)"]);
+      exportData.push(["Date", "Category", "Description", "Vendor/Paid To", "Payment Mode", "Status", "Amount (Rs)"]);
 
       var list = [];
       for (var k in farmStore.expenses) {
@@ -4754,7 +4925,10 @@
             match = true;
           }
         }
-        if (match) list.push(e);
+        if (match && (!catFilter || e.category === catFilter)) {
+          var txt = ((e.title || '') + ' ' + (e.vendor || '')).toLowerCase();
+          if (!searchQ || txt.includes(searchQ)) list.push(e);
+        }
       }
 
       list.sort(function(a, b) { return parseDateToTime(b.date) - parseDateToTime(a.date); });
@@ -4769,6 +4943,9 @@
           formatDateBR(e.date),
           (e.category || '-').replace(/,/g, ' '),
           (e.title || '-').replace(/,/g, ' '),
+          (e.vendor || '-').replace(/,/g, ' '),
+          (e.payMode || 'Cash').replace(/,/g, ' '),
+          (e.status || 'Paid'),
           Number(e.amount) || 0
         ]);
       });
@@ -4834,18 +5011,33 @@
       var d = farmStore.expenses[k]; if (!d) return; eExpKey = k;
       getEl('expDate').value = d.date || ''; getEl('expCategory').value = d.category || 'Other';
       getEl('expTitle').value = d.title || ''; getEl('expAmount').value = d.amount || '';
+      if (getEl('expVendor')) getEl('expVendor').value = d.vendor || '';
+      if (getEl('expPayMode')) getEl('expPayMode').value = d.payMode || 'Cash';
+      if (getEl('expStatus')) getEl('expStatus').value = d.status || 'Paid';
       getEl('expSubmitBtn').innerText = 'Update Expense'; getEl('expCancelBtn').style.display = 'inline-flex';
-      switchTab('expenses', document.querySelector('nav button:nth-child(11)'));
+      switchTab('expenses', document.querySelectorAll('nav button')[10]);
     }
     function cancelExpenseEdit() {
       eExpKey = null; getEl('expTitle').value = ''; getEl('expAmount').value = '';
+      if (getEl('expVendor')) getEl('expVendor').value = '';
+      if (getEl('expPayMode')) getEl('expPayMode').value = 'Cash';
+      if (getEl('expStatus')) getEl('expStatus').value = 'Paid';
       getEl('expSubmitBtn').innerText = 'Save Expense'; getEl('expCancelBtn').style.display = 'none';
     }
     function saveExpense() {
       var title = (getEl('expTitle').value || '').trim(), amt = parseFloat(getEl('expAmount').value)||0, dt = getEl('expDate').value;
       if (!title || !amt || !dt) return showAppToast('সকল তথ্য দিন!');
-      var data = { date: dt, category: getEl('expCategory').value, title: title, amount: amt };
+      var data = {
+        date: dt,
+        category: getEl('expCategory').value,
+        title: title,
+        amount: amt,
+        vendor: getEl('expVendor') ? getEl('expVendor').value.trim() : '',
+        payMode: getEl('expPayMode') ? getEl('expPayMode').value : 'Cash',
+        status: getEl('expStatus') ? getEl('expStatus').value : 'Paid'
+      };
       if (db) eExpKey ? db.ref('expenses/' + eExpKey).update(data) : db.ref('expenses').push(data);
+      showAppToast('খরচ সফলভাবে সেভ হয়েছে!');
       cancelExpenseEdit();
     }
 
@@ -4860,8 +5052,13 @@
       var targetYear = window.currentExpYear;
       var targetMonth = window.currentExpMonth;
       var targetDate = window.specificExpDate;
+      var catFilter = (getEl('expFilterCategory') ? getEl('expFilterCategory').value : '').trim();
+      var searchQ = (getEl('expSearchInput') ? getEl('expSearchInput').value : '').trim().toLowerCase();
 
       var dateGroups = {}, totalExpAll = 0;
+      var monthTotal = 0;
+      var catSum = { 'Feed & Fodder': 0, 'Medicine & Health': 0, 'Labour Salary': 0, 'Electricity / Utilities': 0, 'Other': 0 };
+
       for (var k in farmStore.expenses) {
         var e = farmStore.expenses[k];
         if (!e) continue;
@@ -4870,27 +5067,73 @@
         var amt = Number(e.amount) || 0;
         totalExpAll += amt;
 
-        var match = false;
+        var inPeriod = false;
         if (targetDate) {
-          if (dtISO === targetDate) match = true;
+          if (dtISO === targetDate) inPeriod = true;
         } else if (dtISO) {
-          var eYear = dtISO.substring(0, 4);
-          var eMonth = dtISO.substring(5, 7);
-          if (eYear === targetYear && eMonth === targetMonth) {
-            match = true;
+          if (dtISO.substring(0, 4) === targetYear && dtISO.substring(5, 7) === targetMonth) {
+            inPeriod = true;
           }
         }
 
-        if (match) {
-          if (!dateGroups[dtBR]) dateGroups[dtBR] = { date: dtBR, dateISO: dtISO, total: 0, items: [] };
-          dateGroups[dtBR].total += amt;
-          dateGroups[dtBR].items.push({ key: k, data: e });
+        if (inPeriod) {
+          monthTotal += amt;
+          var catKey = catSum.hasOwnProperty(e.category) ? e.category : 'Other';
+          catSum[catKey] += amt;
+
+          var catMatch = !catFilter || (e.category === catFilter);
+          var srchTxt = ((e.title || '') + ' ' + (e.vendor || '')).toLowerCase();
+          var srchMatch = !searchQ || srchTxt.includes(searchQ);
+
+          if (catMatch && srchMatch) {
+            if (!dateGroups[dtBR]) dateGroups[dtBR] = { date: dtBR, dateISO: dtISO, total: 0, unpaid: 0, items: [] };
+            dateGroups[dtBR].total += amt;
+            if (e.status === 'Unpaid') dateGroups[dtBR].unpaid += amt;
+            dateGroups[dtBR].items.push({ key: k, data: e });
+          }
+        }
+      }
+
+      // Render Category Summary Cards
+      var catGrid = getEl('expCategorySummaryGrid');
+      if (catGrid) {
+        var cgHtml = '';
+        Object.keys(catSum).forEach(function(cName) {
+          var cPct = monthTotal > 0 ? ((catSum[cName] / monthTotal) * 100).toFixed(1) : '0.0';
+          cgHtml += '<div style="background:#f8faf9; border:1px solid #e0e0e0; border-left:4px solid var(--primary); border-radius:8px; padding:8px 10px;">' +
+            '<div style="font-size:11px; color:#555; font-weight:600; display:flex; justify-content:space-between;"><span>' + cName + '</span><span style="color:var(--primary);">' + cPct + '%</span></div>' +
+            '<div style="font-size:15px; font-weight:700; color:#c62828; margin-top:2px;">₹ ' + catSum[cName].toLocaleString() + '</div>' +
+          '</div>';
+        });
+        catGrid.innerHTML = cgHtml;
+      }
+
+      // Budget Alert Update
+      var bInput = getEl('expMonthlyBudgetInput');
+      var savedBudget = 0;
+      try { savedBudget = parseFloat(localStorage.getItem('nanda_exp_monthly_budget')) || 0; } catch(ex) {}
+      if (bInput && !bInput.value && savedBudget > 0) bInput.value = savedBudget;
+      var activeBudget = parseFloat(bInput ? bInput.value : 0) || savedBudget;
+      var bTextEl = getEl('expBudgetStatusText');
+      if (bTextEl) {
+        if (activeBudget > 0) {
+          var pct = Math.round((monthTotal / activeBudget) * 100);
+          if (pct >= 100) {
+            bTextEl.innerHTML = '<span style="color:#c62828;">⚠️ বাজেট অতিক্রান্ত! (₹ ' + monthTotal.toLocaleString() + ' / ₹ ' + activeBudget.toLocaleString() + ' — ' + pct + '%)</span>';
+          } else if (pct >= 80) {
+            bTextEl.innerHTML = '<span style="color:#e65100;">⏳ বাজেটের ' + pct + '% ব্যবহৃত (₹ ' + monthTotal.toLocaleString() + ' / ₹ ' + activeBudget.toLocaleString() + ')</span>';
+          } else {
+            bTextEl.innerHTML = '<span style="color:#2e7d32;">✔ বাজেটের মধ্যে আছে (' + pct + '% — ₹ ' + monthTotal.toLocaleString() + ' / ₹ ' + activeBudget.toLocaleString() + ')</span>';
+          }
+        } else {
+          bTextEl.innerText = 'নির্বাচিত মাসের মোট খরচ: ₹ ' + monthTotal.toLocaleString();
         }
       }
 
       if (getEl('dash-total-exp')) getEl('dash-total-exp').innerText = '₹ ' + totalExpAll.toLocaleString();
       if (getEl('rep-expenses')) getEl('rep-expenses').innerText = '₹ ' + totalExpAll.toLocaleString();
       calcNet();
+      renderLabourTable();
 
       var sortedDates = Object.keys(dateGroups).sort(function(a, b) { return parseDateToTime(dateGroups[b].dateISO) - parseDateToTime(dateGroups[a].dateISO); });
       if (sortedDates.length === 0) {
@@ -4903,15 +5146,156 @@
       var html = '';
       sortedDates.forEach(function(dt) {
         var group = dateGroups[dt], safeDt = dt.replace(/[^a-zA-Z0-9]/g, '_');
-        html += '<tr style="background:#fff; cursor:pointer;" onclick="toggleExpenseDate(\'' + safeDt + '\')"><td><strong>📅 ' + dt + '</strong></td><td><strong style="color:var(--danger);">₹ ' + group.total.toLocaleString() + '</strong></td><td>' + group.items.length + ' টি এন্ট্রি</td><td><button class="action-btn btn-info" id="exp-btn-' + safeDt + '" onclick="event.stopPropagation(); toggleExpenseDate(\'' + safeDt + '\')">বিস্তারিত দেখুন ▼</button></td></tr>';
-        html += '<tr id="exp-det-' + safeDt + '" style="display:none; background:#fff8f8;"><td colspan="4" style="padding:12px;"><div style="background:white; border:1px solid #ffcdd2; border-radius:8px; padding:12px;"><table style="width:100%; font-size:12px;"><thead><tr style="background:#ffebee;"><th>খাত</th><th>বিবরণ</th><th>টাকা</th><th>অ্যাকশন</th></tr></thead><tbody>';
+        var unpaidBadge = group.unpaid > 0 ? '<span class="badge badge-danger">₹ ' + group.unpaid.toLocaleString() + ' বাকি</span>' : '<span class="badge badge-success">পরিশোধ</span>';
+        html += '<tr style="background:#fff; cursor:pointer;" onclick="toggleExpenseDate(\'' + safeDt + '\')"><td><strong>📅 ' + dt + '</strong></td><td><strong style="color:var(--danger);">₹ ' + group.total.toLocaleString() + '</strong></td><td>' + unpaidBadge + '</td><td>' + group.items.length + ' টি এন্ট্রি</td><td><button class="action-btn btn-info" id="exp-btn-' + safeDt + '" onclick="event.stopPropagation(); toggleExpenseDate(\'' + safeDt + '\')">বিস্তারিত দেখুন ▼</button></td></tr>';
+        html += '<tr id="exp-det-' + safeDt + '" style="display:none; background:#fff8f8;"><td colspan="5" style="padding:12px;"><div style="background:white; border:1px solid #ffcdd2; border-radius:8px; padding:12px;"><table style="width:100%; font-size:12px;"><thead><tr style="background:#ffebee;"><th>খাত</th><th>বিবরণ ও দোকান</th><th>মাধ্যম ও স্ট্যাটাস</th><th>টাকা</th><th>অ্যাকশন</th></tr></thead><tbody>';
         group.items.forEach(function(item) {
-          html += '<tr><td>' + (item.data.category || '-') + '</td><td><strong>' + (item.data.title || '-') + '</strong></td><td><strong style="color:var(--danger);">₹ ' + (item.data.amount || 0) + '</strong></td><td><button class="action-btn btn-info" onclick="editExpense(\'' + item.key + '\')">Edit</button><button class="action-btn btn-danger" onclick="deleteRecord(\'expenses\',\'' + item.key + '\')">Delete</button></td></tr>';
+          var d = item.data;
+          var stBadge = d.status === 'Unpaid' ? '<span class="badge badge-danger">Unpaid</span> <button class="action-btn" style="background:#2e7d32; color:white; padding:2px 6px; font-size:10px;" onclick="markExpensePaid(\'' + item.key + '\')">✔ পরিশোধ</button>' : '<span class="badge badge-success">Paid</span>';
+          html += '<tr><td>' + (d.category || '-') + '</td><td><strong>' + (d.title || '-') + '</strong>' + (d.vendor ? '<br><small style="color:#666;">দোকান/ব্যক্তি: ' + d.vendor + '</small>' : '') + '</td><td>' + (d.payMode || 'Cash') + '<br>' + stBadge + '</td><td><strong style="color:var(--danger);">₹ ' + (d.amount || 0) + '</strong></td><td><button class="action-btn btn-info" onclick="editExpense(\'' + item.key + '\')">Edit</button><button class="action-btn btn-danger" onclick="deleteRecord(\'expenses\',\'' + item.key + '\')">Delete</button></td></tr>';
         });
         html += '</tbody></table></div></td></tr>';
       });
       body.innerHTML = html;
     }
+
+    // ==========================================
+    // LABOUR SALARY & ADVANCE TRACKER FUNCTIONS
+    // ==========================================
+    window.saveLabour = function() {
+      var name = (getEl('labName') ? getEl('labName').value : '').trim();
+      var salary = parseFloat(getEl('labSalary') ? getEl('labSalary').value : 0) || 0;
+      if (!name || salary <= 0) return showAppToast('কর্মচারীর নাম ও মাসিক বেতন দিন!');
+      var data = {
+        name: name,
+        phone: getEl('labPhone') ? getEl('labPhone').value.trim() : '',
+        salary: salary,
+        joinDate: getEl('labJoinDate') ? getEl('labJoinDate').value : ''
+      };
+      if (db) db.ref('labours').push(data);
+      ['labName','labPhone','labSalary'].forEach(function(id) { if (getEl(id)) getEl(id).value = ''; });
+      showAppToast('কর্মচারী সফলভাবে সেভ হয়েছে!');
+    };
+
+    window.saveLabourPayment = function() {
+      var wKey = getEl('labPayWorker') ? getEl('labPayWorker').value : '';
+      var dt = getEl('labPayDate') ? getEl('labPayDate').value : '';
+      var pType = getEl('labPayType') ? getEl('labPayType').value : 'Advance';
+      var amt = parseFloat(getEl('labPayAmount') ? getEl('labPayAmount').value : 0) || 0;
+      var note = getEl('labPayNote') ? getEl('labPayNote').value.trim() : '';
+
+      if (!wKey || !dt || amt <= 0) return showAppToast('কর্মচারী, তারিখ ও টাকার পরিমাণ দিন!');
+      var wObj = farmStore.labours ? farmStore.labours[wKey] : null;
+      var wName = wObj ? wObj.name : 'Labour';
+
+      if (db) {
+        db.ref('labourPayments').push({
+          workerKey: wKey,
+          workerName: wName,
+          date: dt,
+          type: pType,
+          amount: amt,
+          note: note
+        });
+        db.ref('expenses').push({
+          date: dt,
+          category: 'Labour Salary',
+          title: (pType === 'Advance' ? 'অগ্রিম (Advance): ' : 'বেতন (Salary): ') + wName + (note ? ' - ' + note : ''),
+          amount: amt,
+          vendor: wName,
+          payMode: 'Cash',
+          status: 'Paid'
+        });
+      }
+      if (getEl('labPayAmount')) getEl('labPayAmount').value = '';
+      if (getEl('labPayNote')) getEl('labPayNote').value = '';
+      showAppToast(wName + '-এর ' + pType + ' সেভ ও খরচে যোগ করা হয়েছে!');
+    };
+
+    window.toggleLabourHistory = function(subId, btnEl) {
+      var row = getEl(subId);
+      if (!row) return;
+      if (row.style.display === 'none') {
+        row.style.display = 'table-row';
+        btnEl.innerText = 'সংকুচিত ▲';
+      } else {
+        row.style.display = 'none';
+        btnEl.innerText = 'ইতিহাস ▼';
+      }
+    };
+
+    window.renderLabourTable = function() {
+      var body = getEl('labourTableBody');
+      var sel = getEl('labPayWorker');
+      if (!body) return;
+
+      if (!window.currentExpYear) initExpenseFilters();
+      var prefix = window.currentExpYear + '-' + window.currentExpMonth;
+
+      if (sel) {
+        var curVal = sel.value;
+        var optHtml = '<option value="">কর্মচারী বেছে নিন</option>';
+        for (var lk in farmStore.labours) {
+          var lb = farmStore.labours[lk];
+          if (lb && lb.name) optHtml += '<option value="' + lk + '">' + lb.name + ' (₹ ' + (lb.salary || 0) + ')</option>';
+        }
+        sel.innerHTML = optHtml;
+        if (curVal) sel.value = curVal;
+      }
+
+      var keys = Object.keys(farmStore.labours || {});
+      if (keys.length === 0) {
+        body.innerHTML = '';
+        if (getEl('labourNoData')) getEl('labourNoData').style.display = 'block';
+        return;
+      }
+      if (getEl('labourNoData')) getEl('labourNoData').style.display = 'none';
+
+      var html = '';
+      keys.forEach(function(lk, idx) {
+        var w = farmStore.labours[lk];
+        if (!w) return;
+        var monAdv = 0, monSal = 0, historyList = [];
+        for (var pk in farmStore.labourPayments) {
+          var p = farmStore.labourPayments[pk];
+          if (p && p.workerKey === lk) {
+            if ((p.date || '').startsWith(prefix)) {
+              if (p.type === 'Advance') monAdv += Number(p.amount) || 0;
+              else monSal += Number(p.amount) || 0;
+            }
+            historyList.push({ key: pk, data: p });
+          }
+        }
+        var remPayable = Math.max(0, (Number(w.salary) || 0) - (monAdv + monSal));
+        var subId = 'sub_lab_' + idx;
+
+        html += '<tr style="background:#fafafa;">' +
+          '<td><strong>👷 ' + w.name + '</strong>' + (w.phone ? '<br><small style="color:#666;">📞 ' + w.phone + '</small>' : '') + '</td>' +
+          '<td><strong>₹ ' + (Number(w.salary) || 0).toLocaleString() + '</strong></td>' +
+          '<td style="color:#e65100; font-weight:600;">₹ ' + monAdv.toLocaleString() + '</td>' +
+          '<td style="color:#2e7d32; font-weight:600;">₹ ' + monSal.toLocaleString() + '</td>' +
+          '<td style="color:#c62828; font-weight:bold;">₹ ' + remPayable.toLocaleString() + '</td>' +
+          '<td>' +
+            '<button class="action-btn btn-info" onclick="toggleLabourHistory(\'' + subId + '\', this)">ইতিহাস ▼</button>' +
+            '<button class="action-btn btn-danger" onclick="deleteRecord(\'labours\',\'' + lk + '\')">Delete</button>' +
+          '</td>' +
+        '</tr>';
+
+        historyList.sort(function(a, b) { return parseDateToTime(b.data.date) - parseDateToTime(a.data.date); });
+        html += '<tr id="' + subId + '" style="display:none; background:#fffdf9;"><td colspan="6" style="padding:10px 14px;">' +
+          '<table style="width:100%; font-size:12px; background:white; border:1px solid #ffe0b2;">' +
+            '<thead><tr style="background:#fff3e0;"><th>তারিখ</th><th>ধরন</th><th>টাকা</th><th>নোট</th><th>অ্যাকশন</th></tr></thead><tbody>';
+        if (historyList.length === 0) {
+          html += '<tr><td colspan="5" style="text-align:center; color:#888;">কোনো পেমেন্ট ইতিহাস নেই।</td></tr>';
+        } else {
+          historyList.forEach(function(h) {
+            html += '<tr><td>' + formatDateBR(h.data.date) + '</td><td><span class="badge ' + (h.data.type === 'Advance' ? 'badge-warning' : 'badge-success') + '">' + h.data.type + '</span></td><td><strong>₹ ' + h.data.amount + '</strong></td><td>' + (h.data.note || '-') + '</td><td><button class="action-btn btn-danger" style="padding:2px 6px; font-size:10px;" onclick="deleteRecord(\'labourPayments\',\'' + h.key + '\')">Delete</button></td></tr>';
+          });
+        }
+        html += '</tbody></table></td></tr>';
+      });
+      body.innerHTML = html;
+    };
 
     var eStkKey = null;
     function editStock(k) {
@@ -5061,6 +5445,14 @@
         farmStore.expenses = {}; snap.forEach(function(c){ farmStore.expenses[c.key] = c.val(); });
         renderGroupedExpenseTable();
         renderAllCharts();
+      });
+      db.ref('labours').on('value', function(snap) {
+        farmStore.labours = {}; snap.forEach(function(c){ farmStore.labours[c.key] = c.val(); });
+        renderLabourTable();
+      });
+      db.ref('labourPayments').on('value', function(snap) {
+        farmStore.labourPayments = {}; snap.forEach(function(c){ farmStore.labourPayments[c.key] = c.val(); });
+        renderLabourTable();
       });
 
       db.ref('stock').on('value', function(snap) {
