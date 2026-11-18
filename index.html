@@ -109,7 +109,7 @@
       var p = (getEl('loginPass') ? getEl('loginPass').value : '').trim();
 
       if (u === 'nanda' && p === '1234') {
-        localStorage.setItem('nanda_auth_status', 'logged_in');
+        try { localStorage.setItem('nanda_auth_status', 'logged_in'); } catch (e) {}
         getEl('loginScreen').style.display = 'none';
         getEl('appBody').style.display = 'block';
         if (typeof window.listenAllData === 'function') {
@@ -123,7 +123,7 @@
     };
 
     window.doLogout = function() {
-      localStorage.removeItem('nanda_auth_status');
+      try { localStorage.removeItem('nanda_auth_status'); } catch (e) {}
       location.reload();
     };
 
@@ -144,6 +144,11 @@
     };
 
     window.onload = function() {
+      document.querySelectorAll('img[data-local-logo]').forEach(function(imgEl) {
+        var testImg = new Image();
+        testImg.onload = function() { imgEl.src = imgEl.getAttribute('data-local-logo'); };
+        testImg.src = imgEl.getAttribute('data-local-logo');
+      });
       var todayISO = new Date().toISOString().split('T')[0];
       var defaultDateIds = ['milkDate', 'saleDate', 'orderDate', 'expDate', 'brAiDate', 'hlthDate', 'ledgerPayDate', 'feedDate', 'rationDate', 'vacDate', 'dewormDate'];
       defaultDateIds.forEach(function(id) {
@@ -155,7 +160,9 @@
       if (typeof autoCalcRation === 'function') autoCalcRation();
       if (typeof autoCalcNextDewormDate === 'function') autoCalcNextDewormDate();
 
-      if (localStorage.getItem('nanda_auth_status') === 'logged_in') {
+      var isLogged = false;
+      try { isLogged = (localStorage.getItem('nanda_auth_status') === 'logged_in'); } catch (e) {}
+      if (isLogged) {
         if (getEl('loginScreen')) getEl('loginScreen').style.display = 'none';
         if (getEl('appBody')) getEl('appBody').style.display = 'block';
         if (typeof window.listenAllData === 'function') window.listenAllData();
@@ -228,11 +235,84 @@
     .summary-card p { font-size: 11.5px; color: #666; font-weight: 600; text-transform: uppercase; }
     .summary-card h3 { font-size: 22px; color: var(--primary); margin-top: 5px; font-weight: 700; }
 
+    /* Dashboard Automatic Alert Card Styles */
+    .alert-card {
+      background: #ffffff;
+      border-radius: 12px;
+      padding: 20px;
+      margin-bottom: 22px;
+      box-shadow: 0 4px 14px rgba(0,0,0,0.06);
+      border-top: 4px solid #e65100;
+    }
+    .alert-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-bottom: 14px;
+      border-bottom: 2px solid #fff3e0;
+      padding-bottom: 10px;
+    }
+    .alert-header h2 {
+      margin: 0;
+      border: none;
+      padding: 0;
+      color: #c62828;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 17px;
+    }
+    .alert-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 14px;
+    }
+    .alert-item {
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      padding: 14px;
+      border-radius: 10px;
+      border-left: 5px solid #f57c00;
+      background: #fffdf9;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.05);
+      gap: 10px;
+    }
+    .alert-item.urgent {
+      border-left-color: #d32f2f;
+      background: #fff8f8;
+    }
+    .alert-item.calving {
+      border-left-color: #7b1fa2;
+      background: #fcf8ff;
+    }
+    .alert-item-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 8px;
+    }
+    .alert-type-tag {
+      font-size: 11px;
+      font-weight: 700;
+      padding: 3px 9px;
+      border-radius: 20px;
+      display: inline-block;
+    }
+    .alert-actions {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-top: 4px;
+    }
+
     #loginScreen { position: fixed; inset: 0; background: #e8f5e9; display: flex; align-items: center; justify-content: center; z-index: 99999; padding: 20px; }
     .login-box { background: white; padding: 32px; border-radius: 16px; width: 100%; max-width: 380px; box-shadow: 0 8px 24px rgba(0,0,0,0.12); text-align: center; }
     .login-box img { height: 95px; width: 95px; border-radius: 50%; object-fit: cover; margin-bottom: 14px; border: 2px solid var(--secondary); }
 
-    #ledgerModal, #invoiceModal, #cattleFeedModal {
+    #ledgerModal, #invoiceModal, #cattleFeedModal, #calvingActionModal {
       display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.65); z-index: 2000; align-items: center; justify-content: center; padding: 15px; overflow-y: auto;
     }
     .invoice-card, .ledger-card, .feed-modal-card {
@@ -278,7 +358,7 @@
   <!-- লগইন স্ক্রিন -->
   <div id="loginScreen">
     <div class="login-box">
-      <img src="logo.png" alt="Logo" onerror="this.onerror=null; this.src='https://cdn-icons-png.flaticon.com/512/2395/2395796.png';">
+      <img src="https://cdn-icons-png.flaticon.com/512/2395/2395796.png" data-local-logo="logo.png" alt="Logo">
       <h2>Nanda Dairy & Agro</h2>
       <p style="font-size: 13px; color: #666; margin-bottom: 20px;">ফার্ম ম্যানেজমেন্ট সিস্টেমে স্বাগতম</p>
       <div style="text-align: left; margin-bottom: 14px;"><label style="font-size: 12px; font-weight:600;">User ID</label><input type="text" id="loginId" placeholder="ইউজার আইডি"></div>
@@ -292,7 +372,7 @@
   <div id="appBody" style="display: none;">
     <header>
       <div class="header-title">
-        <img src="logo.png" alt="Logo" onerror="this.onerror=null; this.src='https://cdn-icons-png.flaticon.com/512/2395/2395796.png';">
+        <img src="https://cdn-icons-png.flaticon.com/512/2395/2395796.png" data-local-logo="logo.png" alt="Logo">
         <div><h1>Nanda Dairy & Agro</h1><span style="font-size: 11px; opacity: 0.85;">Owner / Admin</span></div>
       </div>
       <div class="header-right">
@@ -331,6 +411,18 @@
           <div class="summary-card" style="border-left-color: var(--warning);"><p>TOTAL SALES</p><h3 id="dash-total-sales">₹ 0</h3></div>
           <div class="summary-card" style="border-left-color: var(--danger);"><p>TOTAL EXPENSE</p><h3 id="dash-total-exp">₹ 0</h3></div>
           <div class="summary-card" style="border-left-color: #00897b;"><p>PENDING ORDERS</p><h3 id="dash-pending-orders">0</h3></div>
+        </div>
+
+        <!-- অটোমেটিক অ্যালার্ট কার্ড (আসন্ন ভ্যাকসিন, কৃমির ওষুধ ও বাচ্চা দেওয়ার তারিখ - ৭ দিন আগে থেকে) -->
+        <div class="alert-card">
+          <div class="alert-header">
+            <h2>🔔 জরুরি ও আসন্ন অ্যালার্ট (ভ্যাকসিন • কৃমির ওষুধ • বাচ্চা প্রসব)</h2>
+            <span id="dash-alert-badge" class="badge badge-danger" style="font-size:12px; padding:5px 12px;">0 টি অ্যালার্ট</span>
+          </div>
+          <p style="font-size:12px; color:#666; margin-bottom:14px;">
+            নির্ধারিত তারিখের <strong>৭ দিন আগে থেকে</strong> অটোমেটিক অ্যালার্ট এখানে দেখা যাবে। অ্যাকশন সম্পন্ন করলে এটি এখান থেকে মুছে যাবে এবং পরবর্তী ডোজ বা তারিখের সময় হলে আবার স্বয়ংক্রিয়ভাবে ফিরে আসবে।
+          </p>
+          <div id="dashAlertContainer" class="alert-grid"></div>
         </div>
       </div>
 
@@ -546,7 +638,7 @@
         </div>
       </div>
 
-      <!-- ৭. Sales (বছর ও ১২ মাসের ট্যাব ফিল্টার এবং Excel/Word এক্সপোর্ট যুক্ত করা হয়েছে) -->
+      <!-- ৭. Sales -->
       <div id="tab-sales" class="tab-content" style="display: none;">
         <div class="card">
           <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
@@ -722,7 +814,7 @@
         </div>
       </div>
 
-      <!-- ১১. Expenses (বছর ও ১২ মাসের ট্যাব ফিল্টার এবং Excel/Word এক্সপোর্ট যুক্ত করা হয়েছে) -->
+      <!-- ১১. Expenses -->
       <div id="tab-expenses" class="tab-content" style="display: none;">
         <div class="card">
           <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
@@ -905,14 +997,37 @@
     </div>
   </div>
 
+  <!-- বাচ্চা প্রসব (Calving Action) কনফার্মেশন মোডাল -->
+  <div id="calvingActionModal">
+    <div class="feed-modal-card" style="max-width:460px;">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+        <h2 style="color:var(--primary); margin:0; border:none; padding:0;">🐄 বাচ্চা প্রসব (Calving) সম্পন্ন করুন</h2>
+        <button class="action-btn btn-danger" onclick="closeCalvingActionModal()">✕</button>
+      </div>
+      <p id="calvingModalDesc" style="font-size:13px; color:#555; margin-bottom:14px;"></p>
+      <div class="input-group" style="margin-bottom:14px;">
+        <label>বাচ্চা প্রসবের প্রকৃত তারিখ (Actual Calving Date) *</label>
+        <input type="date" id="calvingActualDateInput">
+      </div>
+      <div class="input-group" style="margin-bottom:16px;">
+        <label>নোট / বাচ্চার বিবরণ (ঐচ্ছিক)</label>
+        <input type="text" id="calvingNoteInput" placeholder="যেমন: বকনা বাছুর / ষাঁড় বাছুর, সুস্থ">
+      </div>
+      <div style="display:flex; gap:10px;">
+        <button class="btn" style="flex:1; justify-content:center;" onclick="confirmCalvingAction()">✔ প্রসব সম্পন্ন সেভ করুন</button>
+        <button class="btn btn-warning" style="flex:1; justify-content:center;" onclick="closeCalvingActionModal()">বাতিল</button>
+      </div>
+    </div>
+  </div>
+
   <div id="invoiceModal">
     <div class="invoice-card">
       <div id="invoicePrintArea">
-        <img src="logo.png" class="invoice-watermark" alt="Logo" onerror="this.style.display='none';">
+        <img src="https://cdn-icons-png.flaticon.com/512/2395/2395796.png" data-local-logo="logo.png" class="invoice-watermark" alt="Logo">
         <div class="invoice-content">
           <div style="display:flex; justify-content:space-between; align-items:center; border-bottom: 2.5px solid #1b5e20; padding-bottom: 14px; margin-bottom: 18px;">
             <div style="display:flex; align-items:center; gap:14px;">
-              <img src="logo.png" style="height:60px; width:60px; border-radius:50%; object-fit:cover;" onerror="this.onerror=null; this.src='https://cdn-icons-png.flaticon.com/512/2395/2395796.png';">
+              <img src="https://cdn-icons-png.flaticon.com/512/2395/2395796.png" data-local-logo="logo.png" style="height:60px; width:60px; border-radius:50%; object-fit:cover;" alt="Logo">
               <div>
                 <h2 style="margin:0; color:#1b5e20; font-size:22px; font-weight:800; border:none; padding:0;">Nanda Dairy & Agro</h2>
                 <p id="invMainDocTitle" style="font-size:12.5px; color:#333; margin:3px 0 0 0; font-weight:600;">ইনভয়েস / INVOICE (ক্যাশ মেমো)</p>
@@ -1002,11 +1117,392 @@
       return null;
     }
 
-    function deleteRecord(path, id) {
-      if (confirm('আপনি কি নিশ্চিতভাবে এই তথ্যটি মুছে ফেলতে চান?')) {
-        if (db) db.ref(path).child(id).remove();
+    function findCattleKeyByTag(tag) {
+      if (!tag || !farmStore.cattle) return null;
+      var tClean = String(tag).trim().toUpperCase();
+      for (var k in farmStore.cattle) {
+        var c = farmStore.cattle[k];
+        if (c && (c.tag || '').trim().toUpperCase() === tClean) {
+          return k;
+        }
       }
+      return null;
     }
+
+    // ==========================================
+    // DASHBOARD AUTOMATIC 7-DAY ALERT SYSTEM
+    // ==========================================
+    function getDaysDifferenceFromToday(dateStr) {
+      if (!dateStr || dateStr === '-' || dateStr === 'শুরু') return null;
+      var clean = String(dateStr).trim();
+      var parts = clean.split('-');
+      if (parts.length === 3 && parts[2].length === 4) {
+        clean = parts[2] + '-' + parts[1] + '-' + parts[0];
+      }
+      var target = new Date(clean + 'T00:00:00');
+      if (isNaN(target.getTime())) return null;
+      var now = new Date();
+      var today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      var diffMs = target.getTime() - today.getTime();
+      return Math.round(diffMs / (1000 * 60 * 60 * 24));
+    }
+
+    function getVaccineBoosterGapDays(vName) {
+      var n = String(vName || '').trim().toLowerCase();
+      if (n.includes('fmd')) return 180;
+      if (n.includes('bq') || n.includes('hs') || n.includes('theileria') || n.includes('theileriosis')) return 365;
+      if (n.includes('brucella') || n.includes('brucellosis')) return 0;
+      return 180;
+    }
+
+    window.renderDashboardAlerts = function() {
+      var container = getEl('dashAlertContainer');
+      var badgeEl = getEl('dash-alert-badge');
+      if (!container) return;
+
+      var alerts = [];
+
+      // ১. আসন্ন ভ্যাকসিন অ্যালার্ট (শুধুমাত্র প্রতিটি গাভী + ভ্যাকসিনের সর্বশেষ অ্যাক্টিভ রেকর্ড চেক করা হবে)
+      var latestVaccineMap = {};
+      for (var vk in farmStore.vaccine) {
+        var v = farmStore.vaccine[vk];
+        if (!v || !v.tag || !v.nextDate || v.alertResolved) continue;
+        var vGroupKey = (v.tag || '').trim().toUpperCase() + '||' + (v.name || '').trim().toLowerCase();
+        var givenTime = parseDateToTime(v.date) || 0;
+        if (!latestVaccineMap[vGroupKey] || givenTime >= latestVaccineMap[vGroupKey].givenTime) {
+          latestVaccineMap[vGroupKey] = { key: vk, data: v, givenTime: givenTime };
+        }
+      }
+
+      for (var vgKey in latestVaccineMap) {
+        var vItem = latestVaccineMap[vgKey];
+        var vData = vItem.data;
+        var diffDays = getDaysDifferenceFromToday(vData.nextDate);
+        // ঠিক ৭ দিন আগে থেকে (diffDays <= 7) অ্যালার্ট দেখাবে
+        if (diffDays !== null && diffDays <= 7) {
+          alerts.push({
+            type: 'vaccine',
+            key: vItem.key,
+            tag: vData.tag,
+            title: '💉 ভ্যাকসিন: ' + (vData.name || 'Booster'),
+            subtitle: 'ডোজ: ' + (vData.dose || 5) + ' mL (' + (vData.route || 'S/C') + ')',
+            dueDate: vData.nextDate,
+            diffDays: diffDays
+          });
+        }
+      }
+
+      // ২. আসন্ন কৃমির ওষুধ (Deworming) অ্যালার্ট (প্রতিটি গাভীর সর্বশেষ অ্যাক্টিভ রেকর্ড)
+      var latestDewormMap = {};
+      for (var dk in farmStore.deworm) {
+        var dw = farmStore.deworm[dk];
+        if (!dw || !dw.tag || !dw.nextDate || dw.alertResolved) continue;
+        var dGroupKey = (dw.tag || '').trim().toUpperCase();
+        var dGivenTime = parseDateToTime(dw.date) || 0;
+        if (!latestDewormMap[dGroupKey] || dGivenTime >= latestDewormMap[dGroupKey].givenTime) {
+          latestDewormMap[dGroupKey] = { key: dk, data: dw, givenTime: dGivenTime };
+        }
+      }
+
+      for (var dgKey in latestDewormMap) {
+        var dItem = latestDewormMap[dgKey];
+        var dData = dItem.data;
+        var diffDaysDw = getDaysDifferenceFromToday(dData.nextDate);
+        if (diffDaysDw !== null && diffDaysDw <= 7) {
+          alerts.push({
+            type: 'deworm',
+            key: dItem.key,
+            tag: dData.tag,
+            title: '💊 কৃমির ওষুধ: ' + (dData.medName || 'Deworming'),
+            subtitle: 'ডোজ: ' + (dData.dose || '-') + ' (' + (dData.formType || 'Syrup') + ')',
+            dueDate: dData.nextDate,
+            diffDays: diffDaysDw
+          });
+        }
+      }
+
+      // ৩. গর্ভবতী গাভীর বাচ্চা দেওয়ার তারিখ (Expected Calving) অ্যালার্ট (Breeding ও Cattle উভয় রেজিস্টার থেকে)
+      var calvingTrackedTags = {};
+      for (var bk in farmStore.breeding) {
+        var br = farmStore.breeding[bk];
+        if (!br || !br.tag) continue;
+        var expDt = br.expCalvingDate || br.calvingDate || '';
+        if (!expDt) continue;
+        // যদি বাচ্চা প্রসব হয়ে গিয়ে থাকে (actCalvingDate থাকে বা status Calved/Failed হয়), তবে অ্যালার্ট দেখাবে না
+        var st = String(br.status || '').trim().toLowerCase();
+        if (br.actCalvingDate || st === 'calved' || st === 'failed' || br.alertResolved) continue;
+
+        var cDiff = getDaysDifferenceFromToday(expDt);
+        if (cDiff !== null && cDiff <= 7) {
+          var tUpper = br.tag.trim().toUpperCase();
+          calvingTrackedTags[tUpper] = true;
+          alerts.push({
+            type: 'calving',
+            source: 'breeding',
+            key: bk,
+            tag: br.tag,
+            title: '🐄 সম্ভাব্য বাচ্চা প্রসব (Calving)',
+            subtitle: 'সিমেন/ষাঁড়: ' + (br.semenId || '-') + ' | AI: ' + formatDateBR(br.aiDate),
+            dueDate: expDt,
+            diffDays: cDiff
+          });
+        }
+      }
+
+      for (var ck in farmStore.cattle) {
+        var cw = farmStore.cattle[ck];
+        if (!cw || !cw.tag || !cw.expCalving) continue;
+        var tUp = cw.tag.trim().toUpperCase();
+        if (calvingTrackedTags[tUp]) continue;
+        var cStat = String(cw.status || '').trim().toLowerCase();
+        if (cStat !== 'pregnant' && cw.calvingAlertResolved) continue;
+        if (cw.calvingAlertResolved) continue;
+
+        var cwDiff = getDaysDifferenceFromToday(cw.expCalving);
+        if (cwDiff !== null && cwDiff <= 7) {
+          alerts.push({
+            type: 'calving',
+            source: 'cattle',
+            key: ck,
+            tag: cw.tag,
+            title: '🐄 সম্ভাব্য বাচ্চা প্রসব (Calving)',
+            subtitle: 'জাত: ' + (cw.breed || '-') + ' | স্ট্যাটাস: ' + (cw.status || 'Pregnant'),
+            dueDate: cw.expCalving,
+            diffDays: cwDiff
+          });
+        }
+      }
+
+      // দিন অনুযায়ী সাজানো (যেগুলো আজ বা ওভারডিউ সেগুলো আগে)
+      alerts.sort(function(a, b) {
+        return a.diffDays - b.diffDays;
+      });
+
+      if (badgeEl) {
+        badgeEl.innerText = alerts.length + ' টি অ্যালার্ট';
+        badgeEl.className = alerts.length > 0 ? 'badge badge-danger' : 'badge badge-success';
+      }
+
+      if (alerts.length === 0) {
+        container.innerHTML = '<div style="grid-column: 1 / -1; background:#f1f8e9; border:1px dashed #81c784; border-radius:10px; padding:18px; text-align:center; color:#2e7d32; font-weight:600; font-size:13.5px;">✔ আগামী ৭ দিনের মধ্যে কোনো বকেয়া ভ্যাকসিন, কৃমির ওষুধ বা বাচ্চা প্রসবের অ্যালার্ট নেই।</div>';
+        return;
+      }
+
+      var html = '';
+      alerts.forEach(function(al) {
+        var dayBadge = '';
+        var isUrgent = false;
+        if (al.diffDays < 0) {
+          isUrgent = true;
+          dayBadge = '<span class="badge badge-danger">⚠️ ' + Math.abs(al.diffDays) + ' দিন অতিক্রান্ত!</span>';
+        } else if (al.diffDays === 0) {
+          isUrgent = true;
+          dayBadge = '<span class="badge badge-danger">🔥 আজ নির্ধারিত দিন!</span>';
+        } else {
+          dayBadge = '<span class="badge badge-warning">⏳ আর মাত্র ' + al.diffDays + ' দিন বাকি</span>';
+        }
+
+        var itemClass = 'alert-item' + (isUrgent ? ' urgent' : '') + (al.type === 'calving' ? ' calving' : '');
+        var actionButtons = '';
+
+        if (al.type === 'vaccine') {
+          actionButtons =
+            '<button class="action-btn" style="background:#1b5e20; color:white; padding:6px 12px;" onclick="completeVaccineAlert(\'' + al.key + '\')">✔ টিকা দেওয়া হয়েছে (পরবর্তী শিডিউল)</button>' +
+            '<button class="action-btn btn-info" style="padding:6px 10px;" onclick="editVaccineRecord(\'' + al.key + '\')">✎ ফর্ম খুলুন</button>';
+        } else if (al.type === 'deworm') {
+          actionButtons =
+            '<button class="action-btn" style="background:#1b5e20; color:white; padding:6px 12px;" onclick="completeDewormAlert(\'' + al.key + '\')">✔ ওষুধ দেওয়া হয়েছে (+৯০ দিন)</button>' +
+            '<button class="action-btn btn-info" style="padding:6px 10px;" onclick="editDewormRecord(\'' + al.key + '\')">✎ ফর্ম খুলুন</button>';
+        } else if (al.type === 'calving') {
+          actionButtons =
+            '<button class="action-btn" style="background:#7b1fa2; color:white; padding:6px 12px;" onclick="openCalvingActionModal(\'' + al.source + '\', \'' + al.key + '\', \'' + encodeURIComponent(al.tag) + '\')">✔ বাচ্চা প্রসব সম্পন্ন</button>' +
+            '<button class="action-btn btn-info" style="padding:6px 10px;" onclick="' + (al.source === 'breeding' ? 'editBreeding(\'' + al.key + '\')' : 'editCattle(\'' + al.key + '\')') + '">✎ বিস্তারিত</button>';
+        }
+
+        html += '<div class="' + itemClass + '">' +
+          '<div>' +
+            '<div class="alert-item-top">' +
+              '<strong style="font-size:14px; color:#1b5e20;">🐄 Tag: ' + al.tag + '</strong>' +
+              dayBadge +
+            '</div>' +
+            '<div style="font-size:13.5px; font-weight:700; color:#222; margin-top:6px;">' + al.title + '</div>' +
+            '<div style="font-size:12px; color:#555; margin-top:3px;">' + al.subtitle + '</div>' +
+            '<div style="font-size:12px; color:#c62828; font-weight:600; margin-top:5px;">📅 নির্ধারিত তারিখ: ' + formatDateBR(al.dueDate) + '</div>' +
+          '</div>' +
+          '<div class="alert-actions">' + actionButtons + '</div>' +
+        '</div>';
+      });
+
+      container.innerHTML = html;
+    };
+
+    // অ্যাকশন ১: ভ্যাকসিন অ্যালার্ট সম্পন্ন করলে আজকের তারিখে ডোজ আপডেট হবে এবং পরবর্তী বুস্টার তারিখ সেট হবে (ফলে এখন ড্যাশবোর্ড থেকে মুছে যাবে এবং পরের বার ৭ দিন আগে আবার আসবে)
+    window.completeVaccineAlert = function(vacKey) {
+      var v = farmStore.vaccine ? farmStore.vaccine[vacKey] : null;
+      if (!v) return;
+      var todayISO = new Date().toISOString().split('T')[0];
+      var gapDays = getVaccineBoosterGapDays(v.name);
+      var nextISO = '';
+      if (gapDays > 0) {
+        var d = new Date(todayISO);
+        d.setDate(d.getDate() + gapDays);
+        nextISO = d.toISOString().split('T')[0];
+      }
+
+      if (db) {
+        db.ref('vaccine/' + vacKey).update({
+          date: todayISO,
+          nextDate: nextISO,
+          alertResolved: gapDays === 0 ? true : false
+        });
+      } else {
+        v.date = todayISO;
+        v.nextDate = nextISO;
+        v.alertResolved = gapDays === 0 ? true : false;
+        renderVaccineTable();
+        renderDashboardAlerts();
+      }
+    };
+
+    // অ্যাকশন ২: কৃমির ওষুধ অ্যালার্ট সম্পন্ন করলে আজকের তারিখ ও ৯০ দিন পর পরবর্তী ডোজ সেট হবে
+    window.completeDewormAlert = function(dwKey) {
+      var dw = farmStore.deworm ? farmStore.deworm[dwKey] : null;
+      if (!dw) return;
+      var todayISO = new Date().toISOString().split('T')[0];
+      var d = new Date(todayISO);
+      d.setDate(d.getDate() + 90);
+      var nextISO = d.toISOString().split('T')[0];
+
+      if (db) {
+        db.ref('deworm/' + dwKey).update({
+          date: todayISO,
+          nextDate: nextISO,
+          alertResolved: false
+        });
+      } else {
+        dw.date = todayISO;
+        dw.nextDate = nextISO;
+        renderDewormTable();
+        renderDashboardAlerts();
+      }
+    };
+
+    // অ্যাকশন ৩: বাচ্চা প্রসব (Calving) অ্যালার্ট সম্পন্ন করার মোডাল ও লজিক
+    window.pendingCalvingAction = null;
+
+    window.openCalvingActionModal = function(source, key, encTag) {
+      var tag = decodeURIComponent(encTag);
+      window.pendingCalvingAction = { source: source, key: key, tag: tag };
+      var todayISO = new Date().toISOString().split('T')[0];
+      if (getEl('calvingActualDateInput')) getEl('calvingActualDateInput').value = todayISO;
+      if (getEl('calvingNoteInput')) getEl('calvingNoteInput').value = '';
+      if (getEl('calvingModalDesc')) {
+        getEl('calvingModalDesc').innerHTML = 'গাভী <strong>Tag: ' + tag + '</strong>-এর বাচ্চা প্রসব সম্পন্ন হলে নিচের তথ্যটি নিশ্চিত করুন। এটি সেভ করলে ড্যাশবোর্ড থেকে অ্যালার্টটি মুছে যাবে এবং গাভীর স্ট্যাটাস <strong>Milking</strong>-এ আপডেট হবে।';
+      }
+      if (getEl('calvingActionModal')) getEl('calvingActionModal').style.display = 'flex';
+    };
+
+    window.closeCalvingActionModal = function() {
+      window.pendingCalvingAction = null;
+      if (getEl('calvingActionModal')) getEl('calvingActionModal').style.display = 'none';
+    };
+
+    window.confirmCalvingAction = function() {
+      if (!window.pendingCalvingAction) return;
+      var actDate = getEl('calvingActualDateInput') ? getEl('calvingActualDateInput').value : new Date().toISOString().split('T')[0];
+      var noteTxt = getEl('calvingNoteInput') ? getEl('calvingNoteInput').value.trim() : '';
+      var src = window.pendingCalvingAction.source;
+      var k = window.pendingCalvingAction.key;
+      var tag = window.pendingCalvingAction.tag;
+
+      if (src === 'breeding' && farmStore.breeding[k]) {
+        var br = farmStore.breeding[k];
+        var updatedNote = noteTxt ? (br.note ? br.note + ' | ' + noteTxt : noteTxt) : (br.note || '');
+        if (db) {
+          db.ref('breeding/' + k).update({
+            status: 'Calved',
+            actCalvingDate: actDate,
+            note: updatedNote,
+            alertResolved: true
+          });
+        } else {
+          br.status = 'Calved';
+          br.actCalvingDate = actDate;
+          br.note = updatedNote;
+          br.alertResolved = true;
+        }
+      }
+
+      // পাশাপাশি Cattle রেজিস্টারেও ওই গাভীর expCalving ক্লিয়ার ও স্ট্যাটাস Milking করা হবে (যাতে পরবর্তী AI দিলে আবার নতুন করে অ্যালার্ট আসে)
+      var cKey = (src === 'cattle') ? k : findCattleKeyByTag(tag);
+      if (cKey && farmStore.cattle[cKey]) {
+        var cw = farmStore.cattle[cKey];
+        var newLact = (Number(cw.lactation) || 0) + 1;
+        if (db) {
+          db.ref('cattle/' + cKey).update({
+            status: 'Milking',
+            lactation: newLact,
+            expCalving: '',
+            calvingAlertResolved: false
+          });
+        } else {
+          cw.status = 'Milking';
+          cw.lactation = newLact;
+          cw.expCalving = '';
+          cw.calvingAlertResolved = false;
+        }
+      }
+
+      closeCalvingActionModal();
+      renderCattleTable();
+      renderDashboardAlerts();
+    };
+
+    window.showAppToast = function(msg) {
+      var t = getEl('appToastBanner');
+      if (!t) {
+        t = document.createElement('div');
+        t.id = 'appToastBanner';
+        t.style.cssText = 'position:fixed; bottom:24px; right:24px; background:#1b5e20; color:white; padding:12px 20px; border-radius:10px; box-shadow:0 6px 20px rgba(0,0,0,0.25); z-index:999999; font-size:13.5px; font-weight:600; transition:0.3s;';
+        document.body.appendChild(t);
+      }
+      t.innerText = msg;
+      t.style.display = 'block';
+      clearTimeout(window._toastTimer);
+      window._toastTimer = setTimeout(function() { t.style.display = 'none'; }, 3500);
+    };
+
+    window._pendingDelete = null;
+    function deleteRecord(path, id) {
+      window._pendingDelete = { path: path, id: id };
+      var m = getEl('deleteConfirmModal');
+      if (!m) {
+        m = document.createElement('div');
+        m.id = 'deleteConfirmModal';
+        m.style.cssText = 'display:none; position:fixed; inset:0; background:rgba(0,0,0,0.6); z-index:99999; align-items:center; justify-content:center; padding:15px;';
+        m.innerHTML = '<div style="background:white; max-width:360px; width:100%; border-radius:12px; padding:22px; text-align:center; box-shadow:0 10px 30px rgba(0,0,0,0.3);">' +
+          '<h3 style="color:#c62828; margin-bottom:10px; font-size:16px;">⚠️ তথ্য মুছে ফেলার নিশ্চিতকরণ</h3>' +
+          '<p style="font-size:13px; color:#555; margin-bottom:18px;">আপনি কি নিশ্চিতভাবে এই তথ্যটি মুছে ফেলতে চান?</p>' +
+          '<div style="display:flex; gap:10px; justify-content:center;">' +
+            '<button class="btn btn-danger" onclick="confirmDeleteRecord()">হ্যাঁ, মুছে ফেলুন</button>' +
+            '<button class="btn btn-info" onclick="cancelDeleteRecord()">না, বাতিল</button>' +
+          '</div></div>';
+        document.body.appendChild(m);
+      }
+      m.style.display = 'flex';
+    }
+    window.confirmDeleteRecord = function() {
+      if (window._pendingDelete && db) {
+        db.ref(window._pendingDelete.path).child(window._pendingDelete.id).remove();
+        showAppToast('তথ্যটি সফলভাবে মুছে ফেলা হয়েছে।');
+      }
+      cancelDeleteRecord();
+    };
+    window.cancelDeleteRecord = function() {
+      window._pendingDelete = null;
+      var m = getEl('deleteConfirmModal');
+      if (m) m.style.display = 'none';
+    };
 
     window.printSpecificModal = function(target) {
       document.body.setAttribute('data-print', target);
@@ -1481,7 +1977,7 @@
       list.sort(function(a, b) { return parseDateToTime(b.date) - parseDateToTime(a.date); });
 
       if (list.length === 0) {
-        alert('বর্তমান ভিউতে এক্সপোর্ট করার মতো কোনো ডেটা নেই!');
+        showAppToast('বর্তমান ভিউতে এক্সপোর্ট করার মতো কোনো ডেটা নেই!');
         return;
       }
 
@@ -1747,7 +2243,7 @@
       list.sort(function(a, b) { return parseDateToTime(b.date) - parseDateToTime(a.date); });
 
       if (list.length === 0) {
-        alert('বর্তমান ভিউতে এক্সপোর্ট করার মতো কোনো বিক্রয় ডেটা নেই!');
+        showAppToast('বর্তমান ভিউতে এক্সপোর্ট করার মতো কোনো বিক্রয় ডেটা নেই!');
         return;
       }
 
@@ -2253,7 +2749,7 @@
     function saveRation() {
       var tag = (getEl('ratCowTag').value || '').trim();
       var dt = getEl('rationDate').value;
-      if (!tag || !dt) return alert('তারিখ ও গরুর Tag ID দিন!');
+      if (!tag || !dt) return showAppToast('তারিখ ও গরুর Tag ID দিন!');
 
       var pellet = parseFloat(getEl('ratPellet').value) || 0;
       var avgCost = parseFloat(getEl('ratAvgCostPerKg').value) || 0;
@@ -2401,11 +2897,11 @@
 
     window.saveCustomerPayment = function() {
       var amt = parseFloat(getEl('ledgerPayAmount').value) || 0;
-      if (amt <= 0) return alert('জমার পরিমাণ দিন!');
+      if (amt <= 0) return showAppToast('জমার পরিমাণ দিন!');
       var pDate = getEl('ledgerPayDate').value || new Date().toISOString().split('T')[0];
       var pNote = (getEl('ledgerPayNote').value || 'নগদ জমা').trim();
       var custName = window.activeLedgerCustomerName;
-      if (!custName) return alert('গ্রাহক নির্বাচন ত্রুটি!');
+      if (!custName) return showAppToast('গ্রাহক নির্বাচন ত্রুটি!');
 
       var unpaidSales = [];
       for (var k in farmStore.sales) {
@@ -2458,7 +2954,7 @@
         if (db) db.ref('sales').push(advRecord);
       }
 
-      alert('পেমেন্ট সফলভাবে জমা হয়েছে!');
+      showAppToast('পেমেন্ট সফলভাবে জমা হয়েছে!');
       getEl('ledgerPayAmount').value = ''; 
       getEl('ledgerPayNote').value = '';
     };
@@ -2493,7 +2989,7 @@
       getEl('cowSubmitBtn').innerText = 'Save Cattle'; getEl('cowCancelBtn').style.display = 'none';
     }
     function saveCattle() {
-      var tag = (getEl('cowTag').value || '').trim(); if (!tag) return alert('Tag ID দিন!');
+      var tag = (getEl('cowTag').value || '').trim(); if (!tag) return showAppToast('Tag ID দিন!');
       var data = { tag: tag, breed: getEl('cowBreed').value, breedType: getEl('cowBreedType').value, generation: getEl('cowGeneration').value, dob: getEl('cowDob').value, weight: parseFloat(getEl('cowWeight').value)||0, lactation: parseFloat(getEl('cowLactation').value)||0, status: getEl('cowStatus').value, milkDay: parseFloat(getEl('cowMilkDay').value)||0, sire: getEl('cowSire').value, dam: getEl('cowDam').value, expCalving: getEl('cowExpCalving').value };
       if (db) eCatKey ? db.ref('cattle/' + eCatKey).update(data) : db.ref('cattle').push(data);
       cancelCattleEdit();
@@ -2526,7 +3022,7 @@
       getEl('brCancelBtn').style.display = 'none';
     }
     function saveBreeding() {
-      var tag = (getEl('brCowTag').value || '').trim(); if (!tag) return alert('Cattle ID দিন!');
+      var tag = (getEl('brCowTag').value || '').trim(); if (!tag) return showAppToast('Cattle ID দিন!');
       var data = { 
         tag: tag, 
         aiDate: getEl('brAiDate').value, 
@@ -2657,7 +3153,7 @@
       var tag = (getEl('vacCowTag').value || '').trim();
       var name = (getEl('vacName').value || '').trim();
       var dt = getEl('vacDate').value;
-      if (!tag || !name || !dt) return alert('Tag, ভ্যাকসিনের নাম ও তারিখ দিন!');
+      if (!tag || !name || !dt) return showAppToast('Tag, ভ্যাকসিনের নাম ও তারিখ দিন!');
 
       var cost = parseFloat(getEl('vacCost').value) || 0;
       var dose = parseFloat(getEl('vacDose') ? getEl('vacDose').value : 5) || 5;
@@ -2896,7 +3392,7 @@
       var tag = (getEl('dewormCowTag').value || '').trim();
       var dt = getEl('dewormDate').value;
       var medName = (getEl('dewormMedName').value || '').trim();
-      if (!tag || !dt || !medName) return alert('Tag ID, তারিখ এবং ওষুধের নাম দিন!');
+      if (!tag || !dt || !medName) return showAppToast('Tag ID, তারিখ এবং ওষুধের নাম দিন!');
 
       var cost = parseFloat(getEl('dewormCost').value) || 0;
       var formTypeSelect = getEl('dewormFormType');
@@ -2943,8 +3439,8 @@
       getEl('milkSubmitBtn').innerText = 'Save Milk Record'; getEl('milkCancelBtn').style.display = 'none';
     }
     function saveMilk() {
-      var lit = parseFloat(getEl('milkLiters').value) || 0; if (!lit) return alert('দুধের পরিমাণ দিন!');
-      var cowTag = (getEl('milkCowTag').value || '').trim(); if (!cowTag) return alert('Tag ID দিন!');
+      var lit = parseFloat(getEl('milkLiters').value) || 0; if (!lit) return showAppToast('দুধের পরিমাণ দিন!');
+      var cowTag = (getEl('milkCowTag').value || '').trim(); if (!cowTag) return showAppToast('Tag ID দিন!');
       var data = { date: getEl('milkDate').value, cow: cowTag, session: getEl('milkSession').value, liters: lit };
       if (db) eMlkKey ? db.ref('milk/' + eMlkKey).update(data) : db.ref('milk').push(data);
       cancelMilkEdit();
@@ -3003,7 +3499,7 @@
 
     function saveSale() {
       var name = (getEl('saleCustomer').value || '').trim(); 
-      if (!name) return alert('Customer Name দিন!');
+      if (!name) return showAppToast('Customer Name দিন!');
       
       var q = parseFloat(getEl('saleQty').value) || 0;
       var r = parseFloat(getEl('saleRate').value) || 0;
@@ -3060,7 +3556,7 @@
       getEl('custSubmitBtn').innerText = 'Save Customer'; getEl('custCancelBtn').style.display = 'none';
     }
     function saveCustomer() {
-      var name = (getEl('custName').value || '').trim(); if (!name) return alert('নাম দিন!');
+      var name = (getEl('custName').value || '').trim(); if (!name) return showAppToast('নাম দিন!');
       var data = { name: name, phone: (getEl('custPhone').value || '').trim(), area: (getEl('custArea').value || '').trim(), addr: (getEl('custAddress').value || '').trim(), demand: parseFloat(getEl('custDailyDemand').value)||0, openingDue: parseFloat(getEl('custOpeningDue')?.value)||0, type: getEl('custType')?.value||'Regular Retailer', shift: getEl('custShift')?.value||'Morning' };
       if (db) eCustKey ? db.ref('customers/' + eCustKey).update(data) : db.ref('customers').push(data);
       cancelCustomerEdit();
@@ -3088,7 +3584,7 @@
     function saveOrder() {
       var cust = (getEl('orderCustomer').value || '').trim(); 
       var items = (getEl('orderItems').value || '').trim();
-      if (!cust || !items) return alert('নাম ও বিবরণ দিন!');
+      if (!cust || !items) return showAppToast('নাম ও বিবরণ দিন!');
       
       var status = getEl('orderStatus').value; 
       var total = parseFloat(getEl('orderTotal').value) || 0; 
@@ -3171,7 +3667,7 @@
       var cost = parseFloat(getEl('feedCost') ? getEl('feedCost').value : 0) || 0;
       var note = (getEl('feedNote') ? getEl('feedNote').value : '').trim();
 
-      if (!dt || !qty || cost <= 0) return alert('তারিখ, পরিমাণ ও মোট খরচ দিন!');
+      if (!dt || !qty || cost <= 0) return showAppToast('তারিখ, পরিমাণ ও মোট খরচ দিন!');
 
       var data = { date: dt, type: type, qty: qty, cost: cost, note: note };
       if (db) {
@@ -3325,7 +3821,7 @@
       list.sort(function(a, b) { return parseDateToTime(b.date) - parseDateToTime(a.date); });
 
       if (list.length === 0) {
-        alert('বর্তমান ভিউতে এক্সপোর্ট করার মতো কোনো খরচের ডেটা নেই!');
+        showAppToast('বর্তমান ভিউতে এক্সপোর্ট করার মতো কোনো খরচের ডেটা নেই!');
         return;
       }
 
@@ -3408,7 +3904,7 @@
     }
     function saveExpense() {
       var title = (getEl('expTitle').value || '').trim(), amt = parseFloat(getEl('expAmount').value)||0, dt = getEl('expDate').value;
-      if (!title || !amt || !dt) return alert('সকল তথ্য দিন!');
+      if (!title || !amt || !dt) return showAppToast('সকল তথ্য দিন!');
       var data = { date: dt, category: getEl('expCategory').value, title: title, amount: amt };
       if (db) eExpKey ? db.ref('expenses/' + eExpKey).update(data) : db.ref('expenses').push(data);
       cancelExpenseEdit();
@@ -3490,7 +3986,7 @@
       getEl('stkSubmitBtn').innerText = 'Save Stock'; getEl('stkCancelBtn').style.display = 'none';
     }
     function saveStock() {
-      var name = (getEl('stkName').value || '').trim(); if (!name) return alert('নাম দিন!');
+      var name = (getEl('stkName').value || '').trim(); if (!name) return showAppToast('নাম দিন!');
       var data = { name: name, qty: parseFloat(getEl('stkQty').value)||0, unit: getEl('stkUnit').value, alertLevel: parseFloat(getEl('stkAlert').value)||0 };
       if (db) eStkKey ? db.ref('stock/' + eStkKey).update(data) : db.ref('stock').push(data);
       cancelStockEdit();
@@ -3508,7 +4004,7 @@
       getEl('semSubmitBtn').innerText = 'Save Semen'; getEl('semCancelBtn').style.display = 'none';
     }
     function saveSemen() {
-      var b = (getEl('semBatch').value || '').trim(); if (!b) return alert('Batch দিন!');
+      var b = (getEl('semBatch').value || '').trim(); if (!b) return showAppToast('Batch দিন!');
       var data = { batch: b, breed: getEl('semBreed').value, source: getEl('semSource').value, count: parseFloat(getEl('semCount').value)||0 };
       if (db) eSemKey ? db.ref('semen/' + eSemKey).update(data) : db.ref('semen').push(data);
       cancelSemenEdit();
@@ -3527,14 +4023,14 @@
       getEl('hlthSubmitBtn').innerText = 'Save Health Record'; getEl('hlthCancelBtn').style.display = 'none';
     }
     function saveHealth() {
-      var tag = (getEl('hlthCowTag').value || '').trim(); if (!tag) return alert('Tag দিন!');
+      var tag = (getEl('hlthCowTag').value || '').trim(); if (!tag) return showAppToast('Tag দিন!');
       var data = { date: getEl('hlthDate').value, cowTag: tag, type: getEl('hlthType').value, desc: getEl('hlthDesc').value, nextDate: getEl('hlthNextDate').value };
       if (db) eHlthKey ? db.ref('health/' + eHlthKey).update(data) : db.ref('health').push(data);
       cancelHealthEdit();
     }
 
     function downloadBackup() {
-      if (!db) return alert('ডাটাবেস নেই!');
+      if (!db) return showAppToast('ডাটাবেস নেই!');
       db.ref('/').once('value', function(snap) {
         var dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(snap.val(), null, 2));
         var a = document.createElement('a'); a.setAttribute("href", dataStr); a.setAttribute("download", "Nanda_Dairy_Backup.json"); a.click();
@@ -3545,7 +4041,12 @@
       if (!db) return;
       checkAndGenerateDailyOrders();
 
-      db.ref('cattle').on('value', function(snap) { farmStore.cattle = {}; snap.forEach(function(c){ farmStore.cattle[c.key] = c.val(); }); renderCattleTable(); });
+      db.ref('cattle').on('value', function(snap) {
+        farmStore.cattle = {};
+        snap.forEach(function(c){ farmStore.cattle[c.key] = c.val(); });
+        renderCattleTable();
+        renderDashboardAlerts();
+      });
       db.ref('milk').on('value', function(snap) { farmStore.milk = {}; snap.forEach(function(c){ farmStore.milk[c.key] = c.val(); }); renderGroupedMilkTable(); renderCattleTable(); });
       db.ref('breeding').on('value', function(snap) {
         farmStore.breeding = {}; var body = getEl('breedingTableBody'); if (body) body.innerHTML = ''; var count = 0;
@@ -3555,15 +4056,18 @@
           if (body) body.innerHTML += '<tr><td><strong>' + (d.tag || '-') + '</strong></td><td>' + formatDateBR(d.aiDate) + '</td><td><span class="badge badge-warning">' + (d.heatSigns || '-') + '</span></td><td>' + (d.semenId || '-') + '</td><td>' + (d.company || '-') + '</td><td>₹ ' + (d.aiCost || 0) + '</td><td>' + formatDateBR(d.pdDate) + '</td><td><span class="badge ' + badgeClass + '">' + (d.status || 'Pending') + '</span></td><td>' + formatDateBR(d.expCalvingDate || d.calvingDate) + '</td><td>' + formatDateBR(d.actCalvingDate) + '</td><td>' + (d.note || '-') + '</td><td><button class="action-btn btn-info" onclick="editBreeding(\'' + k + '\')">Edit</button><button class="action-btn btn-danger" onclick="deleteRecord(\'breeding\',\'' + k + '\')">Delete</button></td></tr>';
         });
         if (getEl('breedingNoData')) getEl('breedingNoData').style.display = count === 0 ? 'block' : 'none';
+        renderDashboardAlerts();
       });
 
       db.ref('vaccine').on('value', function(snap) {
         farmStore.vaccine = {}; snap.forEach(function(c){ farmStore.vaccine[c.key] = c.val(); });
         renderVaccineTable();
+        renderDashboardAlerts();
       });
       db.ref('deworm').on('value', function(snap) {
         farmStore.deworm = {}; snap.forEach(function(c){ farmStore.deworm[c.key] = c.val(); });
         renderDewormTable();
+        renderDashboardAlerts();
       });
 
       db.ref('sales').on('value', function(snap) {
