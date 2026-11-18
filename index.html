@@ -7701,9 +7701,16 @@
         var stO = farmStore.stock[stkK];
         if (stO) stkVal += (Number(stO.qty)||0) * (Number(stO.unitCost)||0);
       }
+      var availSemenTot = 0, availConv = 0, availSexed = 0;
       for (var semK in farmStore.semen) {
         var smO = farmStore.semen[semK];
-        if (smO) stkVal += (Number(smO.count)||0) * (Number(smO.cost)||0);
+        if (smO) {
+          var c = Number(smO.count) || 0;
+          stkVal += c * (Number(smO.cost) || 0);
+          availSemenTot += c;
+          if ((smO.type || 'Conventional') === 'Sexed Sorted') availSexed += c;
+          else availConv += c;
+        }
       }
 
       var cowCnt = Object.keys(cowSet).length || 1;
@@ -7721,7 +7728,10 @@
         prevMo: prevMo,
         custDueTot: custDueTot,
         vendDueTot: vendDueTot,
-        stkVal: stkVal
+        stkVal: stkVal,
+        availSemenTot: availSemenTot,
+        availConv: availConv,
+        availSexed: availSexed
       };
     };
 
@@ -7753,7 +7763,8 @@
         bsEl.innerHTML =
           '<div style="background:#e8f5e9; padding:10px; border-radius:8px;"><small style="color:#555;">গ্রাহকের কাছে পাওনা (Receivable)</small><div style="font-size:16px; font-weight:bold; color:#1b5e20;">₹ ' + Math.round(r.custDueTot).toLocaleString() + '</div></div>' +
           '<div style="background:#ffebee; padding:10px; border-radius:8px;"><small style="color:#555;">দোকানদারের বাকি (Payable)</small><div style="font-size:16px; font-weight:bold; color:#c62828;">₹ ' + Math.round(r.vendDueTot).toLocaleString() + '</div></div>' +
-          '<div style="background:#e3f2fd; padding:10px; border-radius:8px;"><small style="color:#555;">মোট স্টক ও সিমেন সম্পদ</small><div style="font-size:16px; font-weight:bold; color:#0288d1;">₹ ' + Math.round(r.stkVal).toLocaleString() + '</div></div>';
+          '<div style="background:#e3f2fd; padding:10px; border-radius:8px;"><small style="color:#555;">মোট স্টক ও সিমেন সম্পদ</small><div style="font-size:16px; font-weight:bold; color:#0288d1;">₹ ' + Math.round(r.stkVal).toLocaleString() + '</div></div>' +
+          '<div style="background:#f3e5f5; padding:10px; border-radius:8px;"><small style="color:#555;">মোট ব্যবহারযোগ্য সিমেন স্ট্র</small><div style="font-size:16px; font-weight:bold; color:#7b1fa2;">' + r.availSemenTot + ' টি</div><small style="color:#555;">Conv: ' + r.availConv + ' | Sexed: ' + r.availSexed + '</small></div>';
       }
 
       var roiBody = getEl('reportCowRoiTableBody');
@@ -7844,6 +7855,7 @@
         ["Customer Receivable Due", "Rs " + Math.round(r.custDueTot)],
         ["Vendor Payable Due", "Rs " + Math.round(r.vendDueTot)],
         ["Stock & Semen Valuation", "Rs " + Math.round(r.stkVal)],
+        ["Available Semen Straws", r.availSemenTot + " (Conv: " + r.availConv + " / Sexed: " + r.availSexed + ")"],
         ["---", "---"],
         ["Cow Tag", "Milk (L) / Est Income (Rs) / Feed Cost (Rs) / Med Cost (Rs) / Net Profit (Rs)"]
       ];
