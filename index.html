@@ -809,26 +809,62 @@
           <div class="form-grid">
             <div class="input-group"><label>Date *</label><input type="date" id="rationDate"></div>
             <div class="input-group"><label>Cattle Tag ID *</label><input type="text" id="ratCowTag" list="cattleTagList" onchange="loadCattleDefaultRation()" placeholder="NDA-001"></div>
-            
             <div class="input-group"><label>Cattle Feed / Pellets (kg) [স্টক: <span id="stkLbl-Cattle Feed">0</span>]</label><input type="number" step="0.1" id="ratPellet" oninput="autoCalcRation()" value="2.0" placeholder="০.০"></div>
             <div class="input-group"><label>Average Feed Cost per kg (₹)</label><input type="number" step="0.1" id="ratAvgCostPerKg" oninput="autoCalcRation()" value="32" placeholder="₹"></div>
+            <div class="input-group"><label>Green Fodder / কাঁচা ঘাস (kg)</label><input type="number" step="0.5" id="ratGreenFodder" value="0" placeholder="০.০"></div>
+            <div class="input-group"><label>Dry Fodder / খড়-সাইলেজ (kg)</label><input type="number" step="0.5" id="ratDryFodder" value="0" placeholder="০.০"></div>
             <div class="input-group"><label>Supplement / Vitamin Cost (₹)</label><input type="number" step="1" id="ratSuppCost" oninput="autoCalcRation()" value="0" placeholder="₹"></div>
             <div class="input-group"><label>Total Feeding Cost ₹ (অটো)</label><input type="number" id="ratTotalCost" readonly style="background:#e8f5e9; color:green; font-weight:bold;"></div>
           </div>
-          <div style="display:flex; gap:10px; margin-top:10px;">
+          <div style="margin-bottom:12px; display:flex; align-items:center; gap:8px;">
+            <input type="checkbox" id="ratAutoExpense" checked style="width:auto; cursor:pointer;">
+            <label for="ratAutoExpense" style="font-size:12.5px; font-weight:600; color:#1b5e20; cursor:pointer;">খরচের খাতায় (Expenses) স্বয়ংক্রিয়ভাবে যোগ করুন (Feed & Fodder)</label>
+          </div>
+          <div style="display:flex; gap:10px; flex-wrap:wrap; margin-top:10px;">
             <button class="btn" id="ratSubmitBtn" onclick="saveRation()">Save & Deduct Stock</button>
+            <button class="btn btn-info" type="button" onclick="openBulkFeedModal()">⚡ বাল্ক এন্ট্রি (একাধিক গরু)</button>
             <button class="btn btn-warning" id="ratCancelBtn" style="display:none;" onclick="cancelRationEdit()">Cancel</button>
           </div>
         </div>
+
         <div class="card">
-          <h2>সকল গরুর দৈনিক খাদ্য বরাদ্দ তালিকা</h2>
+          <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px; margin-bottom:12px;">
+            <h2 style="margin:0; border:none; padding:0;">সকল গরুর দৈনিক খাদ্য বরাদ্দ তালিকা (Tag-ভিত্তিক সারসংক্ষেপ)</h2>
+            <div style="display:flex; gap:8px; flex-wrap:wrap;">
+              <button class="action-btn" style="background:#1d6f42; color:white; padding:6px 10px; border-radius:6px;" onclick="exportFeed('csv')">📥 Excel (CSV)</button>
+              <button class="action-btn" style="background:#2b579a; color:white; padding:6px 10px; border-radius:6px;" onclick="exportFeed('doc')">📥 Word</button>
+              <button class="action-btn" style="background:#424242; color:white; padding:6px 10px; border-radius:6px;" onclick="exportFeed('txt')">📥 Text</button>
+            </div>
+          </div>
+
+          <!-- Feed Filters (Year, Specific Date & Cattle Tag Search) -->
+          <div style="display:flex; flex-wrap:wrap; justify-content:space-between; gap:12px; margin-bottom:15px; background:#f4fbf5; padding:12px; border-radius:8px; border:1px solid #c8e6c9; align-items:center;">
+            <div style="display:flex; flex-wrap:wrap; gap:15px; align-items:center;">
+              <div style="display:flex; align-items:center; gap:8px;">
+                <label style="font-size:12px; font-weight:bold; color:var(--primary);">বছর নির্বাচন:</label>
+                <select id="feedFilterYear" onchange="applyFeedFilter()" style="padding:6px 10px; border-radius:6px; border:1px solid #bbb; outline:none; font-weight:bold; width:auto;"></select>
+              </div>
+              <div style="display:flex; align-items:center; gap:8px;">
+                <label style="font-size:12px; font-weight:bold; color:var(--primary);">নির্দিষ্ট তারিখ খুঁজুন:</label>
+                <input type="date" id="feedFilterDate" onchange="applyFeedFilter()" style="padding:6px; border-radius:6px; border:1px solid #bbb; outline:none; width:auto;">
+                <button class="action-btn btn-warning" onclick="clearFeedDateFilter()" style="padding:6px 12px;">Clear/Reset</button>
+              </div>
+            </div>
+            <div>
+              <input type="text" id="feedSearchTag" oninput="renderFeedTable()" placeholder="🔍 Cattle Tag খুঁজুন..." style="width:190px; padding:7px;">
+            </div>
+          </div>
+
+          <!-- Feed 12-Month Tabs -->
+          <div id="feedMonthTabs" style="display:flex; gap:8px; overflow-x:auto; margin-bottom:15px; padding-bottom:5px; -webkit-overflow-scrolling: touch; white-space:nowrap;"></div>
+
           <div class="table-container">
             <table>
-              <thead><tr><th>তারিখ</th><th>Cattle Tag</th><th>ফিড (kg)</th><th>ফিড রেট (₹)</th><th>ভিটামিন/সাপ্লিমেন্ট (₹)</th><th>মোট খরচ (₹)</th><th>Action</th></tr></thead>
+              <thead><tr><th>Cattle Tag ID (মাসিক বিল)</th><th>মোট ফিড (kg)</th><th>ঘাস ও খড় (kg)</th><th>মোট খরচ (₹)</th><th>দুধ ও প্রতি লিটার খরচ</th><th>এন্ট্রি</th><th>বিস্তারিত / অ্যাকশন</th></tr></thead>
               <tbody id="rationTableBody"></tbody>
             </table>
           </div>
-          <p id="rationNoData" style="text-align: center; color: #777; font-size: 13px; margin-top: 15px; display: none;">কোনো রেকর্ড নেই।</p>
+          <p id="rationNoData" style="text-align: center; color: #777; font-size: 13px; margin-top: 15px; display: none;">এই মাস বা তারিখে কোনো খাদ্য রেকর্ড নেই।</p>
         </div>
       </div>
 
@@ -1027,6 +1063,27 @@
         <button class="action-btn btn-danger" onclick="closeCattleFeedModal()">✕ বন্ধ করুন</button>
       </div>
       <div id="modalCattleContent" style="font-size:13.5px; line-height:1.8; margin-bottom:20px;"></div>
+    </div>
+  </div>
+
+  <!-- বাল্ক ফিডিং (Bulk Feed Entry) মোডাল -->
+  <div id="bulkFeedModal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.65); z-index:2000; align-items:center; justify-content:center; padding:15px; overflow-y:auto;">
+    <div class="feed-modal-card" style="max-width:520px;">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+        <h2 style="color:var(--primary); margin:0; border:none; padding:0;">⚡ একাধিক গরুতে একসাথে রেশন এন্ট্রি</h2>
+        <button class="action-btn btn-danger" onclick="closeBulkFeedModal()">✕</button>
+      </div>
+      <p style="font-size:12.5px; color:#555; margin-bottom:12px;">উপরের ফর্মে দেওয়া পরিমাণ ও তারিখ অনুযায়ী নিচের নির্বাচিত সব গরুতে রেশন সেভ হবে।</p>
+      <div style="display:flex; gap:8px; margin-bottom:10px; flex-wrap:wrap;">
+        <button type="button" class="action-btn btn-info" onclick="selectBulkCows('all')">সব গরু সিলেক্ট</button>
+        <button type="button" class="action-btn" style="background:#2e7d32; color:white;" onclick="selectBulkCows('milking')">শুধু Milking গরু</button>
+        <button type="button" class="action-btn btn-warning" onclick="selectBulkCows('none')">সব আনসিলেক্ট</button>
+      </div>
+      <div id="bulkCowChecklist" style="max-height:240px; overflow-y:auto; border:1px solid #c8e6c9; border-radius:8px; padding:10px; background:#f9fdfa; margin-bottom:14px;"></div>
+      <div style="display:flex; gap:10px;">
+        <button class="btn" style="flex:1; justify-content:center;" onclick="saveBulkRation()">✔ নির্বাচিত গরুতে সেভ করুন</button>
+        <button class="btn btn-danger" style="flex:1; justify-content:center;" onclick="closeBulkFeedModal()">বাতিল</button>
+      </div>
     </div>
   </div>
 
@@ -3170,23 +3227,40 @@
       getEl('ratCowTag').value = d.cowTag || '';
       getEl('ratPellet').value = d.pellet || '';
       getEl('ratAvgCostPerKg').value = d.avgCostPerKg || '';
+      if (getEl('ratGreenFodder')) getEl('ratGreenFodder').value = d.greenFodder || 0;
+      if (getEl('ratDryFodder')) getEl('ratDryFodder').value = d.dryFodder || 0;
       getEl('ratSuppCost').value = d.suppCost || '';
       getEl('ratTotalCost').value = d.totalCost || '';
 
       getEl('ratSubmitBtn').innerText = 'Update Ration';
       getEl('ratCancelBtn').style.display = 'inline-flex';
-      switchTab('feed', document.querySelector('nav button:nth-child(10)'));
+      switchTab('feed', document.querySelectorAll('nav button')[9]);
     }
 
     function cancelRationEdit() {
       eRatKey = null;
-      ['ratCowTag','ratPellet','ratAvgCostPerKg','ratSuppCost','ratTotalCost'].forEach(function(i){ if(getEl(i)) getEl(i).value=''; });
+      ['ratCowTag','ratPellet','ratAvgCostPerKg','ratGreenFodder','ratDryFodder','ratSuppCost','ratTotalCost'].forEach(function(i){ if(getEl(i)) getEl(i).value=''; });
       if (getEl('ratPellet')) getEl('ratPellet').value = '2.0';
       if (getEl('ratAvgCostPerKg')) getEl('ratAvgCostPerKg').value = '32';
+      if (getEl('ratGreenFodder')) getEl('ratGreenFodder').value = '0';
+      if (getEl('ratDryFodder')) getEl('ratDryFodder').value = '0';
       if (getEl('ratSuppCost')) getEl('ratSuppCost').value = '0';
       autoCalcRation();
       getEl('ratSubmitBtn').innerText = 'Save & Deduct Stock';
       getEl('ratCancelBtn').style.display = 'none';
+    }
+
+    function deductFeedStock(pellet) {
+      if (pellet > 0 && farmStore.stock) {
+        for (var sk in farmStore.stock) {
+          var st = farmStore.stock[sk];
+          if (st && st.name && (st.name.toLowerCase().includes('cattle feed') || st.name.toLowerCase().includes('pellet') || st.name.toLowerCase().includes('ফিড'))) {
+            var newQty = Math.max(0, (Number(st.qty) || 0) - pellet);
+            db.ref('stock/' + sk).update({ qty: parseFloat(newQty.toFixed(2)) });
+            break;
+          }
+        }
+      }
     }
 
     function saveRation() {
@@ -3196,14 +3270,19 @@
 
       var pellet = parseFloat(getEl('ratPellet').value) || 0;
       var avgCost = parseFloat(getEl('ratAvgCostPerKg').value) || 0;
+      var greenFodder = parseFloat(getEl('ratGreenFodder') ? getEl('ratGreenFodder').value : 0) || 0;
+      var dryFodder = parseFloat(getEl('ratDryFodder') ? getEl('ratDryFodder').value : 0) || 0;
       var suppCost = parseFloat(getEl('ratSuppCost').value) || 0;
       var totalCost = (pellet * avgCost) + suppCost;
+      var autoExp = getEl('ratAutoExpense') ? getEl('ratAutoExpense').checked : true;
 
       var data = {
         date: dt,
         cowTag: tag,
         pellet: pellet,
         avgCostPerKg: avgCost,
+        greenFodder: greenFodder,
+        dryFodder: dryFodder,
         suppCost: suppCost,
         totalCost: totalCost
       };
@@ -3213,20 +3292,104 @@
           db.ref('feedRations/' + eRatKey).update(data);
         } else {
           db.ref('feedRations').push(data);
-          if (pellet > 0 && farmStore.stock) {
-            for (var sk in farmStore.stock) {
-              var st = farmStore.stock[sk];
-              if (st && st.name && (st.name.toLowerCase().includes('cattle feed') || st.name.toLowerCase().includes('pellet') || st.name.toLowerCase().includes('ফিড'))) {
-                var newQty = Math.max(0, (Number(st.qty) || 0) - pellet);
-                db.ref('stock/' + sk).update({ qty: parseFloat(newQty.toFixed(2)) });
-                break;
-              }
-            }
+          deductFeedStock(pellet);
+          if (autoExp && totalCost > 0) {
+            db.ref('expenses').push({
+              date: dt,
+              category: 'Feed & Fodder',
+              title: 'Cattle Feed (' + tag + ') - ' + pellet + ' kg',
+              amount: parseFloat(totalCost.toFixed(2))
+            });
           }
         }
       }
+      showAppToast('রেশন সফলভাবে সেভ হয়েছে!');
       cancelRationEdit();
     }
+
+    window.openBulkFeedModal = function() {
+      var listEl = getEl('bulkCowChecklist');
+      if (!listEl) return;
+      var cows = [];
+      for (var k in farmStore.cattle) {
+        if (farmStore.cattle[k] && farmStore.cattle[k].tag) cows.push(farmStore.cattle[k]);
+      }
+      cows.sort(function(a, b) {
+        return (a.tag || '').localeCompare(b.tag || '', undefined, { numeric: true, sensitivity: 'base' });
+      });
+      if (cows.length === 0) {
+        listEl.innerHTML = '<p style="color:#777; text-align:center;">কোনো গরু রেজিস্টার করা নেই।</p>';
+      } else {
+        var h = '';
+        cows.forEach(function(c) {
+          var st = (c.status || '').toLowerCase();
+          var checked = st === 'milking' ? 'checked' : '';
+          h += '<label style="display:flex; align-items:center; gap:8px; padding:6px 4px; border-bottom:1px solid #e8f5e9; cursor:pointer; font-size:13px;">' +
+            '<input type="checkbox" class="bulk-cow-cb" data-status="' + st + '" value="' + c.tag + '" ' + checked + ' style="width:auto;">' +
+            '<strong>' + c.tag + '</strong> <span style="color:#666; font-size:11.5px;">(' + (c.breed || '-') + ' • ' + (c.status || '-') + ')</span>' +
+          '</label>';
+        });
+        listEl.innerHTML = h;
+      }
+      getEl('bulkFeedModal').style.display = 'flex';
+    };
+
+    window.closeBulkFeedModal = function() {
+      if (getEl('bulkFeedModal')) getEl('bulkFeedModal').style.display = 'none';
+    };
+
+    window.selectBulkCows = function(mode) {
+      var cbs = document.querySelectorAll('.bulk-cow-cb');
+      cbs.forEach(function(cb) {
+        if (mode === 'all') cb.checked = true;
+        else if (mode === 'none') cb.checked = false;
+        else if (mode === 'milking') cb.checked = (cb.getAttribute('data-status') === 'milking');
+      });
+    };
+
+    window.saveBulkRation = function() {
+      var dt = getEl('rationDate').value;
+      if (!dt) return showAppToast('তারিখ দিন!');
+      var selectedTags = [];
+      document.querySelectorAll('.bulk-cow-cb:checked').forEach(function(cb) {
+        selectedTags.push(cb.value);
+      });
+      if (selectedTags.length === 0) return showAppToast('অন্তত একটি গরু সিলেক্ট করুন!');
+
+      var pellet = parseFloat(getEl('ratPellet').value) || 0;
+      var avgCost = parseFloat(getEl('ratAvgCostPerKg').value) || 0;
+      var greenFodder = parseFloat(getEl('ratGreenFodder') ? getEl('ratGreenFodder').value : 0) || 0;
+      var dryFodder = parseFloat(getEl('ratDryFodder') ? getEl('ratDryFodder').value : 0) || 0;
+      var suppCost = parseFloat(getEl('ratSuppCost').value) || 0;
+      var totalCost = (pellet * avgCost) + suppCost;
+      var autoExp = getEl('ratAutoExpense') ? getEl('ratAutoExpense').checked : true;
+
+      if (db) {
+        selectedTags.forEach(function(tag) {
+          db.ref('feedRations').push({
+            date: dt,
+            cowTag: tag,
+            pellet: pellet,
+            avgCostPerKg: avgCost,
+            greenFodder: greenFodder,
+            dryFodder: dryFodder,
+            suppCost: suppCost,
+            totalCost: totalCost
+          });
+        });
+        deductFeedStock(pellet * selectedTags.length);
+        if (autoExp && totalCost > 0) {
+          db.ref('expenses').push({
+            date: dt,
+            category: 'Feed & Fodder',
+            title: 'Bulk Cattle Feed (' + selectedTags.length + 'টি গরু) - ' + (pellet * selectedTags.length).toFixed(1) + ' kg',
+            amount: parseFloat((totalCost * selectedTags.length).toFixed(2))
+          });
+        }
+      }
+      closeBulkFeedModal();
+      showAppToast(selectedTags.length + ' টি গরুতে রেশন সফলভাবে সেভ হয়েছে!');
+    };
 
     window.showCustomerLedger = function(encName) {
       var custName = decodeURIComponent(encName).trim();
@@ -4123,18 +4286,307 @@
       cancelFeedEdit();
     }
 
+    window.currentFeedYear = "";
+    window.currentFeedMonth = "";
+    window.specificFeedDate = "";
+
+    window.initFeedFilters = function() {
+      if (!window.currentFeedYear) {
+        var d = new Date();
+        window.currentFeedYear = d.getFullYear().toString();
+        window.currentFeedMonth = ('0' + (d.getMonth() + 1)).slice(-2);
+      }
+      var yearSelect = getEl('feedFilterYear');
+      if (yearSelect && yearSelect.options.length === 0) {
+        var curY = new Date().getFullYear();
+        for (var i = 0; i < 5; i++) {
+          var y = (curY - i).toString();
+          yearSelect.options.add(new Option(y, y));
+        }
+        yearSelect.value = window.currentFeedYear;
+      }
+      renderFeedMonthTabs();
+    };
+
+    window.renderFeedMonthTabs = function() {
+      var tabsContainer = getEl('feedMonthTabs');
+      if (!tabsContainer) return;
+      var months = [
+        { val: '01', name: 'Jan' }, { val: '02', name: 'Feb' }, { val: '03', name: 'Mar' },
+        { val: '04', name: 'Apr' }, { val: '05', name: 'May' }, { val: '06', name: 'Jun' },
+        { val: '07', name: 'Jul' }, { val: '08', name: 'Aug' }, { val: '09', name: 'Sep' },
+        { val: '10', name: 'Oct' }, { val: '11', name: 'Nov' }, { val: '12', name: 'Dec' }
+      ];
+      var html = '';
+      months.forEach(function(m) {
+        var isActive = (m.val === window.currentFeedMonth) && !window.specificFeedDate;
+        var bg = isActive ? 'var(--primary)' : '#e0e0e0';
+        var color = isActive ? 'white' : '#333';
+        html += '<button onclick="setFeedMonth(\'' + m.val + '\')" style="padding:6px 14px; border:none; border-radius:20px; font-size:12px; font-weight:bold; cursor:pointer; background:' + bg + '; color:' + color + '; min-width:60px; transition:0.2s;">' + m.name + '</button>';
+      });
+      tabsContainer.innerHTML = html;
+    };
+
+    window.setFeedMonth = function(mVal) {
+      window.currentFeedMonth = mVal;
+      window.specificFeedDate = "";
+      if (getEl('feedFilterDate')) getEl('feedFilterDate').value = "";
+      renderFeedMonthTabs();
+      renderFeedTable();
+    };
+
+    window.applyFeedFilter = function() {
+      if (getEl('feedFilterYear')) window.currentFeedYear = getEl('feedFilterYear').value;
+      var d = getEl('feedFilterDate') ? getEl('feedFilterDate').value : "";
+      if (d) {
+        window.specificFeedDate = d;
+        var dateObj = new Date(d);
+        window.currentFeedYear = dateObj.getFullYear().toString();
+        window.currentFeedMonth = ('0' + (dateObj.getMonth() + 1)).slice(-2);
+        if (getEl('feedFilterYear')) getEl('feedFilterYear').value = window.currentFeedYear;
+      } else {
+        window.specificFeedDate = "";
+      }
+      renderFeedMonthTabs();
+      renderFeedTable();
+    };
+
+    window.clearFeedDateFilter = function() {
+      if (getEl('feedFilterDate')) getEl('feedFilterDate').value = "";
+      if (getEl('feedSearchTag')) getEl('feedSearchTag').value = "";
+      window.specificFeedDate = "";
+      renderFeedMonthTabs();
+      renderFeedTable();
+    };
+
+    window.exportFeed = function(format) {
+      if (!window.currentFeedYear) initFeedFilters();
+      var targetYear = window.currentFeedYear;
+      var targetMonth = window.currentFeedMonth;
+      var targetDate = window.specificFeedDate;
+      var searchTag = (getEl('feedSearchTag') ? getEl('feedSearchTag').value : '').trim().toLowerCase();
+
+      var exportData = [];
+      exportData.push(["Date", "Cattle Tag", "Cattle Feed (kg)", "Rate (Rs/kg)", "Green Fodder (kg)", "Dry Fodder (kg)", "Supplement (Rs)", "Total Cost (Rs)"]);
+
+      var list = [];
+      for (var k in farmStore.feedRations) {
+        var r = farmStore.feedRations[k];
+        if (!r || !r.date) continue;
+        var match = false;
+        if (targetDate) {
+          if (r.date === targetDate) match = true;
+        } else {
+          if (r.date.substring(0, 4) === targetYear && r.date.substring(5, 7) === targetMonth) match = true;
+        }
+        if (match && (!searchTag || (r.cowTag || '').toLowerCase().includes(searchTag))) {
+          list.push(r);
+        }
+      }
+
+      list.sort(function(a, b) { return parseDateToTime(b.date) - parseDateToTime(a.date); });
+
+      if (list.length === 0) {
+        return showAppToast('বর্তমান ভিউতে এক্সপোর্ট করার মতো কোনো খাদ্য রেকর্ড নেই!');
+      }
+
+      list.forEach(function(r) {
+        exportData.push([
+          formatDateBR(r.date),
+          r.cowTag || '-',
+          r.pellet || 0,
+          r.avgCostPerKg || 0,
+          r.greenFodder || 0,
+          r.dryFodder || 0,
+          r.suppCost || 0,
+          r.totalCost || 0
+        ]);
+      });
+
+      var fileName = "Feed_Record_" + (targetDate ? targetDate : (targetYear + "_" + targetMonth));
+
+      if (format === 'csv') {
+        var csvContent = "data:text/csv;charset=utf-8,\uFEFF";
+        exportData.forEach(function(rowArray) { csvContent += rowArray.join(",") + "\r\n"; });
+        var link = document.createElement("a");
+        link.setAttribute("href", encodeURI(csvContent));
+        link.setAttribute("download", fileName + ".csv");
+        document.body.appendChild(link); link.click(); document.body.removeChild(link);
+      } else if (format === 'txt') {
+        var txtContent = "data:text/plain;charset=utf-8,\uFEFF";
+        exportData.forEach(function(rowArray) { txtContent += rowArray.join(" \t ") + "\r\n"; });
+        var link = document.createElement("a");
+        link.setAttribute("href", encodeURI(txtContent));
+        link.setAttribute("download", fileName + ".txt");
+        document.body.appendChild(link); link.click(); document.body.removeChild(link);
+      } else if (format === 'doc') {
+        var docHtml = "<html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'><head><meta charset='utf-8'><title>Feed Record</title></head><body><h2 style='color:#1b5e20;'>Nanda Dairy & Agro - Cattle Feeding Record</h2><p><strong>Period/Date:</strong> " + (targetDate ? targetDate : (targetMonth + "/" + targetYear)) + "</p><table border='1' style='border-collapse:collapse; width:100%; text-align:left; font-family:sans-serif; font-size:12px;'>";
+        exportData.forEach(function(rowArray, idx) {
+          docHtml += "<tr>";
+          rowArray.forEach(function(cell) {
+            if (idx === 0) docHtml += "<th style='padding:6px; background:#e8f5e9;'>" + cell + "</th>";
+            else docHtml += "<td style='padding:6px;'>" + cell + "</td>";
+          });
+          docHtml += "</tr>";
+        });
+        docHtml += "</table></body></html>";
+        var blob = new Blob(['\ufeff', docHtml], { type: 'application/msword' });
+        var url = URL.createObjectURL(blob);
+        var link = document.createElement("a");
+        link.href = url; link.download = fileName + ".doc";
+        document.body.appendChild(link); link.click(); document.body.removeChild(link);
+      }
+    };
+
+    window.toggleSubFeed = function(subId, btnEl) {
+      var row = getEl(subId);
+      if (!row) return;
+      var countMatch = btnEl.innerText.match(/\d+/);
+      var count = countMatch ? countMatch[0] : '';
+      if (row.style.display === 'none') {
+        row.style.display = 'table-row';
+        btnEl.innerText = 'সংকুচিত করুন ▲';
+        btnEl.style.background = '#ffebee';
+        btnEl.style.color = '#c62828';
+      } else {
+        row.style.display = 'none';
+        btnEl.innerText = 'বিস্তারিত (' + count + ') ▼';
+        btnEl.style.background = '#0288d1';
+        btnEl.style.color = 'white';
+      }
+    };
+
+    window.showCattleMonthlyFeedBill = function(encTag) {
+      var tag = decodeURIComponent(encTag).trim();
+      if (!window.currentFeedYear) initFeedFilters();
+      var yr = window.currentFeedYear;
+      var mn = window.currentFeedMonth;
+      var prefix = yr + '-' + mn;
+      var tagUp = tag.toUpperCase();
+      var cowInfo = findCattleByTag(tag);
+
+      var items = [];
+      var totPellet = 0, totGreen = 0, totDry = 0, totSupp = 0, totCost = 0;
+      for (var k in farmStore.feedRations) {
+        var r = farmStore.feedRations[k];
+        if (!r || (r.cowTag || '').trim().toUpperCase() !== tagUp) continue;
+        if ((r.date || '').startsWith(prefix)) {
+          items.push(r);
+          totPellet += Number(r.pellet) || 0;
+          totGreen += Number(r.greenFodder) || 0;
+          totDry += Number(r.dryFodder) || 0;
+          totSupp += Number(r.suppCost) || 0;
+          totCost += Number(r.totalCost) || 0;
+        }
+      }
+
+      if (items.length === 0) {
+        return showAppToast(mn + '/' + yr + ' মাসে ' + tag + '-এর কোনো খাদ্য রেকর্ড পাওয়া যায়নি।');
+      }
+
+      var monthMilkL = 0;
+      for (var mk in farmStore.milk) {
+        var m = farmStore.milk[mk];
+        if (m && (m.cow || '').trim().toUpperCase() === tagUp && (m.date || '').startsWith(prefix)) {
+          monthMilkL += Number(m.liters) || 0;
+        }
+      }
+      var costPerLiter = monthMilkL > 0 ? (totCost / monthMilkL).toFixed(2) : '0.00';
+
+      items.sort(function(a, b) { return parseDateToTime(a.date) - parseDateToTime(b.date); });
+
+      document.body.setAttribute('data-print', 'invoice');
+      getEl('invMainDocTitle').innerText = 'মাসিক গরুর খাদ্য বিল / MONTHLY CATTLE FEED STATEMENT (' + mn + '/' + yr + ')';
+
+      var rowsHtml = '';
+      items.forEach(function(it) {
+        rowsHtml += '<tr><td>' + formatDateBR(it.date) + '</td><td>' + (it.pellet || 0) + ' kg (₹' + (it.avgCostPerKg || 0) + ')</td><td>' + (it.greenFodder || 0) + ' / ' + (it.dryFodder || 0) + ' kg</td><td>₹ ' + (it.suppCost || 0) + '</td><td style="text-align:right; font-weight:bold;">₹ ' + (it.totalCost || 0) + '</td></tr>';
+      });
+
+      getEl('invoiceDetails').innerHTML =
+        '<div style="display:flex; justify-content:space-between; margin-bottom:12px;">' +
+          '<div><strong>Cattle Tag ID:</strong> 🐄 ' + tag + '<br>জাত: ' + (cowInfo ? (cowInfo.breed || '-') : '-') + ' | স্ট্যাটাস: ' + (cowInfo ? (cowInfo.status || '-') : '-') + '</div>' +
+          '<div style="text-align:right;">বিলের মাস: <strong>' + mn + '/' + yr + '</strong><br>মোট এন্ট্রি: ' + items.length + ' টি</div>' +
+        '</div>' +
+        '<table class="invoice-table" style="border:1px solid #ddd; width:100%; min-width:unset;">' +
+          '<thead><tr style="background:#e8f5e9;"><th>তারিখ</th><th>ফিড (রেট)</th><th>ঘাস / খড়</th><th>সাপ্লিমেন্ট</th><th style="text-align:right;">মোট খরচ</th></tr></thead>' +
+          '<tbody>' + rowsHtml + '</tbody>' +
+        '</table>' +
+        '<div style="text-align:right; margin-top:12px; line-height:1.8;">' +
+          'মোট ফিড: <strong>' + totPellet.toFixed(1) + ' kg</strong> | কাঁচা ঘাস: <strong>' + totGreen.toFixed(1) + ' kg</strong> | খড়: <strong>' + totDry.toFixed(1) + ' kg</strong><br>' +
+          'এই মাসে দুধ উৎপাদন: <strong>' + monthMilkL.toFixed(1) + ' L</strong> (প্রতি লিটার খাদ্য খরচ: <strong>₹ ' + costPerLiter + '</strong>)<br>' +
+          '<span style="color:#1b5e20; font-weight:bold; font-size:16px;">মাসিক সর্বমোট খাদ্য খরচ: ₹ ' + totCost.toFixed(2) + '</span>' +
+        '</div>';
+
+      getEl('invoiceModal').style.display = 'flex';
+    };
+
     function renderFeedTable() {
       var body = getEl('rationTableBody');
       if (!body) return;
-      var list = [];
-      for (var k in farmStore.feedRations) {
-        list.push({ key: k, data: farmStore.feedRations[k] });
+
+      if (!window.currentFeedYear) {
+        initFeedFilters();
       }
-      list.sort(function(a, b) {
-        return (b.data.date || '').localeCompare(a.data.date || '');
+
+      var targetYear = window.currentFeedYear;
+      var targetMonth = window.currentFeedMonth;
+      var targetDate = window.specificFeedDate;
+      var searchTag = (getEl('feedSearchTag') ? getEl('feedSearchTag').value : '').trim().toLowerCase();
+
+      // Calculate monthly milk per cow for Feed Cost per Liter metric
+      var monthMilkMap = {};
+      var milkPrefix = targetYear + '-' + targetMonth;
+      for (var mk in farmStore.milk) {
+        var m = farmStore.milk[mk];
+        if (!m || !m.cow || !m.date) continue;
+        var mMatch = targetDate ? (m.date === targetDate) : m.date.startsWith(milkPrefix);
+        if (mMatch) {
+          var mTag = m.cow.trim().toUpperCase();
+          monthMilkMap[mTag] = (monthMilkMap[mTag] || 0) + (Number(m.liters) || 0);
+        }
+      }
+
+      var groupedMap = {};
+      for (var k in farmStore.feedRations) {
+        var r = farmStore.feedRations[k];
+        if (!r || !r.date) continue;
+        var dateMatch = false;
+        if (targetDate) {
+          if (r.date === targetDate) dateMatch = true;
+        } else {
+          if (r.date.substring(0, 4) === targetYear && r.date.substring(5, 7) === targetMonth) {
+            dateMatch = true;
+          }
+        }
+        if (!dateMatch) continue;
+
+        var rawTag = (r.cowTag || '-').trim();
+        if (searchTag && !rawTag.toLowerCase().includes(searchTag)) continue;
+
+        var gKey = rawTag.toUpperCase();
+        if (!groupedMap[gKey]) {
+          groupedMap[gKey] = {
+            tag: rawTag,
+            totalPellet: 0,
+            totalGreen: 0,
+            totalDry: 0,
+            totalCost: 0,
+            entries: []
+          };
+        }
+        groupedMap[gKey].totalPellet += Number(r.pellet) || 0;
+        groupedMap[gKey].totalGreen += Number(r.greenFodder) || 0;
+        groupedMap[gKey].totalDry += Number(r.dryFodder) || 0;
+        groupedMap[gKey].totalCost += Number(r.totalCost) || 0;
+        groupedMap[gKey].entries.push({ key: k, data: r });
+      }
+
+      var keys = Object.keys(groupedMap).sort(function(a, b) {
+        return a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' });
       });
 
-      if (list.length === 0) {
+      if (keys.length === 0) {
         body.innerHTML = '';
         if (getEl('rationNoData')) getEl('rationNoData').style.display = 'block';
         return;
@@ -4142,20 +4594,64 @@
       if (getEl('rationNoData')) getEl('rationNoData').style.display = 'none';
 
       var html = '';
-      list.forEach(function(item) {
-        var k = item.key, d = item.data;
-        html += '<tr>' +
-          '<td>' + formatDateBR(d.date) + '</td>' +
-          '<td><strong style="color:var(--primary);">Tag: ' + (d.cowTag || '-') + '</strong></td>' +
-          '<td>' + (d.pellet || 0) + ' kg</td>' +
-          '<td>₹ ' + (d.avgCostPerKg || 0) + '</td>' +
-          '<td>₹ ' + (d.suppCost || 0) + '</td>' +
-          '<td style="color:green; font-weight:bold;">₹ ' + (d.totalCost || 0) + '</td>' +
-          '<td>' +
-            '<button class="action-btn btn-info" onclick="editRation(\'' + k + '\')">Edit</button>' +
-            '<button class="action-btn btn-danger" onclick="deleteRecord(\'feedRations\',\'' + k + '\')">Delete</button>' +
-          '</td>' +
+      keys.forEach(function(gKey, idx) {
+        var g = groupedMap[gKey];
+        var subId = 'sub_feed_' + idx;
+        var totalEntries = g.entries.length;
+        var hasMultiple = totalEntries > 1;
+        var milkL = monthMilkMap[gKey] || 0;
+        var costPerL = milkL > 0 ? ('₹ ' + (g.totalCost / milkL).toFixed(2) + '/L') : '-';
+        var milkInfo = milkL > 0 ? ('<strong>' + milkL.toFixed(1) + ' L</strong><br><small style="color:#0288d1;">খরচ: ' + costPerL + '</small>') : '<span style="color:#888;">০ L</span>';
+
+        var actionCol = '';
+        if (!hasMultiple) {
+          var singleKey = g.entries[0].key;
+          actionCol = '<div style="display:flex; gap:6px; flex-wrap:nowrap;">' +
+            '<button class="action-btn" style="background:#2e7d32; color:white; padding:4px 8px; font-size:11px; margin:0;" onclick="showCattleMonthlyFeedBill(\'' + encodeURIComponent(g.tag) + '\')">মাসিক বিল</button>' +
+            '<button class="action-btn btn-info" style="padding:4px 8px; font-size:11px; margin:0;" onclick="editRation(\'' + singleKey + '\')">Edit</button>' +
+            '<button class="action-btn btn-danger" style="padding:4px 8px; font-size:11px; margin:0;" onclick="deleteRecord(\'feedRations\',\'' + singleKey + '\')">Delete</button>' +
+          '</div>';
+        } else {
+          actionCol = '<div style="display:flex; gap:6px; flex-wrap:nowrap;">' +
+            '<button class="action-btn btn-info" onclick="toggleSubFeed(\'' + subId + '\', this)" style="padding:4px 8px; font-size:11px; margin:0;">বিস্তারিত (' + totalEntries + ') ▼</button>' +
+            '<button class="action-btn" style="background:#2e7d32; color:white; padding:4px 8px; font-size:11px; margin:0;" onclick="showCattleMonthlyFeedBill(\'' + encodeURIComponent(g.tag) + '\')">মাসিক বিল</button>' +
+          '</div>';
+        }
+
+        html += '<tr style="background:#fafafa; border-top:2px solid #e0e0e0;">' +
+          '<td><a href="javascript:void(0)" onclick="showCattleMonthlyFeedBill(\'' + encodeURIComponent(g.tag) + '\')" style="color:var(--primary); font-weight:bold; text-decoration:underline;" title="মাসিক বিল দেখতে ক্লিক করুন">🐄 ' + g.tag + '</a></td>' +
+          '<td><strong>' + g.totalPellet.toFixed(1) + ' kg</strong></td>' +
+          '<td>' + g.totalGreen.toFixed(1) + ' / ' + g.totalDry.toFixed(1) + ' kg</td>' +
+          '<td style="color:green; font-weight:bold;">₹ ' + g.totalCost.toFixed(2) + '</td>' +
+          '<td>' + milkInfo + '</td>' +
+          '<td><span class="badge badge-success">' + totalEntries + ' টি</span></td>' +
+          '<td>' + actionCol + '</td>' +
         '</tr>';
+
+        if (hasMultiple) {
+          g.entries.sort(function(a, b) { return parseDateToTime(b.data.date) - parseDateToTime(a.data.date); });
+          html += '<tr id="' + subId + '" style="display:none; background:#f1f8e9;"><td colspan="7" style="padding:10px 15px;">' +
+            '<div style="font-size:12px; font-weight:bold; color:#2e7d32; margin-bottom:8px;">📋 ' + g.tag + '-এর তারিখভিত্তিক খাদ্য তালিকা:</div>' +
+            '<div style="overflow-x:auto;"><table style="width:100%; font-size:12px; background:white; border:1px solid #c8e6c9; border-collapse:collapse;">' +
+              '<tr style="background:#e8f5e9;"><th style="padding:6px; border:1px solid #c8e6c9;">তারিখ</th><th style="padding:6px; border:1px solid #c8e6c9;">ফিড (kg)</th><th style="padding:6px; border:1px solid #c8e6c9;">রেট (₹)</th><th style="padding:6px; border:1px solid #c8e6c9;">ঘাস / খড় (kg)</th><th style="padding:6px; border:1px solid #c8e6c9;">সাপ্লিমেন্ট (₹)</th><th style="padding:6px; border:1px solid #c8e6c9;">মোট খরচ (₹)</th><th style="padding:6px; border:1px solid #c8e6c9;">অ্যাকশন</th></tr>';
+
+          g.entries.forEach(function(itemObj) {
+            var d = itemObj.data;
+            html += '<tr>' +
+              '<td style="padding:6px; border:1px solid #c8e6c9;">' + formatDateBR(d.date) + '</td>' +
+              '<td style="padding:6px; border:1px solid #c8e6c9;">' + (d.pellet || 0) + ' kg</td>' +
+              '<td style="padding:6px; border:1px solid #c8e6c9;">₹ ' + (d.avgCostPerKg || 0) + '</td>' +
+              '<td style="padding:6px; border:1px solid #c8e6c9;">' + (d.greenFodder || 0) + ' / ' + (d.dryFodder || 0) + ' kg</td>' +
+              '<td style="padding:6px; border:1px solid #c8e6c9;">₹ ' + (d.suppCost || 0) + '</td>' +
+              '<td style="padding:6px; border:1px solid #c8e6c9; color:green; font-weight:bold;">₹ ' + (d.totalCost || 0) + '</td>' +
+              '<td style="padding:6px; border:1px solid #c8e6c9; white-space:nowrap;">' +
+                '<button class="action-btn btn-info" style="padding:3px 7px; font-size:11px;" onclick="editRation(\'' + itemObj.key + '\')">Edit</button> ' +
+                '<button class="action-btn btn-danger" style="padding:3px 7px; font-size:11px;" onclick="deleteRecord(\'feedRations\',\'' + itemObj.key + '\')">Delete</button>' +
+              '</td>' +
+            '</tr>';
+          });
+          html += '</table></div></td></tr>';
+        }
       });
       body.innerHTML = html;
     }
