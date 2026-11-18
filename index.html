@@ -1013,28 +1013,89 @@
       <div id="tab-stock" class="tab-content" style="display: none;">
         <div class="card">
           <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
-            <h2 style="margin:0; border:none; padding:0;">📦 Stock & Inventory</h2>
+            <h2 style="margin:0; border:none; padding:0;">📦 Stock & Inventory Management</h2>
             <button class="action-btn btn-info" onclick="switchTab('dashboard', document.querySelector('nav button'))">⬅ Back (ফিরে যান)</button>
           </div>
           <div class="form-grid">
-            <div class="input-group"><label>Item Name *</label><input type="text" id="stkName" list="stockItemList" placeholder="ফিড"></div>
-            <div class="input-group"><label>Quantity *</label><input type="number" id="stkQty" placeholder="পরিমাণ"></div>
-            <div class="input-group"><label>Unit</label><select id="stkUnit"><option value="kg">kg</option><option value="Bag">Bag</option><option value="Ton">Ton</option><option value="Pcs">Pcs</option></select></div>
+            <div class="input-group"><label>Item Name *</label><input type="text" id="stkName" list="stockItemList" placeholder="ফিড / ওষুধ"></div>
+            <div class="input-group"><label>Category</label><select id="stkCategory"><option value="Feed & Fodder">Feed & Fodder</option><option value="Medicine & Vaccine">Medicine & Vaccine</option><option value="Dairy Supplies">Dairy Supplies</option><option value="Equipment">Equipment</option><option value="Other">Other</option></select></div>
+            <div class="input-group"><label>Quantity *</label><input type="number" step="0.1" id="stkQty" placeholder="পরিমাণ"></div>
+            <div class="input-group"><label>Unit</label><select id="stkUnit"><option value="kg">kg</option><option value="Bag">Bag</option><option value="Ton">Ton</option><option value="Liter">Liter</option><option value="Pcs">Pcs</option></select></div>
+            <div class="input-group"><label>Unit Cost / দাম (₹)</label><input type="number" step="0.1" id="stkCost" placeholder="প্রতি ইউনিট দাম"></div>
             <div class="input-group"><label>Alert Level</label><input type="number" id="stkAlert" placeholder="৫"></div>
+            <div class="input-group"><label>Expiry Date (মেয়াদ)</label><input type="date" id="stkExpiry"></div>
           </div>
           <div style="display:flex; gap:10px;">
             <button class="btn" id="stkSubmitBtn" onclick="saveStock()">Save Stock</button>
             <button class="btn btn-warning" id="stkCancelBtn" style="display:none;" onclick="cancelStockEdit()">Cancel</button>
           </div>
         </div>
+
+        <!-- বর্তমান স্টক ও মোট মূল্য -->
         <div class="card">
-          <h2>বর্তমান স্টক তালিকা</h2>
+          <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; margin-bottom:12px;">
+            <h2 style="margin:0; border:none; padding:0;">বর্তমান স্টক তালিকা ও মোট মূল্য</h2>
+            <div style="display:flex; gap:8px; flex-wrap:wrap;">
+              <button class="action-btn" style="background:#1d6f42; color:white; padding:6px 10px; border-radius:6px;" onclick="exportStockCurrent('csv')">📥 Excel (CSV)</button>
+              <button class="action-btn" style="background:#2b579a; color:white; padding:6px 10px; border-radius:6px;" onclick="exportStockCurrent('doc')">📥 Word</button>
+              <button class="action-btn" style="background:#424242; color:white; padding:6px 10px; border-radius:6px;" onclick="exportStockCurrent('txt')">📥 Text</button>
+            </div>
+          </div>
+
+          <div id="stockSummaryGrid" style="display:grid; grid-template-columns:repeat(auto-fit, minmax(160px, 1fr)); gap:10px; margin-bottom:14px;"></div>
+
+          <div style="display:flex; flex-wrap:wrap; gap:10px; justify-content:space-between; margin-bottom:12px; background:#f4fbf5; padding:10px 12px; border-radius:8px; border:1px solid #c8e6c9;">
+            <select id="stkFilterCategory" onchange="renderStockTable()" style="width:180px; padding:7px;">
+              <option value="">সকল ক্যাটাগরি</option>
+              <option value="Feed & Fodder">Feed & Fodder</option>
+              <option value="Medicine & Vaccine">Medicine & Vaccine</option>
+              <option value="Dairy Supplies">Dairy Supplies</option>
+              <option value="Equipment">Equipment</option>
+              <option value="Other">Other</option>
+            </select>
+            <input type="text" id="stkSearchInput" oninput="renderStockTable()" placeholder="🔍 আইটেম খুঁজুন..." style="width:200px; padding:7px;">
+          </div>
+
           <div class="table-container">
             <table>
-              <thead><tr><th>Item</th><th>Quantity</th><th>Unit</th><th>Alert Level</th><th>Action</th></tr></thead>
+              <thead><tr><th>Item & Category</th><th>Quantity</th><th>Unit Cost & Total Value</th><th>Expiry Date</th><th>Alert Level</th><th>Stock In / Out & Action</th></tr></thead>
               <tbody id="stockTableBody"></tbody>
             </table>
           </div>
+        </div>
+
+        <!-- স্টক লেনদেনের ইতিহাস (Stock History Log - বছর, মাস, তারিখ ফিল্টার ও এক্সপোর্টসহ) -->
+        <div class="card">
+          <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; margin-bottom:12px;">
+            <h2 style="margin:0; border:none; padding:0;">📜 স্টক লেনদেনের ইতিহাস (Stock History Log)</h2>
+            <div style="display:flex; gap:8px; flex-wrap:wrap;">
+              <button class="action-btn" style="background:#1d6f42; color:white; padding:6px 10px; border-radius:6px;" onclick="exportStockLogs('csv')">📥 Excel (CSV)</button>
+              <button class="action-btn" style="background:#2b579a; color:white; padding:6px 10px; border-radius:6px;" onclick="exportStockLogs('doc')">📥 Word</button>
+              <button class="action-btn" style="background:#424242; color:white; padding:6px 10px; border-radius:6px;" onclick="exportStockLogs('txt')">📥 Text</button>
+            </div>
+          </div>
+
+          <div style="display:flex; flex-wrap:wrap; gap:15px; margin-bottom:15px; background:#f4fbf5; padding:12px; border-radius:8px; border:1px solid #c8e6c9; align-items:center;">
+            <div style="display:flex; align-items:center; gap:8px;">
+              <label style="font-size:12px; font-weight:bold; color:var(--primary);">বছর নির্বাচন:</label>
+              <select id="stkLogFilterYear" onchange="applyStockLogFilter()" style="padding:6px 10px; border-radius:6px; border:1px solid #bbb; outline:none; font-weight:bold; width:auto;"></select>
+            </div>
+            <div style="display:flex; align-items:center; gap:8px;">
+              <label style="font-size:12px; font-weight:bold; color:var(--primary);">নির্দিষ্ট তারিখ খুঁজুন:</label>
+              <input type="date" id="stkLogFilterDate" onchange="applyStockLogFilter()" style="padding:6px; border-radius:6px; border:1px solid #bbb; outline:none; width:auto;">
+              <button class="action-btn btn-warning" onclick="clearStockLogDateFilter()" style="padding:6px 12px;">Clear/Reset</button>
+            </div>
+          </div>
+
+          <div id="stkLogMonthTabs" style="display:flex; gap:8px; overflow-x:auto; margin-bottom:15px; padding-bottom:5px; -webkit-overflow-scrolling: touch; white-space:nowrap;"></div>
+
+          <div class="table-container">
+            <table>
+              <thead><tr><th>তারিখ</th><th>আইটেম ও ক্যাটাগরি</th><th>ধরন</th><th>পরিমাণ</th><th>মোট মূল্য (₹)</th><th>দোকান / নোট</th><th>Action</th></tr></thead>
+              <tbody id="stockLogTableBody"></tbody>
+            </table>
+          </div>
+          <p id="stockLogNoData" style="text-align: center; color: #777; font-size: 13px; margin-top: 15px; display: none;">এই মাস বা তারিখে কোনো স্টক লেনদেন নেই।</p>
         </div>
       </div>
 
@@ -1174,6 +1235,38 @@
     </div>
   </div>
 
+  <!-- স্টক ইন / আউট (Stock In / Out) মোডাল -->
+  <div id="stockMoveModal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.65); z-index:2000; align-items:center; justify-content:center; padding:15px; overflow-y:auto;">
+    <div class="feed-modal-card" style="max-width:480px;">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+        <h2 id="stkMoveTitle" style="color:var(--primary); margin:0; border:none; padding:0;">📦 স্টক আপডেট</h2>
+        <button class="action-btn btn-danger" onclick="closeStockMoveModal()">✕</button>
+      </div>
+      <p id="stkMoveDesc" style="font-size:13px; color:#555; margin-bottom:12px;"></p>
+      <div class="form-grid" style="grid-template-columns:1fr 1fr; gap:10px; margin-bottom:12px;">
+        <div class="input-group"><label>তারিখ *</label><input type="date" id="stkMoveDate"></div>
+        <div class="input-group"><label>পরিমাণ *</label><input type="number" step="0.1" id="stkMoveQty" oninput="calcStockMoveTotal()" placeholder="পরিমাণ"></div>
+        <div class="input-group"><label>প্রতি ইউনিট দাম (₹)</label><input type="number" step="0.1" id="stkMoveCost" oninput="calcStockMoveTotal()" placeholder="₹"></div>
+        <div class="input-group"><label>মোট মূল্য (₹)</label><input type="number" id="stkMoveTotal" readonly style="background:#e8f5e9; font-weight:bold;"></div>
+      </div>
+      <div id="stkMoveVendorWrap" style="margin-bottom:12px;">
+        <div class="form-grid" style="grid-template-columns:1fr 1fr; gap:10px; margin-bottom:8px;">
+          <div class="input-group"><label>দোকান / ব্যক্তি (Vendor)</label><input type="text" id="stkMoveVendor" list="vendorNameList" placeholder="দোকানের নাম"></div>
+          <div class="input-group"><label>পরিশোধ (Paid ₹)</label><input type="number" id="stkMovePaid" placeholder="খালি রাখলে পূর্ণ পরিশোধ"></div>
+        </div>
+        <div style="display:flex; align-items:center; gap:8px;">
+          <input type="checkbox" id="stkMoveAutoExp" checked style="width:auto; cursor:pointer;">
+          <label for="stkMoveAutoExp" style="font-size:12.5px; font-weight:600; color:#1b5e20; cursor:pointer;">খরচের খাতায় (Expenses) স্বয়ংক্রিয়ভাবে যোগ করুন</label>
+        </div>
+      </div>
+      <div class="input-group" style="margin-bottom:16px;"><label>নোট (ঐচ্ছিক)</label><input type="text" id="stkMoveNote" placeholder="বিবরণ বা নোট"></div>
+      <div style="display:flex; gap:10px;">
+        <button class="btn" style="flex:1; justify-content:center;" onclick="confirmStockMove()">✔ নিশ্চিত করুন</button>
+        <button class="btn btn-warning" style="flex:1; justify-content:center;" onclick="closeStockMoveModal()">বাতিল</button>
+      </div>
+    </div>
+  </div>
+
   <!-- দোকানদারের বাকি পরিশোধ মোডাল -->
   <div id="vendorPayModal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.65); z-index:2000; align-items:center; justify-content:center; padding:15px;">
     <div class="feed-modal-card" style="max-width:440px;">
@@ -1309,7 +1402,7 @@
       cattle: {}, breeding: {}, milk: {}, sales: {},
       customers: {}, orders: {}, expenses: {}, stock: {},
       semen: {}, health: {}, feedRations: {}, feed: {},
-      vaccine: {}, deworm: {}, labours: {}, labourPayments: {}
+      vaccine: {}, deworm: {}, labours: {}, labourPayments: {}, stockLogs: {}
     };
     window.activeLedgerCustomerName = '';
 
@@ -1497,6 +1590,24 @@
             subtitle: 'বর্তমান স্টক: ' + sq + ' ' + (stItem.unit || '') + ' (সতর্কতা সীমা: ' + sa + ')',
             dueDate: new Date().toISOString().split('T')[0],
             diffDays: sq <= 0 ? -1 : 0
+          });
+        }
+      }
+
+      // ৪.খ. স্টক মেয়াদোত্তীর্ণ (Expiry Date) অ্যালার্ট (৩০ দিন আগে থেকে)
+      for (var esk in farmStore.stock) {
+        var est = farmStore.stock[esk];
+        if (!est || !est.name || !est.expiry) continue;
+        var expDiff = getDaysDifferenceFromToday(est.expiry);
+        if (expDiff !== null && expDiff <= 30) {
+          alerts.push({
+            type: 'stock',
+            key: esk,
+            tag: est.name,
+            title: (expDiff < 0 ? '🚫 মেয়াদ শেষ (Expired): ' : '⏳ মেয়াদ শেষ হচ্ছে: ') + est.name,
+            subtitle: 'ক্যাটাগরি: ' + (est.category || 'Stock') + ' | পরিমাণ: ' + (est.qty || 0) + ' ' + (est.unit || ''),
+            dueDate: est.expiry,
+            diffDays: expDiff
           });
         }
       }
@@ -5544,20 +5655,391 @@
     var eStkKey = null;
     function editStock(k) {
       var d = farmStore.stock[k]; if (!d) return; eStkKey = k;
-      getEl('stkName').value = d.name || ''; getEl('stkQty').value = d.qty || ''; getEl('stkUnit').value = d.unit || 'kg'; getEl('stkAlert').value = d.alertLevel || '';
+      getEl('stkName').value = d.name || '';
+      if (getEl('stkCategory')) getEl('stkCategory').value = d.category || 'Feed & Fodder';
+      getEl('stkQty').value = d.qty || '';
+      getEl('stkUnit').value = d.unit || 'kg';
+      if (getEl('stkCost')) getEl('stkCost').value = d.unitCost || '';
+      getEl('stkAlert').value = d.alertLevel || '';
+      if (getEl('stkExpiry')) getEl('stkExpiry').value = d.expiry || '';
       getEl('stkSubmitBtn').innerText = 'Update Stock'; getEl('stkCancelBtn').style.display = 'inline-flex';
-      switchTab('stock', document.querySelector('nav button:nth-child(12)'));
+      switchTab('stock', document.querySelectorAll('nav button')[11]);
     }
     function cancelStockEdit() {
       eStkKey = null; getEl('stkName').value = ''; getEl('stkQty').value = ''; getEl('stkAlert').value = '';
+      if (getEl('stkCost')) getEl('stkCost').value = '';
+      if (getEl('stkExpiry')) getEl('stkExpiry').value = '';
       getEl('stkSubmitBtn').innerText = 'Save Stock'; getEl('stkCancelBtn').style.display = 'none';
     }
     function saveStock() {
       var name = (getEl('stkName').value || '').trim(); if (!name) return showAppToast('নাম দিন!');
-      var data = { name: name, qty: parseFloat(getEl('stkQty').value)||0, unit: getEl('stkUnit').value, alertLevel: parseFloat(getEl('stkAlert').value)||0 };
-      if (db) eStkKey ? db.ref('stock/' + eStkKey).update(data) : db.ref('stock').push(data);
+      var qty = parseFloat(getEl('stkQty').value) || 0;
+      var unitCost = parseFloat(getEl('stkCost') ? getEl('stkCost').value : 0) || 0;
+      var category = getEl('stkCategory') ? getEl('stkCategory').value : 'Feed & Fodder';
+      var expiry = getEl('stkExpiry') ? getEl('stkExpiry').value : '';
+      var data = {
+        name: name,
+        category: category,
+        qty: qty,
+        unit: getEl('stkUnit').value,
+        unitCost: unitCost,
+        alertLevel: parseFloat(getEl('stkAlert').value) || 0,
+        expiry: expiry
+      };
+      if (db) {
+        if (eStkKey) {
+          db.ref('stock/' + eStkKey).update(data);
+        } else {
+          db.ref('stock').push(data);
+          if (qty > 0) {
+            db.ref('stockLogs').push({
+              date: new Date().toISOString().split('T')[0],
+              itemName: name,
+              category: category,
+              type: 'In',
+              qty: qty,
+              unit: data.unit,
+              unitCost: unitCost,
+              totalValue: parseFloat((qty * unitCost).toFixed(2)),
+              vendor: '',
+              note: 'প্রাথমিক স্টক এন্ট্রি'
+            });
+          }
+        }
+      }
+      showAppToast('স্টক সফলভাবে সেভ হয়েছে!');
       cancelStockEdit();
     }
+
+    window.renderStockTable = function() {
+      var body = getEl('stockTableBody');
+      var sumGrid = getEl('stockSummaryGrid');
+      if (!body) return;
+
+      var catFilter = (getEl('stkFilterCategory') ? getEl('stkFilterCategory').value : '').trim();
+      var searchQ = (getEl('stkSearchInput') ? getEl('stkSearchInput').value : '').trim().toLowerCase();
+
+      var totalItems = 0, totalValuation = 0, lowCount = 0, expCount = 0;
+      var html = '';
+
+      for (var k in farmStore.stock) {
+        var d = farmStore.stock[k];
+        if (!d) continue;
+        totalItems++;
+        var qty = Number(d.qty) || 0;
+        var uCost = Number(d.unitCost) || 0;
+        var val = qty * uCost;
+        totalValuation += val;
+
+        var isLow = qty <= (Number(d.alertLevel) || 0);
+        if (isLow) lowCount++;
+
+        var expBadge = '-';
+        if (d.expiry) {
+          var eDiff = getDaysDifferenceFromToday(d.expiry);
+          if (eDiff !== null && eDiff < 0) {
+            expCount++;
+            expBadge = '<span class="badge badge-danger">' + formatDateBR(d.expiry) + ' (Expired)</span>';
+          } else if (eDiff !== null && eDiff <= 30) {
+            expCount++;
+            expBadge = '<span class="badge badge-warning">' + formatDateBR(d.expiry) + ' (' + eDiff + 'd)</span>';
+          } else {
+            expBadge = formatDateBR(d.expiry);
+          }
+        }
+
+        var cat = d.category || 'Feed & Fodder';
+        if (catFilter && cat !== catFilter) continue;
+        if (searchQ && !(d.name || '').toLowerCase().includes(searchQ)) continue;
+
+        html += '<tr>' +
+          '<td><strong>' + (d.name || '-') + '</strong><br><small style="color:#666;">' + cat + '</small></td>' +
+          '<td style="color:' + (isLow ? 'red' : '#1b5e20') + '; font-weight:bold;">' + qty + ' ' + (d.unit || '') + (isLow ? ' <span class="badge badge-danger">Low</span>' : '') + '</td>' +
+          '<td>₹ ' + uCost + ' / ' + (d.unit || '') + '<br><strong style="color:#0288d1;">মোট: ₹ ' + Math.round(val).toLocaleString() + '</strong></td>' +
+          '<td>' + expBadge + '</td>' +
+          '<td>' + (d.alertLevel || 0) + '</td>' +
+          '<td style="white-space:nowrap;">' +
+            '<button class="action-btn" style="background:#2e7d32; color:white;" onclick="openStockMoveModal(\'' + k + '\', \'In\')">+ In</button>' +
+            '<button class="action-btn btn-warning" onclick="openStockMoveModal(\'' + k + '\', \'Out\')">- Out</button>' +
+            '<button class="action-btn btn-info" onclick="editStock(\'' + k + '\')">Edit</button>' +
+            '<button class="action-btn btn-danger" onclick="deleteRecord(\'stock\',\'' + k + '\')">Delete</button>' +
+          '</td>' +
+        '</tr>';
+      }
+      body.innerHTML = html || '<tr><td colspan="6" style="text-align:center; color:#888;">কোনো স্টক আইটেম পাওয়া যায়নি।</td></tr>';
+
+      if (sumGrid) {
+        sumGrid.innerHTML =
+          '<div style="background:#e8f5e9; padding:10px; border-radius:8px; border-left:4px solid #1b5e20;"><small style="color:#555;">মোট আইটেম</small><div style="font-size:18px; font-weight:bold; color:#1b5e20;">' + totalItems + ' টি</div></div>' +
+          '<div style="background:#e3f2fd; padding:10px; border-radius:8px; border-left:4px solid #0288d1;"><small style="color:#555;">মোট স্টক মূল্য</small><div style="font-size:18px; font-weight:bold; color:#0288d1;">₹ ' + Math.round(totalValuation).toLocaleString() + '</div></div>' +
+          '<div style="background:#fff3e0; padding:10px; border-radius:8px; border-left:4px solid #f57c00;"><small style="color:#555;">লো স্টক (Low)</small><div style="font-size:18px; font-weight:bold; color:#e65100;">' + lowCount + ' টি</div></div>' +
+          '<div style="background:#ffebee; padding:10px; border-radius:8px; border-left:4px solid #d32f2f;"><small style="color:#555;">মেয়াদ শেষ / আসন্ন</small><div style="font-size:18px; font-weight:bold; color:#c62828;">' + expCount + ' টি</div></div>';
+      }
+    };
+
+    window._activeStockMove = null;
+    window.openStockMoveModal = function(stkKey, moveType) {
+      var d = farmStore.stock[stkKey];
+      if (!d) return;
+      window._activeStockMove = { key: stkKey, type: moveType };
+      getEl('stkMoveTitle').innerText = moveType === 'In' ? '➕ নতুন স্টক যোগ (Stock In)' : '➖ স্টক ব্যবহার (Stock Out)';
+      getEl('stkMoveDesc').innerHTML = 'আইটেম: <strong>' + d.name + '</strong> | বর্তমান স্টক: <strong>' + (d.qty || 0) + ' ' + (d.unit || '') + '</strong>';
+      getEl('stkMoveDate').value = new Date().toISOString().split('T')[0];
+      getEl('stkMoveQty').value = '';
+      getEl('stkMoveCost').value = d.unitCost || 0;
+      getEl('stkMoveTotal').value = 0;
+      getEl('stkMoveVendor').value = '';
+      getEl('stkMovePaid').value = '';
+      getEl('stkMoveNote').value = '';
+      getEl('stkMoveVendorWrap').style.display = moveType === 'In' ? 'block' : 'none';
+      getEl('stockMoveModal').style.display = 'flex';
+    };
+
+    window.closeStockMoveModal = function() {
+      window._activeStockMove = null;
+      if (getEl('stockMoveModal')) getEl('stockMoveModal').style.display = 'none';
+    };
+
+    window.calcStockMoveTotal = function() {
+      var q = parseFloat(getEl('stkMoveQty') ? getEl('stkMoveQty').value : 0) || 0;
+      var c = parseFloat(getEl('stkMoveCost') ? getEl('stkMoveCost').value : 0) || 0;
+      if (getEl('stkMoveTotal')) getEl('stkMoveTotal').value = (q * c).toFixed(2);
+    };
+
+    window.confirmStockMove = function() {
+      if (!window._activeStockMove) return;
+      var k = window._activeStockMove.key;
+      var mType = window._activeStockMove.type;
+      var d = farmStore.stock[k];
+      if (!d) return;
+
+      var dt = getEl('stkMoveDate').value || new Date().toISOString().split('T')[0];
+      var qty = parseFloat(getEl('stkMoveQty').value) || 0;
+      var uCost = parseFloat(getEl('stkMoveCost').value) || 0;
+      var note = getEl('stkMoveNote').value.trim();
+      if (qty <= 0) return showAppToast('সঠিক পরিমাণ দিন!');
+
+      var curQty = Number(d.qty) || 0;
+      var newQty = mType === 'In' ? (curQty + qty) : Math.max(0, curQty - qty);
+      var totalVal = parseFloat((qty * uCost).toFixed(2));
+
+      if (db) {
+        var updObj = { qty: parseFloat(newQty.toFixed(2)) };
+        if (mType === 'In' && uCost > 0) updObj.unitCost = uCost;
+        db.ref('stock/' + k).update(updObj);
+
+        var vendor = getEl('stkMoveVendor').value.trim();
+        db.ref('stockLogs').push({
+          date: dt,
+          itemName: d.name,
+          category: d.category || 'Feed & Fodder',
+          type: mType,
+          qty: qty,
+          unit: d.unit || '',
+          unitCost: uCost,
+          totalValue: totalVal,
+          vendor: vendor,
+          note: note
+        });
+
+        if (mType === 'In' && getEl('stkMoveAutoExp') && getEl('stkMoveAutoExp').checked && totalVal > 0) {
+          var paidRaw = getEl('stkMovePaid').value;
+          var paidAmt = (paidRaw === '') ? totalVal : Math.min(totalVal, parseFloat(paidRaw) || 0);
+          var dueAmt = Math.max(0, totalVal - paidAmt);
+          var expCat = (d.category === 'Medicine & Vaccine') ? 'Medicine & Health' : ((d.category === 'Feed & Fodder') ? 'Feed & Fodder' : 'Other');
+          db.ref('expenses').push({
+            date: dt,
+            category: expCat,
+            title: 'Stock Purchase: ' + d.name + ' (' + qty + ' ' + (d.unit || '') + ')',
+            amount: totalVal,
+            paidAmount: paidAmt,
+            dueAmount: dueAmt,
+            vendor: vendor,
+            payMode: dueAmt > 0 ? 'Credit (বাকি)' : 'Cash',
+            status: dueAmt === 0 ? 'Paid' : (paidAmt > 0 ? 'Partial' : 'Unpaid')
+          });
+        }
+      }
+      closeStockMoveModal();
+      showAppToast('স্টক ' + (mType === 'In' ? 'যোগ' : 'ব্যবহার') + ' সফলভাবে আপডেট হয়েছে!');
+    };
+
+    window.exportStockCurrent = function(format) {
+      var exportData = [];
+      exportData.push(["Item Name", "Category", "Quantity", "Unit", "Unit Cost (Rs)", "Total Value (Rs)", "Expiry Date", "Alert Level"]);
+      var grandTotal = 0;
+      for (var k in farmStore.stock) {
+        var d = farmStore.stock[k];
+        if (!d) continue;
+        var q = Number(d.qty) || 0;
+        var c = Number(d.unitCost) || 0;
+        var v = q * c;
+        grandTotal += v;
+        exportData.push([
+          (d.name || '-').replace(/,/g, ' '),
+          (d.category || 'Feed & Fodder').replace(/,/g, ' '),
+          q,
+          d.unit || '-',
+          c,
+          v.toFixed(2),
+          formatDateBR(d.expiry),
+          d.alertLevel || 0
+        ]);
+      }
+      if (exportData.length <= 1) return showAppToast('এক্সপোর্ট করার মতো কোনো স্টক নেই!');
+      exportData.push(["TOTAL STOCK VALUE", "", "", "", "", grandTotal.toFixed(2), "", ""]);
+
+      var fileName = "Current_Stock_Valuation_" + new Date().toISOString().split('T')[0];
+      if (format === 'csv') {
+        var csv = "data:text/csv;charset=utf-8,\uFEFF" + exportData.map(function(r){ return r.join(","); }).join("\r\n");
+        var a = document.createElement("a"); a.href = encodeURI(csv); a.download = fileName + ".csv"; document.body.appendChild(a); a.click(); document.body.removeChild(a);
+      } else if (format === 'txt') {
+        var txt = "data:text/plain;charset=utf-8,\uFEFF" + exportData.map(function(r){ return r.join(" \t "); }).join("\r\n");
+        var a = document.createElement("a"); a.href = encodeURI(txt); a.download = fileName + ".txt"; document.body.appendChild(a); a.click(); document.body.removeChild(a);
+      } else if (format === 'doc') {
+        var h = "<html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'><head><meta charset='utf-8'><title>Current Stock</title></head><body><h2 style='color:#1b5e20;'>Nanda Dairy & Agro - Current Stock & Valuation</h2><table border='1' style='border-collapse:collapse; width:100%; font-family:sans-serif; font-size:12px;'>";
+        exportData.forEach(function(r, idx) {
+          h += "<tr>" + r.map(function(cell){ return idx === 0 ? "<th style='padding:6px; background:#e8f5e9;'>"+cell+"</th>" : "<td style='padding:6px;'>"+cell+"</td>"; }).join("") + "</tr>";
+        });
+        h += "</table></body></html>";
+        var blob = new Blob(['\ufeff', h], { type: 'application/msword' });
+        var a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = fileName + ".doc"; document.body.appendChild(a); a.click(); document.body.removeChild(a);
+      }
+    };
+
+    window.currentStkLogYear = "";
+    window.currentStkLogMonth = "";
+    window.specificStkLogDate = "";
+
+    window.initStockLogFilters = function() {
+      if (!window.currentStkLogYear) {
+        var d = new Date();
+        window.currentStkLogYear = d.getFullYear().toString();
+        window.currentStkLogMonth = ('0' + (d.getMonth() + 1)).slice(-2);
+      }
+      var ys = getEl('stkLogFilterYear');
+      if (ys && ys.options.length === 0) {
+        var curY = new Date().getFullYear();
+        for (var i = 0; i < 5; i++) {
+          var y = (curY - i).toString();
+          ys.options.add(new Option(y, y));
+        }
+        ys.value = window.currentStkLogYear;
+      }
+      renderStockLogMonthTabs();
+    };
+
+    window.renderStockLogMonthTabs = function() {
+      var tc = getEl('stkLogMonthTabs');
+      if (!tc) return;
+      var months = [{val:'01',name:'Jan'},{val:'02',name:'Feb'},{val:'03',name:'Mar'},{val:'04',name:'Apr'},{val:'05',name:'May'},{val:'06',name:'Jun'},{val:'07',name:'Jul'},{val:'08',name:'Aug'},{val:'09',name:'Sep'},{val:'10',name:'Oct'},{val:'11',name:'Nov'},{val:'12',name:'Dec'}];
+      tc.innerHTML = months.map(function(m) {
+        var act = (m.val === window.currentStkLogMonth) && !window.specificStkLogDate;
+        return '<button onclick="setStockLogMonth(\'' + m.val + '\')" style="padding:6px 14px; border:none; border-radius:20px; font-size:12px; font-weight:bold; cursor:pointer; background:' + (act ? 'var(--primary)' : '#e0e0e0') + '; color:' + (act ? 'white' : '#333') + '; min-width:60px;">' + m.name + '</button>';
+      }).join('');
+    };
+
+    window.setStockLogMonth = function(mVal) {
+      window.currentStkLogMonth = mVal;
+      window.specificStkLogDate = "";
+      if (getEl('stkLogFilterDate')) getEl('stkLogFilterDate').value = "";
+      renderStockLogMonthTabs();
+      renderStockLogTable();
+    };
+
+    window.applyStockLogFilter = function() {
+      if (getEl('stkLogFilterYear')) window.currentStkLogYear = getEl('stkLogFilterYear').value;
+      var d = getEl('stkLogFilterDate') ? getEl('stkLogFilterDate').value : "";
+      if (d) {
+        window.specificStkLogDate = d;
+        var doj = new Date(d);
+        window.currentStkLogYear = doj.getFullYear().toString();
+        window.currentStkLogMonth = ('0' + (doj.getMonth() + 1)).slice(-2);
+        if (getEl('stkLogFilterYear')) getEl('stkLogFilterYear').value = window.currentStkLogYear;
+      } else {
+        window.specificStkLogDate = "";
+      }
+      renderStockLogMonthTabs();
+      renderStockLogTable();
+    };
+
+    window.clearStockLogDateFilter = function() {
+      if (getEl('stkLogFilterDate')) getEl('stkLogFilterDate').value = "";
+      window.specificStkLogDate = "";
+      renderStockLogMonthTabs();
+      renderStockLogTable();
+    };
+
+    window.renderStockLogTable = function() {
+      var body = getEl('stockLogTableBody');
+      if (!body) return;
+      if (!window.currentStkLogYear) initStockLogFilters();
+
+      var yr = window.currentStkLogYear, mn = window.currentStkLogMonth, dt = window.specificStkLogDate;
+      var list = [];
+      for (var k in farmStore.stockLogs) {
+        var l = farmStore.stockLogs[k];
+        if (!l || !l.date) continue;
+        var match = dt ? (l.date === dt) : (l.date.substring(0, 4) === yr && l.date.substring(5, 7) === mn);
+        if (match) list.push({ key: k, data: l });
+      }
+      list.sort(function(a, b) { return parseDateToTime(b.data.date) - parseDateToTime(a.data.date); });
+
+      if (list.length === 0) {
+        body.innerHTML = '';
+        if (getEl('stockLogNoData')) getEl('stockLogNoData').style.display = 'block';
+        return;
+      }
+      if (getEl('stockLogNoData')) getEl('stockLogNoData').style.display = 'none';
+
+      body.innerHTML = list.map(function(item) {
+        var d = item.data;
+        var badge = d.type === 'In' ? '<span class="badge badge-success">+ Stock In</span>' : '<span class="badge badge-warning">- Stock Out</span>';
+        return '<tr>' +
+          '<td>' + formatDateBR(d.date) + '</td>' +
+          '<td><strong>' + (d.itemName || '-') + '</strong><br><small style="color:#666;">' + (d.category || '-') + '</small></td>' +
+          '<td>' + badge + '</td>' +
+          '<td><strong>' + (d.qty || 0) + ' ' + (d.unit || '') + '</strong></td>' +
+          '<td>₹ ' + (d.totalValue || 0) + '</td>' +
+          '<td>' + (d.vendor ? 'দোকান: ' + d.vendor + '<br>' : '') + '<small style="color:#555;">' + (d.note || '-') + '</small></td>' +
+          '<td><button class="action-btn btn-danger" onclick="deleteRecord(\'stockLogs\',\'' + item.key + '\')">Delete</button></td>' +
+        '</tr>';
+      }).join('');
+    };
+
+    window.exportStockLogs = function(format) {
+      if (!window.currentStkLogYear) initStockLogFilters();
+      var yr = window.currentStkLogYear, mn = window.currentStkLogMonth, dt = window.specificStkLogDate;
+      var exportData = [["Date", "Item Name", "Category", "Type", "Quantity", "Unit", "Total Value (Rs)", "Vendor", "Note"]];
+      var list = [];
+      for (var k in farmStore.stockLogs) {
+        var l = farmStore.stockLogs[k];
+        if (!l || !l.date) continue;
+        var match = dt ? (l.date === dt) : (l.date.substring(0, 4) === yr && l.date.substring(5, 7) === mn);
+        if (match) list.push(l);
+      }
+      if (list.length === 0) return showAppToast('এই মাস বা তারিখে এক্সপোর্ট করার মতো কোনো স্টক লেনদেন নেই!');
+      list.sort(function(a, b) { return parseDateToTime(b.date) - parseDateToTime(a.date); });
+      list.forEach(function(d) {
+        exportData.push([formatDateBR(d.date), (d.itemName||'-').replace(/,/g,' '), (d.category||'-').replace(/,/g,' '), d.type||'In', d.qty||0, d.unit||'-', d.totalValue||0, (d.vendor||'-').replace(/,/g,' '), (d.note||'-').replace(/,/g,' ')]);
+      });
+      var fileName = "Stock_History_" + (dt ? dt : (yr + "_" + mn));
+      if (format === 'csv') {
+        var csv = "data:text/csv;charset=utf-8,\uFEFF" + exportData.map(function(r){ return r.join(","); }).join("\r\n");
+        var a = document.createElement("a"); a.href = encodeURI(csv); a.download = fileName + ".csv"; document.body.appendChild(a); a.click(); document.body.removeChild(a);
+      } else if (format === 'txt') {
+        var txt = "data:text/plain;charset=utf-8,\uFEFF" + exportData.map(function(r){ return r.join(" \t "); }).join("\r\n");
+        var a = document.createElement("a"); a.href = encodeURI(txt); a.download = fileName + ".txt"; document.body.appendChild(a); a.click(); document.body.removeChild(a);
+      } else if (format === 'doc') {
+        var h = "<html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'><head><meta charset='utf-8'><title>Stock History</title></head><body><h2 style='color:#1b5e20;'>Nanda Dairy & Agro - Stock Movement History</h2><table border='1' style='border-collapse:collapse; width:100%; font-family:sans-serif; font-size:12px;'>";
+        exportData.forEach(function(r, idx) {
+          h += "<tr>" + r.map(function(cell){ return idx === 0 ? "<th style='padding:6px; background:#e8f5e9;'>"+cell+"</th>" : "<td style='padding:6px;'>"+cell+"</td>"; }).join("") + "</tr>";
+        });
+        h += "</table></body></html>";
+        var blob = new Blob(['\ufeff', h], { type: 'application/msword' });
+        var a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = fileName + ".doc"; document.body.appendChild(a); a.click(); document.body.removeChild(a);
+      }
+    };
 
     var eSemKey = null;
     function editSemen(k) {
@@ -5700,14 +6182,16 @@
       });
 
       db.ref('stock').on('value', function(snap) {
-        farmStore.stock = {}; var body = getEl('stockTableBody'); if (body) body.innerHTML = '';
-        snap.forEach(function(c) {
-          var d = c.val(), k = c.key; farmStore.stock[k] = d;
-          var isLow = Number(d.qty) <= Number(d.alertLevel);
-          if (body) body.innerHTML += '<tr><td><strong>' + (d.name || '-') + '</strong></td><td style="color:' + (isLow ? 'red' : 'inherit') + ';font-weight:bold;">' + (d.qty || 0) + '</td><td>' + (d.unit || '-') + '</td><td>' + (d.alertLevel || 0) + '</td><td><button class="action-btn btn-info" onclick="editStock(\'' + k + '\')">Edit</button><button class="action-btn btn-danger" onclick="deleteRecord(\'stock\',\'' + k + '\')">Delete</button></td></tr>';
-        });
+        farmStore.stock = {};
+        snap.forEach(function(c) { farmStore.stock[c.key] = c.val(); });
+        renderStockTable();
         renderStockAutocomplete();
         renderDashboardAlerts();
+      });
+      db.ref('stockLogs').on('value', function(snap) {
+        farmStore.stockLogs = {};
+        snap.forEach(function(c) { farmStore.stockLogs[c.key] = c.val(); });
+        renderStockLogTable();
       });
 
       db.ref('semen').on('value', function(snap) {
