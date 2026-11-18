@@ -355,6 +355,7 @@
   <datalist id="customerNameList"></datalist>
   <datalist id="customerAreaList"></datalist>
   <datalist id="stockItemList"></datalist>
+  <datalist id="vendorNameList"></datalist>
 
   <!-- লগইন স্ক্রিন -->
   <div id="loginScreen">
@@ -879,10 +880,12 @@
             <div class="input-group"><label>Date *</label><input type="date" id="expDate"></div>
             <div class="input-group"><label>Category</label><select id="expCategory"><option value="Feed & Fodder">Feed & Fodder</option><option value="Medicine & Health">Medicine & Health</option><option value="Labour Salary">Labour Salary</option><option value="Electricity / Utilities">Electricity / Utilities</option><option value="Other">Other</option></select></div>
             <div class="input-group"><label>Description *</label><input type="text" id="expTitle" placeholder="বিবরণ"></div>
-            <div class="input-group"><label>Amount ₹ *</label><input type="number" id="expAmount" placeholder="₹"></div>
-            <div class="input-group"><label>দোকান / ব্যক্তি (Paid To)</label><input type="text" id="expVendor" placeholder="দোকান বা ব্যক্তির নাম"></div>
+            <div class="input-group"><label>Total Bill ₹ *</label><input type="number" id="expAmount" oninput="autoCalcExpDue()" placeholder="₹"></div>
+            <div class="input-group"><label>Paid Amount ₹ (পরিশোধ)</label><input type="number" id="expPaid" oninput="autoCalcExpDue()" placeholder="খালি রাখলে পুরো বিল Paid হবে"></div>
+            <div class="input-group"><label>Due / বাকি ₹ (অটো)</label><input type="number" id="expDue" readonly style="background:#ffebee; color:#c62828; font-weight:bold;" value="0"></div>
+            <div class="input-group"><label>দোকান / ব্যক্তি (Paid To)</label><input type="text" id="expVendor" list="vendorNameList" placeholder="দোকান বা ব্যক্তির নাম"></div>
             <div class="input-group"><label>Payment Mode</label><select id="expPayMode"><option value="Cash">Cash (নগদ)</option><option value="UPI / Online">UPI / Online</option><option value="Bank Transfer">Bank Transfer</option><option value="Credit (বাকি)">Credit (বাকি)</option></select></div>
-            <div class="input-group"><label>Payment Status</label><select id="expStatus"><option value="Paid">Paid (পরিশোধ)</option><option value="Unpaid">Unpaid (বাকি)</option></select></div>
+            <div class="input-group"><label>Payment Status</label><select id="expStatus" onchange="onExpStatusManualChange()"><option value="Paid">Paid (পরিশোধ)</option><option value="Partial">Partial (আংশিক বাকি)</option><option value="Unpaid">Unpaid (সম্পূর্ণ বাকি)</option></select></div>
           </div>
           <div style="display:flex; gap:10px; flex-wrap:wrap;">
             <button class="btn" id="expSubmitBtn" onclick="saveExpense()">Save Expense</button>
@@ -949,6 +952,21 @@
             </table>
           </div>
           <p id="expenseNoData" style="text-align: center; color: #777; font-size: 13px; margin-top: 15px; display: none;">এই মাস বা তারিখে কোনো খরচের রেকর্ড নেই।</p>
+        </div>
+
+        <!-- 🏪 দোকানদারের বকেয়া খাতা (Vendor Dues) -->
+        <div class="card" id="vendorDueSummaryCard" style="border-left: 5px solid #d32f2f;">
+          <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; margin-bottom:12px;">
+            <h2 style="margin:0; border:none; padding:0; color:#c62828;">🏪 দোকানদারের বকেয়া খাতা (Vendor Dues)</h2>
+            <span id="totalVendorDueBadge" class="badge badge-danger" style="font-size:12.5px; padding:5px 12px;">মোট বাকি: ₹ 0</span>
+          </div>
+          <div class="table-container">
+            <table>
+              <thead><tr><th>দোকান / ব্যক্তির নাম</th><th>মোট বিল</th><th>মোট পরিশোধ</th><th>বর্তমান বাকি (Due)</th><th>অ্যাকশন</th></tr></thead>
+              <tbody id="vendorDueTableBody"></tbody>
+            </table>
+          </div>
+          <p id="vendorDueNoData" style="text-align:center; color:#2e7d32; font-size:13px; margin-top:12px; font-weight:600; display:none;">✔ কোনো দোকান বা ব্যক্তির কাছে বকেয়া নেই।</p>
         </div>
 
         <!-- 👷 Labour Salary & Advance Tracker -->
@@ -1152,6 +1170,37 @@
       <div style="display:flex; gap:10px;">
         <button class="btn" style="flex:1; justify-content:center;" onclick="saveBulkRation()">✔ নির্বাচিত গরুতে সেভ করুন</button>
         <button class="btn btn-danger" style="flex:1; justify-content:center;" onclick="closeBulkFeedModal()">বাতিল</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- দোকানদারের বাকি পরিশোধ মোডাল -->
+  <div id="vendorPayModal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.65); z-index:2000; align-items:center; justify-content:center; padding:15px;">
+    <div class="feed-modal-card" style="max-width:440px;">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+        <h2 style="color:var(--primary); margin:0; border:none; padding:0;">💳 দোকানদারের বাকি পরিশোধ</h2>
+        <button class="action-btn btn-danger" onclick="closeVendorPayModal()">✕</button>
+      </div>
+      <p id="vendorPayModalDesc" style="font-size:13px; color:#555; margin-bottom:14px;"></p>
+      <div class="input-group" style="margin-bottom:12px;">
+        <label>পরিশোধের তারিখ *</label>
+        <input type="date" id="vendorPayDate">
+      </div>
+      <div class="input-group" style="margin-bottom:12px;">
+        <label>জমা টাকার পরিমাণ (₹) *</label>
+        <input type="number" id="vendorPayAmount" placeholder="₹">
+      </div>
+      <div class="input-group" style="margin-bottom:16px;">
+        <label>পেমেন্ট মোড</label>
+        <select id="vendorPayMode">
+          <option value="Cash">Cash (নগদ)</option>
+          <option value="UPI / Online">UPI / Online</option>
+          <option value="Bank Transfer">Bank Transfer</option>
+        </select>
+      </div>
+      <div style="display:flex; gap:10px;">
+        <button class="btn" style="flex:1; justify-content:center;" onclick="confirmVendorPayment()">✔ পেমেন্ট সেভ করুন</button>
+        <button class="btn btn-warning" style="flex:1; justify-content:center;" onclick="closeVendorPayModal()">বাতিল</button>
       </div>
     </div>
   </div>
@@ -4808,10 +4857,51 @@
       renderGroupedExpenseTable();
     };
 
+    window.getExpensePaidAndDue = function(e) {
+      var tot = Number(e.amount) || 0;
+      var paid = 0;
+      if (e.paidAmount !== undefined && e.paidAmount !== null && e.paidAmount !== '') {
+        paid = Number(e.paidAmount) || 0;
+      } else {
+        paid = (e.status === 'Unpaid') ? 0 : tot;
+      }
+      paid = Math.min(tot, Math.max(0, paid));
+      var due = Math.max(0, tot - paid);
+      return { total: tot, paid: paid, due: due };
+    };
+
+    window.autoCalcExpDue = function() {
+      var tot = parseFloat(getEl('expAmount') ? getEl('expAmount').value : 0) || 0;
+      var paidRaw = getEl('expPaid') ? getEl('expPaid').value : '';
+      var paid = (paidRaw === '') ? tot : (parseFloat(paidRaw) || 0);
+      if (paid > tot) paid = tot;
+      var due = Math.max(0, tot - paid);
+      if (getEl('expDue')) getEl('expDue').value = due;
+      var stEl = getEl('expStatus');
+      if (stEl && tot > 0) {
+        if (due === 0) stEl.value = 'Paid';
+        else if (paid > 0) stEl.value = 'Partial';
+        else stEl.value = 'Unpaid';
+      }
+    };
+
+    window.onExpStatusManualChange = function() {
+      var st = getEl('expStatus') ? getEl('expStatus').value : 'Paid';
+      var tot = parseFloat(getEl('expAmount') ? getEl('expAmount').value : 0) || 0;
+      if (st === 'Paid') {
+        if (getEl('expPaid')) getEl('expPaid').value = tot || '';
+        if (getEl('expDue')) getEl('expDue').value = 0;
+      } else if (st === 'Unpaid') {
+        if (getEl('expPaid')) getEl('expPaid').value = 0;
+        if (getEl('expDue')) getEl('expDue').value = tot;
+      }
+    };
+
     window.markExpensePaid = function(expKey) {
-      if (db && expKey) {
-        db.ref('expenses/' + expKey).update({ status: 'Paid' });
-        showAppToast('খরচটি পরিশোধিত (Paid) হিসেবে চিহ্নিত করা হয়েছে।');
+      var e = farmStore.expenses ? farmStore.expenses[expKey] : null;
+      if (db && expKey && e) {
+        db.ref('expenses/' + expKey).update({ status: 'Paid', paidAmount: Number(e.amount) || 0, dueAmount: 0 });
+        showAppToast('খরচটি সম্পূর্ণ পরিশোধিত (Paid) হিসেবে চিহ্নিত করা হয়েছে।');
       }
     };
 
@@ -5009,16 +5099,21 @@
     var eExpKey = null;
     function editExpense(k) {
       var d = farmStore.expenses[k]; if (!d) return; eExpKey = k;
+      var pdInfo = getExpensePaidAndDue(d);
       getEl('expDate').value = d.date || ''; getEl('expCategory').value = d.category || 'Other';
       getEl('expTitle').value = d.title || ''; getEl('expAmount').value = d.amount || '';
+      if (getEl('expPaid')) getEl('expPaid').value = pdInfo.paid;
+      if (getEl('expDue')) getEl('expDue').value = pdInfo.due;
       if (getEl('expVendor')) getEl('expVendor').value = d.vendor || '';
       if (getEl('expPayMode')) getEl('expPayMode').value = d.payMode || 'Cash';
-      if (getEl('expStatus')) getEl('expStatus').value = d.status || 'Paid';
+      if (getEl('expStatus')) getEl('expStatus').value = d.status || (pdInfo.due === 0 ? 'Paid' : (pdInfo.paid > 0 ? 'Partial' : 'Unpaid'));
       getEl('expSubmitBtn').innerText = 'Update Expense'; getEl('expCancelBtn').style.display = 'inline-flex';
       switchTab('expenses', document.querySelectorAll('nav button')[10]);
     }
     function cancelExpenseEdit() {
       eExpKey = null; getEl('expTitle').value = ''; getEl('expAmount').value = '';
+      if (getEl('expPaid')) getEl('expPaid').value = '';
+      if (getEl('expDue')) getEl('expDue').value = '0';
       if (getEl('expVendor')) getEl('expVendor').value = '';
       if (getEl('expPayMode')) getEl('expPayMode').value = 'Cash';
       if (getEl('expStatus')) getEl('expStatus').value = 'Paid';
@@ -5027,14 +5122,22 @@
     function saveExpense() {
       var title = (getEl('expTitle').value || '').trim(), amt = parseFloat(getEl('expAmount').value)||0, dt = getEl('expDate').value;
       if (!title || !amt || !dt) return showAppToast('সকল তথ্য দিন!');
+      var paidRaw = getEl('expPaid') ? getEl('expPaid').value : '';
+      var paidAmt = (paidRaw === '') ? amt : (parseFloat(paidRaw) || 0);
+      if (paidAmt > amt) paidAmt = amt;
+      var dueAmt = Math.max(0, amt - paidAmt);
+      var statusVal = dueAmt === 0 ? 'Paid' : (paidAmt > 0 ? 'Partial' : 'Unpaid');
+
       var data = {
         date: dt,
         category: getEl('expCategory').value,
         title: title,
         amount: amt,
+        paidAmount: paidAmt,
+        dueAmount: dueAmt,
         vendor: getEl('expVendor') ? getEl('expVendor').value.trim() : '',
         payMode: getEl('expPayMode') ? getEl('expPayMode').value : 'Cash',
-        status: getEl('expStatus') ? getEl('expStatus').value : 'Paid'
+        status: statusVal
       };
       if (db) eExpKey ? db.ref('expenses/' + eExpKey).update(data) : db.ref('expenses').push(data);
       showAppToast('খরচ সফলভাবে সেভ হয়েছে!');
@@ -5086,9 +5189,10 @@
           var srchMatch = !searchQ || srchTxt.includes(searchQ);
 
           if (catMatch && srchMatch) {
+            var pdObj = getExpensePaidAndDue(e);
             if (!dateGroups[dtBR]) dateGroups[dtBR] = { date: dtBR, dateISO: dtISO, total: 0, unpaid: 0, items: [] };
             dateGroups[dtBR].total += amt;
-            if (e.status === 'Unpaid') dateGroups[dtBR].unpaid += amt;
+            dateGroups[dtBR].unpaid += pdObj.due;
             dateGroups[dtBR].items.push({ key: k, data: e });
           }
         }
@@ -5133,6 +5237,7 @@
       if (getEl('dash-total-exp')) getEl('dash-total-exp').innerText = '₹ ' + totalExpAll.toLocaleString();
       if (getEl('rep-expenses')) getEl('rep-expenses').innerText = '₹ ' + totalExpAll.toLocaleString();
       calcNet();
+      renderVendorDueTable();
       renderLabourTable();
 
       var sortedDates = Object.keys(dateGroups).sort(function(a, b) { return parseDateToTime(dateGroups[b].dateISO) - parseDateToTime(dateGroups[a].dateISO); });
@@ -5151,13 +5256,152 @@
         html += '<tr id="exp-det-' + safeDt + '" style="display:none; background:#fff8f8;"><td colspan="5" style="padding:12px;"><div style="background:white; border:1px solid #ffcdd2; border-radius:8px; padding:12px;"><table style="width:100%; font-size:12px;"><thead><tr style="background:#ffebee;"><th>খাত</th><th>বিবরণ ও দোকান</th><th>মাধ্যম ও স্ট্যাটাস</th><th>টাকা</th><th>অ্যাকশন</th></tr></thead><tbody>';
         group.items.forEach(function(item) {
           var d = item.data;
-          var stBadge = d.status === 'Unpaid' ? '<span class="badge badge-danger">Unpaid</span> <button class="action-btn" style="background:#2e7d32; color:white; padding:2px 6px; font-size:10px;" onclick="markExpensePaid(\'' + item.key + '\')">✔ পরিশোধ</button>' : '<span class="badge badge-success">Paid</span>';
-          html += '<tr><td>' + (d.category || '-') + '</td><td><strong>' + (d.title || '-') + '</strong>' + (d.vendor ? '<br><small style="color:#666;">দোকান/ব্যক্তি: ' + d.vendor + '</small>' : '') + '</td><td>' + (d.payMode || 'Cash') + '<br>' + stBadge + '</td><td><strong style="color:var(--danger);">₹ ' + (d.amount || 0) + '</strong></td><td><button class="action-btn btn-info" onclick="editExpense(\'' + item.key + '\')">Edit</button><button class="action-btn btn-danger" onclick="deleteRecord(\'expenses\',\'' + item.key + '\')">Delete</button></td></tr>';
+          var pd = getExpensePaidAndDue(d);
+          var stBadge = '';
+          if (pd.due > 0) {
+            var lblTxt = pd.paid > 0 ? 'Partial (বাকি ₹' + pd.due + ')' : 'Unpaid (বাকি ₹' + pd.due + ')';
+            stBadge = '<span class="badge badge-danger">' + lblTxt + '</span> <button class="action-btn" style="background:#2e7d32; color:white; padding:2px 6px; font-size:10px;" onclick="markExpensePaid(\'' + item.key + '\')">✔ পূর্ণ পরিশোধ</button>';
+          } else {
+            stBadge = '<span class="badge badge-success">Paid</span>';
+          }
+          var amtCol = '<strong style="color:var(--danger);">₹ ' + pd.total + '</strong>' + (pd.due > 0 ? '<br><small style="color:green;">জমা: ₹' + pd.paid + '</small>' : '');
+          html += '<tr><td>' + (d.category || '-') + '</td><td><strong>' + (d.title || '-') + '</strong>' + (d.vendor ? '<br><small style="color:#666;">দোকান/ব্যক্তি: ' + d.vendor + '</small>' : '') + '</td><td>' + (d.payMode || 'Cash') + '<br>' + stBadge + '</td><td>' + amtCol + '</td><td><button class="action-btn btn-info" onclick="editExpense(\'' + item.key + '\')">Edit</button><button class="action-btn btn-danger" onclick="deleteRecord(\'expenses\',\'' + item.key + '\')">Delete</button></td></tr>';
         });
         html += '</tbody></table></div></td></tr>';
       });
       body.innerHTML = html;
     }
+
+    // ==========================================
+    // VENDOR DUE SUMMARY & PAYMENT FUNCTIONS
+    // ==========================================
+    window.renderVendorDueTable = function() {
+      var body = getEl('vendorDueTableBody');
+      var badge = getEl('totalVendorDueBadge');
+      var noData = getEl('vendorDueNoData');
+      var vList = getEl('vendorNameList');
+
+      var vendorMap = {};
+      var allVendorsSet = {};
+      var grandDue = 0;
+
+      for (var k in farmStore.expenses) {
+        var e = farmStore.expenses[k];
+        if (!e) continue;
+        var vName = (e.vendor || '').trim();
+        if (vName) allVendorsSet[vName] = true;
+        var pd = getExpensePaidAndDue(e);
+        if (pd.due > 0) {
+          var dispName = vName || 'অজানা দোকান / ব্যক্তি';
+          var vKey = dispName.toLowerCase();
+          if (!vendorMap[vKey]) {
+            vendorMap[vKey] = { name: dispName, totalBill: 0, totalPaid: 0, totalDue: 0, items: [] };
+          }
+          vendorMap[vKey].totalBill += pd.total;
+          vendorMap[vKey].totalPaid += pd.paid;
+          vendorMap[vKey].totalDue += pd.due;
+          vendorMap[vKey].items.push({ key: k, data: e, pd: pd });
+          grandDue += pd.due;
+        }
+      }
+
+      if (vList) {
+        var dlHtml = '';
+        Object.keys(allVendorsSet).sort().forEach(function(vn) {
+          dlHtml += '<option value="' + vn + '">';
+        });
+        vList.innerHTML = dlHtml;
+      }
+
+      if (badge) {
+        badge.innerText = 'মোট বাকি: ₹ ' + grandDue.toLocaleString();
+        badge.className = grandDue > 0 ? 'badge badge-danger' : 'badge badge-success';
+      }
+
+      if (!body) return;
+      var vKeys = Object.keys(vendorMap);
+      if (vKeys.length === 0) {
+        body.innerHTML = '';
+        if (noData) noData.style.display = 'block';
+        return;
+      }
+      if (noData) noData.style.display = 'none';
+
+      vKeys.sort(function(a, b) { return vendorMap[b].totalDue - vendorMap[a].totalDue; });
+
+      var html = '';
+      vKeys.forEach(function(vk) {
+        var v = vendorMap[vk];
+        html += '<tr>' +
+          '<td><strong>🏪 ' + v.name + '</strong> <small style="color:#666;">(' + v.items.length + 'টি বিল)</small></td>' +
+          '<td>₹ ' + v.totalBill.toLocaleString() + '</td>' +
+          '<td style="color:green; font-weight:600;">₹ ' + v.totalPaid.toLocaleString() + '</td>' +
+          '<td style="color:#c62828; font-weight:bold; font-size:14px;">₹ ' + v.totalDue.toLocaleString() + '</td>' +
+          '<td><button class="action-btn" style="background:#1b5e20; color:white; padding:6px 12px;" onclick="openVendorPayModal(\'' + encodeURIComponent(v.name) + '\', ' + v.totalDue + ')">💳 বাকি পরিশোধ</button></td>' +
+        '</tr>';
+      });
+      body.innerHTML = html;
+    };
+
+    window._activePayVendorName = '';
+    window.openVendorPayModal = function(encName, totalDue) {
+      var vName = decodeURIComponent(encName);
+      window._activePayVendorName = vName;
+      if (getEl('vendorPayModalDesc')) {
+        getEl('vendorPayModalDesc').innerHTML = 'দোকান / ব্যক্তি: <strong>' + vName + '</strong><br>বর্তমান মোট বাকি: <strong style="color:#c62828;">₹ ' + Number(totalDue).toLocaleString() + '</strong>';
+      }
+      if (getEl('vendorPayDate')) getEl('vendorPayDate').value = new Date().toISOString().split('T')[0];
+      if (getEl('vendorPayAmount')) getEl('vendorPayAmount').value = totalDue;
+      if (getEl('vendorPayModal')) getEl('vendorPayModal').style.display = 'flex';
+    };
+
+    window.closeVendorPayModal = function() {
+      window._activePayVendorName = '';
+      if (getEl('vendorPayModal')) getEl('vendorPayModal').style.display = 'none';
+    };
+
+    window.confirmVendorPayment = function() {
+      var vName = window._activePayVendorName;
+      var amt = parseFloat(getEl('vendorPayAmount') ? getEl('vendorPayAmount').value : 0) || 0;
+      var payMode = getEl('vendorPayMode') ? getEl('vendorPayMode').value : 'Cash';
+      if (!vName || amt <= 0) return showAppToast('সঠিক টাকার পরিমাণ দিন!');
+
+      var vLower = vName.toLowerCase();
+      var unpaidList = [];
+      for (var k in farmStore.expenses) {
+        var e = farmStore.expenses[k];
+        if (!e) continue;
+        var eVendor = ((e.vendor || '').trim() || 'অজানা দোকান / ব্যক্তি').toLowerCase();
+        if (eVendor === vLower) {
+          var pd = getExpensePaidAndDue(e);
+          if (pd.due > 0) {
+            unpaidList.push({ key: k, data: e, pd: pd });
+          }
+        }
+      }
+      unpaidList.sort(function(a, b) { return parseDateToTime(a.data.date) - parseDateToTime(b.data.date); });
+
+      var rem = amt;
+      unpaidList.forEach(function(item) {
+        if (rem <= 0) return;
+        var payNow = Math.min(rem, item.pd.due);
+        rem -= payNow;
+        var newPaid = item.pd.paid + payNow;
+        var newDue = Math.max(0, item.pd.total - newPaid);
+        var newStatus = newDue === 0 ? 'Paid' : 'Partial';
+        if (db) {
+          db.ref('expenses/' + item.key).update({
+            paidAmount: newPaid,
+            dueAmount: newDue,
+            status: newStatus,
+            payMode: payMode
+          });
+        }
+      });
+
+      closeVendorPayModal();
+      showAppToast(vName + '-কে ₹ ' + amt.toLocaleString() + ' সফলভাবে পরিশোধ করা হয়েছে!');
+    };
 
     // ==========================================
     // LABOUR SALARY & ADVANCE TRACKER FUNCTIONS
