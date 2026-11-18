@@ -1141,6 +1141,10 @@
             <div class="input-group"><label>Cost per Straw (₹)</label><input type="number" id="semCost" placeholder="প্রতি স্ট্র দাম ₹"></div>
             <div class="input-group"><label>Alert Level (কম স্ট্র সতর্কতা)</label><input type="number" id="semAlert" placeholder="যেমন: 5"></div>
           </div>
+          <div style="margin-bottom:12px; display:flex; align-items:center; gap:8px;">
+            <input type="checkbox" id="semAutoExpense" checked style="width:auto; cursor:pointer;">
+            <label for="semAutoExpense" style="font-size:12.5px; font-weight:600; color:#1b5e20; cursor:pointer;">সিমেন ক্রয়ের মোট খরচ (Straw × Cost) খরচের খাতায় (Expenses) স্বয়ংক্রিয়ভাবে যোগ করুন</label>
+          </div>
           <div style="display:flex; gap:10px;">
             <button class="btn" id="semSubmitBtn" onclick="saveSemen()">Save Semen</button>
             <button class="btn btn-warning" id="semCancelBtn" style="display:none;" onclick="cancelSemenEdit()">Cancel</button>
@@ -3992,6 +3996,19 @@
           db.ref('breeding/' + eBrKey).update(data);
         } else {
           db.ref('breeding').push(data);
+          if (data.aiCost > 0) {
+            db.ref('expenses').push({
+              date: data.aiDate || new Date().toISOString().split('T')[0],
+              category: 'Medicine & Health',
+              title: 'AI / Breeding Expense (Tag: ' + tag + ')' + (semId ? ' - ' + semId : ''),
+              amount: data.aiCost,
+              paidAmount: data.aiCost,
+              dueAmount: 0,
+              vendor: data.company || '',
+              payMode: 'Cash',
+              status: 'Paid'
+            });
+          }
           // Auto-deduct 1 straw from matching semen batch
           if (semId) {
             var sLow = semId.toLowerCase();
@@ -6207,7 +6224,27 @@
         cost: parseFloat(getEl('semCost') ? getEl('semCost').value : 0) || 0,
         alertLevel: parseFloat(getEl('semAlert') ? getEl('semAlert').value : 0) || 0
       };
-      if (db) eSemKey ? db.ref('semen/' + eSemKey).update(data) : db.ref('semen').push(data);
+      if (db) {
+        if (eSemKey) {
+          db.ref('semen/' + eSemKey).update(data);
+        } else {
+          db.ref('semen').push(data);
+          var totalSemCost = data.count * data.cost;
+          if (getEl('semAutoExpense') && getEl('semAutoExpense').checked && totalSemCost > 0) {
+            db.ref('expenses').push({
+              date: new Date().toISOString().split('T')[0],
+              category: 'Medicine & Health',
+              title: 'Semen Purchase: ' + b + ' (' + data.count + ' Straws - ' + (data.breed || '') + ')',
+              amount: parseFloat(totalSemCost.toFixed(2)),
+              paidAmount: parseFloat(totalSemCost.toFixed(2)),
+              dueAmount: 0,
+              vendor: data.source || '',
+              payMode: 'Cash',
+              status: 'Paid'
+            });
+          }
+        }
+      }
       showAppToast('সিমেন তথ্য সফলভাবে সেভ হয়েছে!');
       cancelSemenEdit();
     }
@@ -6239,7 +6276,7 @@
       var breedFilter = (breedFilterEl ? breedFilterEl.value : '').trim().toLowerCase();
       var searchQ = (getEl('semSearchInput') ? getEl('semSearchInput').value : '').trim().toLowerCase();
 
-      var totalStraws = 0, totalValue = 0, lowBatches = 0, totAI = 0, totSucc = 0;
+      var totalStraws = 0, convStraws = 0, sexedStraws = 0, totalValue = 0, lowBatches = 0, totAI = 0, totSucc = 0;
       var uniqueBreeds = {};
       var dlHtml = '';
       var html = '';
@@ -6251,6 +6288,8 @@
         var cost = Number(d.cost) || 0;
         var al = Number(d.alertLevel) || 0;
         totalStraws += cnt;
+        if ((d.type || 'Conventional') === 'Sexed Sorted') sexedStraws += cnt;
+        else convStraws += cnt;
         totalValue += (cnt * cost);
         if ((al > 0 && cnt <= al) || cnt <= 0) lowBatches++;
         if (d.breed) uniqueBreeds[d.breed.trim()] = true;
@@ -6300,9 +6339,10 @@
       if (sumGrid) {
         sumGrid.innerHTML =
           '<div style="background:#e8f5e9; padding:10px; border-radius:8px; border-left:4px solid #1b5e20;"><small style="color:#555;">মোট সিমেন স্ট্র</small><div style="font-size:18px; font-weight:bold; color:#1b5e20;">' + totalStraws + ' টি</div></div>' +
+          '<div style="background:#f1f8e9; padding:10px; border-radius:8px; border-left:4px solid #2e7d32;"><small style="color:#555;">Conventional স্ট্র</small><div style="font-size:18px; font-weight:bold; color:#2e7d32;">' + convStraws + ' টি</div></div>' +
+          '<div style="background:#f3e5f5; padding:10px; border-radius:8px; border-left:4px solid #7b1fa2;"><small style="color:#555;">Sexed Sorted স্ট্র</small><div style="font-size:18px; font-weight:bold; color:#7b1fa2;">' + sexedStraws + ' টি</div></div>' +
           '<div style="background:#e3f2fd; padding:10px; border-radius:8px; border-left:4px solid #0288d1;"><small style="color:#555;">মোট সিমেন মূল্য</small><div style="font-size:18px; font-weight:bold; color:#0288d1;">₹ ' + Math.round(totalValue).toLocaleString() + '</div></div>' +
-          '<div style="background:#fff3e0; padding:10px; border-radius:8px; border-left:4px solid #f57c00;"><small style="color:#555;">লো স্ট্র ব্যাচ</small><div style="font-size:18px; font-weight:bold; color:#e65100;">' + lowBatches + ' টি</div></div>' +
-          '<div style="background:#f3e5f5; padding:10px; border-radius:8px; border-left:4px solid #7b1fa2;"><small style="color:#555;">গড় সাফল্যের হার</small><div style="font-size:18px; font-weight:bold; color:#7b1fa2;">' + overallRate + '</div></div>';
+          '<div style="background:#fff3e0; padding:10px; border-radius:8px; border-left:4px solid #f57c00;"><small style="color:#555;">লো স্ট্র ও সাফল্য</small><div style="font-size:14px; font-weight:bold; color:#e65100; margin-top:4px;">Low: ' + lowBatches + ' | হার: ' + overallRate + '</div></div>';
       }
     };
 
