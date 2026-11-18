@@ -151,7 +151,7 @@
         testImg.src = imgEl.getAttribute('data-local-logo');
       });
       var todayISO = new Date().toISOString().split('T')[0];
-      var defaultDateIds = ['milkDate', 'saleDate', 'orderDate', 'expDate', 'brAiDate', 'hlthDate', 'ledgerPayDate', 'feedDate', 'rationDate', 'vacDate', 'dewormDate', 'labJoinDate', 'labPayDate'];
+      var defaultDateIds = ['milkDate', 'saleDate', 'orderDate', 'expDate', 'brAiDate', 'hlthDate', 'ledgerPayDate', 'feedDate', 'rationDate', 'vacDate', 'dewormDate', 'labJoinDate', 'labPayDate', 'semDate'];
       defaultDateIds.forEach(function(id) {
         if (getEl(id)) {
           getEl(id).value = todayISO;
@@ -1132,6 +1132,7 @@
             <button class="action-btn btn-info" onclick="switchTab('dashboard', document.querySelector('nav button'))">⬅ Back (ফিরে যান)</button>
           </div>
           <div class="form-grid">
+            <div class="input-group"><label>Date (আনার তারিখ) *</label><input type="date" id="semDate"></div>
             <div class="input-group"><label>Batch No *</label><input type="text" id="semBatch" placeholder="HF-8902"></div>
             <div class="input-group"><label>Bull Name / Sire ID</label><input type="text" id="semBullName" placeholder="ষাঁড়ের নাম (যেমন: Romio)"></div>
             <div class="input-group"><label>Breed (ব্রিড) *</label><input type="text" id="semBreed" list="semenBreedList" placeholder="যেমন: HF / Jersey / Sahiwal"></div>
@@ -1140,10 +1141,6 @@
             <div class="input-group"><label>Straw Count *</label><input type="number" id="semCount" placeholder="পিস"></div>
             <div class="input-group"><label>Cost per Straw (₹)</label><input type="number" id="semCost" placeholder="প্রতি স্ট্র দাম ₹"></div>
             <div class="input-group"><label>Alert Level (কম স্ট্র সতর্কতা)</label><input type="number" id="semAlert" placeholder="যেমন: 5"></div>
-          </div>
-          <div style="margin-bottom:12px; display:flex; align-items:center; gap:8px;">
-            <input type="checkbox" id="semAutoExpense" checked style="width:auto; cursor:pointer;">
-            <label for="semAutoExpense" style="font-size:12.5px; font-weight:600; color:#1b5e20; cursor:pointer;">সিমেন ক্রয়ের মোট খরচ (Straw × Cost) খরচের খাতায় (Expenses) স্বয়ংক্রিয়ভাবে যোগ করুন</label>
           </div>
           <div style="display:flex; gap:10px;">
             <button class="btn" id="semSubmitBtn" onclick="saveSemen()">Save Semen</button>
@@ -1155,6 +1152,7 @@
           <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; margin-bottom:12px;">
             <h2 style="margin:0; border:none; padding:0;">সিমেন স্টক ও সাফল্যের হার (Conception Rate)</h2>
             <div style="display:flex; gap:8px; flex-wrap:wrap;">
+              <button class="action-btn" style="background:#7b1fa2; color:white; padding:6px 12px; border-radius:6px;" onclick="showMonthlySemenStatement()">📄 মাসিক রিপোর্ট (Print)</button>
               <button class="action-btn" style="background:#1d6f42; color:white; padding:6px 10px; border-radius:6px;" onclick="exportSemen('csv')">📥 Excel (CSV)</button>
               <button class="action-btn" style="background:#2b579a; color:white; padding:6px 10px; border-radius:6px;" onclick="exportSemen('doc')">📥 Word</button>
               <button class="action-btn" style="background:#424242; color:white; padding:6px 10px; border-radius:6px;" onclick="exportSemen('txt')">📥 Text</button>
@@ -1162,6 +1160,20 @@
           </div>
 
           <div id="semenSummaryGrid" style="display:grid; grid-template-columns:repeat(auto-fit, minmax(160px, 1fr)); gap:10px; margin-bottom:14px;"></div>
+
+          <div style="display:flex; flex-wrap:wrap; gap:15px; margin-bottom:12px; background:#f4fbf5; padding:12px; border-radius:8px; border:1px solid #c8e6c9; align-items:center;">
+            <div style="display:flex; align-items:center; gap:8px;">
+              <label style="font-size:12px; font-weight:bold; color:var(--primary);">বছর নির্বাচন:</label>
+              <select id="semFilterYear" onchange="applySemenFilter()" style="padding:6px 10px; border-radius:6px; border:1px solid #bbb; outline:none; font-weight:bold; width:auto;"></select>
+            </div>
+            <div style="display:flex; align-items:center; gap:8px;">
+              <label style="font-size:12px; font-weight:bold; color:var(--primary);">নির্দিষ্ট তারিখ খুঁজুন:</label>
+              <input type="date" id="semFilterDate" onchange="applySemenFilter()" style="padding:6px; border-radius:6px; border:1px solid #bbb; outline:none; width:auto;">
+              <button class="action-btn btn-warning" onclick="clearSemenDateFilter()" style="padding:6px 12px;">Clear/Reset</button>
+            </div>
+          </div>
+
+          <div id="semMonthTabs" style="display:flex; gap:8px; overflow-x:auto; margin-bottom:12px; padding-bottom:5px; -webkit-overflow-scrolling: touch; white-space:nowrap;"></div>
 
           <div style="display:flex; flex-wrap:wrap; gap:10px; justify-content:space-between; margin-bottom:12px; background:#f4fbf5; padding:10px 12px; border-radius:8px; border:1px solid #c8e6c9;">
             <div style="display:flex; gap:8px; flex-wrap:wrap;">
@@ -1179,7 +1191,7 @@
 
           <div class="table-container">
             <table>
-              <thead><tr><th>Batch & Bull</th><th>Breed & Company</th><th>Type</th><th>Straw Count & Cost</th><th>সাফল্যের হার (Success Rate)</th><th>Action</th></tr></thead>
+              <thead><tr><th>তারিখ</th><th>Batch & Bull</th><th>Breed & Company</th><th>Type</th><th>Straw Count & Cost</th><th>সাফল্যের হার (Success Rate)</th><th>Action</th></tr></thead>
               <tbody id="semenTableBody"></tbody>
             </table>
           </div>
@@ -3956,8 +3968,8 @@
       }
 
       if (matchedSemen) {
-        if (getEl('brCompany') && !getEl('brCompany').value) getEl('brCompany').value = matchedSemen.source || '';
-        if (getEl('brAiCost') && !getEl('brAiCost').value && matchedSemen.cost) getEl('brAiCost').value = matchedSemen.cost;
+        if (getEl('brCompany')) getEl('brCompany').value = matchedSemen.source || '';
+        if (getEl('brAiCost') && matchedSemen.cost) getEl('brAiCost').value = matchedSemen.cost;
       }
 
       if (warnBox) {
@@ -6224,6 +6236,7 @@
     var eSemKey = null;
     function editSemen(k) {
       var d = farmStore.semen[k]; if (!d) return; eSemKey = k;
+      if (getEl('semDate')) getEl('semDate').value = d.date || new Date().toISOString().split('T')[0];
       getEl('semBatch').value = d.batch || '';
       if (getEl('semBullName')) getEl('semBullName').value = d.bullName || '';
       getEl('semBreed').value = d.breed || '';
@@ -6238,12 +6251,15 @@
     function cancelSemenEdit() {
       eSemKey = null;
       ['semBatch','semBullName','semBreed','semSource','semCount','semCost','semAlert'].forEach(function(i){ if(getEl(i)) getEl(i).value=''; });
+      if (getEl('semDate')) getEl('semDate').value = new Date().toISOString().split('T')[0];
       if (getEl('semType')) getEl('semType').value = 'Conventional';
       getEl('semSubmitBtn').innerText = 'Save Semen'; getEl('semCancelBtn').style.display = 'none';
     }
     function saveSemen() {
       var b = (getEl('semBatch').value || '').trim(); if (!b) return showAppToast('Batch No দিন!');
+      var dt = (getEl('semDate') ? getEl('semDate').value : '') || new Date().toISOString().split('T')[0];
       var data = {
+        date: dt,
         batch: b,
         bullName: getEl('semBullName') ? getEl('semBullName').value.trim() : '',
         breed: getEl('semBreed').value.trim(),
@@ -6254,26 +6270,152 @@
         alertLevel: parseFloat(getEl('semAlert') ? getEl('semAlert').value : 0) || 0
       };
       if (db) {
-        var semIdKey = eSemKey;
         if (eSemKey) {
           db.ref('semen/' + eSemKey).update(data);
         } else {
-          semIdKey = db.ref('semen').push(data).key;
-        }
-        var totalSemCost = data.count * data.cost;
-        if (getEl('semAutoExpense') && getEl('semAutoExpense').checked) {
-          syncAutoExpense('semen_' + semIdKey, {
-            date: new Date().toISOString().split('T')[0],
-            category: 'Medicine & Health',
-            title: 'Semen Purchase: ' + b + ' (' + data.count + ' Straws - ' + (data.breed || '') + ')',
-            amount: totalSemCost,
-            vendor: data.source || ''
-          });
+          db.ref('semen').push(data);
         }
       }
-      showAppToast('সিমেন তথ্য সফলভাবে সেভ হয়েছে!');
+      showAppToast('সিমেন স্টক সেভ হয়েছে! (AI করার সময় খরচ Expenses-এ যুক্ত হবে)');
       cancelSemenEdit();
     }
+
+    window.currentSemYear = "";
+    window.currentSemMonth = "ALL";
+    window.specificSemDate = "";
+
+    window.initSemenFilters = function() {
+      if (!window.currentSemYear) {
+        window.currentSemYear = new Date().getFullYear().toString();
+      }
+      var ys = getEl('semFilterYear');
+      if (ys && ys.options.length === 0) {
+        var curY = new Date().getFullYear();
+        for (var i = 0; i < 5; i++) {
+          var y = (curY - i).toString();
+          ys.options.add(new Option(y, y));
+        }
+        ys.value = window.currentSemYear;
+      }
+      renderSemenMonthTabs();
+    };
+
+    window.renderSemenMonthTabs = function() {
+      var tc = getEl('semMonthTabs');
+      if (!tc) return;
+      var months = [
+        {val:'ALL',name:'সব (All)'},{val:'01',name:'Jan'},{val:'02',name:'Feb'},{val:'03',name:'Mar'},{val:'04',name:'Apr'},
+        {val:'05',name:'May'},{val:'06',name:'Jun'},{val:'07',name:'Jul'},{val:'08',name:'Aug'},
+        {val:'09',name:'Sep'},{val:'10',name:'Oct'},{val:'11',name:'Nov'},{val:'12',name:'Dec'}
+      ];
+      tc.innerHTML = months.map(function(m) {
+        var act = (m.val === window.currentSemMonth) && !window.specificSemDate;
+        return '<button onclick="setSemenMonth(\'' + m.val + '\')" style="padding:6px 14px; border:none; border-radius:20px; font-size:12px; font-weight:bold; cursor:pointer; background:' + (act ? 'var(--primary)' : '#e0e0e0') + '; color:' + (act ? 'white' : '#333') + '; min-width:60px;">' + m.name + '</button>';
+      }).join('');
+    };
+
+    window.setSemenMonth = function(mVal) {
+      window.currentSemMonth = mVal;
+      window.specificSemDate = "";
+      if (getEl('semFilterDate')) getEl('semFilterDate').value = "";
+      renderSemenMonthTabs();
+      renderSemenTable();
+    };
+
+    window.applySemenFilter = function() {
+      if (getEl('semFilterYear')) window.currentSemYear = getEl('semFilterYear').value;
+      var d = getEl('semFilterDate') ? getEl('semFilterDate').value : "";
+      if (d) {
+        window.specificSemDate = d;
+        var doj = new Date(d);
+        window.currentSemYear = doj.getFullYear().toString();
+        window.currentSemMonth = ('0' + (doj.getMonth() + 1)).slice(-2);
+        if (getEl('semFilterYear')) getEl('semFilterYear').value = window.currentSemYear;
+      } else {
+        window.specificSemDate = "";
+      }
+      renderSemenMonthTabs();
+      renderSemenTable();
+    };
+
+    window.clearSemenDateFilter = function() {
+      if (getEl('semFilterDate')) getEl('semFilterDate').value = "";
+      window.specificSemDate = "";
+      window.currentSemMonth = "ALL";
+      renderSemenMonthTabs();
+      renderSemenTable();
+    };
+
+    window.getFilteredSemenList = function() {
+      if (!window.currentSemYear) initSemenFilters();
+      var yr = window.currentSemYear, mn = window.currentSemMonth, dt = window.specificSemDate;
+      var typeFilter = (getEl('semFilterType') ? getEl('semFilterType').value : '').trim();
+      var breedFilter = (getEl('semFilterBreed') ? getEl('semFilterBreed').value : '').trim().toLowerCase();
+      var searchQ = (getEl('semSearchInput') ? getEl('semSearchInput').value : '').trim().toLowerCase();
+
+      var res = [];
+      for (var k in farmStore.semen) {
+        var d = farmStore.semen[k];
+        if (!d) continue;
+        var sDate = (d.date || '').trim();
+        var dateMatch = true;
+        if (dt) {
+          dateMatch = (sDate === dt);
+        } else if (mn !== 'ALL') {
+          dateMatch = (sDate.substring(0, 4) === yr && sDate.substring(5, 7) === mn);
+        }
+        if (!dateMatch) continue;
+
+        var sType = d.type || 'Conventional';
+        if (typeFilter && sType !== typeFilter) continue;
+        if (breedFilter && (d.breed || '').trim().toLowerCase() !== breedFilter) continue;
+        var txt = ((d.batch || '') + ' ' + (d.bullName || '') + ' ' + (d.breed || '') + ' ' + (d.source || '')).toLowerCase();
+        if (searchQ && !txt.includes(searchQ)) continue;
+
+        res.push({ key: k, data: d });
+      }
+      res.sort(function(a, b) { return parseDateToTime(b.data.date) - parseDateToTime(a.data.date); });
+      return res;
+    };
+
+    window.showMonthlySemenStatement = function() {
+      var list = getFilteredSemenList();
+      if (list.length === 0) return showAppToast('বর্তমান ভিউতে প্রিন্ট করার মতো কোনো সিমেন রেকর্ড নেই!');
+      var statsMap = getSemenStatsMap();
+      var yr = window.currentSemYear, mn = window.currentSemMonth, dt = window.specificSemDate;
+      var periodLabel = dt ? formatDateBR(dt) : (mn === 'ALL' ? 'সকল সময় (All Time)' : (mn + '/' + yr));
+
+      document.body.setAttribute('data-print', 'invoice');
+      getEl('invMainDocTitle').innerText = 'সিমেন স্টক ও সাফল্যের রিপোর্ট / SEMEN STATEMENT (' + periodLabel + ')';
+
+      var totStraws = 0, conv = 0, sexed = 0, totVal = 0;
+      var rows = '';
+      list.forEach(function(item) {
+        var d = item.data;
+        var cnt = Number(d.count) || 0;
+        var cost = Number(d.cost) || 0;
+        totStraws += cnt;
+        totVal += (cnt * cost);
+        if ((d.type || 'Conventional') === 'Sexed Sorted') sexed += cnt;
+        else conv += cnt;
+        var bKey = (d.batch || '').trim().toLowerCase();
+        var stObj = statsMap[bKey] || { totalAI: 0, success: 0 };
+        var rate = stObj.totalAI > 0 ? Math.round((stObj.success / stObj.totalAI) * 100) + '%' : '-';
+        rows += '<tr><td>' + formatDateBR(d.date) + '</td><td><strong>' + (d.batch||'-') + '</strong>' + (d.bullName ? ' ('+d.bullName+')' : '') + '</td><td>' + (d.breed||'-') + '<br><small>' + (d.source||'-') + '</small></td><td>' + (d.type||'Conventional') + '</td><td>' + cnt + '</td><td>' + rate + ' (' + stObj.success + '/' + stObj.totalAI + ')</td></tr>';
+      });
+
+      getEl('invoiceDetails').innerHTML =
+        '<div style="display:flex; justify-content:space-between; background:#f1f8e9; padding:10px; border-radius:8px; margin-bottom:12px;">' +
+          '<div><strong>মোট স্ট্র:</strong> ' + totStraws + ' টি (Conv: ' + conv + ', Sexed: ' + sexed + ')</div>' +
+          '<div><strong>মোট স্টক মূল্য:</strong> ₹ ' + Math.round(totVal).toLocaleString() + '</div>' +
+        '</div>' +
+        '<table class="invoice-table" style="border:1px solid #ddd; width:100%; min-width:unset;">' +
+          '<thead><tr style="background:#e8f5e9;"><th>তারিখ</th><th>ব্যাচ ও ষাঁড়</th><th>ব্রিড ও কোম্পানি</th><th>ধরন</th><th>স্ট্র</th><th>সাফল্যের হার</th></tr></thead>' +
+          '<tbody>' + rows + '</tbody>' +
+        '</table>';
+
+      getEl('invoiceModal').style.display = 'flex';
+    };
 
     window.getSemenStatsMap = function() {
       var stats = {};
@@ -6298,18 +6440,25 @@
       if (!body) return;
 
       var statsMap = getSemenStatsMap();
-      var typeFilter = (getEl('semFilterType') ? getEl('semFilterType').value : '').trim();
-      var breedFilter = (breedFilterEl ? breedFilterEl.value : '').trim().toLowerCase();
-      var searchQ = (getEl('semSearchInput') ? getEl('semSearchInput').value : '').trim().toLowerCase();
-
+      if (!window.currentSemYear) initSemenFilters();
       var totalStraws = 0, convStraws = 0, sexedStraws = 0, totalValue = 0, lowBatches = 0, totAI = 0, totSucc = 0;
       var uniqueBreeds = {};
       var dlHtml = '';
-      var html = '';
 
-      for (var k in farmStore.semen) {
-        var d = farmStore.semen[k];
-        if (!d) continue;
+      for (var kAll in farmStore.semen) {
+        var dAll = farmStore.semen[kAll];
+        if (!dAll) continue;
+        var cntAll = Number(dAll.count) || 0;
+        if (dAll.breed) uniqueBreeds[dAll.breed.trim()] = true;
+        if (dAll.batch) {
+          dlHtml += '<option value="' + dAll.batch + '">' + (dAll.bullName ? dAll.bullName + ' - ' : '') + (dAll.breed || '') + ' (' + (dAll.source || '') + ') [Stock: ' + cntAll + ']</option>';
+        }
+      }
+
+      var filteredList = getFilteredSemenList();
+      var html = '';
+      filteredList.forEach(function(item) {
+        var k = item.key, d = item.data;
         var cnt = Number(d.count) || 0;
         var cost = Number(d.cost) || 0;
         var al = Number(d.alertLevel) || 0;
@@ -6318,10 +6467,6 @@
         else convStraws += cnt;
         totalValue += (cnt * cost);
         if ((al > 0 && cnt <= al) || cnt <= 0) lowBatches++;
-        if (d.breed) uniqueBreeds[d.breed.trim()] = true;
-        if (d.batch) {
-          dlHtml += '<option value="' + d.batch + '">' + (d.bullName ? d.bullName + ' - ' : '') + (d.breed || '') + ' (' + (d.source || '') + ') [Stock: ' + cnt + ']</option>';
-        }
 
         var bKey = (d.batch || '').trim().toLowerCase();
         var bullKey = (d.bullName || '').trim().toLowerCase();
@@ -6330,16 +6475,12 @@
         totSucc += stObj.success;
 
         var sType = d.type || 'Conventional';
-        if (typeFilter && sType !== typeFilter) continue;
-        if (breedFilter && (d.breed || '').trim().toLowerCase() !== breedFilter) continue;
-        var txt = ((d.batch || '') + ' ' + (d.bullName || '') + ' ' + (d.breed || '') + ' ' + (d.source || '')).toLowerCase();
-        if (searchQ && !txt.includes(searchQ)) continue;
-
         var ratePct = stObj.totalAI > 0 ? Math.round((stObj.success / stObj.totalAI) * 100) + '%' : '-';
         var isLow = (al > 0 && cnt <= al) || cnt <= 0;
         var typeBadge = sType === 'Sexed Sorted' ? '<span class="badge" style="background:#f3e5f5; color:#7b1fa2;">Sexed Sorted</span>' : '<span class="badge badge-success">Conventional</span>';
 
         html += '<tr>' +
+          '<td>' + formatDateBR(d.date) + '</td>' +
           '<td><strong>' + (d.batch || '-') + '</strong>' + (d.bullName ? '<br><small style="color:#1b5e20;">🐂 ' + d.bullName + '</small>' : '') + '</td>' +
           '<td><strong>' + (d.breed || '-') + '</strong><br><small style="color:#666;">🏢 ' + (d.source || '-') + '</small></td>' +
           '<td>' + typeBadge + '</td>' +
@@ -6347,7 +6488,7 @@
           '<td><strong>' + ratePct + '</strong><br><small style="color:#555;">AI: ' + stObj.totalAI + ' | Preg: ' + stObj.success + ' | Fail: ' + stObj.failed + '</small></td>' +
           '<td><button class="action-btn btn-info" onclick="editSemen(\'' + k + '\')">Edit</button><button class="action-btn btn-danger" onclick="deleteRecord(\'semen\',\'' + k + '\')">Delete</button></td>' +
         '</tr>';
-      }
+      });
 
       if (batchDL) batchDL.innerHTML = dlHtml;
       if (breedFilterEl) {
@@ -6359,7 +6500,7 @@
         breedFilterEl.innerHTML = bOpt;
       }
 
-      body.innerHTML = html || '<tr><td colspan="6" style="text-align:center; color:#888;">কোনো সিমেন স্টক রেকর্ড নেই।</td></tr>';
+      body.innerHTML = html || '<tr><td colspan="7" style="text-align:center; color:#888;">কোনো সিমেন স্টক রেকর্ড নেই।</td></tr>';
 
       var overallRate = totAI > 0 ? Math.round((totSucc / totAI) * 100) + '%' : '0%';
       if (sumGrid) {
@@ -6374,18 +6515,18 @@
 
     window.exportSemen = function(format) {
       var statsMap = getSemenStatsMap();
-      var exportData = [["Batch No", "Bull Name", "Breed", "Company/Source", "Type", "Straw Count", "Cost/Straw (Rs)", "Total AI", "Pregnant/Calved", "Success Rate"]];
-      for (var k in farmStore.semen) {
-        var d = farmStore.semen[k];
-        if (!d) continue;
+      var filteredList = getFilteredSemenList();
+      var exportData = [["Date", "Batch No", "Bull Name", "Breed", "Company/Source", "Type", "Straw Count", "Cost/Straw (Rs)", "Total AI", "Pregnant/Calved", "Success Rate"]];
+      filteredList.forEach(function(item) {
+        var d = item.data;
         var bKey = (d.batch || '').trim().toLowerCase();
         var stObj = statsMap[bKey] || { totalAI: 0, success: 0 };
         var rate = stObj.totalAI > 0 ? Math.round((stObj.success / stObj.totalAI) * 100) + '%' : '0%';
         exportData.push([
-          (d.batch||'-').replace(/,/g,' '), (d.bullName||'-').replace(/,/g,' '), (d.breed||'-').replace(/,/g,' '),
+          formatDateBR(d.date), (d.batch||'-').replace(/,/g,' '), (d.bullName||'-').replace(/,/g,' '), (d.breed||'-').replace(/,/g,' '),
           (d.source||'-').replace(/,/g,' '), d.type||'Conventional', d.count||0, d.cost||0, stObj.totalAI, stObj.success, rate
         ]);
-      }
+      });
       if (exportData.length <= 1) return showAppToast('এক্সপোর্ট করার মতো কোনো সিমেন রেকর্ড নেই!');
       var fileName = "Semen_Stock_Report_" + new Date().toISOString().split('T')[0];
       if (format === 'csv') {
