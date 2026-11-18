@@ -357,6 +357,16 @@
   <datalist id="stockItemList"></datalist>
   <datalist id="vendorNameList"></datalist>
   <datalist id="semenBatchList"></datalist>
+  <datalist id="healthDiseaseList">
+    <option value="Mastitis (ওলান পাকা)">
+    <option value="Fever (জ্বর)">
+    <option value="Milk Fever">
+    <option value="Foot Rot">
+    <option value="Repeat Breeding">
+    <option value="Digestive Issue">
+    <option value="Lumpy Skin">
+    <option value="Injury / Wound">
+  </datalist>
   <datalist id="semenBreedList">
     <option value="HF (Holstein Friesian)">
     <option value="Jersey">
@@ -464,7 +474,7 @@
         <div class="summary-grid">
           <div class="summary-card"><p>TOTAL CATTLE</p><h3 id="dash-cow-count">০</h3></div>
           <div class="summary-card" style="border-left-color: var(--info);"><p id="dash-milk-label">TODAY'S MILK</p><h3 id="dash-milk-today">0.0 L</h3></div>
-          <div class="summary-card" style="border-left-color: #7b1fa2;"><p>TOTAL DUE</p><h3 id="dash-total-due">₹ 0</h3></div>
+          <div class="summary-card" style="border-left-color: #7b1fa2;"><p id="dash-due-label">TOTAL DUE</p><h3 id="dash-total-due">₹ 0</h3></div>
           <div class="summary-card" style="border-left-color: var(--warning);"><p id="dash-sales-label">TOTAL SALES</p><h3 id="dash-total-sales">₹ 0</h3></div>
           <div class="summary-card" style="border-left-color: var(--danger);"><p id="dash-exp-label">TOTAL EXPENSE</p><h3 id="dash-total-exp">₹ 0</h3></div>
           <div class="summary-card" style="border-left-color: #2e7d32;"><p>NET PROFIT / LOSS</p><h3 id="dash-net-profit">₹ 0</h3></div>
@@ -1242,30 +1252,65 @@
       <div id="tab-health" class="tab-content" style="display: none;">
         <div class="card">
           <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
-            <h2 style="margin:0; border:none; padding:0;">🩺 Health & Vaccination Register</h2>
+            <h2 style="margin:0; border:none; padding:0;">🩺 Health & Treatment Register</h2>
             <button class="action-btn btn-info" onclick="switchTab('dashboard', document.querySelector('nav button'))">⬅ Back (ফিরে যান)</button>
           </div>
           <div class="form-grid">
             <div class="input-group"><label>Date *</label><input type="date" id="hlthDate"></div>
             <div class="input-group"><label>Tag ID *</label><input type="text" id="hlthCowTag" list="cattleTagList" placeholder="Tag"></div>
-            <div class="input-group"><label>Type</label><select id="hlthType"><option value="Vaccination">Vaccination</option><option value="Deworming">Deworming</option><option value="General Treatment">General Treatment</option><option value="Doctor Checkup">Doctor Checkup</option></select></div>
-            <div class="input-group"><label>Description</label><input type="text" id="hlthDesc" placeholder="বিবরণ"></div>
+            <div class="input-group"><label>Type</label><select id="hlthType"><option value="General Treatment">General Treatment</option><option value="Doctor Checkup">Doctor Checkup</option><option value="Vaccination">Vaccination</option><option value="Deworming">Deworming</option><option value="Surgery / Injury">Surgery / Injury</option></select></div>
+            <div class="input-group"><label>Disease / Symptoms (রোগ বা লক্ষণ)</label><input type="text" id="hlthDisease" list="healthDiseaseList" placeholder="যেমন: Mastitis / Fever"></div>
+            <div class="input-group"><label>Vet / Doctor Name (ডাক্তার)</label><input type="text" id="hlthVet" placeholder="ডাক্তারের নাম"></div>
+            <div class="input-group"><label>Medicine / Antibiotic</label><input type="text" id="hlthMedicine" placeholder="ব্যবহৃত ওষুধের নাম"></div>
+            <div class="input-group"><label>Milk Withdrawal (Days)</label><input type="number" id="hlthWithdrawalDays" placeholder="0"></div>
+            <div class="input-group"><label>Treatment Status</label><select id="hlthStatus"><option value="Under Treatment">Under Treatment (চিকিৎসাধীন)</option><option value="Recovered">Recovered (সুস্থ)</option></select></div>
+            <div class="input-group"><label>Description / Notes</label><input type="text" id="hlthDesc" placeholder="বিবরণ"></div>
             <div class="input-group"><label>Cost ₹ (খরচ)</label><input type="number" id="hlthCost" placeholder="₹"></div>
-            <div class="input-group"><label>Next Dose</label><input type="date" id="hlthNextDate"></div>
+            <div class="input-group"><label>Next Dose / Follow-up</label><input type="date" id="hlthNextDate"></div>
           </div>
           <div style="display:flex; gap:10px;">
             <button class="btn" id="hlthSubmitBtn" onclick="saveHealth()">Save Health Record</button>
             <button class="btn btn-warning" id="hlthCancelBtn" style="display:none;" onclick="cancelHealthEdit()">Cancel</button>
           </div>
         </div>
+
         <div class="card">
-          <h2>স্বাস্থ্য রেকর্ড তালিকা</h2>
+          <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; margin-bottom:12px;">
+            <h2 style="margin:0; border:none; padding:0;">স্বাস্থ্য ও চিকিৎসা রেকর্ড তালিকা</h2>
+            <div style="display:flex; gap:8px; flex-wrap:wrap;">
+              <button class="action-btn" style="background:#7b1fa2; color:white; padding:6px 12px; border-radius:6px;" onclick="showMonthlyHealthReport()">📄 মাসিক রিপোর্ট (Print)</button>
+              <button class="action-btn" style="background:#1d6f42; color:white; padding:6px 10px; border-radius:6px;" onclick="exportHealth('csv')">📥 Excel (CSV)</button>
+              <button class="action-btn" style="background:#2b579a; color:white; padding:6px 10px; border-radius:6px;" onclick="exportHealth('doc')">📥 Word</button>
+              <button class="action-btn" style="background:#424242; color:white; padding:6px 10px; border-radius:6px;" onclick="exportHealth('txt')">📥 Text</button>
+            </div>
+          </div>
+
+          <div style="display:flex; flex-wrap:wrap; justify-content:space-between; gap:12px; margin-bottom:12px; background:#f4fbf5; padding:12px; border-radius:8px; border:1px solid #c8e6c9; align-items:center;">
+            <div style="display:flex; flex-wrap:wrap; gap:12px; align-items:center;">
+              <div style="display:flex; align-items:center; gap:6px;">
+                <label style="font-size:12px; font-weight:bold; color:var(--primary);">বছর নির্বাচন:</label>
+                <select id="hlthFilterYear" onchange="applyHealthFilter()" style="padding:6px 10px; border-radius:6px; border:1px solid #bbb; font-weight:bold; width:auto;"></select>
+              </div>
+              <div style="display:flex; align-items:center; gap:6px;">
+                <label style="font-size:12px; font-weight:bold; color:var(--primary);">নির্দিষ্ট তারিখ খুঁজুন:</label>
+                <input type="date" id="hlthFilterDate" onchange="applyHealthFilter()" style="padding:6px; border-radius:6px; border:1px solid #bbb; width:auto;">
+                <button class="action-btn btn-warning" onclick="clearHealthDateFilter()" style="padding:6px 12px;">Clear/Reset</button>
+              </div>
+            </div>
+            <div>
+              <input type="text" id="hlthSearchInput" oninput="renderHealthTable()" placeholder="🔍 Tag, রোগ বা ডাক্তার..." style="width:200px; padding:7px;">
+            </div>
+          </div>
+
+          <div id="hlthMonthTabs" style="display:flex; gap:8px; overflow-x:auto; margin-bottom:12px; padding-bottom:5px; -webkit-overflow-scrolling:touch; white-space:nowrap;"></div>
+
           <div class="table-container">
             <table>
-              <thead><tr><th>Date</th><th>Tag ID</th><th>Type</th><th>Description</th><th>Next Dose</th><th>Action</th></tr></thead>
+              <thead><tr><th>Date</th><th>Tag ID</th><th>Type & Disease</th><th>Vet & Medicine</th><th>Status</th><th>Next Dose</th><th>Cost</th><th>Action</th></tr></thead>
               <tbody id="healthTableBody"></tbody>
             </table>
           </div>
+          <p id="healthNoData" style="text-align:center; color:#777; font-size:13px; margin-top:14px; display:none;">এই মাস বা তারিখে কোনো স্বাস্থ্য রেকর্ড নেই।</p>
         </div>
       </div>
 
@@ -1780,6 +1825,48 @@
         }
       }
 
+      // ৪.ঘ. আসন্ন ডাক্তার চেকআপ / হেলথ ফলো-আপ অ্যালার্ট (৭ দিন আগে থেকে)
+      for (var hlk in farmStore.health) {
+        var hl = farmStore.health[hlk];
+        if (!hl || !hl.cowTag || !hl.nextDate || hl.alertResolved) continue;
+        var hDiff = getDaysDifferenceFromToday(hl.nextDate);
+        if (hDiff !== null && hDiff <= 7) {
+          alerts.push({
+            type: 'health',
+            key: hlk,
+            tag: hl.cowTag,
+            title: '🩺 ফলো-আপ / চেকআপ: ' + (hl.disease || hl.type || 'Checkup'),
+            subtitle: (hl.vet ? 'ডাক্তার: ' + hl.vet + ' | ' : '') + (hl.medicine ? 'ওষুধ: ' + hl.medicine : (hl.desc || '')),
+            dueDate: hl.nextDate,
+            diffDays: hDiff
+          });
+        }
+      }
+
+      // ৫. মিল্ক উইথড্রয়াল (Milk Withdrawal) সতর্কতা (Vaccine + Health উভয় থেকে)
+      for (var hwk in farmStore.health) {
+        var hw = farmStore.health[hwk];
+        if (!hw || !hw.cowTag || !hw.date) continue;
+        var hwDays = parseInt(hw.withdrawalDays) || 0;
+        if (hwDays > 0) {
+          var hwDiff = getDaysDifferenceFromToday(hw.date);
+          if (hwDiff !== null && hwDiff <= 0) {
+            var remHw = hwDays - Math.abs(hwDiff);
+            if (remHw > 0) {
+              alerts.push({
+                type: 'health_withdrawal',
+                key: hwk,
+                tag: hw.cowTag,
+                title: '🚫 Milk Withdrawal (চিকিৎসা): ' + (hw.medicine || hw.disease || 'Treatment'),
+                subtitle: 'ওষুধ দেওয়ার পর আরও ' + remHw + ' দিন এই গাভীর দুধ বিক্রি করা যাবে না।',
+                dueDate: hw.date,
+                diffDays: 0
+              });
+            }
+          }
+        }
+      }
+
       // ৫. মিল্ক উইথড্রয়াল (Milk Withdrawal) সতর্কতা
       for (var wvk in farmStore.vaccine) {
         var wv = farmStore.vaccine[wvk];
@@ -1908,6 +1995,13 @@
         } else if (al.type === 'semen') {
           actionButtons =
             '<button class="action-btn btn-info" style="padding:6px 12px;" onclick="switchTab(\'semen\', document.querySelectorAll(\'nav button\')[12])">💉 সিমেন স্টক দেখুন</button>';
+        } else if (al.type === 'health') {
+          actionButtons =
+            '<button class="action-btn" style="background:#1b5e20; color:white; padding:6px 12px;" onclick="completeHealthAlert(\'' + al.key + '\')">✔ ফলো-আপ সম্পন্ন</button>' +
+            '<button class="action-btn btn-info" style="padding:6px 10px;" onclick="editHealth(\'' + al.key + '\')">✎ বিস্তারিত</button>';
+        } else if (al.type === 'health_withdrawal') {
+          actionButtons =
+            '<button class="action-btn btn-info" style="padding:6px 12px;" onclick="editHealth(\'' + al.key + '\')">🩺 চিকিৎসার তথ্য দেখুন</button>';
         }
 
         html += '<div class="' + itemClass + '">' +
@@ -1956,6 +2050,17 @@
     };
 
     // অ্যাকশন ২: কৃমির ওষুধ অ্যালার্ট সম্পন্ন করলে আজকের তারিখ ও ৯০ দিন পর পরবর্তী ডোজ সেট হবে
+    window.completeHealthAlert = function(hKey) {
+      if (db && hKey) {
+        db.ref('health/' + hKey).update({ alertResolved: true, status: 'Recovered' });
+      } else if (farmStore.health[hKey]) {
+        farmStore.health[hKey].alertResolved = true;
+        farmStore.health[hKey].status = 'Recovered';
+      }
+      showAppToast('হেলথ ফলো-আপ সম্পন্ন হয়েছে!');
+      renderDashboardAlerts();
+    };
+
     window.completeDewormAlert = function(dwKey) {
       var dw = farmStore.deworm ? farmStore.deworm[dwKey] : null;
       if (!dw) return;
@@ -2089,6 +2194,20 @@
             var rem = wDays - Math.abs(diff);
             if (rem > 0) {
               warnings.push('⚠️ সতর্কতা: গাভী <strong>' + tag + '</strong>-কে ' + formatDateBR(v.date) + ' তারিখে <strong>' + v.name + '</strong> টিকা দেওয়া হয়েছে। আরও <strong>' + rem + ' দিন</strong> Milk Withdrawal পিরিয়ড চলবে!');
+            }
+          }
+        }
+      }
+      for (var hk in farmStore.health) {
+        var hl = farmStore.health[hk];
+        if (!hl || (hl.cowTag || '').trim().toUpperCase() !== tag) continue;
+        var hwDays = parseInt(hl.withdrawalDays) || 0;
+        if (hwDays > 0 && hl.date) {
+          var hDiff = getDaysDifferenceFromToday(hl.date);
+          if (hDiff !== null && hDiff <= 0) {
+            var remH = hwDays - Math.abs(hDiff);
+            if (remH > 0) {
+              warnings.push('⚠️ চিকিৎসা সতর্কতা: গাভী <strong>' + tag + '</strong>-কে ' + formatDateBR(hl.date) + ' তারিখে <strong>' + (hl.medicine || hl.disease || 'ওষুধ') + '</strong> দেওয়া হয়েছে। আরও <strong>' + remH + ' দিন</strong> Milk Withdrawal পিরিয়ড চলবে!');
             }
           }
         }
@@ -3318,7 +3437,7 @@
       for (var ck in custBalances) { totalLiveFarmDue += custBalances[ck].currentDue; }
 
       if (getEl('dash-total-sales')) getEl('dash-total-sales').innerText = '₹ ' + tS.toLocaleString();
-      if (getEl('dash-total-due')) getEl('dash-total-due').innerText = '₹ ' + totalLiveFarmDue.toLocaleString();
+      if (getEl('dash-total-due') && (!window.currentDashMonth || (window.currentDashMonth === 'ALL' && !window.specificDashDate))) getEl('dash-total-due').innerText = '₹ ' + totalLiveFarmDue.toLocaleString();
       if (getEl('rep-sales')) getEl('rep-sales').innerText = '₹ ' + tS.toLocaleString();
       calcNet();
 
@@ -6627,7 +6746,14 @@
     var eHlthKey = null;
     function editHealth(k) {
       var d = farmStore.health[k]; if (!d) return; eHlthKey = k;
-      getEl('hlthDate').value = d.date || ''; getEl('hlthCowTag').value = d.cowTag || ''; getEl('hlthType').value = d.type || 'Vaccination';
+      getEl('hlthDate').value = d.date || '';
+      getEl('hlthCowTag').value = d.cowTag || '';
+      getEl('hlthType').value = d.type || 'General Treatment';
+      if (getEl('hlthDisease')) getEl('hlthDisease').value = d.disease || '';
+      if (getEl('hlthVet')) getEl('hlthVet').value = d.vet || '';
+      if (getEl('hlthMedicine')) getEl('hlthMedicine').value = d.medicine || '';
+      if (getEl('hlthWithdrawalDays')) getEl('hlthWithdrawalDays').value = d.withdrawalDays || '0';
+      if (getEl('hlthStatus')) getEl('hlthStatus').value = d.status || 'Under Treatment';
       getEl('hlthDesc').value = d.desc || '';
       if (getEl('hlthCost')) getEl('hlthCost').value = d.cost || '';
       getEl('hlthNextDate').value = d.nextDate || '';
@@ -6635,13 +6761,32 @@
       switchTab('health', document.querySelectorAll('nav button')[13]);
     }
     function cancelHealthEdit() {
-      eHlthKey = null; ['hlthCowTag','hlthDesc','hlthCost','hlthNextDate'].forEach(function(i){ if(getEl(i)) getEl(i).value=''; });
+      eHlthKey = null;
+      ['hlthCowTag','hlthDisease','hlthVet','hlthMedicine','hlthWithdrawalDays','hlthDesc','hlthCost','hlthNextDate'].forEach(function(i){ if(getEl(i)) getEl(i).value=''; });
+      if (getEl('hlthStatus')) getEl('hlthStatus').value = 'Under Treatment';
       getEl('hlthSubmitBtn').innerText = 'Save Health Record'; getEl('hlthCancelBtn').style.display = 'none';
     }
     function saveHealth() {
       var tag = (getEl('hlthCowTag').value || '').trim(); if (!tag) return showAppToast('Tag দিন!');
       var hCost = parseFloat(getEl('hlthCost') ? getEl('hlthCost').value : 0) || 0;
-      var data = { date: getEl('hlthDate').value, cowTag: tag, type: getEl('hlthType').value, desc: getEl('hlthDesc').value, cost: hCost, nextDate: getEl('hlthNextDate').value };
+      var statusVal = getEl('hlthStatus') ? getEl('hlthStatus').value : 'Under Treatment';
+      var diseaseVal = getEl('hlthDisease') ? getEl('hlthDisease').value.trim() : '';
+      var vetVal = getEl('hlthVet') ? getEl('hlthVet').value.trim() : '';
+      var medVal = getEl('hlthMedicine') ? getEl('hlthMedicine').value.trim() : '';
+      var data = {
+        date: getEl('hlthDate').value || new Date().toISOString().split('T')[0],
+        cowTag: tag,
+        type: getEl('hlthType').value,
+        disease: diseaseVal,
+        vet: vetVal,
+        medicine: medVal,
+        withdrawalDays: parseInt(getEl('hlthWithdrawalDays') ? getEl('hlthWithdrawalDays').value : 0) || 0,
+        status: statusVal,
+        desc: getEl('hlthDesc').value,
+        cost: hCost,
+        nextDate: getEl('hlthNextDate').value,
+        alertResolved: false
+      };
       if (db) {
         var hId = eHlthKey;
         if (eHlthKey) {
@@ -6649,16 +6794,191 @@
         } else {
           hId = db.ref('health').push(data).key;
         }
+        // Auto-update Cattle status (Under Treatment -> Sick, Recovered -> Milking if it was Sick)
+        var cKey = findCattleKeyByTag(tag);
+        if (cKey && farmStore.cattle[cKey]) {
+          var curStat = String(farmStore.cattle[cKey].status || '');
+          if (statusVal === 'Under Treatment' && curStat !== 'Sick') {
+            db.ref('cattle/' + cKey).update({ status: 'Sick' });
+          } else if (statusVal === 'Recovered' && curStat === 'Sick') {
+            db.ref('cattle/' + cKey).update({ status: 'Milking' });
+          }
+        }
         syncAutoExpense('health_' + hId, {
-          date: data.date || new Date().toISOString().split('T')[0],
+          date: data.date,
           category: 'Medicine & Health',
-          title: 'Health (' + data.type + ') - Tag: ' + tag + (data.desc ? ' (' + data.desc + ')' : ''),
-          amount: hCost
+          title: 'Health (' + (diseaseVal || data.type) + ') - Tag: ' + tag,
+          amount: hCost,
+          vendor: vetVal
         });
       }
       showAppToast('স্বাস্থ্য রেকর্ড ও খরচ সেভ হয়েছে!');
       cancelHealthEdit();
     }
+
+    window.currentHlthYear = "";
+    window.currentHlthMonth = "ALL";
+    window.specificHlthDate = "";
+
+    window.initHealthFilters = function() {
+      if (!window.currentHlthYear) {
+        window.currentHlthYear = new Date().getFullYear().toString();
+      }
+      var ys = getEl('hlthFilterYear');
+      if (ys && ys.options.length === 0) {
+        var curY = new Date().getFullYear();
+        for (var i = 0; i < 5; i++) {
+          var y = (curY - i).toString();
+          ys.options.add(new Option(y, y));
+        }
+        ys.value = window.currentHlthYear;
+      }
+      renderHealthMonthTabs();
+    };
+
+    window.renderHealthMonthTabs = function() {
+      var tc = getEl('hlthMonthTabs');
+      if (!tc) return;
+      var months = [
+        {val:'ALL',name:'ALL DATA'},{val:'01',name:'Jan'},{val:'02',name:'Feb'},{val:'03',name:'Mar'},{val:'04',name:'Apr'},
+        {val:'05',name:'May'},{val:'06',name:'Jun'},{val:'07',name:'Jul'},{val:'08',name:'Aug'},
+        {val:'09',name:'Sep'},{val:'10',name:'Oct'},{val:'11',name:'Nov'},{val:'12',name:'Dec'}
+      ];
+      tc.innerHTML = months.map(function(m) {
+        var act = (m.val === window.currentHlthMonth) && !window.specificHlthDate;
+        return '<button onclick="setHealthMonth(\'' + m.val + '\')" style="padding:6px 14px; border:none; border-radius:20px; font-size:12px; font-weight:bold; cursor:pointer; background:' + (act ? 'var(--primary)' : '#e0e0e0') + '; color:' + (act ? 'white' : '#333') + '; min-width:60px;">' + m.name + '</button>';
+      }).join('');
+    };
+
+    window.setHealthMonth = function(mVal) {
+      window.currentHlthMonth = mVal;
+      window.specificHlthDate = "";
+      if (getEl('hlthFilterDate')) getEl('hlthFilterDate').value = "";
+      renderHealthMonthTabs();
+      renderHealthTable();
+    };
+
+    window.applyHealthFilter = function() {
+      if (getEl('hlthFilterYear')) window.currentHlthYear = getEl('hlthFilterYear').value;
+      var d = getEl('hlthFilterDate') ? getEl('hlthFilterDate').value : "";
+      if (d) {
+        window.specificHlthDate = d;
+        var doj = new Date(d);
+        window.currentHlthYear = doj.getFullYear().toString();
+        window.currentHlthMonth = ('0' + (doj.getMonth() + 1)).slice(-2);
+        if (getEl('hlthFilterYear')) getEl('hlthFilterYear').value = window.currentHlthYear;
+      } else {
+        window.specificHlthDate = "";
+      }
+      renderHealthMonthTabs();
+      renderHealthTable();
+    };
+
+    window.clearHealthDateFilter = function() {
+      if (getEl('hlthFilterDate')) getEl('hlthFilterDate').value = "";
+      if (getEl('hlthSearchInput')) getEl('hlthSearchInput').value = "";
+      window.specificHlthDate = "";
+      window.currentHlthMonth = "ALL";
+      renderHealthMonthTabs();
+      renderHealthTable();
+    };
+
+    window.getFilteredHealthList = function() {
+      if (!window.currentHlthYear) initHealthFilters();
+      var yr = window.currentHlthYear, mn = window.currentHlthMonth, dt = window.specificHlthDate;
+      var searchQ = (getEl('hlthSearchInput') ? getEl('hlthSearchInput').value : '').trim().toLowerCase();
+      var res = [];
+      for (var k in farmStore.health) {
+        var d = farmStore.health[k];
+        if (!d) continue;
+        var hDt = (d.date || '').trim();
+        var match = dt ? (hDt === dt) : (mn === 'ALL' ? true : (hDt.substring(0,4) === yr && hDt.substring(5,7) === mn));
+        if (!match) continue;
+        var txt = ((d.cowTag||'') + ' ' + (d.type||'') + ' ' + (d.disease||'') + ' ' + (d.vet||'') + ' ' + (d.medicine||'')).toLowerCase();
+        if (searchQ && !txt.includes(searchQ)) continue;
+        res.push({ key: k, data: d });
+      }
+      res.sort(function(a, b) { return parseDateToTime(b.data.date) - parseDateToTime(a.data.date); });
+      return res;
+    };
+
+    window.renderHealthTable = function() {
+      var body = getEl('healthTableBody');
+      if (!body) return;
+      var list = getFilteredHealthList();
+      if (list.length === 0) {
+        body.innerHTML = '';
+        if (getEl('healthNoData')) getEl('healthNoData').style.display = 'block';
+        return;
+      }
+      if (getEl('healthNoData')) getEl('healthNoData').style.display = 'none';
+      body.innerHTML = list.map(function(item) {
+        var d = item.data, k = item.key;
+        var stBadge = (d.status === 'Under Treatment') ? '<span class="badge badge-danger">Under Treatment</span>' : '<span class="badge badge-success">' + (d.status || 'Recovered') + '</span>';
+        var wInfo = (Number(d.withdrawalDays) > 0) ? '<br><small style="color:#c62828;">Withdrawal: ' + d.withdrawalDays + 'd</small>' : '';
+        return '<tr>' +
+          '<td>' + formatDateBR(d.date) + '</td>' +
+          '<td><strong>🐄 ' + (d.cowTag || '-') + '</strong></td>' +
+          '<td><strong>' + (d.type || '-') + '</strong>' + (d.disease ? '<br><small style="color:#c62828;">' + d.disease + '</small>' : '') + '</td>' +
+          '<td>' + (d.vet ? '👨‍⚕️ ' + d.vet + '<br>' : '') + '<small style="color:#1b5e20;">' + (d.medicine || d.desc || '-') + '</small>' + wInfo + '</td>' +
+          '<td>' + stBadge + '</td>' +
+          '<td>' + formatDateBR(d.nextDate) + '</td>' +
+          '<td>₹ ' + (d.cost || 0) + '</td>' +
+          '<td><button class="action-btn btn-info" onclick="editHealth(\'' + k + '\')">Edit</button><button class="action-btn btn-danger" onclick="deleteRecord(\'health\',\'' + k + '\')">Delete</button></td>' +
+        '</tr>';
+      }).join('');
+    };
+
+    window.showMonthlyHealthReport = function() {
+      var list = getFilteredHealthList();
+      if (list.length === 0) return showAppToast('বর্তমান ভিউতে প্রিন্ট করার মতো কোনো স্বাস্থ্য রেকর্ড নেই!');
+      var periodLabel = window.specificHlthDate ? formatDateBR(window.specificHlthDate) : (window.currentHlthMonth === 'ALL' ? 'ALL DATA' : (window.currentHlthMonth + '/' + window.currentHlthYear));
+      document.body.setAttribute('data-print', 'invoice');
+      getEl('invMainDocTitle').innerText = 'মাসিক স্বাস্থ্য ও চিকিৎসা রিপোর্ট / HEALTH REPORT (' + periodLabel + ')';
+      var totCost = 0;
+      var rows = list.map(function(item) {
+        var d = item.data;
+        totCost += Number(d.cost) || 0;
+        return '<tr><td>' + formatDateBR(d.date) + '</td><td><strong>' + (d.cowTag||'-') + '</strong></td><td>' + (d.disease||d.type||'-') + '</td><td>' + (d.vet||'-') + ' / ' + (d.medicine||'-') + '</td><td>' + (d.status||'Recovered') + '</td><td style="text-align:right;">₹ ' + (d.cost||0) + '</td></tr>';
+      }).join('');
+      getEl('invoiceDetails').innerHTML =
+        '<table class="invoice-table" style="border:1px solid #ddd; width:100%; min-width:unset;">' +
+          '<thead><tr style="background:#e8f5e9;"><th>তারিখ</th><th>Tag ID</th><th>রোগ/ধরন</th><th>ডাক্তার ও ওষুধ</th><th>স্ট্যাটাস</th><th style="text-align:right;">খরচ</th></tr></thead>' +
+          '<tbody>' + rows + '</tbody>' +
+        '</table>' +
+        '<div style="text-align:right; margin-top:12px; font-weight:bold; color:#c62828;">মোট চিকিৎসা খরচ: ₹ ' + totCost.toLocaleString() + '</div>';
+      getEl('invoiceModal').style.display = 'flex';
+    };
+
+    window.exportHealth = function(format) {
+      var list = getFilteredHealthList();
+      if (list.length === 0) return showAppToast('এক্সপোর্ট করার মতো কোনো স্বাস্থ্য রেকর্ড নেই!');
+      var exportData = [["Date", "Tag ID", "Type", "Disease", "Vet", "Medicine", "Withdrawal (Days)", "Status", "Next Dose", "Cost (Rs)"]];
+      list.forEach(function(item) {
+        var d = item.data;
+        exportData.push([
+          formatDateBR(d.date), d.cowTag||'-', (d.type||'-').replace(/,/g,' '), (d.disease||'-').replace(/,/g,' '),
+          (d.vet||'-').replace(/,/g,' '), (d.medicine||'-').replace(/,/g,' '), d.withdrawalDays||0,
+          d.status||'Recovered', formatDateBR(d.nextDate), d.cost||0
+        ]);
+      });
+      var fileName = "Health_Report_" + (window.specificHlthDate ? window.specificHlthDate : (window.currentHlthYear + "_" + window.currentHlthMonth));
+      if (format === 'csv') {
+        var csv = "data:text/csv;charset=utf-8,\uFEFF" + exportData.map(function(r){ return r.join(","); }).join("\r\n");
+        var a = document.createElement("a"); a.href = encodeURI(csv); a.download = fileName + ".csv"; document.body.appendChild(a); a.click(); document.body.removeChild(a);
+      } else if (format === 'txt') {
+        var txt = "data:text/plain;charset=utf-8,\uFEFF" + exportData.map(function(r){ return r.join(" \t "); }).join("\r\n");
+        var a = document.createElement("a"); a.href = encodeURI(txt); a.download = fileName + ".txt"; document.body.appendChild(a); a.click(); document.body.removeChild(a);
+      } else if (format === 'doc') {
+        var h = "<html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'><head><meta charset='utf-8'><title>Health Report</title></head><body><h2 style='color:#1b5e20;'>Nanda Dairy & Agro - Health & Treatment Report</h2><table border='1' style='border-collapse:collapse; width:100%; font-family:sans-serif; font-size:12px;'>";
+        exportData.forEach(function(r, idx) {
+          h += "<tr>" + r.map(function(cell){ return idx === 0 ? "<th style='padding:6px; background:#e8f5e9;'>"+cell+"</th>" : "<td style='padding:6px;'>"+cell+"</td>"; }).join("") + "</tr>";
+        });
+        h += "</table></body></html>";
+        var blob = new Blob(['\ufeff', h], { type: 'application/msword' });
+        var a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = fileName + ".doc"; document.body.appendChild(a); a.click(); document.body.removeChild(a);
+      }
+    };
 
     function downloadBackup() {
       if (!db) return showAppToast('ডাটাবেস নেই!');
@@ -6785,11 +7105,10 @@
       });
 
       db.ref('health').on('value', function(snap) {
-        farmStore.health = {}; var body = getEl('healthTableBody'); if (body) body.innerHTML = '';
-        snap.forEach(function(c) {
-          var d = c.val(), k = c.key; farmStore.health[k] = d;
-          if (body) body.innerHTML += '<tr><td>' + formatDateBR(d.date) + '</td><td><strong>' + (d.cowTag || '-') + '</strong></td><td>' + (d.type || '-') + '</td><td>' + (d.desc || '-') + '</td><td>' + formatDateBR(d.nextDate) + '</td><td><button class="action-btn btn-info" onclick="editHealth(\'' + k + '\')">Edit</button><button class="action-btn btn-danger" onclick="deleteRecord(\'health\',\'' + k + '\')">Delete</button></td></tr>';
-        });
+        farmStore.health = {};
+        snap.forEach(function(c) { farmStore.health[c.key] = c.val(); });
+        renderHealthTable();
+        renderDashboardAlerts();
       });
     };
 
@@ -6929,6 +7248,73 @@
       for (var tKey in cowMilkMap) totalPeriodMilk += cowMilkMap[tKey];
       var avgMilkPerCow = isAll ? (milkTotal / activeCowsInMilk) : (totalPeriodMilk / activeCowsInMilk);
 
+      // Calculate As-Of-Date Customer Due (যে মাসের বাকি সেই মাস থেকে দেখাবে এবং পরিশোধ না হলে পরের মাসে ক্যারি-ফরওয়ার্ড হবে, আগের মাসে দেখাবে না)
+      var cutoffISO = '';
+      if (dt) {
+        cutoffISO = dt;
+      } else if (!isAll) {
+        var lastDay = new Date(parseInt(yr), parseInt(mn), 0).getDate();
+        cutoffISO = yr + '-' + mn + '-' + ('0' + lastDay).slice(-2);
+      }
+      var cutoffTime = cutoffISO ? parseDateToTime(cutoffISO) : Infinity;
+
+      var custDueMap = {};
+      var todayTime = parseDateToTime(todayISO);
+      for (var cuK in farmStore.customers) {
+        var cu = farmStore.customers[cuK];
+        if (!cu || !cu.name) continue;
+        var cKey = cu.name.trim().toLowerCase();
+        var opDue = Number(cu.openingDue) || 0;
+        if (!custDueMap[cKey]) custDueMap[cKey] = { billed: 0, paid: 0, opDue: opDue, earliestBill: Infinity };
+      }
+
+      for (var slK in farmStore.sales) {
+        var slObj = farmStore.sales[slK];
+        if (!slObj || !slObj.name) continue;
+        var scKey = slObj.name.trim().toLowerCase();
+        if (!custDueMap[scKey]) custDueMap[scKey] = { billed: 0, paid: 0, opDue: 0, earliestBill: Infinity };
+
+        var bTime = parseDateToTime(slObj.date);
+        var bTot = Number(slObj.total) || 0;
+        var bPaid = Number(slObj.paid) || 0;
+
+        if (bTot > 0 && bTime > 0 && bTime < custDueMap[scKey].earliestBill) {
+          custDueMap[scKey].earliestBill = bTime;
+        }
+
+        if (bTime <= cutoffTime) {
+          if (bTot > 0) custDueMap[scKey].billed += bTot;
+
+          var pList = getPaymentsArray(slObj.payments);
+          if (pList.length > 0) {
+            var subSum = 0;
+            pList.forEach(function(p) {
+              var pAmt = Number(p.amount) || 0;
+              subSum += pAmt;
+              var pTime = parseDateToTime(p.date || slObj.date);
+              if (pTime <= cutoffTime) custDueMap[scKey].paid += pAmt;
+            });
+            var initPaid = Math.max(0, bPaid - subSum);
+            custDueMap[scKey].paid += initPaid;
+          } else {
+            custDueMap[scKey].paid += bPaid;
+          }
+        }
+      }
+
+      var periodTotalDue = 0;
+      for (var cdKey in custDueMap) {
+        var cObj = custDueMap[cdKey];
+        var effectiveBilled = cObj.billed;
+        if (cObj.opDue > 0) {
+          var opStart = cObj.earliestBill < Infinity ? cObj.earliestBill : todayTime;
+          if (isAll || opStart <= cutoffTime) {
+            effectiveBilled += cObj.opDue;
+          }
+        }
+        periodTotalDue += Math.max(0, effectiveBilled - cObj.paid);
+      }
+
       var topCows = Object.keys(cowMilkMap).map(function(tag) {
         return { tag: tag, liters: cowMilkMap[tag] };
       }).sort(function(a, b) { return b.liters - a.liters; }).slice(0, 5);
@@ -6940,6 +7326,7 @@
         salesTotal: salesTotal,
         expTotal: expTotal,
         netProfit: salesTotal - expTotal,
+        periodDue: periodTotalDue,
         avgMilkPerCow: avgMilkPerCow,
         topCows: topCows
       };
@@ -6951,6 +7338,8 @@
       if (getEl('dash-sales-label')) getEl('dash-sales-label').innerText = m.isAll ? "TOTAL SALES" : "PERIOD SALES";
       if (getEl('dash-exp-label')) getEl('dash-exp-label').innerText = m.isAll ? "TOTAL EXPENSE" : "PERIOD EXPENSE";
 
+      if (getEl('dash-due-label')) getEl('dash-due-label').innerText = m.isAll ? "TOTAL DUE" : ("DUE AS OF " + m.periodLabel);
+      if (getEl('dash-total-due')) getEl('dash-total-due').innerText = '₹ ' + m.periodDue.toLocaleString();
       if (getEl('dash-milk-today')) getEl('dash-milk-today').innerText = m.milkDisplay.toFixed(1) + ' L';
       if (getEl('dash-total-sales')) getEl('dash-total-sales').innerText = '₹ ' + m.salesTotal.toLocaleString();
       if (getEl('dash-total-exp')) getEl('dash-total-exp').innerText = '₹ ' + m.expTotal.toLocaleString();
