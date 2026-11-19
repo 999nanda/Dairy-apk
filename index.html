@@ -104,10 +104,10 @@
         renderBackupSummary();
       }
 
-      if (btn) {
-        btn.classList.add('active');
-      } else if (window.event && window.event.target) {
-        window.event.target.classList.add('active');
+      var activeBtn = btn || (window.event && window.event.target ? window.event.target : null);
+      if (activeBtn && activeBtn.classList) {
+        activeBtn.classList.add('active');
+        try { activeBtn.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' }); } catch (e) {}
       }
     };
 
@@ -351,11 +351,162 @@
     }
     .invoice-content { position: relative; z-index: 1; }
 
+    /* Invoice & Modal Responsive Defaults */
+    .invoice-header-row {
+      display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;
+      border-bottom: 2.5px solid #1b5e20; padding-bottom: 14px; margin-bottom: 18px;
+    }
+    .invoice-details-wrap {
+      font-size: 14px; line-height: 1.85; overflow-x: auto; -webkit-overflow-scrolling: touch;
+    }
+    table.invoice-table {
+      width: 100% !important; min-width: 0 !important; border-collapse: collapse; margin-top: 8px;
+    }
+    table.invoice-table th, table.invoice-table td {
+      white-space: normal !important; word-break: break-word; padding: 8px 10px; border: 1px solid #e0e0e0;
+    }
+    .pl-two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+
+    /* Mobile Responsive Fixes (Placed BEFORE @media print so print always wins) */
+    html, body { max-width: 100%; overflow-x: hidden; }
+    @media (max-width: 640px) {
+      header { padding: 10px 10px; flex-wrap: wrap; gap: 8px; }
+      .header-title img { height: 34px; width: 34px; }
+      .header-title h1 { font-size: 14.5px; }
+      .sync-badge { font-size: 10px; padding: 3px 7px; }
+      .logout-btn { padding: 5px 10px; font-size: 11px; }
+      nav {
+        padding: 8px 10px;
+        display: flex;
+        flex-wrap: nowrap;
+        gap: 6px;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        scroll-snap-type: x proximity;
+        scrollbar-width: thin;
+        border-bottom: 1px solid #dcedc8;
+      }
+      nav button {
+        flex: 0 0 auto;
+        scroll-snap-align: center;
+        padding: 7px 12px;
+        font-size: 12px;
+        margin-right: 0;
+        background: #f8faf9;
+        border: 1px solid #e0e0e0;
+        border-radius: 20px;
+      }
+      nav button.active {
+        background: var(--primary);
+        color: #ffffff;
+        border-color: var(--primary);
+        border-bottom: 1px solid var(--primary);
+      }
+      input, select, textarea { font-size: 16px !important; }
+      .container { padding: 0 10px; margin: 12px auto; }
+      .card { padding: 14px 12px; margin-bottom: 14px; }
+      h2 { font-size: 15.5px; }
+      .summary-grid { grid-template-columns: repeat(2, 1fr); gap: 10px; }
+      .summary-card { padding: 12px 10px; }
+      .summary-card p { font-size: 10px; }
+      .summary-card h3 { font-size: 17px; }
+      .alert-grid { grid-template-columns: 1fr; }
+      .form-grid { grid-template-columns: 1fr !important; gap: 10px; }
+      .pl-two-col { grid-template-columns: 1fr !important; }
+      .tab-content div[style*="grid-template-columns:repeat(auto-fit, minmax(320px"],
+      .tab-content div[style*="grid-template-columns:repeat(auto-fit, minmax(280px"],
+      .tab-content div[style*="grid-template-columns: 1fr 1fr"] {
+        grid-template-columns: 1fr !important;
+      }
+      .tab-content input[type="text"],
+      .tab-content input[type="date"],
+      .tab-content input[type="number"],
+      .tab-content select {
+        max-width: 100% !important;
+      }
+      #saleSearchInput, #saleAreaFilter, #orderSearchInput, #orderAreaFilter, #orderShiftFilter,
+      #feedSearchTag, #expFilterCategory, #expSearchInput, #stkFilterCategory,
+      #stkSearchInput, #semFilterType, #semFilterBreed, #semSearchInput, #hlthSearchInput {
+        width: 100% !important;
+      }
+      #loginScreen { align-items: flex-start; padding: 16px 12px; }
+      .login-box { padding: 22px 18px; margin: auto; }
+      #ledgerModal, #invoiceModal, #cattleFeedModal, #calvingActionModal,
+      #bulkMilkModal, #bulkFeedModal, #stockMoveModal, #vendorPayModal {
+        align-items: flex-start !important;
+        padding: 8px !important;
+      }
+      .invoice-card, .ledger-card, .feed-modal-card {
+        padding: 14px 12px !important;
+        border-radius: 12px;
+        max-height: 92vh;
+        width: 100% !important;
+        margin: auto;
+      }
+      #invoicePrintArea { overflow: visible !important; }
+      .invoice-header-row h2 { font-size: 17px !important; }
+      .invoice-header-row img { height: 42px !important; width: 42px !important; }
+      .invoice-details-wrap { font-size: 12.5px !important; line-height: 1.65 !important; }
+      table.invoice-table th, table.invoice-table td {
+        padding: 6px 6px !important;
+        font-size: 11.5px !important;
+        position: static !important;
+        box-shadow: none !important;
+        white-space: normal !important;
+      }
+      #ledgerModal div[style*="grid-template-columns:repeat(3, 1fr)"] {
+        grid-template-columns: 1fr !important;
+      }
+      .table-container {
+        width: 100%;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        border: 1px solid #c8e6c9;
+        position: relative;
+        background: white;
+      }
+      .table-container::before {
+        content: "⇆ ডানে-বামে স্ক্রল করুন";
+        display: block;
+        font-size: 10.5px;
+        color: #1b5e20;
+        background: #f1f8e9;
+        padding: 3px 8px;
+        font-weight: 600;
+        border-bottom: 1px solid #dcedc8;
+      }
+      .tab-content > .card > .table-container > table { min-width: 660px; font-size: 12px; }
+      .tab-content > .card > .table-container > table > thead > tr > th,
+      .tab-content > .card > .table-container > table > tbody > tr > td { padding: 8px 10px; }
+      .tab-content > .card > .table-container > table > thead > tr > th:last-child,
+      .tab-content > .card > .table-container > table > tbody > tr > td:last-child:not([colspan]) {
+        position: sticky;
+        right: 0;
+        background: #ffffff;
+        box-shadow: -3px 0 6px rgba(0,0,0,0.06);
+        z-index: 2;
+      }
+      .tab-content > .card > .table-container > table > thead > tr > th:last-child { background: #f8faf9; }
+    }
+
+    /* Print Styles (Placed LAST so mobile media queries NEVER override print!) */
     @media print {
       @page { size: A4 portrait; margin: 10mm 12mm; }
-      html, body { height: auto !important; min-height: 0 !important; overflow: visible !important; background: white !important; margin: 0 !important; padding: 0 !important; }
+      html, body { height: auto !important; min-height: 0 !important; overflow: visible !important; background: white !important; margin: 0 !important; padding: 0 !important; width: 100% !important; }
       body * { visibility: hidden; }
       .no-print { display: none !important; }
+      .table-container::before { display: none !important; content: none !important; }
+      .table-container { overflow: visible !important; border: none !important; max-height: none !important; }
+      table, table.invoice-table { min-width: 0 !important; width: 100% !important; font-size: 12px !important; }
+      th, td {
+        position: static !important;
+        box-shadow: none !important;
+        white-space: normal !important;
+        word-break: break-word !important;
+        padding: 6px 8px !important;
+      }
+      .pl-two-col { display: grid !important; grid-template-columns: 1fr 1fr !important; gap: 14px !important; }
+
       body[data-print="invoice"] #appBody,
       body[data-print="invoice"] #loginScreen,
       body[data-print="invoice"] #ledgerModal,
@@ -370,7 +521,7 @@
       body[data-print="invoice"] #invoiceModal,
       body[data-print="invoice"] #invoiceModal .invoice-card,
       body[data-print="invoice"] #invoicePrintArea,
-      body[data-print="invoice"] #invoicePrintArea * { visibility: visible; }
+      body[data-print="invoice"] #invoicePrintArea * { visibility: visible !important; }
       body[data-print="invoice"] #invoiceModal {
         position: static !important;
         inset: auto !important;
@@ -395,8 +546,6 @@
         max-width: 100% !important;
         padding: 16px 20px 18px 20px !important;
         margin: 0 !important;
-        page-break-inside: avoid !important;
-        break-inside: avoid !important;
       }
       body[data-print="invoice"] #invoicePrintArea {
         height: auto !important;
@@ -408,11 +557,6 @@
         height: 150px !important;
         opacity: 0.05 !important;
       }
-      body[data-print="invoice"] table.invoice-table th,
-      body[data-print="invoice"] table.invoice-table td {
-        padding: 6px 10px !important;
-        font-size: 12.5px !important;
-      }
       body[data-print="invoice"] .invoice-content > div:last-child {
         margin-top: 22px !important;
         padding-top: 10px !important;
@@ -420,125 +564,28 @@
 
       body[data-print="ledger"] #appBody,
       body[data-print="ledger"] #loginScreen,
-      body[data-print="ledger"] #invoiceModal { display: none !important; }
+      body[data-print="ledger"] #invoiceModal,
+      body[data-print="ledger"] #cattleFeedModal,
+      body[data-print="ledger"] #calvingActionModal,
+      body[data-print="ledger"] #bulkMilkModal,
+      body[data-print="ledger"] #bulkFeedModal,
+      body[data-print="ledger"] #stockMoveModal,
+      body[data-print="ledger"] #vendorPayModal,
+      body[data-print="ledger"] #digitalPassportModal { display: none !important; }
       body[data-print="ledger"] #ledgerModal,
       body[data-print="ledger"] #ledgerPrintArea,
-      body[data-print="ledger"] #ledgerPrintArea * { visibility: visible; }
-      body[data-print="ledger"] #ledgerModal { position: static !important; display: block !important; width: 100% !important; background: white !important; padding: 0 !important; }
-      body[data-print="ledger"] .ledger-card { box-shadow: none !important; max-height: none !important; width: 100% !important; max-width: 100% !important; padding: 10px !important; }
-      body[data-print="ledger"] .table-container { max-height: none !important; overflow: visible !important; }
+      body[data-print="ledger"] #ledgerPrintArea * { visibility: visible !important; }
+      body[data-print="ledger"] #ledgerModal { position: static !important; inset: auto !important; display: block !important; width: 100% !important; height: auto !important; max-height: none !important; overflow: visible !important; background: white !important; padding: 0 !important; }
+      body[data-print="ledger"] .ledger-card { box-shadow: none !important; max-height: none !important; height: auto !important; overflow: visible !important; width: 100% !important; max-width: 100% !important; padding: 10px !important; }
 
       body[data-print="passport"] #appBody,
-      body[data-print="passport"] #loginScreen { display: none !important; }
+      body[data-print="passport"] #loginScreen,
+      body[data-print="passport"] #invoiceModal,
+      body[data-print="passport"] #ledgerModal { display: none !important; }
       body[data-print="passport"] #digitalPassportModal,
       body[data-print="passport"] #passportContent,
-      body[data-print="passport"] #passportContent * { visibility: visible; }
-      body[data-print="passport"] #digitalPassportModal { position: static !important; display: block !important; width: 100% !important; background: white !important; padding: 0 !important; }
-    }
-
-    /* Mobile Responsive Fixes */
-    html, body { max-width: 100%; overflow-x: hidden; }
-    @media (max-width: 640px) {
-      header { padding: 10px 12px; }
-      .header-title img { height: 36px; width: 36px; }
-      .header-title h1 { font-size: 15px; }
-      .sync-badge { font-size: 10px; padding: 3px 7px; }
-      .logout-btn { padding: 5px 10px; font-size: 11px; }
-      nav {
-        padding: 8px 10px;
-        display: flex;
-        flex-wrap: nowrap;
-        gap: 6px;
-        overflow-x: auto;
-        -webkit-overflow-scrolling: touch;
-        scrollbar-width: thin;
-        border-bottom: 1px solid #dcedc8;
-      }
-      nav button {
-        flex: 0 0 auto;
-        padding: 7px 12px;
-        font-size: 12px;
-        margin-right: 0;
-        background: #f8faf9;
-        border: 1px solid #e0e0e0;
-        border-radius: 20px;
-      }
-      nav button.active {
-        background: var(--primary);
-        color: #ffffff;
-        border-color: var(--primary);
-        border-bottom: 1px solid var(--primary);
-      }
-      input, select, textarea { font-size: 16px !important; }
-      .container { padding: 0 10px; margin: 12px auto; }
-      .card { padding: 14px 12px; margin-bottom: 14px; }
-      h2 { font-size: 15.5px; }
-      .summary-grid { grid-template-columns: repeat(2, 1fr); gap: 10px; }
-      .summary-card { padding: 12px 10px; }
-      .summary-card p { font-size: 10px; }
-      .summary-card h3 { font-size: 17px; }
-      .alert-grid { grid-template-columns: 1fr; }
-      .form-grid { grid-template-columns: 1fr !important; gap: 10px; }
-      .tab-content div[style*="grid-template-columns:repeat(auto-fit, minmax(320px"],
-      .tab-content div[style*="grid-template-columns:repeat(auto-fit, minmax(280px"],
-      .tab-content div[style*="grid-template-columns: 1fr 1fr"] {
-        grid-template-columns: 1fr !important;
-      }
-      .tab-content input[type="text"],
-      .tab-content input[type="date"],
-      .tab-content input[type="number"],
-      .tab-content select {
-        max-width: 100% !important;
-      }
-      #saleSearchInput, #saleAreaFilter, #orderSearchInput, #orderAreaFilter, #orderShiftFilter,
-      #feedSearchTag, #expFilterCategory, #expSearchInput, #stkFilterCategory,
-      #stkSearchInput, #semFilterType, #semFilterBreed, #semSearchInput, #hlthSearchInput {
-        width: 100% !important;
-      }
-      #loginScreen { align-items: flex-start; padding: 16px 12px; }
-      .login-box { padding: 22px 18px; margin: auto; }
-      #ledgerModal, #invoiceModal, #cattleFeedModal, #calvingActionModal,
-      #bulkMilkModal, #bulkFeedModal, #stockMoveModal, #vendorPayModal {
-        align-items: flex-start !important;
-        padding: 10px !important;
-      }
-      .invoice-card, .ledger-card, .feed-modal-card {
-        padding: 16px 12px;
-        border-radius: 12px;
-        max-height: 92vh;
-        margin: auto;
-      }
-      #ledgerModal div[style*="grid-template-columns:repeat(3, 1fr)"] {
-        grid-template-columns: 1fr !important;
-      }
-      .table-container {
-        width: 100%;
-        overflow-x: auto;
-        -webkit-overflow-scrolling: touch;
-        border: 1px solid #c8e6c9;
-        position: relative;
-        background: white;
-      }
-      .table-container::before {
-        content: "⇆ ডানে-বামে স্ক্রল করুন";
-        display: block;
-        font-size: 10.5px;
-        color: #1b5e20;
-        background: #f1f8e9;
-        padding: 3px 8px;
-        font-weight: 600;
-        border-bottom: 1px solid #dcedc8;
-      }
-      table { min-width: 660px; font-size: 12px; }
-      th, td { padding: 8px 10px; }
-      th:last-child, td:last-child {
-        position: sticky;
-        right: 0;
-        background: #ffffff;
-        box-shadow: -3px 0 6px rgba(0,0,0,0.06);
-        z-index: 2;
-      }
-      th:last-child { background: #f8faf9; }
+      body[data-print="passport"] #passportContent * { visibility: visible !important; }
+      body[data-print="passport"] #digitalPassportModal { position: static !important; inset: auto !important; display: block !important; width: 100% !important; height: auto !important; max-height: none !important; overflow: visible !important; background: white !important; padding: 0 !important; }
     }
   </style>
 </head>
@@ -1836,19 +1883,19 @@
       <div id="invoicePrintArea">
         <img src="https://cdn-icons-png.flaticon.com/512/2395/2395796.png" data-local-logo="logo.png" class="invoice-watermark" alt="Logo">
         <div class="invoice-content">
-          <div style="display:flex; justify-content:space-between; align-items:center; border-bottom: 2.5px solid #1b5e20; padding-bottom: 14px; margin-bottom: 18px;">
-            <div style="display:flex; align-items:center; gap:14px;">
-              <img src="https://cdn-icons-png.flaticon.com/512/2395/2395796.png" data-local-logo="logo.png" style="height:60px; width:60px; border-radius:50%; object-fit:cover;" alt="Logo">
+          <div class="invoice-header-row">
+            <div style="display:flex; align-items:center; gap:12px;">
+              <img src="https://cdn-icons-png.flaticon.com/512/2395/2395796.png" data-local-logo="logo.png" style="height:56px; width:56px; border-radius:50%; object-fit:cover; flex-shrink:0;" alt="Logo">
               <div>
-                <h2 style="margin:0; color:#1b5e20; font-size:22px; font-weight:800; border:none; padding:0;">Nanda Dairy & Agro</h2>
+                <h2 style="margin:0; color:#1b5e20; font-size:21px; font-weight:800; border:none; padding:0;">Nanda Dairy & Agro</h2>
                 <p id="invMainDocTitle" style="font-size:12.5px; color:#333; margin:3px 0 0 0; font-weight:600;">ইনভয়েস / INVOICE (ক্যাশ মেমো)</p>
               </div>
             </div>
             <div style="text-align:right;">
-              <span style="border: 2px dashed #2e7d32; color: #2e7d32; font-weight: 800; font-size: 11px; padding: 5px 10px; border-radius: 6px;">✔ VERIFIED</span>
+              <span style="border: 2px dashed #2e7d32; color: #2e7d32; font-weight: 800; font-size: 11px; padding: 4px 9px; border-radius: 6px; white-space:nowrap;">✔ VERIFIED</span>
             </div>
           </div>
-          <div id="invoiceDetails" style="font-size: 14px; line-height: 1.9;"></div>
+          <div id="invoiceDetails" class="invoice-details-wrap"></div>
           <div style="display:flex; justify-content:space-between; align-items:flex-end; margin-top: 40px; border-top: 1px dashed #aaa; padding-top: 16px;">
             <div><span style="font-size:11.5px; color:#555;">সিস্টেম জেনারেটেড মূল ইনভয়েস</span></div>
             <div style="text-align: right;">
@@ -3185,12 +3232,15 @@
     window.printSpecificModal = function(target) {
       document.body.setAttribute('data-print', target);
       var origTitle = document.title;
-      document.title = " ";
-      window.print();
-      setTimeout(function() {
+      document.title = "Nanda Dairy & Agro";
+      var restoreAfterPrint = function() {
         document.title = origTitle;
-        document.body.removeAttribute('data-print');
-      }, 1000);
+        window.removeEventListener('afterprint', restoreAfterPrint);
+      };
+      window.addEventListener('afterprint', restoreAfterPrint);
+      setTimeout(function() {
+        window.print();
+      }, 120);
     };
 
     function onSaleCustomerInput() {
@@ -5362,7 +5412,7 @@
         modal = document.createElement('div');
         modal.id = 'digitalPassportModal';
         modal.style.cssText = "display:flex; position:fixed; inset:0; background:rgba(0,0,0,0.65); z-index:3000; align-items:center; justify-content:center; padding:15px;";
-        modal.innerHTML = '<div style="background:white; max-width:700px; width:100%; border-radius:12px; padding:25px; max-height:90vh; overflow-y:auto;"><div id="passportContent"></div><div class="no-print" style="text-align:right; margin-top:15px; display:flex; justify-content:flex-end; gap:10px;"><button class="btn btn-info" onclick="printSpecificModal(\'passport\')">🖨️ প্রিন্ট করুন</button><button class="btn btn-success" id="passportDownloadBtn" style="background:#2e7d32; color:white; border:none; padding:8px 14px; border-radius:6px; cursor:pointer;">📥 ডাউনলোড করুন</button><button class="btn btn-danger" onclick="document.getElementById(\'digitalPassportModal\').style.display=\'none\'">বন্ধ করুন</button></div></div>';
+        modal.innerHTML = '<div style="background:white; max-width:700px; width:100%; border-radius:12px; padding:25px; max-height:90vh; overflow-y:auto;"><div id="passportContent"></div><div class="no-print" style="text-align:right; margin-top:15px; display:flex; justify-content:flex-end; gap:10px;"><button class="btn btn-info" onclick="printSpecificModal(\'passport\')">🖨️ প্রিন্ট করুন</button><button class="btn btn-success" id="passportDownloadBtn" style="background:#2e7d32; color:white; border:none; padding:8px 14px; border-radius:6px; cursor:pointer;">📥 ডাউনলোড করুন</button><button class="btn btn-danger" onclick="document.getElementById(\'digitalPassportModal\').style.display=\'none\'; document.body.removeAttribute(\'data-print\');">বন্ধ করুন</button></div></div>';
         document.body.appendChild(modal);
       }
       getEl('passportContent').innerHTML = historyHtml;
@@ -9035,7 +9085,7 @@
           '<strong>মোট দুধ উৎপাদন:</strong> ' + r.milkL.toFixed(1) + ' লিটার (গড়: ' + r.avgPerCow.toFixed(1) + ' L/গরু) | ' +
           '<strong>গ্রাহক পাওনা:</strong> ₹ ' + Math.round(r.custDueTot).toLocaleString() + ' | <strong>দোকান বাকি:</strong> ₹ ' + Math.round(r.vendDueTot).toLocaleString() +
         '</div>' +
-        '<div style="display:grid; grid-template-columns:1fr 1fr; gap:14px;">' +
+        '<div class="pl-two-col">' +
           '<div><strong>বিক্রি / আয় (Sales):</strong><table class="invoice-table" style="width:100%; min-width:unset; margin-top:6px;"><tbody>' + sRows + '</tbody><tfoot><tr style="background:#e8f5e9;"><th>মোট আয়</th><th style="text-align:right;">₹ ' + r.salesTot.toLocaleString() + '</th></tr></tfoot></table></div>' +
           '<div><strong>খরচ (Expenses):</strong><table class="invoice-table" style="width:100%; min-width:unset; margin-top:6px;"><tbody>' + eRows + '</tbody><tfoot><tr style="background:#ffebee;"><th>মোট খরচ</th><th style="text-align:right;">₹ ' + r.expTot.toLocaleString() + '</th></tr></tfoot></table></div>' +
         '</div>' +
