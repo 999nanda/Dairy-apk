@@ -42,6 +42,9 @@
       console.log(e);
     }
 
+    window.currentUserRole = 'owner';
+    window.currentUserName = 'Owner / Admin';
+
     window.formatDateBR = function(dtStr) {
       if (!dtStr || dtStr === '-') return '-';
       var clean = String(dtStr).trim();
@@ -85,7 +88,27 @@
       return [];
     };
 
+    window.applyUserRolePermissions = function() {
+      var isStaff = (window.currentUserRole === 'staff');
+      if (isStaff) {
+        document.body.classList.add('role-staff');
+      } else {
+        document.body.classList.remove('role-staff');
+      }
+      var roleLbl = getEl('headerUserRole');
+      if (roleLbl) {
+        roleLbl.innerText = window.currentUserName || (isStaff ? 'Staff' : 'Owner / Admin');
+      }
+    };
+
     window.switchTab = function(tab, btn) {
+      if (window.currentUserRole === 'staff' && (tab === 'reports' || tab === 'backup')) {
+        if (typeof showAppToast === 'function') {
+          showAppToast('স্টাফ অ্যাকাউন্ট থেকে Reports বা Backup দেখার অনুমতি নেই!');
+        }
+        return;
+      }
+
       var contents = document.querySelectorAll('.tab-content');
       for (var i = 0; i < contents.length; i++) {
         contents[i].style.display = 'none';
@@ -108,17 +131,79 @@
       }
     };
 
+    window.getStoredStaffUsers = function() {
+      var list = {};
+      try {
+        var cached = localStorage.getItem('nanda_custom_staff_users');
+        if (cached) {
+          var parsed = JSON.parse(cached);
+          if (parsed && typeof parsed === 'object') list = parsed;
+        }
+      } catch (e) {}
+      if (window.farmStore && window.farmStore.staffUsers) {
+        for (var k in window.farmStore.staffUsers) {
+          list[k] = window.farmStore.staffUsers[k];
+        }
+      }
+      return list;
+    };
+
+    window.completeLoginSuccess = function(role, displayName) {
+      window.currentUserRole = role;
+      window.currentUserName = displayName;
+      try {
+        localStorage.setItem('nanda_auth_status', 'logged_in');
+        localStorage.setItem('nanda_auth_role', role);
+        localStorage.setItem('nanda_auth_user', displayName);
+      } catch (e) {}
+      if (getEl('loginErr')) getEl('loginErr').innerText = '';
+      getEl('loginScreen').style.display = 'none';
+      getEl('appBody').style.display = 'block';
+      window.applyUserRolePermissions();
+      if (typeof window.listenAllData === 'function') {
+        window.listenAllData();
+      }
+    };
+
     window.doLogin = function() {
       var u = (getEl('loginId') ? getEl('loginId').value : '').trim().toLowerCase();
       var p = (getEl('loginPass') ? getEl('loginPass').value : '').trim();
 
       if (u === 'nanda' && p === '1234') {
-        try { localStorage.setItem('nanda_auth_status', 'logged_in'); } catch (e) {}
-        getEl('loginScreen').style.display = 'none';
-        getEl('appBody').style.display = 'block';
-        if (typeof window.listenAllData === 'function') {
-          window.listenAllData();
+        window.completeLoginSuccess('owner', 'Owner / Admin');
+        return;
+      }
+      if (u === 'staff' && p === '1111') {
+        window.completeLoginSuccess('staff', 'Staff (staff)');
+        return;
+      }
+
+      var checkCustomStaff = function(staffMap) {
+        for (var k in staffMap) {
+          var st = staffMap[k];
+          if (!st || st.active === false) continue;
+          if (String(st.username || '').trim().toLowerCase() === u && String(st.password || '').trim() === p) {
+            window.completeLoginSuccess('staff', 'Staff (' + (st.name || st.username) + ')');
+            return true;
+          }
         }
+        return false;
+      };
+
+      var localStaff = window.getStoredStaffUsers();
+      if (checkCustomStaff(localStaff)) return;
+
+      if (db) {
+        db.ref('staffUsers').once('value', function(snap) {
+          var remoteStaff = snap.val() || {};
+          try { localStorage.setItem('nanda_custom_staff_users', JSON.stringify(remoteStaff)); } catch (e) {}
+          if (window.farmStore) window.farmStore.staffUsers = remoteStaff;
+          if (!checkCustomStaff(remoteStaff)) {
+            if (getEl('loginErr')) getEl('loginErr').innerText = 'ভুল আইডি বা পাসওয়ার্ড!';
+          }
+        }, function() {
+          if (getEl('loginErr')) getEl('loginErr').innerText = 'ভুল আইডি বা পাসওয়ার্ড!';
+        });
       } else {
         if (getEl('loginErr')) {
           getEl('loginErr').innerText = 'ভুল আইডি বা পাসওয়ার্ড!';
@@ -127,7 +212,11 @@
     };
 
     window.doLogout = function() {
-      try { localStorage.removeItem('nanda_auth_status'); } catch (e) {}
+      try {
+        localStorage.removeItem('nanda_auth_status');
+        localStorage.removeItem('nanda_auth_role');
+        localStorage.removeItem('nanda_auth_user');
+      } catch (e) {}
       location.reload();
     };
 
@@ -161,7 +250,7 @@
         testImg.src = imgEl.getAttribute('data-local-logo');
       });
       var todayISO = new Date().toISOString().split('T')[0];
-      var defaultDateIds = ['milkDate', 'saleDate', 'orderDate', 'expDate', 'brAiDate', 'hlthDate', 'ledgerPayDate', 'feedDate', 'rationDate', 'vacDate', 'dewormDate', 'labJoinDate', 'labPayDate', 'semDate'];
+      var defaultDateIds = ['milkDate', 'milkReconDate', 'saleDate', 'orderDate', 'expDate', 'brAiDate', 'hlthDate', 'ledgerPayDate', 'feedDate', 'rationDate', 'vacDate', 'dewormDate', 'labJoinDate', 'labPayDate', 'labAttDate', 'semDate', 'insStartDate'];
       defaultDateIds.forEach(function(id) {
         if (getEl(id)) {
           getEl(id).value = todayISO;
@@ -171,11 +260,30 @@
       if (typeof autoCalcRation === 'function') autoCalcRation();
       if (typeof autoCalcNextDewormDate === 'function') autoCalcNextDewormDate();
 
+      if (db) {
+        try {
+          db.ref('staffUsers').once('value', function(snap) {
+            var val = snap.val() || {};
+            if (window.farmStore) window.farmStore.staffUsers = val;
+            try { localStorage.setItem('nanda_custom_staff_users', JSON.stringify(val)); } catch (e) {}
+          });
+        } catch (e) {}
+      }
+
       var isLogged = false;
-      try { isLogged = (localStorage.getItem('nanda_auth_status') === 'logged_in'); } catch (e) {}
+      var savedRole = 'owner';
+      var savedUser = 'Owner / Admin';
+      try {
+        isLogged = (localStorage.getItem('nanda_auth_status') === 'logged_in');
+        savedRole = localStorage.getItem('nanda_auth_role') || 'owner';
+        savedUser = localStorage.getItem('nanda_auth_user') || (savedRole === 'staff' ? 'Staff' : 'Owner / Admin');
+      } catch (e) {}
       if (isLogged) {
+        window.currentUserRole = savedRole;
+        window.currentUserName = savedUser;
         if (getEl('loginScreen')) getEl('loginScreen').style.display = 'none';
         if (getEl('appBody')) getEl('appBody').style.display = 'block';
+        window.applyUserRolePermissions();
         if (typeof window.listenAllData === 'function') window.listenAllData();
       } else {
         if (getEl('loginScreen')) getEl('loginScreen').style.display = 'flex';
@@ -197,6 +305,13 @@
 
     * { box-sizing: border-box; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 0; padding: 0; }
     body { background-color: #f1f5f2; color: var(--dark); padding-bottom: 60px; }
+
+    /* Staff Role Restrictions */
+    body.role-staff .owner-only,
+    body.role-staff .owner-only-tab,
+    body.role-staff button[onclick*="deleteRecord"] {
+      display: none !important;
+    }
 
     header {
       background: linear-gradient(135deg, #1b5e20, #2e7d32);
@@ -229,7 +344,14 @@
     .btn-danger { background: var(--danger); color: white; }
     .btn-warning { background: var(--warning); color: white; }
     .btn-info { background: var(--info); color: white; }
+    .btn-wa { background: #25d366; color: white; }
+    .btn-wa:hover { background: #1ebe5d; }
     .action-btn { padding: 5px 11px; font-size: 12px; border: none; border-radius: 5px; cursor: pointer; margin-right: 4px; font-weight: 600; }
+
+    .att-btn { padding: 4px 10px; border-radius: 6px; border: 1px solid #ccc; background: #fff; font-weight: 700; font-size: 12px; cursor: pointer; margin-right: 4px; }
+    .att-btn.active-P { background: #2e7d32; color: #fff; border-color: #2e7d32; }
+    .att-btn.active-H { background: #f57c00; color: #fff; border-color: #f57c00; }
+    .att-btn.active-A { background: #d32f2f; color: #fff; border-color: #d32f2f; }
 
     .table-container { overflow-x: auto; margin-top: 10px; border-radius: 8px; border: 1px solid #edf2ee; -webkit-overflow-scrolling: touch; }
     table { width: 100%; border-collapse: collapse; font-size: 12.5px; text-align: left; min-width: 900px; }
@@ -298,6 +420,10 @@
     .alert-item.calving {
       border-left-color: #7b1fa2;
       background: #fcf8ff;
+    }
+    .alert-item.insurance {
+      border-left-color: #0277bd;
+      background: #f5fbff;
     }
     .alert-item-top {
       display: flex;
@@ -475,7 +601,7 @@
       .tab-content select {
         max-width: 100% !important;
       }
-      #saleSearchInput, #saleAreaFilter, #orderSearchInput, #orderAreaFilter,
+      #saleSearchInput, #saleAreaFilter, #orderSearchInput, #orderAreaFilter, #orderShiftFilter,
       #feedSearchTag, #expFilterCategory, #expSearchInput, #stkFilterCategory,
       #stkSearchInput, #semFilterType, #semFilterBreed, #semSearchInput, #hlthSearchInput {
         width: 100% !important;
@@ -575,8 +701,8 @@
       <img src="https://cdn-icons-png.flaticon.com/512/2395/2395796.png" data-local-logo="logo.png" alt="Logo">
       <h2>Nanda Dairy & Agro</h2>
       <p style="font-size: 13px; color: #666; margin-bottom: 20px;">ফার্ম ম্যানেজমেন্ট সিস্টেমে স্বাগতম</p>
-      <div style="text-align: left; margin-bottom: 14px;"><label style="font-size: 12px; font-weight:600;">User ID</label><input type="text" id="loginId" placeholder="ইউজার আইডি"></div>
-      <div style="text-align: left; margin-bottom: 20px;"><label style="font-size: 12px; font-weight:600;">Password</label><input type="password" id="loginPass" placeholder="পাসওয়ার্ড"></div>
+      <div style="text-align: left; margin-bottom: 14px;"><label style="font-size: 12px; font-weight:600;">User ID (Owner / Staff)</label><input type="text" id="loginId" placeholder="ইউজার আইডি" onkeydown="if(event.key==='Enter') window.doLogin()"></div>
+      <div style="text-align: left; margin-bottom: 20px;"><label style="font-size: 12px; font-weight:600;">Password</label><input type="password" id="loginPass" placeholder="পাসওয়ার্ড" onkeydown="if(event.key==='Enter') window.doLogin()"></div>
       <button class="btn" style="width: 100%; padding: 11px; justify-content:center;" onclick="window.doLogin()">লগইন করুন</button>
       <p id="loginErr" style="color: red; font-size: 12px; margin-top: 10px;"></p>
     </div>
@@ -587,7 +713,7 @@
     <header>
       <div class="header-title">
         <img src="https://cdn-icons-png.flaticon.com/512/2395/2395796.png" data-local-logo="logo.png" alt="Logo">
-        <div><h1>Nanda Dairy & Agro</h1><span style="font-size: 11px; opacity: 0.85;">Owner / Admin</span></div>
+        <div><h1>Nanda Dairy & Agro</h1><span id="headerUserRole" style="font-size: 11px; opacity: 0.9;">Owner / Admin</span></div>
       </div>
       <div class="header-right">
         <span class="sync-badge">● Online Cloud Sync</span>
@@ -609,9 +735,9 @@
       <button onclick="switchTab('expenses', this)">🧾 Expenses</button>
       <button onclick="switchTab('stock', this)">📦 Stock</button>
       <button onclick="switchTab('semen', this)">💉 Semen/Bull</button>
-      <button onclick="switchTab('health', this)">🩺 Health</button>
-      <button onclick="switchTab('reports', this)">📈 Reports</button>
-      <button onclick="switchTab('backup', this)">💾 Backup</button>
+      <button onclick="switchTab('health', this)">🩺 Health & Insurance</button>
+      <button class="owner-only-tab" onclick="switchTab('reports', this)">📈 Reports</button>
+      <button class="owner-only-tab" onclick="switchTab('backup', this)">💾 Backup & Staff</button>
     </nav>
 
     <div class="container">
@@ -660,11 +786,11 @@
 
         <div class="alert-card">
           <div class="alert-header">
-            <h2>🔔 জরুরি ও আসন্ন অ্যালার্ট (ভ্যাকসিন • কৃমির ওষুধ • বাচ্চা প্রসব)</h2>
+            <h2>🔔 জরুরি ও আসন্ন অ্যালার্ট (ভ্যাকসিন • কৃমি • প্রসব • রিপিট ব্রিডার • বীমা/লোন)</h2>
             <span id="dash-alert-badge" class="badge badge-danger" style="font-size:12px; padding:5px 12px;">0 টি অ্যালার্ট</span>
           </div>
           <p style="font-size:12px; color:#666; margin-bottom:14px;">
-            নির্ধারিত তারিখের <strong>৭ দিন আগে থেকে</strong> অটোমেটিক অ্যালার্ট এখানে দেখা যাবে। অ্যাকশন সম্পন্ন করলে এটি এখান থেকে মুছে যাবে এবং পরবর্তী ডোজ বা তারিখের সময় হলে আবার স্বয়ংক্রিয়ভাবে ফিরে আসবে।
+            নির্ধারিত তারিখের <strong>৭ দিন আগে থেকে</strong> অটোমেটিক অ্যালার্ট এখানে দেখা যাবে। এছাড়া পরপর ৩+ বার AI ব্যর্থ হলে Repeat Breeder Alert স্বয়ংক্রিয়ভাবে দেখাবে।
           </p>
           <div id="dashAlertContainer" class="alert-grid"></div>
         </div>
@@ -700,7 +826,7 @@
           <div class="form-grid">
             <div class="input-group"><label>Tag ID *</label><input type="text" id="cowTag" placeholder="NDA-001"></div>
             <div class="input-group"><label>Breed</label><input type="text" id="cowBreed" placeholder="Jersey / HF"></div>
-            <div class="input-group"><label>Breed Type</label><input type="text" id="cowBreedType" placeholder="Jersey Cross"></div>
+            <div class="input-group"><label>Breed Type / Gender</label><input type="text" id="cowBreedType" placeholder="Jersey Cross"></div>
             <div class="input-group"><label>Generation</label><select id="cowGeneration"><option value="F1">F1</option><option value="F2">F2</option><option value="F3">F3</option><option value="F4+">F4+</option><option value="Pure/100%">Pure/100%</option></select></div>
             <div class="input-group"><label>DOB (জন্মতারিখ)</label><input type="date" id="cowDob"></div>
             <div class="input-group"><label>Weight kg</label><input type="number" id="cowWeight" placeholder="450"></div>
@@ -708,7 +834,7 @@
             <div class="input-group"><label>Status</label><select id="cowStatus"><option value="Milking">Milking</option><option value="Pregnant">Pregnant</option><option value="Dry">Dry</option><option value="Heat">Heat</option><option value="Heifer">Heifer</option><option value="Calf">Calf</option><option value="Sick">Sick</option><option value="Sold/Transferred">Sold/Transferred</option></select></div>
             <div class="input-group"><label>Daily Est. Milk (L/day)</label><input type="number" step="0.1" id="cowMilkDay" placeholder="12.5"></div>
             <div class="input-group"><label>Sire / Semen</label><input type="text" id="cowSire" placeholder="Romio"></div>
-            <div class="input-group"><label>Dam</label><input type="text" id="cowDam" placeholder="মায়ের আইডি"></div>
+            <div class="input-group"><label>Dam (মায়ের আইডি)</label><input type="text" id="cowDam" placeholder="মায়ের আইডি"></div>
             <div class="input-group"><label>Expected Calving</label><input type="date" id="cowExpCalving"></div>
           </div>
           <div style="display:flex; gap:10px;">
@@ -720,7 +846,7 @@
           <h2>সকল গরুর তালিকা (প্রোফাইল দেখতে Tag-এ ক্লিক করুন)</h2>
           <div class="table-container">
             <table>
-              <thead><tr><th>#</th><th>Tag ID (Profile)</th><th>Breed</th><th>Type</th><th>Gen</th><th>DOB</th><th>Weight</th><th>Lact</th><th>Status</th><th style="background:#e8f5e9; color:#1b5e20;">Total Milk (Days)</th><th>Sire/Semen</th><th>Calving</th><th>Action</th></tr></thead>
+              <thead><tr><th>#</th><th>Tag ID (Profile)</th><th>Breed</th><th>Type</th><th>Gen</th><th>DOB</th><th>Weight</th><th>Lact</th><th>Status</th><th style="background:#e8f5e9; color:#1b5e20;">Total Milk (Days)</th><th>Sire/Dam</th><th>Calving</th><th>Action</th></tr></thead>
               <tbody id="cattleTableBody"></tbody>
             </table>
           </div>
@@ -852,7 +978,7 @@
       <div id="tab-milk" class="tab-content" style="display: none;">
         <div class="card">
           <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
-            <h2 style="margin:0; border:none; padding:0;">🥛 Milk Production Entry</h2>
+            <h2 style="margin:0; border:none; padding:0;">🥛 Milk Production & Quality Entry</h2>
             <button class="action-btn btn-info" onclick="switchTab('dashboard', document.querySelector('nav button'))">⬅ Back (ফিরে যান)</button>
           </div>
           <div class="form-grid">
@@ -860,13 +986,28 @@
             <div class="input-group"><label>Tag ID *</label><input type="text" id="milkCowTag" list="cattleTagList" oninput="checkMilkWithdrawalWarning()" onchange="checkMilkWithdrawalWarning()" placeholder="Tag সিলেক্ট বা টাইপ করুন"></div>
             <div class="input-group"><label>Session</label><select id="milkSession"><option value="Morning">Morning</option><option value="Evening">Evening</option><option value="Noon">Noon</option></select></div>
             <div class="input-group"><label>Quantity Liters *</label><input type="number" id="milkLiters" step="0.1" placeholder="০.০"></div>
+            <div class="input-group"><label>🧪 Fat % (ঐচ্ছিক)</label><input type="number" id="milkFat" step="0.1" placeholder="যেমন: 4.2"></div>
+            <div class="input-group"><label>🧪 SNF % (ঐচ্ছিক)</label><input type="number" id="milkSnf" step="0.1" placeholder="যেমন: 8.5"></div>
+            <div class="input-group"><label>🧪 CLR (ঐচ্ছিক)</label><input type="number" id="milkClr" step="0.1" placeholder="যেমন: 28.0"></div>
           </div>
           <div id="milkWithdrawalWarningBox"></div>
-          <div style="display:flex; gap:10px;">
+          <div style="display:flex; gap:10px; flex-wrap:wrap;">
             <button class="btn" id="milkSubmitBtn" onclick="saveMilk()">Save Milk Record</button>
             <button class="btn btn-info" type="button" onclick="openBulkMilkModal()">⚡ সব গরুর দুধ একসাথে এন্ট্রি</button>
             <button class="btn btn-warning" id="milkCancelBtn" style="display:none;" onclick="cancelMilkEdit()">Cancel</button>
           </div>
+        </div>
+
+        <!-- দৈনিক দুধের মিলান হিসাব (Milk Reconciliation) ও কোয়ালিটি কার্ড -->
+        <div class="card" style="border-left: 5px solid #0288d1; background:#fafdff;">
+          <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; margin-bottom:12px;">
+            <h2 style="margin:0; border:none; padding:0; color:#0277bd;">⚖️ দৈনিক দুধের মিলান হিসাব ও মান (Milk Reconciliation & Quality)</h2>
+            <div style="display:flex; align-items:center; gap:8px;">
+              <label style="font-size:12px; font-weight:700; color:#0277bd;">তারিখ:</label>
+              <input type="date" id="milkReconDate" onchange="renderMilkReconciliation()" style="padding:5px 8px; border-radius:6px; border:1px solid #90caf9; width:auto;">
+            </div>
+          </div>
+          <div id="milkReconGrid" style="display:grid; grid-template-columns:repeat(auto-fit, minmax(175px, 1fr)); gap:12px;"></div>
         </div>
         
         <div class="card">
@@ -895,7 +1036,7 @@
 
           <div class="table-container">
             <table>
-              <thead><tr><th>তারিখ (Date)</th><th>মোট দুধ</th><th>গাভীর সংখ্যা</th><th>এন্ট্রি</th><th>বিস্তারিত</th></tr></thead>
+              <thead><tr><th>তারিখ (Date)</th><th>মোট দুধ</th><th>গড় মান (Fat / SNF)</th><th>গাভীর সংখ্যা</th><th>এন্ট্রি</th><th>বিস্তারিত</th></tr></thead>
               <tbody id="milkGroupTableBody"></tbody>
             </table>
           </div>
@@ -920,8 +1061,8 @@
             <div class="input-group"><label>Area / Route</label><input type="text" id="saleArea" list="customerAreaList" placeholder="এলাকা"></div>
             <div class="input-group"><label>Address</label><input type="text" id="saleAddr" placeholder="ঠিকানা"></div>
             <div class="input-group"><label>Item</label><select id="saleItem"><option value="Liquid Milk">Liquid Milk</option><option value="Ghee">Ghee</option><option value="Butter">Butter</option><option value="Paneer">Paneer</option><option value="Manure">Manure</option></select></div>
-            <div class="input-group"><label>Quantity</label><input type="number" id="saleQty" oninput="calcSale()" placeholder="০"></div>
-            <div class="input-group"><label>Rate ₹</label><input type="number" id="saleRate" oninput="calcSale()" placeholder="₹"></div>
+            <div class="input-group"><label>Quantity</label><input type="number" step="0.1" id="saleQty" oninput="calcSale()" placeholder="০"></div>
+            <div class="input-group"><label>Rate ₹ (Custom Rate অটো বসবে)</label><input type="number" step="0.5" id="saleRate" oninput="calcSale()" placeholder="₹"></div>
             <div class="input-group"><label>Total Bill ₹</label><input type="number" id="saleTotal" oninput="calcSale()" placeholder="₹"></div>
             <div class="input-group"><label>Paid Amount ₹</label><input type="number" id="salePaid" oninput="calcSale()" placeholder="₹"></div>
             <div class="input-group"><label>Previous Due ₹ (আগের বকেয়া)</label><input type="number" id="salePrevDue" readonly style="background:#f1f5f2; color:#555; font-weight:bold;" value="0"></div>
@@ -984,9 +1125,11 @@
             <div class="input-group"><label>Area / Route</label><input type="text" id="custArea" list="customerAreaList" placeholder="এলাকা"></div>
             <div class="input-group"><label>Address</label><input type="text" id="custAddress" placeholder="ঠিকানা"></div>
             <div class="input-group"><label>Daily Demand L</label><input type="number" step="0.1" id="custDailyDemand" placeholder="২.০"></div>
+            <div class="input-group"><label>💰 Custom Milk Rate (₹/L)</label><input type="number" step="0.5" id="custMilkRate" placeholder="যেমন: 55"></div>
             <div class="input-group"><label>Opening Due ₹</label><input type="number" id="custOpeningDue" placeholder="০"></div>
             <div class="input-group"><label>Customer Type</label><select id="custType"><option value="Regular Retailer">Regular Retailer</option><option value="Wholesale">Wholesale</option><option value="Feed/Agro Buyer">Feed/Agro Buyer</option></select></div>
             <div class="input-group"><label>Delivery Shift</label><select id="custShift"><option value="Morning">Morning</option><option value="Evening">Evening</option><option value="Both">Both</option></select></div>
+            <div class="input-group"><label>📱 WhatsApp Reminder</label><select id="custWhatsappOpt"><option value="allowed">অনুমোদিত (Allowed)</option><option value="blocked">বন্ধ (Disabled)</option></select></div>
           </div>
           <div style="display:flex; gap:10px;">
             <button class="btn" id="custSubmitBtn" onclick="saveCustomer()">Save Customer</button>
@@ -997,7 +1140,7 @@
           <h2>কাস্টমার তালিকা</h2>
           <div class="table-container">
             <table>
-              <thead><tr><th>Name</th><th>Phone</th><th>Area</th><th>Address</th><th>Demand</th><th>Opening Due</th><th>Type & Shift</th><th>Action</th></tr></thead>
+              <thead><tr><th>Name</th><th>Phone & WhatsApp</th><th>Area</th><th>Address</th><th>Demand & Rate</th><th>Opening Due</th><th>Type & Shift</th><th>Action</th></tr></thead>
               <tbody id="customerTableBody"></tbody>
             </table>
           </div>
@@ -1008,14 +1151,15 @@
       <div id="tab-orders" class="tab-content" style="display: none;">
         <div class="card">
           <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
-            <h2 style="margin:0; border:none; padding:0;">📦 Orders Management</h2>
+            <h2 style="margin:0; border:none; padding:0;">📦 Orders & Delivery Checklist (Delivery Boy Mode)</h2>
             <button class="action-btn btn-info" onclick="switchTab('dashboard', document.querySelector('nav button'))">⬅ Back (ফিরে যান)</button>
           </div>
           <div class="form-grid">
             <div class="input-group"><label>Delivery Date *</label><input type="date" id="orderDate"></div>
             <div class="input-group"><label>Customer Name *</label><input type="text" id="orderCustomer" list="customerNameList" oninput="onOrderCustomerInput()" placeholder="নাম লিখুন"></div>
             <div class="input-group"><label>Phone</label><input type="text" id="orderPhone" placeholder="মোবাইল"></div>
-            <div class="input-group"><label>Area</label><input type="text" id="orderArea" list="customerAreaList" placeholder="এলাকা"></div>
+            <div class="input-group"><label>Area / Route</label><input type="text" id="orderArea" list="customerAreaList" placeholder="এলাকা"></div>
+            <div class="input-group"><label>🛵 Delivery Shift</label><select id="orderShift"><option value="Morning">Morning</option><option value="Evening">Evening</option><option value="Both">Both</option></select></div>
             <div class="input-group"><label>Items & Quantity *</label><input type="text" id="orderItems" placeholder="যেমন: ৫ লিটার দুধ"></div>
             <div class="input-group"><label>Total Price ₹</label><input type="number" id="orderTotal" placeholder="₹"></div>
             <div class="input-group"><label>Paid Amount ₹</label><input type="number" id="orderPaid" placeholder="₹"></div>
@@ -1027,16 +1171,23 @@
           </div>
         </div>
         <div class="card">
-          <div style="display:flex; justify-content:space-between; align-items:center; gap:12px; margin-bottom:14px;">
-            <h2 style="margin:0; border:none; padding:0;">অর্ডার তালিকা (Order Ledger & History)</h2>
-            <div style="display:flex; gap:8px;">
-              <input type="text" id="orderSearchInput" oninput="renderOrdersTable()" placeholder="🔍 কাস্টমার খুঁজুন..." style="width:200px; padding:7px;">
-              <select id="orderAreaFilter" onchange="renderOrdersTable()" style="width:150px; padding:7px;"><option value="">সকল এলাকা</option></select>
+          <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px; margin-bottom:12px;">
+            <h2 style="margin:0; border:none; padding:0;">🛵 রুট ও শিফট-ভিত্তিক ডেলিভারি চেকলিস্ট</h2>
+            <div style="display:flex; gap:8px; flex-wrap:wrap;">
+              <input type="text" id="orderSearchInput" oninput="renderOrdersTable()" placeholder="🔍 কাস্টমার খুঁজুন..." style="width:180px; padding:7px;">
+              <select id="orderShiftFilter" onchange="renderOrdersTable()" style="width:135px; padding:7px;">
+                <option value="">সকল শিফট</option>
+                <option value="Morning">Morning</option>
+                <option value="Evening">Evening</option>
+                <option value="Both">Both</option>
+              </select>
+              <select id="orderAreaFilter" onchange="renderOrdersTable()" style="width:140px; padding:7px;"><option value="">সকল এলাকা</option></select>
             </div>
           </div>
+          <div id="orderChecklistSummary" style="background:#f4fbf5; border:1px solid #c8e6c9; border-radius:8px; padding:10px 14px; margin-bottom:12px; font-size:13px; color:#1b5e20; font-weight:600; display:flex; justify-content:space-between; flex-wrap:wrap; gap:8px;"></div>
           <div class="table-container">
             <table>
-              <thead><tr><th>তারিখ</th><th>Customer Name</th><th>Area & Address</th><th>Total Orders / Items</th><th>Status</th><th>বিস্তারিত / অ্যাকশন</th></tr></thead>
+              <thead><tr><th>তারিখ ও শিফট</th><th>Customer Name</th><th>Area & Address</th><th>Total Orders / Items</th><th>Status</th><th>দ্রুত ডেলিভারি / অ্যাকশন</th></tr></thead>
               <tbody id="ordersTableBody"></tbody>
             </table>
           </div>
@@ -1208,7 +1359,7 @@
         </div>
 
         <div class="card">
-          <h2>👷 Labour Salary & Advance (কর্মচারীর বেতন ও অগ্রিম হিসাব)</h2>
+          <h2>👷 Labour Salary, Advance & Daily Attendance (কর্মচারীর বেতন ও হাজিরা খাতা)</h2>
           <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(280px, 1fr)); gap:18px; margin-bottom:18px;">
             <div style="background:#f9fdfa; border:1px solid #c8e6c9; border-radius:10px; padding:14px;">
               <strong style="color:var(--primary); font-size:13.5px; display:block; margin-bottom:10px;">➕ নতুন কর্মচারী / লেবার সেভ করুন</strong>
@@ -1234,9 +1385,21 @@
             </div>
           </div>
 
+          <!-- দৈনিক হাজিরা খাতা (Daily Attendance Panel) -->
+          <div style="background:#f3f9ff; border:1px solid #bbdefb; border-radius:10px; padding:14px; margin-bottom:18px;">
+            <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; margin-bottom:10px;">
+              <strong style="color:#0277bd; font-size:14px;">📅 দৈনিক হাজিরা খাতা (Daily Attendance: P = উপস্থিত, H = হাফ-ডে, A = অনুপস্থিত)</strong>
+              <div style="display:flex; align-items:center; gap:8px;">
+                <label style="font-size:12px; font-weight:700; color:#0277bd;">হাজিরার তারিখ:</label>
+                <input type="date" id="labAttDate" onchange="renderLabourAttendancePanel()" style="padding:5px 8px; border-radius:6px; border:1px solid #90caf9; width:auto;">
+              </div>
+            </div>
+            <div id="labourAttendancePanel" style="display:grid; grid-template-columns:repeat(auto-fit, minmax(250px, 1fr)); gap:10px;"></div>
+          </div>
+
           <div class="table-container">
             <table>
-              <thead><tr><th>কর্মচারীর নাম</th><th>মাসিক বেতন</th><th>এই মাসে অগ্রিম</th><th>এই মাসে বেতন পরিশোধ</th><th>বাকি পাওনা বেতন</th><th>বিস্তারিত / অ্যাকশন</th></tr></thead>
+              <thead><tr><th>কর্মচারীর নাম</th><th>মাসিক বেতন</th><th>এই মাসে হাজিরা (P/H/A)</th><th>হাজিরা অনুযায়ী প্রাপ্য</th><th>অগ্রিম / বেতন পরিশোধ</th><th>বাকি পাওনা</th><th>বিস্তারিত / অ্যাকশন</th></tr></thead>
               <tbody id="labourTableBody"></tbody>
             </table>
           </div>
@@ -1406,7 +1569,7 @@
         </div>
       </div>
 
-      <!-- ১৪. Health -->
+      <!-- ১৪. Health & Insurance -->
       <div id="tab-health" class="tab-content" style="display: none;">
         <div class="card">
           <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
@@ -1469,6 +1632,34 @@
             </table>
           </div>
           <p id="healthNoData" style="text-align:center; color:#777; font-size:13px; margin-top:14px; display:none;">এই মাস বা তারিখে কোনো স্বাস্থ্য রেকর্ড নেই।</p>
+        </div>
+
+        <!-- ১০. গরু বীমা ও লোন রিমাইন্ডার (Cattle Insurance & Loan Tracker) -->
+        <div class="card" style="border-left: 5px solid #0277bd;">
+          <h2 style="color:#0277bd;">🛡️ গরু বীমা ও লোন রিমাইন্ডার (Cattle Insurance & Loan Tracker)</h2>
+          <p style="font-size:12.5px; color:#555; margin-bottom:14px;">গরুর বীমা পলিসি বা ফার্মের লোনের মেয়াদ/কিস্তির তারিখ সেভ করলে <strong>৭ দিন আগে</strong> ড্যাশবোর্ডে স্বয়ংক্রিয় অ্যালার্ট দেখাবে।</p>
+          <div class="form-grid">
+            <div class="input-group"><label>ধরন (Type)</label><select id="insType"><option value="Cattle Insurance">Cattle Insurance (গরু বীমা)</option><option value="Farm / Cattle Loan">Farm / Cattle Loan (লোন)</option></select></div>
+            <div class="input-group"><label>Cattle Tag ID / বিবরণ *</label><input type="text" id="insCowTag" list="cattleTagList" placeholder="যেমন: NDA-001 বা ফার্ম লোন"></div>
+            <div class="input-group"><label>Policy / Loan No *</label><input type="text" id="insPolicyNo" placeholder="POL-12345 / LOAN-01"></div>
+            <div class="input-group"><label>Company / Bank</label><input type="text" id="insProvider" placeholder="যেমন: NIC / SBI / KCC"></div>
+            <div class="input-group"><label>প্রিমিয়াম / কিস্তি / মূল্য (₹)</label><input type="number" id="insAmount" placeholder="₹"></div>
+            <div class="input-group"><label>শুরুর তারিখ</label><input type="date" id="insStartDate"></div>
+            <div class="input-group"><label>মেয়াদ শেষ / পরবর্তী কিস্তির তারিখ *</label><input type="date" id="insDueDate"></div>
+            <div class="input-group"><label>Status</label><select id="insStatus"><option value="Active">Active (চলমান)</option><option value="Renewed">Renewed (নবায়নকৃত)</option><option value="Closed">Closed (সমাপ্ত)</option></select></div>
+            <div class="input-group"><label>নোট</label><input type="text" id="insNote" placeholder="অতিরিক্ত তথ্য"></div>
+          </div>
+          <div style="display:flex; gap:10px; margin-bottom:16px;">
+            <button class="btn btn-info" id="insSubmitBtn" onclick="saveInsuranceLoan()">Save Insurance / Loan</button>
+            <button class="btn btn-warning" id="insCancelBtn" style="display:none;" onclick="cancelInsuranceEdit()">Cancel</button>
+          </div>
+          <div class="table-container">
+            <table>
+              <thead><tr><th>ধরন</th><th>Tag / বিবরণ</th><th>পলিসি / লোন নং</th><th>কোম্পানি / ব্যাংক</th><th>পরিমাণ (₹)</th><th>মেয়াদ / পরবর্তী তারিখ</th><th>স্ট্যাটাস</th><th>Action</th></tr></thead>
+              <tbody id="insuranceTableBody"></tbody>
+            </table>
+          </div>
+          <p id="insuranceNoData" style="text-align:center; color:#777; font-size:13px; margin-top:12px; display:none;">কোনো বীমা বা লোন রেকর্ড নেই।</p>
         </div>
       </div>
 
@@ -1557,7 +1748,7 @@
         </div>
       </div>
 
-      <!-- ১৬. Backup -->
+      <!-- ১৬. Backup & Staff Login Manager -->
       <div id="tab-backup" class="tab-content" style="display: none;">
         <div class="card">
           <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; flex-wrap:wrap; gap:10px;">
@@ -1573,6 +1764,28 @@
           <div style="display:flex; flex-wrap:wrap; gap:12px; align-items:center;">
             <input type="file" id="restoreBackupFile" accept=".json" style="max-width:320px; background:#fff;">
             <button class="btn btn-warning" onclick="openRestoreConfirmModal()">📤 Restore Backup (JSON)</button>
+          </div>
+        </div>
+
+        <!-- ৯. স্টাফ লগইন ম্যানেজার (Owner Only) -->
+        <div class="card owner-only" style="border-left: 5px solid #1b5e20;">
+          <h2>🔐 স্টাফ ও ম্যানেজার লগইন তৈরি করুন (Staff Account Manager)</h2>
+          <p style="font-size:12.5px; color:#555; margin-bottom:14px;">
+            ডিফল্ট মালিক আইডি: <strong>nanda / 1234</strong> | ডিফল্ট স্টাফ আইডি: <strong>staff / 1111</strong>।
+            এছাড়া আপনি নিচ থেকে নতুন স্টাফ আইডি ও পাসওয়ার্ড তৈরি করতে পারবেন। স্টাফরা এন্ট্রি করতে পারবে কিন্তু <strong>Delete, Reports বা Backup</strong> অ্যাক্সেস পাবে না।
+          </p>
+          <div class="form-grid">
+            <div class="input-group"><label>স্টাফের নাম *</label><input type="text" id="newStaffName" placeholder="যেমন: রহিম / ডেলিভারি বয়"></div>
+            <div class="input-group"><label>Login User ID *</label><input type="text" id="newStaffUser" placeholder="যেমন: staff2"></div>
+            <div class="input-group"><label>Password *</label><input type="text" id="newStaffPass" placeholder="যেমন: 2222"></div>
+          </div>
+          <button class="btn" onclick="createStaffAccount()">➕ নতুন স্টাফ আইডি তৈরি করুন</button>
+
+          <div class="table-container" style="margin-top:16px;">
+            <table>
+              <thead><tr><th>স্টাফের নাম</th><th>User ID</th><th>Password</th><th>রোল ও অনুমতি</th><th>Action</th></tr></thead>
+              <tbody id="staffUsersTableBody"></tbody>
+            </table>
           </div>
         </div>
       </div>
@@ -1689,21 +1902,37 @@
     </div>
   </div>
 
+  <!-- বাচ্চা প্রসব + অটো বাছুর রেজিস্ট্রেশন মোডাল -->
   <div id="calvingActionModal">
-    <div class="feed-modal-card" style="max-width:460px;">
+    <div class="feed-modal-card" style="max-width:500px;">
       <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
-        <h2 style="color:var(--primary); margin:0; border:none; padding:0;">🐄 বাচ্চা প্রসব (Calving) সম্পন্ন করুন</h2>
+        <h2 style="color:var(--primary); margin:0; border:none; padding:0;">🐄 বাচ্চা প্রসব ও অটো বাছুর এন্ট্রি</h2>
         <button class="action-btn btn-danger" onclick="closeCalvingActionModal()">✕</button>
       </div>
       <p id="calvingModalDesc" style="font-size:13px; color:#555; margin-bottom:14px;"></p>
-      <div class="input-group" style="margin-bottom:14px;">
+      <div class="input-group" style="margin-bottom:12px;">
         <label>বাচ্চা প্রসবের প্রকৃত তারিখ (Actual Calving Date) *</label>
         <input type="date" id="calvingActualDateInput">
       </div>
-      <div class="input-group" style="margin-bottom:16px;">
+      <div class="input-group" style="margin-bottom:12px;">
         <label>নোট / বাচ্চার বিবরণ (ঐচ্ছিক)</label>
         <input type="text" id="calvingNoteInput" placeholder="যেমন: বকনা বাছুর / ষাঁড় বাছুর, সুস্থ">
       </div>
+
+      <!-- Auto Calf Entry Section -->
+      <div style="background:#f1f8e9; border:1px solid #c5e1a5; border-radius:10px; padding:12px; margin-bottom:14px;">
+        <div style="display:flex; align-items:center; gap:8px; margin-bottom:10px;">
+          <input type="checkbox" id="calvingAutoCalfCheck" checked style="width:auto; cursor:pointer;" onchange="getEl('calvingCalfFields').style.display = this.checked ? 'grid' : 'none'">
+          <label for="calvingAutoCalfCheck" style="font-size:13px; font-weight:700; color:#1b5e20; cursor:pointer;">🐮 নতুন বাছুরকে অটো Cattle Register-এ যুক্ত করুন</label>
+        </div>
+        <div id="calvingCalfFields" class="form-grid" style="grid-template-columns:1fr 1fr; gap:10px; margin-bottom:0;">
+          <div class="input-group"><label>নতুন বাছুরের Tag ID *</label><input type="text" id="calvingCalfTag" placeholder="যেমন: CALF-001"></div>
+          <div class="input-group"><label>বাছুরের লিঙ্গ (Gender)</label><select id="calvingCalfGender"><option value="Female (বকনা)">Female (বকনা বাছুর)</option><option value="Male (ষাঁড়)">Male (ষাঁড় বাছুর)</option></select></div>
+          <div class="input-group"><label>জন্ম ওজন (kg)</label><input type="number" id="calvingCalfWeight" placeholder="25"></div>
+          <div class="input-group"><label>জেনারেশন</label><select id="calvingCalfGen"><option value="F1">F1</option><option value="F2">F2</option><option value="F3">F3</option><option value="F4+">F4+</option><option value="Pure/100%">Pure/100%</option></select></div>
+        </div>
+      </div>
+
       <div style="display:flex; gap:10px;">
         <button class="btn" style="flex:1; justify-content:center;" onclick="confirmCalvingAction()">✔ প্রসব সম্পন্ন সেভ করুন</button>
         <button class="btn btn-warning" style="flex:1; justify-content:center;" onclick="closeCalvingActionModal()">বাতিল</button>
@@ -1738,9 +1967,10 @@
           </div>
         </div>
       </div>
-      <div class="no-print" style="display: flex; gap: 12px; margin-top: 22px;">
-        <button class="btn btn-info" style="flex: 1; padding: 12px; font-size: 14px;" onclick="printSpecificModal('invoice')">🖨️ প্রিন্ট করুন</button>
-        <button class="btn btn-danger" style="flex: 1; padding: 12px; font-size: 14px;" onclick="closeInvoice()">বন্ধ করুন</button>
+      <div class="no-print" style="display: flex; gap: 10px; margin-top: 22px; flex-wrap:wrap;">
+        <button id="invoiceWaBtn" class="btn btn-wa" style="flex: 1; padding: 12px; font-size: 14px; justify-content:center; display:none;" onclick="sendActiveInvoiceWhatsApp()">💬 WhatsApp বিল পাঠান</button>
+        <button class="btn btn-info" style="flex: 1; padding: 12px; font-size: 14px; justify-content:center;" onclick="printSpecificModal('invoice')">🖨️ প্রিন্ট করুন</button>
+        <button class="btn btn-danger" style="flex: 1; padding: 12px; font-size: 14px; justify-content:center;" onclick="closeInvoice()">বন্ধ করুন</button>
       </div>
     </div>
   </div>
@@ -1780,9 +2010,10 @@
         </div>
       </div>
       <div class="no-print" style="display:flex; gap:10px; margin-top:18px; flex-wrap:wrap;">
-        <button class="btn" style="flex:1; background:#2e7d32;" onclick="showCustomerMonthlyBill()">📅 মাসিক দুধের বিল</button>
-        <button class="btn btn-info" style="flex:1;" onclick="printSpecificModal('ledger')">🖨️ প্রিন্ট করুন</button>
-        <button class="btn btn-danger" style="flex:1;" onclick="closeLedger()">বন্ধ করুন</button>
+        <button id="ledgerWaBtn" class="btn btn-wa" style="flex:1; justify-content:center;" onclick="sendWhatsAppDueReminder(window.activeLedgerCustomerName)">💬 WhatsApp রিমাইন্ডার</button>
+        <button class="btn" style="flex:1; background:#2e7d32; justify-content:center;" onclick="showCustomerMonthlyBill()">📅 মাসিক দুধের বিল</button>
+        <button class="btn btn-info" style="flex:1; justify-content:center;" onclick="printSpecificModal('ledger')">🖨️ প্রিন্ট করুন</button>
+        <button class="btn btn-danger" style="flex:1; justify-content:center;" onclick="closeLedger()">বন্ধ করুন</button>
       </div>
     </div>
   </div>
@@ -1792,9 +2023,12 @@
       cattle: {}, breeding: {}, milk: {}, sales: {},
       customers: {}, orders: {}, expenses: {}, stock: {},
       semen: {}, health: {}, feedRations: {}, feed: {},
-      vaccine: {}, deworm: {}, labours: {}, labourPayments: {}, stockLogs: {}
+      vaccine: {}, deworm: {}, labours: {}, labourPayments: {},
+      labourAttendance: {}, stockLogs: {}, insuranceLoans: {}, staffUsers: {}
     };
+    window.farmStore = farmStore;
     window.activeLedgerCustomerName = '';
+    window._activeInvoiceWhatsApp = null;
 
     function findCattleByTag(tag) {
       if (!tag || !farmStore.cattle) return null;
@@ -1819,6 +2053,76 @@
       }
       return null;
     }
+
+    function findCustomerByName(custName) {
+      if (!custName || !farmStore.customers) return null;
+      var cLow = String(custName).trim().toLowerCase();
+      for (var k in farmStore.customers) {
+        var c = farmStore.customers[k];
+        if (c && (c.name || '').trim().toLowerCase() === cLow) return c;
+      }
+      return null;
+    }
+
+    window.isCustomerWhatsappAllowed = function(custName) {
+      var c = findCustomerByName(custName);
+      if (c && c.whatsappOpt === 'blocked') return false;
+      return true;
+    };
+
+    window.openWhatsAppLink = function(phone, messageText) {
+      var digits = String(phone || '').replace(/[^0-9]/g, '');
+      if (!digits) {
+        showAppToast('এই গ্রাহকের মোবাইল নম্বর সেভ করা নেই!');
+        return;
+      }
+      if (digits.length === 10) digits = '91' + digits;
+      var url = 'https://wa.me/' + digits + '?text=' + encodeURIComponent(messageText);
+      window.open(url, '_blank');
+    };
+
+    window.sendWhatsAppDueReminder = function(custName) {
+      var name = String(custName || '').trim();
+      if (!name) return showAppToast('গ্রাহক নির্বাচন করা হয়নি!');
+      if (!isCustomerWhatsappAllowed(name)) {
+        return showAppToast('এই গ্রাহকের জন্য WhatsApp মেসেজ বন্ধ (Disabled) করা আছে!');
+      }
+      var balMap = getCustomerLiveBalances();
+      var info = balMap[name.toLowerCase()];
+      var custObj = findCustomerByName(name);
+      var phone = (custObj && custObj.phone) ? custObj.phone : (info ? info.phone : '');
+      var due = info ? info.currentDue : 0;
+      var billed = info ? info.totalBilled : 0;
+      var paid = info ? info.totalPaid : 0;
+
+      var msg = 'নমস্কার ' + name + ',\n' +
+        '*Nanda Dairy & Agro*-এর পক্ষ থেকে আপনার হিসাবের সারসংক্ষেপ:\n' +
+        '• সর্বমোট বিল: ₹' + billed.toLocaleString() + '\n' +
+        '• মোট পরিশোধ: ₹' + paid.toLocaleString() + '\n' +
+        '• *বর্তমান বকেয়া: ₹' + due.toLocaleString() + '*\n\n' +
+        (due > 0 ? 'অনুগ্রহ করে সুবিধামতো সময়ে বকেয়া টাকা পরিশোধ করবেন। ধন্যবাদ!' : 'আপনার কোনো বকেয়া নেই। আমাদের সাথে থাকার জন্য ধন্যবাদ!');
+      openWhatsAppLink(phone, msg);
+    };
+
+    window.sendActiveInvoiceWhatsApp = function() {
+      var payload = window._activeInvoiceWhatsApp;
+      if (!payload) return;
+      if (!isCustomerWhatsappAllowed(payload.name)) {
+        return showAppToast('এই গ্রাহকের জন্য WhatsApp মেসেজ বন্ধ (Disabled) করা আছে!');
+      }
+      openWhatsAppLink(payload.phone, payload.text);
+    };
+
+    window.setInvoiceWhatsAppPayload = function(payload) {
+      window._activeInvoiceWhatsApp = payload;
+      var btn = getEl('invoiceWaBtn');
+      if (!btn) return;
+      if (payload && payload.name && isCustomerWhatsappAllowed(payload.name)) {
+        btn.style.display = 'inline-flex';
+      } else {
+        btn.style.display = 'none';
+      }
+    };
 
     function getDaysDifferenceFromToday(dateStr) {
       if (!dateStr || dateStr === '-' || dateStr === 'শুরু') return null;
@@ -1907,9 +2211,14 @@
       }
 
       var calvingTrackedTags = {};
+      var brHistoryByTag = {};
       for (var bk in farmStore.breeding) {
         var br = farmStore.breeding[bk];
         if (!br || !br.tag) continue;
+        var tUpperBr = br.tag.trim().toUpperCase();
+        if (!brHistoryByTag[tUpperBr]) brHistoryByTag[tUpperBr] = [];
+        brHistoryByTag[tUpperBr].push({ key: bk, data: br, t: parseDateToTime(br.aiDate) });
+
         var expDt = br.expCalvingDate || br.calvingDate || '';
         if (!expDt) continue;
         var st = String(br.status || '').trim().toLowerCase();
@@ -1917,8 +2226,7 @@
 
         var cDiff = getDaysDifferenceFromToday(expDt);
         if (cDiff !== null && cDiff <= 7) {
-          var tUpper = br.tag.trim().toUpperCase();
-          calvingTrackedTags[tUpper] = true;
+          calvingTrackedTags[tUpperBr] = true;
           alerts.push({
             type: 'calving',
             source: 'breeding',
@@ -1928,6 +2236,31 @@
             subtitle: 'সিমেন/ষাঁড়: ' + (br.semenId || '-') + ' | AI: ' + formatDateBR(br.aiDate),
             dueDate: expDt,
             diffDays: cDiff
+          });
+        }
+      }
+
+      // Feature 7: Repeat Breeder Alert (3+ consecutive Failed AI)
+      for (var rbTag in brHistoryByTag) {
+        var recs = brHistoryByTag[rbTag];
+        recs.sort(function(a, b) { return b.t - a.t; });
+        var consecutiveFails = 0;
+        var latestAiDate = recs[0] ? (recs[0].data.aiDate || '') : '';
+        for (var ri = 0; ri < recs.length; ri++) {
+          var rSt = String(recs[ri].data.status || '').trim().toLowerCase();
+          if (rSt === 'failed') consecutiveFails++;
+          else if (rSt === 'pregnant' || rSt === 'calved') break;
+          else if (rSt === 'pending') continue;
+        }
+        if (consecutiveFails >= 3) {
+          alerts.push({
+            type: 'repeat_breeder',
+            key: recs[0].key,
+            tag: recs[0].data.tag,
+            title: '🔁 রিপিট ব্রিডার সতর্কতা (Repeat Breeder)',
+            subtitle: 'পরপর ' + consecutiveFails + ' বার AI ব্যর্থ হয়েছে! ভেট ডাক্তারের পরামর্শ নিন।',
+            dueDate: latestAiDate || new Date().toISOString().split('T')[0],
+            diffDays: 0
           });
         }
       }
@@ -1952,6 +2285,24 @@
             subtitle: 'জাত: ' + (cw.breed || '-') + ' | স্ট্যাটাস: ' + (cw.status || 'Pregnant'),
             dueDate: cw.expCalving,
             diffDays: cwDiff
+          });
+        }
+      }
+
+      // Feature 10: Cattle Insurance & Loan Reminders (<= 7 days)
+      for (var ik in farmStore.insuranceLoans) {
+        var ins = farmStore.insuranceLoans[ik];
+        if (!ins || !ins.dueDate || ins.status === 'Closed' || ins.status === 'Renewed') continue;
+        var iDiff = getDaysDifferenceFromToday(ins.dueDate);
+        if (iDiff !== null && iDiff <= 7) {
+          alerts.push({
+            type: 'insurance',
+            key: ik,
+            tag: ins.cowTag || ins.policyNo || 'Farm',
+            title: '🛡️ ' + (ins.type || 'Insurance/Loan') + ': ' + (ins.policyNo || ''),
+            subtitle: (ins.provider ? ins.provider + ' | ' : '') + 'পরিমাণ: ₹ ' + (Number(ins.amount) || 0).toLocaleString(),
+            dueDate: ins.dueDate,
+            diffDays: iDiff
           });
         }
       }
@@ -2123,7 +2474,7 @@
       }
 
       if (alerts.length === 0) {
-        container.innerHTML = '<div style="grid-column: 1 / -1; background:#f1f8e9; border:1px dashed #81c784; border-radius:10px; padding:18px; text-align:center; color:#2e7d32; font-weight:600; font-size:13.5px;">✔ আগামী ৭ দিনের মধ্যে কোনো বকেয়া ভ্যাকসিন, কৃমির ওষুধ বা বাচ্চা প্রসবের অ্যালার্ট নেই।</div>';
+        container.innerHTML = '<div style="grid-column: 1 / -1; background:#f1f8e9; border:1px dashed #81c784; border-radius:10px; padding:18px; text-align:center; color:#2e7d32; font-weight:600; font-size:13.5px;">✔ আগামী ৭ দিনের মধ্যে কোনো বকেয়া ভ্যাকসিন, কৃমি, প্রসব, রিপিট ব্রিডার বা বীমা/লোনের অ্যালার্ট নেই।</div>';
         return;
       }
 
@@ -2131,7 +2482,10 @@
       alerts.forEach(function(al) {
         var dayBadge = '';
         var isUrgent = false;
-        if (al.diffDays < 0) {
+        if (al.type === 'repeat_breeder') {
+          isUrgent = true;
+          dayBadge = '<span class="badge badge-danger">🔁 ৩+ বার ব্যর্থ!</span>';
+        } else if (al.diffDays < 0) {
           isUrgent = true;
           dayBadge = '<span class="badge badge-danger">⚠️ ' + Math.abs(al.diffDays) + ' দিন অতিক্রান্ত!</span>';
         } else if (al.diffDays === 0) {
@@ -2141,7 +2495,7 @@
           dayBadge = '<span class="badge badge-warning">⏳ আর মাত্র ' + al.diffDays + ' দিন বাকি</span>';
         }
 
-        var itemClass = 'alert-item' + (isUrgent ? ' urgent' : '') + (al.type === 'calving' ? ' calving' : '');
+        var itemClass = 'alert-item' + (isUrgent ? ' urgent' : '') + (al.type === 'calving' ? ' calving' : '') + (al.type === 'insurance' ? ' insurance' : '');
         var actionButtons = '';
 
         if (al.type === 'vaccine') {
@@ -2156,6 +2510,14 @@
           actionButtons =
             '<button class="action-btn" style="background:#7b1fa2; color:white; padding:6px 12px;" onclick="openCalvingActionModal(\'' + al.source + '\', \'' + al.key + '\', \'' + encodeURIComponent(al.tag) + '\')">✔ বাচ্চা প্রসব সম্পন্ন</button>' +
             '<button class="action-btn btn-info" style="padding:6px 10px;" onclick="' + (al.source === 'breeding' ? 'editBreeding(\'' + al.key + '\')' : 'editCattle(\'' + al.key + '\')') + '">✎ বিস্তারিত</button>';
+        } else if (al.type === 'repeat_breeder') {
+          actionButtons =
+            '<button class="action-btn btn-danger" style="padding:6px 12px;" onclick="openHealthForRepeatBreeder(\'' + encodeURIComponent(al.tag) + '\')">🩺 চিকিৎসা এন্ট্রি</button>' +
+            '<button class="action-btn btn-info" style="padding:6px 10px;" onclick="switchTab(\'breeding\', document.querySelectorAll(\'nav button\')[2])">🧬 ব্রিডিং দেখুন</button>';
+        } else if (al.type === 'insurance') {
+          actionButtons =
+            '<button class="action-btn" style="background:#0277bd; color:white; padding:6px 12px;" onclick="markInsuranceRenewed(\'' + al.key + '\')">✔ নবায়ন/পরিশোধ সম্পন্ন</button>' +
+            '<button class="action-btn btn-info" style="padding:6px 10px;" onclick="editInsuranceLoan(\'' + al.key + '\')">✎ বিস্তারিত</button>';
         } else if (al.type === 'stock') {
           actionButtons =
             '<button class="action-btn btn-warning" style="padding:6px 12px;" onclick="switchTab(\'stock\', document.querySelectorAll(\'nav button\')[11])">📦 স্টক আপডেট করুন</button>';
@@ -2189,13 +2551,21 @@
             '</div>' +
             '<div style="font-size:13.5px; font-weight:700; color:#222; margin-top:6px;">' + al.title + '</div>' +
             '<div style="font-size:12px; color:#555; margin-top:3px;">' + al.subtitle + '</div>' +
-            '<div style="font-size:12px; color:#c62828; font-weight:600; margin-top:5px;">📅 নির্ধারিত তারিখ: ' + formatDateBR(al.dueDate) + '</div>' +
+            '<div style="font-size:12px; color:#c62828; font-weight:600; margin-top:5px;">📅 তারিখ: ' + formatDateBR(al.dueDate) + '</div>' +
           '</div>' +
           '<div class="alert-actions">' + actionButtons + '</div>' +
         '</div>';
       });
 
       container.innerHTML = html;
+    };
+
+    window.openHealthForRepeatBreeder = function(encTag) {
+      var tag = decodeURIComponent(encTag);
+      switchTab('health', document.querySelectorAll('nav button')[13]);
+      if (getEl('hlthCowTag')) getEl('hlthCowTag').value = tag;
+      if (getEl('hlthDisease')) getEl('hlthDisease').value = 'Repeat Breeding';
+      if (getEl('hlthType')) getEl('hlthType').value = 'Doctor Checkup';
     };
 
     window.completeVaccineAlert = function(vacKey) {
@@ -2266,8 +2636,17 @@
       var todayISO = new Date().toISOString().split('T')[0];
       if (getEl('calvingActualDateInput')) getEl('calvingActualDateInput').value = todayISO;
       if (getEl('calvingNoteInput')) getEl('calvingNoteInput').value = '';
+      if (getEl('calvingAutoCalfCheck')) getEl('calvingAutoCalfCheck').checked = true;
+      if (getEl('calvingCalfFields')) getEl('calvingCalfFields').style.display = 'grid';
+      if (getEl('calvingCalfTag')) getEl('calvingCalfTag').value = tag + '-C1';
+      if (getEl('calvingCalfWeight')) getEl('calvingCalfWeight').value = '25';
+      var motherCow = findCattleByTag(tag);
+      if (motherCow && getEl('calvingCalfGen')) {
+        var nextGenMap = { 'F1': 'F2', 'F2': 'F3', 'F3': 'F4+', 'F4+': 'F4+', 'Pure/100%': 'Pure/100%' };
+        getEl('calvingCalfGen').value = nextGenMap[motherCow.generation] || 'F1';
+      }
       if (getEl('calvingModalDesc')) {
-        getEl('calvingModalDesc').innerHTML = 'গাভী <strong>Tag: ' + tag + '</strong>-এর বাচ্চা প্রসব সম্পন্ন হলে নিচের তথ্যটি নিশ্চিত করুন। এটি সেভ করলে ড্যাশবোর্ড থেকে অ্যালার্টটি মুছে যাবে এবং গাভীর স্ট্যাটাস <strong>Milking</strong>-এ আপডেট হবে।';
+        getEl('calvingModalDesc').innerHTML = 'গাভী <strong>Tag: ' + tag + '</strong>-এর বাচ্চা প্রসব সম্পন্ন হলে নিচের তথ্যটি নিশ্চিত করুন। এটি সেভ করলে গাভীর স্ট্যাটাস <strong>Milking</strong>-এ আপডেট হবে এবং নতুন বাছুর অটোমেটিক Cattle Register-এ যুক্ত হবে।';
       }
       if (getEl('calvingActionModal')) getEl('calvingActionModal').style.display = 'flex';
     };
@@ -2285,8 +2664,10 @@
       var k = window.pendingCalvingAction.key;
       var tag = window.pendingCalvingAction.tag;
 
+      var sireVal = '';
       if (src === 'breeding' && farmStore.breeding[k]) {
         var br = farmStore.breeding[k];
+        sireVal = br.semenId || '';
         var updatedNote = noteTxt ? (br.note ? br.note + ' | ' + noteTxt : noteTxt) : (br.note || '');
         if (db) {
           db.ref('breeding/' + k).update({
@@ -2304,9 +2685,10 @@
       }
 
       var cKey = (src === 'cattle') ? k : findCattleKeyByTag(tag);
-      if (cKey && farmStore.cattle[cKey]) {
-        var cw = farmStore.cattle[cKey];
-        var newLact = (Number(cw.lactation) || 0) + 1;
+      var motherCow = (cKey && farmStore.cattle[cKey]) ? farmStore.cattle[cKey] : null;
+      if (motherCow) {
+        if (!sireVal) sireVal = motherCow.sire || '';
+        var newLact = (Number(motherCow.lactation) || 0) + 1;
         if (db) {
           db.ref('cattle/' + cKey).update({
             status: 'Milking',
@@ -2315,16 +2697,47 @@
             calvingAlertResolved: false
           });
         } else {
-          cw.status = 'Milking';
-          cw.lactation = newLact;
-          cw.expCalving = '';
-          cw.calvingAlertResolved = false;
+          motherCow.status = 'Milking';
+          motherCow.lactation = newLact;
+          motherCow.expCalving = '';
+          motherCow.calvingAlertResolved = false;
         }
+      }
+
+      // Feature 6: Auto Calf Registration
+      var autoCalf = getEl('calvingAutoCalfCheck') ? getEl('calvingAutoCalfCheck').checked : false;
+      var calfTag = (getEl('calvingCalfTag') ? getEl('calvingCalfTag').value : '').trim();
+      var calfCreated = false;
+      if (autoCalf && calfTag) {
+        var calfGender = getEl('calvingCalfGender') ? getEl('calvingCalfGender').value : 'Female (বকনা)';
+        var calfWeight = parseFloat(getEl('calvingCalfWeight') ? getEl('calvingCalfWeight').value : 25) || 25;
+        var calfGen = getEl('calvingCalfGen') ? getEl('calvingCalfGen').value : 'F1';
+        var calfData = {
+          tag: calfTag,
+          breed: motherCow ? (motherCow.breed || '') : '',
+          breedType: calfGender,
+          generation: calfGen,
+          dob: actDate,
+          weight: calfWeight,
+          lactation: 0,
+          status: 'Calf',
+          milkDay: 0,
+          sire: sireVal,
+          dam: tag,
+          expCalving: ''
+        };
+        if (db) {
+          db.ref('cattle').push(calfData);
+        } else {
+          farmStore.cattle['local_' + Date.now()] = calfData;
+        }
+        calfCreated = true;
       }
 
       closeCalvingActionModal();
       renderCattleTable();
       renderDashboardAlerts();
+      showAppToast(calfCreated ? ('বাচ্চা প্রসব সম্পন্ন ও নতুন বাছুর (' + calfTag + ') রেজিস্টার হয়েছে!') : 'বাচ্চা প্রসব সফলভাবে আপডেট হয়েছে!');
     };
 
     window.completeDryOffAlert = function(brKey, encTag) {
@@ -2543,6 +2956,9 @@
       var monthBill = 0;
       var monthPaid = 0;
       var cPhone = '';
+      var custObj = findCustomerByName(custName);
+      if (custObj && custObj.phone) cPhone = custObj.phone;
+
       for (var k in farmStore.sales) {
         var sl = farmStore.sales[k];
         if (!sl || (sl.isPayment && Number(sl.total) === 0)) continue;
@@ -2550,7 +2966,7 @@
           items.push(sl);
           monthBill += Number(sl.total) || 0;
           monthPaid += Number(sl.paid) || 0;
-          if (sl.phone) cPhone = sl.phone;
+          if (sl.phone && !cPhone) cPhone = sl.phone;
         }
       }
 
@@ -2583,6 +2999,12 @@
           'এই মাসে পরিশোধ: <span style="color:green;">₹ ' + monthPaid.toLocaleString() + '</span><br>' +
           '<span style="color:red; font-weight:bold; font-size:15px;">সর্বমোট বকেয়া (পূর্বের বকেয়াসহ): ₹ ' + liveDue.toLocaleString() + '</span>' +
         '</div>';
+
+      setInvoiceWhatsAppPayload({
+        name: custName,
+        phone: cPhone,
+        text: 'নমস্কার ' + custName + ',\n*Nanda Dairy & Agro* - মাসিক বিল (' + mn + '/' + yr + ')\n• মোট এন্ট্রি: ' + items.length + ' টি\n• এই মাসের বিল: ₹' + monthBill.toLocaleString() + '\n• এই মাসে পরিশোধ: ₹' + monthPaid.toLocaleString() + '\n• *সর্বমোট বকেয়া: ₹' + liveDue.toLocaleString() + '*\n\nধন্যবাদ!'
+      });
 
       getEl('invoiceModal').style.display = 'flex';
     };
@@ -2658,6 +3080,9 @@
 
     window._pendingDelete = null;
     function deleteRecord(path, id) {
+      if (window.currentUserRole === 'staff') {
+        return showAppToast('স্টাফ অ্যাকাউন্ট থেকে কোনো তথ্য ডিলিট করার অনুমতি নেই!');
+      }
       window._pendingDelete = { path: path, id: id };
       var m = getEl('deleteConfirmModal');
       if (!m) {
@@ -2686,6 +3111,58 @@
       window._pendingDelete = null;
       var m = getEl('deleteConfirmModal');
       if (m) m.style.display = 'none';
+    };
+
+    // Feature 9: Custom Staff Accounts Management
+    window.createStaffAccount = function() {
+      if (window.currentUserRole === 'staff') return showAppToast('শুধুমাত্র মালিক নতুন স্টাফ তৈরি করতে পারবেন!');
+      var sName = (getEl('newStaffName') ? getEl('newStaffName').value : '').trim();
+      var sUser = (getEl('newStaffUser') ? getEl('newStaffUser').value : '').trim().toLowerCase();
+      var sPass = (getEl('newStaffPass') ? getEl('newStaffPass').value : '').trim();
+      if (!sName || !sUser || !sPass) return showAppToast('স্টাফের নাম, User ID এবং Password দিন!');
+      if (sUser === 'nanda' || sUser === 'staff') return showAppToast('এই User ID সংরক্ষিত! অন্য একটি আইডি দিন।');
+
+      for (var k in farmStore.staffUsers) {
+        if (farmStore.staffUsers[k] && String(farmStore.staffUsers[k].username || '').toLowerCase() === sUser) {
+          return showAppToast('এই User ID ইতিমধ্যেই তৈরি করা আছে!');
+        }
+      }
+
+      var data = { name: sName, username: sUser, password: sPass, role: 'staff', active: true, createdAt: new Date().toISOString().split('T')[0] };
+      if (db) {
+        db.ref('staffUsers').push(data);
+      } else {
+        farmStore.staffUsers['st_' + Date.now()] = data;
+        try { localStorage.setItem('nanda_custom_staff_users', JSON.stringify(farmStore.staffUsers)); } catch (e) {}
+        renderStaffUsersTable();
+      }
+      ['newStaffName', 'newStaffUser', 'newStaffPass'].forEach(function(id) { if (getEl(id)) getEl(id).value = ''; });
+      showAppToast('নতুন স্টাফ আইডি (' + sUser + ') সফলভাবে তৈরি হয়েছে!');
+    };
+
+    window.renderStaffUsersTable = function() {
+      var body = getEl('staffUsersTableBody');
+      if (!body) return;
+      var html = '<tr style="background:#f4fbf5;">' +
+        '<td><strong>ডিফল্ট স্টাফ (Default)</strong></td>' +
+        '<td><code>staff</code></td>' +
+        '<td><code>1111</code></td>' +
+        '<td><span class="badge badge-warning">Staff (No Delete/Reports/Backup)</span></td>' +
+        '<td><small style="color:#666;">সিস্টেম ডিফল্ট</small></td>' +
+      '</tr>';
+
+      for (var k in farmStore.staffUsers) {
+        var st = farmStore.staffUsers[k];
+        if (!st) continue;
+        html += '<tr>' +
+          '<td><strong>' + (st.name || '-') + '</strong></td>' +
+          '<td><code>' + (st.username || '-') + '</code></td>' +
+          '<td><code>' + (st.password || '-') + '</code></td>' +
+          '<td><span class="badge badge-success">Staff (Entry Only)</span></td>' +
+          '<td><button class="action-btn btn-danger" onclick="deleteRecord(\'staffUsers\',\'' + k + '\')">Delete</button></td>' +
+        '</tr>';
+      }
+      body.innerHTML = html;
     };
 
     window.printSpecificModal = function(target) {
@@ -2717,6 +3194,10 @@
           if (c.phone) getEl('salePhone').value = c.phone;
           if (c.area) getEl('saleArea').value = c.area;
           if (c.addr) getEl('saleAddr').value = c.addr;
+          // Feature 2: Auto-fill Custom Milk Rate
+          if (Number(c.milkRate) > 0 && !eSaleKey) {
+            getEl('saleRate').value = Number(c.milkRate);
+          }
           
           if(cBalMap[val]) {
             var currentDue = cBalMap[val].currentDue;
@@ -2742,6 +3223,12 @@
         if ((c.name || '').trim().toLowerCase() === val) {
           if (c.phone) getEl('orderPhone').value = c.phone;
           if (c.area) getEl('orderArea').value = c.area;
+          if (c.shift && getEl('orderShift')) getEl('orderShift').value = c.shift;
+          if (Number(c.demand) > 0 && !eOrdKey) {
+            var r = (Number(c.milkRate) > 0) ? Number(c.milkRate) : 50;
+            if (!getEl('orderItems').value) getEl('orderItems').value = c.demand + ' লিটার তরল দুধ';
+            if (!getEl('orderTotal').value) getEl('orderTotal').value = Number(c.demand) * r;
+          }
           break;
         }
       }
@@ -2779,13 +3266,18 @@
                 var cKey = cName.toLowerCase();
                 
                 if (!todayProcessedMap[cKey]) {
+                  // Feature 2: Use customer-specific Custom Milk Rate
+                  var customRate = (Number(cust.milkRate) > 0) ? Number(cust.milkRate) : 50;
                   var autoOrder = {
                     date: todayISO,
                     customer: cName,
                     phone: cust.phone || '',
                     area: cust.area || '',
+                    shift: cust.shift || 'Morning',
                     items: cust.demand + ' লিটার তরল দুধ',
-                    total: Number(cust.demand) * 50,
+                    qty: Number(cust.demand),
+                    rate: customRate,
+                    total: Number(cust.demand) * customRate,
                     paid: 0,
                     status: 'Pending'
                   };
@@ -2991,7 +3483,9 @@
         '<strong>জেনারেশন:</strong> ' + (cowInfo ? (cowInfo.generation || '-') : '-') + ' | ' +
         '<strong>স্ট্যাটাস:</strong> ' + (cowInfo ? (cowInfo.status || '-') : '-') + '<br>' +
         '<strong>ওজন:</strong> ' + (cowInfo ? (cowInfo.weight || 0) : 0) + ' kg | ' +
-        '<strong>বিয়ান:</strong> ' + (cowInfo ? (cowInfo.lactation || 0) : 0) +
+        '<strong>বিয়ান:</strong> ' + (cowInfo ? (cowInfo.lactation || 0) : 0) + ' | ' +
+        '<strong>বাবা/সিমেন:</strong> ' + (cowInfo ? (cowInfo.sire || '-') : '-') + ' | ' +
+        '<strong>মা:</strong> ' + (cowInfo ? (cowInfo.dam || '-') : '-') +
       '</div>' +
       '<div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(140px, 1fr)); gap:8px; margin-bottom:14px; text-align:center;">' +
         '<div style="background:#e3f2fd; padding:8px; border-radius:8px;"><small style="color:#555;">মোট দুধ (' + totalMilkL.toFixed(1) + ' L)</small><br><strong style="color:#0288d1;">₹ ' + Math.round(estMilkIncome).toLocaleString() + '</strong></div>' +
@@ -3061,6 +3555,7 @@
           var tagKey = (d.tag || '').trim().toUpperCase();
           var mInfo = milkStats[tagKey];
           var milkDisplay = mInfo && mInfo.total > 0 ? '<strong style="color:var(--primary); font-size:13px;">' + mInfo.total.toFixed(1) + ' L</strong> (' + mInfo.days + ' দিন)' : (d.milkDay ? d.milkDay + ' L/day' : '০ L');
+          var sireDam = (d.sire || '-') + (d.dam ? '<br><small style="color:#666;">মা: ' + d.dam + '</small>' : '');
 
           body.innerHTML += '<tr>' +
             '<td><strong>' + (index + 1) + '</strong></td>' +
@@ -3073,7 +3568,7 @@
             '<td>' + (d.lactation || 0) + '</td>' +
             '<td><span class="badge badge-success">' + (d.status || '-') + '</span></td>' +
             '<td>' + milkDisplay + '</td>' +
-            '<td>' + (d.sire || '-') + '</td>' +
+            '<td>' + sireDam + '</td>' +
             '<td>' + formatDateBR(d.expCalving) + '</td>' +
             '<td>' +
               '<button class="action-btn btn-info" onclick="editCattle(\'' + k + '\')">Edit</button>' +
@@ -3084,6 +3579,53 @@
       }
       if (getEl('dash-cow-count')) getEl('dash-cow-count').innerText = list.length;
     }
+
+    // Feature 4 & 5: Daily Milk Reconciliation & Average Quality Card
+    window.renderMilkReconciliation = function() {
+      var grid = getEl('milkReconGrid');
+      if (!grid) return;
+      var targetDt = (getEl('milkReconDate') && getEl('milkReconDate').value) ? getEl('milkReconDate').value : new Date().toISOString().split('T')[0];
+
+      var produced = 0, fatSum = 0, fatCnt = 0, snfSum = 0, snfCnt = 0, clrSum = 0, clrCnt = 0;
+      for (var mk in farmStore.milk) {
+        var m = farmStore.milk[mk];
+        if (!m || m.date !== targetDt) continue;
+        produced += Number(m.liters) || 0;
+        if (Number(m.fat) > 0) { fatSum += Number(m.fat); fatCnt++; }
+        if (Number(m.snf) > 0) { snfSum += Number(m.snf); snfCnt++; }
+        if (Number(m.clr) > 0) { clrSum += Number(m.clr); clrCnt++; }
+      }
+
+      var sold = 0;
+      for (var sk in farmStore.sales) {
+        var s = farmStore.sales[sk];
+        if (!s || (s.isPayment && Number(s.total) === 0) || s.date !== targetDt) continue;
+        var itemLow = String(s.item || '').toLowerCase();
+        if (itemLow.includes('milk') || itemLow.includes('দুধ')) {
+          var q = parseFloat(s.qty) || 0;
+          if (q <= 1 && itemLow.match(/([0-9]+(\.[0-9]+)?)/)) {
+            var parsedFromText = parseFloat(itemLow.match(/([0-9]+(\.[0-9]+)?)/)[1]);
+            if (parsedFromText > 0 && q <= 1) q = parsedFromText;
+          }
+          sold += q;
+        }
+      }
+
+      var diff = produced - sold;
+      var diffColor = diff < 0 ? '#c62828' : '#1b5e20';
+      var diffBg = diff < 0 ? '#ffebee' : '#e8f5e9';
+      var diffLabel = diff < 0 ? '⚠️ ঘাটতি / অসামঞ্জস্য' : 'অবশিষ্ট (বাছুর / ঘরোয়া)';
+
+      var avgFat = fatCnt > 0 ? (fatSum / fatCnt).toFixed(2) + '%' : '-';
+      var avgSnf = snfCnt > 0 ? (snfSum / snfCnt).toFixed(2) + '%' : '-';
+      var avgClr = clrCnt > 0 ? (clrSum / clrCnt).toFixed(1) : '-';
+
+      grid.innerHTML =
+        '<div style="background:#e8f5e9; padding:12px; border-radius:8px; border-left:4px solid #1b5e20;"><small style="color:#555; font-weight:600;">মোট উৎপন্ন দুধ (' + formatDateBR(targetDt) + ')</small><div style="font-size:20px; font-weight:bold; color:#1b5e20;">' + produced.toFixed(1) + ' L</div></div>' +
+        '<div style="background:#fff3e0; padding:12px; border-radius:8px; border-left:4px solid #f57c00;"><small style="color:#555; font-weight:600;">মোট বিক্রি হওয়া দুধ (Sales)</small><div style="font-size:20px; font-weight:bold; color:#e65100;">' + sold.toFixed(1) + ' L</div></div>' +
+        '<div style="background:' + diffBg + '; padding:12px; border-radius:8px; border-left:4px solid ' + diffColor + ';"><small style="color:#555; font-weight:600;">' + diffLabel + '</small><div style="font-size:20px; font-weight:bold; color:' + diffColor + ';">' + (diff > 0 ? '+' : '') + diff.toFixed(1) + ' L</div></div>' +
+        '<div style="background:#e3f2fd; padding:12px; border-radius:8px; border-left:4px solid #0288d1;"><small style="color:#555; font-weight:600;">🧪 গড় কোয়ালিটি (Fat / SNF / CLR)</small><div style="font-size:15px; font-weight:bold; color:#0277bd; margin-top:4px;">Fat: ' + avgFat + ' | SNF: ' + avgSnf + '<br><small style="color:#555;">CLR: ' + avgClr + '</small></div></div>';
+    };
 
     window.toggleMilkDate = function(safeDt) {
       var row = getEl('milk-det-' + safeDt);
@@ -3157,11 +3699,13 @@
         window.currentMilkYear = dateObj.getFullYear().toString();
         window.currentMilkMonth = ('0' + (dateObj.getMonth() + 1)).slice(-2);
         if (getEl('milkFilterYear')) getEl('milkFilterYear').value = window.currentMilkYear;
+        if (getEl('milkReconDate')) getEl('milkReconDate').value = d;
       } else {
         window.specificMilkDate = "";
       }
       renderMilkMonthTabs();
       renderGroupedMilkTable();
+      renderMilkReconciliation();
     };
 
     window.clearMilkDateFilter = function() {
@@ -3177,7 +3721,7 @@
       var targetDate = window.specificMilkDate;
 
       var exportData = [];
-      exportData.push(["Date", "Cow Tag", "Session", "Quantity (Liters)"]);
+      exportData.push(["Date", "Cow Tag", "Session", "Quantity (Liters)", "Fat %", "SNF %", "CLR"]);
 
       var list = [];
       for (var k in farmStore.milk) {
@@ -3202,7 +3746,7 @@
       }
 
       list.forEach(function(m) {
-        exportData.push([formatDateBR(m.date), m.cow, m.session, m.liters]);
+        exportData.push([formatDateBR(m.date), m.cow, m.session, m.liters, m.fat || '-', m.snf || '-', m.clr || '-']);
       });
 
       var fileName = "Milk_Record_" + (targetDate ? targetDate : (targetYear + "_" + targetMonth));
@@ -3294,8 +3838,10 @@
         }
 
         if (match) {
-          if (!dateGroups[dt]) dateGroups[dt] = { date: dt, dateISO: dtISO, total: 0, cows: {}, items: [] };
+          if (!dateGroups[dt]) dateGroups[dt] = { date: dt, dateISO: dtISO, total: 0, fatSum: 0, fatCnt: 0, snfSum: 0, snfCnt: 0, cows: {}, items: [] };
           dateGroups[dt].total += lit;
+          if (Number(m.fat) > 0) { dateGroups[dt].fatSum += Number(m.fat); dateGroups[dt].fatCnt++; }
+          if (Number(m.snf) > 0) { dateGroups[dt].snfSum += Number(m.snf); dateGroups[dt].snfCnt++; }
           if (m.cow) dateGroups[dt].cows[m.cow.trim().toUpperCase()] = true;
           dateGroups[dt].items.push({ key: k, data: m });
         }
@@ -3303,6 +3849,7 @@
 
       if (getEl('dash-milk-today')) getEl('dash-milk-today').innerText = todayTotal.toFixed(1) + ' L';
       if (getEl('rep-milk')) getEl('rep-milk').innerText = totalMilkAll.toFixed(1);
+      renderMilkReconciliation();
 
       var sortedDates = Object.keys(dateGroups).sort(function(a, b) { 
         return parseDateToTime(dateGroups[b].dateISO) - parseDateToTime(dateGroups[a].dateISO); 
@@ -3320,24 +3867,30 @@
         var group = dateGroups[dt];
         var safeDt = dt.replace(/[^a-zA-Z0-9]/g, '_');
         var cowCount = Object.keys(group.cows).length;
+        var avgFatStr = group.fatCnt > 0 ? (group.fatSum / group.fatCnt).toFixed(1) + '%' : '-';
+        var avgSnfStr = group.snfCnt > 0 ? (group.snfSum / group.snfCnt).toFixed(1) + '%' : '-';
+        var qualStr = (group.fatCnt > 0 || group.snfCnt > 0) ? ('<span class="badge" style="background:#e3f2fd; color:#0277bd;">Fat ' + avgFatStr + ' / SNF ' + avgSnfStr + '</span>') : '<span style="color:#999;">-</span>';
 
         html += '<tr style="background:#fff; cursor:pointer;" onclick="toggleMilkDate(\'' + safeDt + '\')">' +
           '<td><strong>📅 ' + dt + '</strong></td>' +
           '<td><strong style="color:var(--primary); font-size:14px;">' + group.total.toFixed(1) + ' L</strong></td>' +
+          '<td>' + qualStr + '</td>' +
           '<td><span class="badge badge-success">' + cowCount + ' টি গরু</span></td>' +
           '<td>' + group.items.length + ' টি এন্ট্রি</td>' +
           '<td><button class="action-btn btn-info" id="milk-btn-' + safeDt + '" onclick="event.stopPropagation(); toggleMilkDate(\'' + safeDt + '\')">বিস্তারিত দেখুন ▼</button></td>' +
         '</tr>';
 
         html += '<tr id="milk-det-' + safeDt + '" style="display:none; background:#f4fbf5;">' +
-          '<td colspan="5" style="padding:12px 18px;">' +
+          '<td colspan="6" style="padding:12px 18px;">' +
             '<div style="background:white; border:1px solid #c8e6c9; border-radius:8px; padding:12px;">' +
               '<table style="width:100%; font-size:12px;">' +
-                '<thead><tr style="background:#e8f5e9;"><th>গরুর ট্যাগ</th><th>সেশন</th><th>দুধ</th><th>অ্যাকশন</th></tr></thead>' +
+                '<thead><tr style="background:#e8f5e9;"><th>গরুর ট্যাগ</th><th>সেশন</th><th>দুধ</th><th>Fat / SNF / CLR</th><th>অ্যাকশন</th></tr></thead>' +
                 '<tbody>';
 
         group.items.forEach(function(item) {
-          html += '<tr><td><strong>' + (item.data.cow || '-') + '</strong></td><td>' + (item.data.session || '-') + '</td><td><strong>' + (item.data.liters || 0) + ' L</strong></td><td><button class="action-btn btn-info" onclick="editMilk(\'' + item.key + '\')">Edit</button><button class="action-btn btn-danger" onclick="deleteRecord(\'milk\',\'' + item.key + '\')">Delete</button></td></tr>';
+          var md = item.data;
+          var qInfo = (md.fat || md.snf || md.clr) ? ('F: ' + (md.fat || '-') + '% | S: ' + (md.snf || '-') + '% | C: ' + (md.clr || '-')) : '-';
+          html += '<tr><td><strong>' + (md.cow || '-') + '</strong></td><td>' + (md.session || '-') + '</td><td><strong>' + (md.liters || 0) + ' L</strong></td><td>' + qInfo + '</td><td><button class="action-btn btn-info" onclick="editMilk(\'' + item.key + '\')">Edit</button><button class="action-btn btn-danger" onclick="deleteRecord(\'milk\',\'' + item.key + '\')">Delete</button></td></tr>';
         });
 
         html += '</tbody></table></div></td></tr>';
@@ -3640,6 +4193,7 @@
       }
       if (getEl('rep-sales')) getEl('rep-sales').innerText = '₹ ' + tS.toLocaleString();
       calcNet();
+      renderMilkReconciliation();
 
       var areaSelect = getEl('saleAreaFilter');
       if (areaSelect) {
@@ -3675,6 +4229,8 @@
         var hasMultiple = totalEntries > 1;
         var rowStyle = 'background:#fafafa; border-top:2px solid #e0e0e0;';
         var dueBadge = dueVal > 0 ? '<strong style="color:red;">₹ ' + dueVal + '</strong>' : '<span class="badge badge-success">পরিশোধ</span>';
+        var waAllowed = isCustomerWhatsappAllowed(item.name);
+        var waBtn = waAllowed ? '<button class="action-btn btn-wa" style="padding:4px 8px; font-size:11px; margin:0;" onclick="sendWhatsAppDueReminder(\'' + item.name.replace(/'/g, "\\'") + '\')" title="WhatsApp রিমাইন্ডার পাঠান">💬 WA</button>' : '<span class="badge" style="background:#eceff1; color:#78909c; font-size:10px;" title="WhatsApp বন্ধ">🔕</span>';
 
         var productSummary = '';
         if (hasMultiple) {
@@ -3691,15 +4247,17 @@
         var actionCol = '';
         if (!hasMultiple) {
           var singleKey = item.entries[0].key;
-          actionCol = '<div style="display:flex; gap:6px; flex-wrap:nowrap;">' +
+          actionCol = '<div style="display:flex; gap:5px; flex-wrap:nowrap; align-items:center;">' +
+                      waBtn +
                       '<button class="action-btn" style="background:#455a64; color:white; padding:4px 8px; font-size:11px; margin:0;" onclick="showCustomerLedger(\'' + encodeURIComponent(item.name) + '\')">খাতা</button>' +
                       '<button class="action-btn btn-info" style="padding:4px 8px; font-size:11px; margin:0;" onclick="showInvoice(\'' + singleKey + '\')">Invoice</button>' +
                       '<button class="action-btn btn-warning" style="padding:4px 8px; font-size:11px; margin:0;" onclick="editSale(\'' + singleKey + '\')">Edit</button>' +
                       '<button class="action-btn btn-danger" style="padding:4px 8px; font-size:11px; margin:0;" onclick="deleteRecord(\'sales\',\'' + singleKey + '\')">Delete</button>' +
                       '</div>';
         } else {
-          actionCol = '<div style="display:flex; gap:6px; flex-wrap:nowrap;">' + 
+          actionCol = '<div style="display:flex; gap:5px; flex-wrap:nowrap; align-items:center;">' + 
                       detailsBtn + 
+                      waBtn +
                       '<button class="action-btn" style="background:#455a64; color:white; padding:4px 8px; font-size:11px; margin:0; white-space:nowrap;" onclick="showCustomerLedger(\'' + encodeURIComponent(item.name) + '\')">খাতা</button>' +
                       '<button class="action-btn" style="background:#2e7d32; color:white; padding:4px 8px; font-size:11px; margin:0; white-space:nowrap;" onclick="showCustomerMonthlyBill(\'' + encodeURIComponent(item.name) + '\')">মাসিক বিল</button>' + 
                       '</div>';
@@ -3763,12 +4321,51 @@
       }
     }
 
+    // Feature 3: 1-Click Quick Delivered (Delivery Boy Mode)
+    window.quickDeliverOrder = function(ordKey) {
+      var d = farmStore.orders ? farmStore.orders[ordKey] : null;
+      if (!d) return;
+      var cust = (d.customer || d.name || '').trim();
+      var custObj = findCustomerByName(cust);
+      var phone = d.phone || (custObj ? custObj.phone : '') || '';
+      var area = d.area || (custObj ? custObj.area : '') || '';
+      var addr = (custObj ? custObj.addr : '') || '';
+      var total = Number(d.total) || Number(d.amount) || 0;
+      var paid = Number(d.paid) || 0;
+      var qty = Number(d.qty) || 1;
+      if (qty === 1 && d.items) {
+        var m = String(d.items).match(/([0-9]+(\.[0-9]+)?)/);
+        if (m) qty = parseFloat(m[1]) || 1;
+      }
+      var rate = Number(d.rate) || (qty > 0 ? parseFloat((total / qty).toFixed(2)) : total);
+      var saleObj = {
+        date: d.date || new Date().toISOString().split('T')[0],
+        name: cust,
+        phone: phone,
+        area: area,
+        addr: addr,
+        item: d.items || 'Liquid Milk',
+        qty: qty,
+        rate: rate,
+        total: total,
+        paid: paid,
+        due: Math.max(0, total - paid),
+        payments: []
+      };
+      if (db) {
+        if (total > 0) db.ref('sales').push(saleObj);
+        db.ref('orders/' + ordKey).remove();
+      }
+      showAppToast(cust + '-এর অর্ডার ডেলিভারড হয়ে সরাসরি Sales-এ যুক্ত হয়েছে!');
+    };
+
     function renderOrdersTable() {
       var body = getEl('ordersTableBody');
       if (!body) return;
 
       var searchQ = (getEl('orderSearchInput') ? getEl('orderSearchInput').value : '').trim().toLowerCase();
       var areaFilter = (getEl('orderAreaFilter') ? getEl('orderAreaFilter').value : '').trim().toLowerCase();
+      var shiftFilter = (getEl('orderShiftFilter') ? getEl('orderShiftFilter').value : '').trim().toLowerCase();
 
       var uniqueAreas = {};
       var groupedMap = {};
@@ -3784,8 +4381,12 @@
         
         if (stat.toLowerCase().includes('pending') || stat === 'Pending' || stat === '' || !d.status) {
           pendingCount++;
-          var custArea = d.area || '';
+          var custObj = findCustomerByName(custName);
+          var custArea = d.area || (custObj ? custObj.area : '') || '';
+          var custShift = d.shift || (custObj ? custObj.shift : '') || 'Morning';
           if (custArea) uniqueAreas[custArea] = true;
+
+          if (shiftFilter && custShift.toLowerCase() !== shiftFilter && custShift.toLowerCase() !== 'both') continue;
 
           var rawName = custName;
           var groupKey = rawName.toLowerCase(); 
@@ -3793,8 +4394,9 @@
           if (!groupedMap[groupKey]) {
             groupedMap[groupKey] = {
               customer: rawName,
-              phone: d.phone || '',
+              phone: d.phone || (custObj ? custObj.phone : '') || '',
               area: custArea,
+              shift: custShift,
               totalAmount: 0,
               entries: [],
               latestDate: (d.date || '').trim(),
@@ -3805,7 +4407,7 @@
           var totVal = Number(d.total) || Number(d.amount) || 0;
           groupedMap[groupKey].totalAmount += totVal;
           if (d.phone && !groupedMap[groupKey].phone) groupedMap[groupKey].phone = d.phone;
-          if (d.area && !groupedMap[groupKey].area) groupedMap[groupKey].area = d.area;
+          if (custArea && !groupedMap[groupKey].area) groupedMap[groupKey].area = custArea;
           
           var curTime = parseDateToTime(d.date || '');
           if (curTime > groupedMap[groupKey].latestTime) {
@@ -3840,6 +4442,13 @@
 
       filtered.sort(function(a, b) { return b.latestTime - a.latestTime; });
 
+      var sumEl = getEl('orderChecklistSummary');
+      if (sumEl) {
+        var filtCount = 0, filtAmt = 0;
+        filtered.forEach(function(it) { filtCount += it.entries.length; filtAmt += it.totalAmount; });
+        sumEl.innerHTML = '<span>🛵 ডেলিভারি বাকি: <strong>' + filtCount + ' টি অর্ডার</strong> (' + filtered.length + ' জন গ্রাহক)</span><span>মোট সম্ভাব্য বিল: <strong>₹ ' + filtAmt.toLocaleString() + '</strong></span>';
+      }
+
       if (filtered.length === 0) {
         body.innerHTML = '<tr><td colspan="6" style="text-align:center; color:#888;">কোনো অর্ডার রেকর্ড নেই।</td></tr>';
         if (getEl('ordersNoData')) getEl('ordersNoData').style.display = 'block';
@@ -3870,20 +4479,21 @@
         var actionCol = '';
         if (!hasMultiple) {
           var singleKey = item.entries[0].key;
-          actionCol = '<div style="display:flex; gap:6px; flex-wrap:nowrap;">' +
+          actionCol = '<div style="display:flex; gap:5px; flex-wrap:nowrap;">' +
+                      '<button class="action-btn" style="background:#2e7d32; color:white; padding:4px 9px; font-size:11px; margin:0;" onclick="quickDeliverOrder(\'' + singleKey + '\')">✔ Delivered</button>' +
                       '<button class="action-btn" style="background:#455a64; color:white; padding:4px 8px; font-size:11px; margin:0;" onclick="showCustomerLedger(\'' + encodeURIComponent(item.customer) + '\')">খাতা</button>' +
                       '<button class="action-btn btn-info" style="padding:4px 8px; font-size:11px; margin:0;" onclick="editOrder(\'' + singleKey + '\')">Edit</button>' +
                       '<button class="action-btn btn-danger" style="padding:4px 8px; font-size:11px; margin:0;" onclick="deleteRecord(\'orders\',\'' + singleKey + '\')">Delete</button>' +
                       '</div>';
         } else {
-          actionCol = '<div style="display:flex; gap:6px; flex-wrap:nowrap;">' + 
+          actionCol = '<div style="display:flex; gap:5px; flex-wrap:nowrap;">' + 
                       detailsBtn + 
                       '<button class="action-btn" style="background:#455a64; color:white; padding:4px 8px; font-size:11px; margin:0; white-space:nowrap;" onclick="showCustomerLedger(\'' + encodeURIComponent(item.customer) + '\')">খাতা</button>' + 
                       '</div>';
         }
 
         html += '<tr style="' + rowStyle + '">' +
-          '<td>' + dateBR + '</td>' +
+          '<td>' + dateBR + '<br><span class="badge" style="background:#e3f2fd; color:#0277bd;">' + (item.shift || 'Morning') + '</span></td>' +
           '<td><strong>' + item.customer + '</strong>' + (item.phone ? '<br><small style="color:#666;">📞 ' + item.phone + '</small>' : '') + '</td>' +
           '<td>' + (item.area ? '<span class="badge badge-warning">' + item.area + '</span>' : '-') + '</td>' +
           '<td>' + orderSummary + '</td>' +
@@ -3893,7 +4503,7 @@
 
         if (hasMultiple) {
           html += '<tr id="' + subTableId + '" style="display:none; background:#f1f8e9;"><td colspan="6" style="padding:10px 15px;">' +
-            '<div style="font-size:12px; font-weight:bold; color:#2e7d32; margin-bottom:8px;">📋 এই গ্রাহকের সমস্ত পেন্ডিং অর্ডার ও এডিট/ডিলিট অপশন:</div>' +
+            '<div style="font-size:12px; font-weight:bold; color:#2e7d32; margin-bottom:8px;">📋 এই গ্রাহকের সমস্ত পেন্ডিং অর্ডার ও দ্রুত ডেলিভারি অপশন:</div>' +
             '<div style="overflow-x:auto;"><table style="width:100%; font-size:12px; background:white; border:1px solid #c8e6c9; border-collapse:collapse;">' +
               '<tr style="background:#e8f5e9;"><th style="padding:6px; border:1px solid #c8e6c9;">তারিখ</th><th style="padding:6px; border:1px solid #c8e6c9;">বিবরণ / আইটেম</th><th style="padding:6px; border:1px solid #c8e6c9;">টাকা</th><th style="padding:6px; border:1px solid #c8e6c9;">স্ট্যাটাস</th><th style="padding:6px; border:1px solid #c8e6c9;">কার্যক্রম</th></tr>';
           
@@ -3907,6 +4517,7 @@
               '<td style="padding:6px; border:1px solid #c8e6c9;">₹ ' + (Number(oItem.total) || 0) + '</td>' +
               '<td style="padding:6px; border:1px solid #c8e6c9;"><span class="badge badge-danger">' + (oItem.status || 'Pending') + '</span></td>' +
               '<td style="padding:6px; border:1px solid #c8e6c9; white-space:nowrap;">' +
+                '<button class="action-btn" style="background:#2e7d32; color:white; padding:3px 7px; font-size:11px;" onclick="quickDeliverOrder(\'' + itemObj.key + '\')">✔ Delivered</button> ' +
                 '<button class="action-btn btn-info" style="padding:3px 7px; font-size:11px;" onclick="editOrder(\'' + itemObj.key + '\')">Edit</button> ' +
                 '<button class="action-btn btn-danger" style="padding:3px 7px; font-size:11px;" onclick="deleteRecord(\'orders\',\'' + itemObj.key + '\')">Delete</button>' +
               '</td>' +
@@ -4124,6 +4735,15 @@
         }
       }
 
+      var ledgerWaBtn = getEl('ledgerWaBtn');
+      if (ledgerWaBtn) {
+        if (isCustomerWhatsappAllowed(custName)) {
+          ledgerWaBtn.style.display = 'inline-flex';
+        } else {
+          ledgerWaBtn.style.display = 'none';
+        }
+      }
+
       var events = [];
       var totalBillAmount = opDue, totalPaidAmount = 0;
 
@@ -4184,7 +4804,7 @@
       events.forEach(function(ev) { runningBalance += ev.netDiff; ev.cumDue = Math.max(0, runningBalance); });
       events.reverse();
 
-      getEl('ledgerCustSub').innerHTML = 'গ্রাহক: <strong>' + custName + '</strong> ' + (cPhone ? '| 📞 ' + cPhone : '');
+      getEl('ledgerCustSub').innerHTML = 'গ্রাহক: <strong>' + custName + '</strong> ' + (cPhone ? '| 📞 ' + cPhone : '') + (!isCustomerWhatsappAllowed(custName) ? ' <span class="badge" style="background:#eceff1; color:#607d8b;">🔕 WhatsApp বন্ধ</span>' : '');
       getEl('ledgerTotalBill').innerText = '₹ ' + totalBillAmount.toLocaleString();
       getEl('ledgerTotalPaid').innerText = '₹ ' + totalPaidAmount.toLocaleString();
       getEl('ledgerTotalDue').innerText = '₹ ' + Math.max(0, totalBillAmount - totalPaidAmount).toLocaleString();
@@ -4289,7 +4909,16 @@
       getEl('invMainDocTitle').innerText = 'ইনভয়েস (ক্যাশ মেমো)';
       var liveDue = (typeof balanceAfterEntry === 'number') ? balanceAfterEntry : (getCustomerLiveBalances()[(d.name || '').trim().toLowerCase()]?.currentDue || 0);
       var dueLabel = (typeof balanceAfterEntry === 'number') ? 'এই লেনদেনের পর বাকি' : 'মোট বকেয়া';
-      getEl('invoiceDetails').innerHTML = '<div style="display:flex; justify-content:space-between; margin-bottom:12px;"><div><strong>গ্রাহক:</strong> ' + d.name + '<br>মোবাইল: ' + (d.phone || '-') + '</div><div style="text-align:right;">তারিখ: ' + formatDateBR(d.date) + '<br>ইনভয়েস: #NDA-' + k.substring(1, 6).toUpperCase() + '</div></div><table class="invoice-table" style="border:1px solid #ddd; width:100%; min-width:unset;"><thead><tr style="background:#e8f5e9;"><th>পণ্য</th><th>পরিমাণ</th><th>দর</th><th style="text-align:right;">মোট</th></tr></thead><tbody><tr><td>' + d.item + '</td><td>' + d.qty + '</td><td>₹ ' + d.rate + '</td><td style="text-align:right; font-weight:bold;">₹ ' + d.total + '</td></tr></tbody></table><div style="text-align:right; margin-top:10px;">চালান মূল্য: ₹ ' + d.total + '<br>নগদ পরিশোধ: ₹ ' + d.paid + '<br><span style="color:red; font-weight:bold;">' + dueLabel + ': ₹ ' + liveDue + '</span></div>';
+      var custObj = findCustomerByName(d.name);
+      var cPhone = d.phone || (custObj ? custObj.phone : '') || '';
+      getEl('invoiceDetails').innerHTML = '<div style="display:flex; justify-content:space-between; margin-bottom:12px;"><div><strong>গ্রাহক:</strong> ' + d.name + '<br>মোবাইল: ' + (cPhone || '-') + '</div><div style="text-align:right;">তারিখ: ' + formatDateBR(d.date) + '<br>ইনভয়েস: #NDA-' + k.substring(1, 6).toUpperCase() + '</div></div><table class="invoice-table" style="border:1px solid #ddd; width:100%; min-width:unset;"><thead><tr style="background:#e8f5e9;"><th>পণ্য</th><th>পরিমাণ</th><th>দর</th><th style="text-align:right;">মোট</th></tr></thead><tbody><tr><td>' + d.item + '</td><td>' + d.qty + '</td><td>₹ ' + d.rate + '</td><td style="text-align:right; font-weight:bold;">₹ ' + d.total + '</td></tr></tbody></table><div style="text-align:right; margin-top:10px;">চালান মূল্য: ₹ ' + d.total + '<br>নগদ পরিশোধ: ₹ ' + d.paid + '<br><span style="color:red; font-weight:bold;">' + dueLabel + ': ₹ ' + liveDue + '</span></div>';
+
+      setInvoiceWhatsAppPayload({
+        name: d.name,
+        phone: cPhone,
+        text: 'নমস্কার ' + d.name + ',\n*Nanda Dairy & Agro* - ইনভয়েস (' + formatDateBR(d.date) + ')\n• পণ্য: ' + (d.item || 'দুধ') + ' (' + (d.qty || 1) + ' × ₹' + (d.rate || 0) + ')\n• চালান মূল্য: ₹' + (d.total || 0) + '\n• পরিশোধ: ₹' + (d.paid || 0) + '\n• *' + dueLabel + ': ₹' + liveDue + '*\n\nধন্যবাদ!'
+      });
+
       getEl('invoiceModal').style.display = 'flex';
     };
 
@@ -4322,11 +4951,19 @@
           'নগদ জমা / পরিশোধ: <strong style="color:green;">₹ ' + paidAmt + '</strong><br>' +
           '<span style="color:red; font-weight:bold;">এই লেনদেনের পর বাকি: ₹ ' + balanceAfter + '</span>' +
         '</div>';
+
+      setInvoiceWhatsAppPayload({
+        name: custName,
+        phone: cPhone,
+        text: 'নমস্কার ' + custName + ',\n*Nanda Dairy & Agro* - পেমেন্ট রসিদ (' + dtStr + ')\n• বিবরণ: ' + descStr + '\n• জমা/পরিশোধ: ₹' + paidAmt + '\n• *বর্তমান বাকি: ₹' + balanceAfter + '*\n\nধন্যবাদ!'
+      });
+
       getEl('invoiceModal').style.display = 'flex';
     };
 
     window.closeInvoice = function() {
       getEl('invoiceModal').style.display = 'none';
+      setInvoiceWhatsAppPayload(null);
       if (getEl('ledgerModal') && getEl('ledgerModal').style.display === 'flex') {
         document.body.setAttribute('data-print', 'ledger');
       } else {
@@ -4883,17 +5520,31 @@
     function editMilk(k) {
       var d = farmStore.milk[k]; if (!d) return; eMlkKey = k;
       getEl('milkDate').value = d.date || ''; getEl('milkCowTag').value = d.cow || ''; getEl('milkSession').value = d.session || 'Morning'; getEl('milkLiters').value = d.liters || '';
+      if (getEl('milkFat')) getEl('milkFat').value = d.fat || '';
+      if (getEl('milkSnf')) getEl('milkSnf').value = d.snf || '';
+      if (getEl('milkClr')) getEl('milkClr').value = d.clr || '';
       getEl('milkSubmitBtn').innerText = 'Update Milk'; getEl('milkCancelBtn').style.display = 'inline-flex';
       switchTab('milk', document.querySelector('nav button:nth-child(6)'));
     }
     function cancelMilkEdit() {
       eMlkKey = null; getEl('milkCowTag').value = ''; getEl('milkLiters').value = '';
+      if (getEl('milkFat')) getEl('milkFat').value = '';
+      if (getEl('milkSnf')) getEl('milkSnf').value = '';
+      if (getEl('milkClr')) getEl('milkClr').value = '';
       getEl('milkSubmitBtn').innerText = 'Save Milk Record'; getEl('milkCancelBtn').style.display = 'none';
     }
     function saveMilk() {
       var lit = parseFloat(getEl('milkLiters').value) || 0; if (!lit) return showAppToast('দুধের পরিমাণ দিন!');
       var cowTag = (getEl('milkCowTag').value || '').trim(); if (!cowTag) return showAppToast('Tag ID দিন!');
-      var data = { date: getEl('milkDate').value, cow: cowTag, session: getEl('milkSession').value, liters: lit };
+      var data = {
+        date: getEl('milkDate').value,
+        cow: cowTag,
+        session: getEl('milkSession').value,
+        liters: lit,
+        fat: parseFloat(getEl('milkFat') ? getEl('milkFat').value : 0) || 0,
+        snf: parseFloat(getEl('milkSnf') ? getEl('milkSnf').value : 0) || 0,
+        clr: parseFloat(getEl('milkClr') ? getEl('milkClr').value : 0) || 0
+      };
       if (db) eMlkKey ? db.ref('milk/' + eMlkKey).update(data) : db.ref('milk').push(data);
       cancelMilkEdit();
     }
@@ -4994,19 +5645,33 @@
       var d = farmStore.customers[k]; if (!d) return; eCustKey = k;
       getEl('custName').value = d.name || ''; getEl('custPhone').value = d.phone || ''; getEl('custArea').value = d.area || '';
       getEl('custAddress').value = d.addr || ''; getEl('custDailyDemand').value = d.demand || '';
+      if (getEl('custMilkRate')) getEl('custMilkRate').value = d.milkRate || '';
       if (getEl('custOpeningDue')) getEl('custOpeningDue').value = d.openingDue || 0;
       if (getEl('custType')) getEl('custType').value = d.type || 'Regular Retailer';
       if (getEl('custShift')) getEl('custShift').value = d.shift || 'Morning';
+      if (getEl('custWhatsappOpt')) getEl('custWhatsappOpt').value = d.whatsappOpt || 'allowed';
       getEl('custSubmitBtn').innerText = 'Update Customer'; getEl('custCancelBtn').style.display = 'inline-flex';
       switchTab('customers', document.querySelector('nav button:nth-child(8)'));
     }
     function cancelCustomerEdit() {
-      eCustKey = null; ['custName','custPhone','custArea','custAddress','custDailyDemand','custOpeningDue'].forEach(function(i){ if(getEl(i)) getEl(i).value=''; });
+      eCustKey = null; ['custName','custPhone','custArea','custAddress','custDailyDemand','custMilkRate','custOpeningDue'].forEach(function(i){ if(getEl(i)) getEl(i).value=''; });
+      if (getEl('custWhatsappOpt')) getEl('custWhatsappOpt').value = 'allowed';
       getEl('custSubmitBtn').innerText = 'Save Customer'; getEl('custCancelBtn').style.display = 'none';
     }
     function saveCustomer() {
       var name = (getEl('custName').value || '').trim(); if (!name) return showAppToast('নাম দিন!');
-      var data = { name: name, phone: (getEl('custPhone').value || '').trim(), area: (getEl('custArea').value || '').trim(), addr: (getEl('custAddress').value || '').trim(), demand: parseFloat(getEl('custDailyDemand').value)||0, openingDue: parseFloat(getEl('custOpeningDue')?.value)||0, type: getEl('custType')?.value||'Regular Retailer', shift: getEl('custShift')?.value||'Morning' };
+      var data = {
+        name: name,
+        phone: (getEl('custPhone').value || '').trim(),
+        area: (getEl('custArea').value || '').trim(),
+        addr: (getEl('custAddress').value || '').trim(),
+        demand: parseFloat(getEl('custDailyDemand').value)||0,
+        milkRate: parseFloat(getEl('custMilkRate')?.value)||0,
+        openingDue: parseFloat(getEl('custOpeningDue')?.value)||0,
+        type: getEl('custType')?.value||'Regular Retailer',
+        shift: getEl('custShift')?.value||'Morning',
+        whatsappOpt: getEl('custWhatsappOpt')?.value||'allowed'
+      };
       if (db) eCustKey ? db.ref('customers/' + eCustKey).update(data) : db.ref('customers').push(data);
       cancelCustomerEdit();
     }
@@ -5015,7 +5680,8 @@
     function editOrder(k) {
       var d = farmStore.orders[k]; if (!d) return; eOrdKey = k;
       getEl('orderDate').value = d.date || ''; getEl('orderCustomer').value = d.customer || d.name || ''; getEl('orderPhone').value = d.phone || '';
-      getEl('orderArea').value = d.area || ''; getEl('orderItems').value = d.items || ''; getEl('orderTotal').value = d.total || '';
+      getEl('orderArea').value = d.area || ''; if (getEl('orderShift')) getEl('orderShift').value = d.shift || 'Morning';
+      getEl('orderItems').value = d.items || ''; getEl('orderTotal').value = d.total || '';
       getEl('orderPaid').value = d.paid || ''; getEl('orderStatus').value = d.status || 'Pending';
       getEl('orderSubmitBtn').innerText = 'Update Order'; getEl('orderCancelBtn').style.display = 'inline-flex';
       switchTab('orders', document.querySelector('nav button:nth-child(9)'));
@@ -5025,6 +5691,7 @@
     function cancelOrderEdit() {
       eOrdKey = null; 
       ['orderCustomer','orderPhone','orderArea','orderItems','orderTotal','orderPaid'].forEach(function(i){ if(getEl(i)) getEl(i).value=''; });
+      if (getEl('orderShift')) getEl('orderShift').value = 'Morning';
       getEl('orderStatus').value = 'Pending'; 
       getEl('orderSubmitBtn').innerText = 'Save Order'; 
       getEl('orderCancelBtn').style.display = 'none';
@@ -5041,6 +5708,7 @@
       var deliveryDate = getEl('orderDate').value;
       var phone = (getEl('orderPhone') ? getEl('orderPhone').value : '').trim();
       var area = (getEl('orderArea') ? getEl('orderArea').value : '').trim();
+      var shift = getEl('orderShift') ? getEl('orderShift').value : 'Morning';
 
       for (var ck in farmStore.customers) {
         var cObj = farmStore.customers[ck];
@@ -5066,7 +5734,7 @@
           } 
           else if (status === 'Pending') {
             db.ref('orders').push({ 
-              date: deliveryDate, customer: cust, phone: phone, area: area, 
+              date: deliveryDate, customer: cust, phone: phone, area: area, shift: shift,
               items: items, total: total, paid: paid, status: status 
             });
           }
@@ -5082,7 +5750,7 @@
             }
           } else if (status === 'Pending') {
             db.ref('orders').push({ 
-              date: deliveryDate, customer: cust, phone: phone, area: area, 
+              date: deliveryDate, customer: cust, phone: phone, area: area, shift: shift,
               items: items, total: total, paid: paid, status: status 
             });
           }
@@ -5339,6 +6007,7 @@
       items.sort(function(a, b) { return parseDateToTime(a.date) - parseDateToTime(b.date); });
 
       document.body.setAttribute('data-print', 'invoice');
+      setInvoiceWhatsAppPayload(null);
       getEl('invMainDocTitle').innerText = 'মাসিক গরুর খাদ্য বিল / MONTHLY CATTLE FEED STATEMENT (' + mn + '/' + yr + ')';
 
       var rowsHtml = '';
@@ -5684,6 +6353,7 @@
       items.sort(function(a, b) { return parseDateToTime(a.date) - parseDateToTime(b.date); });
 
       document.body.setAttribute('data-print', 'invoice');
+      setInvoiceWhatsAppPayload(null);
       getEl('invMainDocTitle').innerText = 'মাসিক খরচ রিপোর্ট / MONTHLY EXPENSE STATEMENT (' + mn + '/' + yr + ')';
 
       var catRows = '';
@@ -6171,6 +6841,46 @@
       showAppToast(wName + '-এর ' + pType + ' সেভ ও খরচে যোগ করা হয়েছে!');
     };
 
+    // Feature 8: Daily Labour Attendance (P / H / A)
+    window.markLabourAttendance = function(workerKey, status) {
+      var dt = (getEl('labAttDate') && getEl('labAttDate').value) ? getEl('labAttDate').value : new Date().toISOString().split('T')[0];
+      if (!workerKey || !dt) return;
+      if (db) {
+        db.ref('labourAttendance/' + dt + '/' + workerKey).set(status);
+      } else {
+        if (!farmStore.labourAttendance[dt]) farmStore.labourAttendance[dt] = {};
+        farmStore.labourAttendance[dt][workerKey] = status;
+        renderLabourAttendancePanel();
+        renderLabourTable();
+      }
+      showAppToast('হাজিরা (' + status + ') সেভ হয়েছে!');
+    };
+
+    window.renderLabourAttendancePanel = function() {
+      var panel = getEl('labourAttendancePanel');
+      if (!panel) return;
+      var dt = (getEl('labAttDate') && getEl('labAttDate').value) ? getEl('labAttDate').value : new Date().toISOString().split('T')[0];
+      var dayRec = (farmStore.labourAttendance && farmStore.labourAttendance[dt]) ? farmStore.labourAttendance[dt] : {};
+      var keys = Object.keys(farmStore.labours || {});
+      if (keys.length === 0) {
+        panel.innerHTML = '<div style="grid-column:1/-1; color:#666; font-size:12.5px;">হাজিরা নেওয়ার জন্য আগে কর্মচারী সেভ করুন।</div>';
+        return;
+      }
+      panel.innerHTML = keys.map(function(lk) {
+        var w = farmStore.labours[lk];
+        if (!w) return '';
+        var cur = dayRec[lk] || '';
+        return '<div style="background:white; border:1px solid #bbdefb; border-radius:8px; padding:10px; display:flex; justify-content:space-between; align-items:center; gap:8px;">' +
+          '<div><strong style="font-size:13px;">👷 ' + w.name + '</strong><br><small style="color:#666;">' + (cur ? ('স্ট্যাটাস: ' + cur) : 'হাজিরা বাকি') + '</small></div>' +
+          '<div style="white-space:nowrap;">' +
+            '<button type="button" class="att-btn ' + (cur === 'P' ? 'active-P' : '') + '" onclick="markLabourAttendance(\'' + lk + '\', \'P\')">P</button>' +
+            '<button type="button" class="att-btn ' + (cur === 'H' ? 'active-H' : '') + '" onclick="markLabourAttendance(\'' + lk + '\', \'H\')">H</button>' +
+            '<button type="button" class="att-btn ' + (cur === 'A' ? 'active-A' : '') + '" onclick="markLabourAttendance(\'' + lk + '\', \'A\')">A</button>' +
+          '</div>' +
+        '</div>';
+      }).join('');
+    };
+
     window.toggleLabourHistory = function(subId, btnEl) {
       var row = getEl(subId);
       if (!row) return;
@@ -6190,6 +6900,9 @@
 
       if (!window.currentExpYear) initExpenseFilters();
       var prefix = window.currentExpYear + '-' + window.currentExpMonth;
+      var daysInMonth = new Date(parseInt(window.currentExpYear), parseInt(window.currentExpMonth), 0).getDate() || 30;
+
+      renderLabourAttendancePanel();
 
       if (sel) {
         var curVal = sel.value;
@@ -6225,14 +6938,34 @@
             historyList.push({ key: pk, data: p });
           }
         }
-        var remPayable = Math.max(0, (Number(w.salary) || 0) - (monAdv + monSal));
+
+        // Monthly Attendance summary
+        var pCnt = 0, hCnt = 0, aCnt = 0;
+        for (var attDt in farmStore.labourAttendance) {
+          if (attDt.startsWith(prefix) && farmStore.labourAttendance[attDt] && farmStore.labourAttendance[attDt][lk]) {
+            var st = farmStore.labourAttendance[attDt][lk];
+            if (st === 'P') pCnt++;
+            else if (st === 'H') hCnt++;
+            else if (st === 'A') aCnt++;
+          }
+        }
+        var totalMarked = pCnt + hCnt + aCnt;
+        var effDays = pCnt + (hCnt * 0.5);
+        var baseSalary = Number(w.salary) || 0;
+        var estEarned = totalMarked > 0 ? Math.round((baseSalary / daysInMonth) * effDays) : baseSalary;
+        var remPayable = Math.max(0, estEarned - (monAdv + monSal));
         var subId = 'sub_lab_' + idx;
+
+        var attDisplay = totalMarked > 0
+          ? ('<span class="badge badge-success">P:' + pCnt + '</span> <span class="badge badge-warning">H:' + hCnt + '</span> <span class="badge badge-danger">A:' + aCnt + '</span><br><small style="color:#555;">মোট দিন: ' + effDays + '</small>')
+          : '<span style="color:#888;">হাজিরা নেই</span>';
 
         html += '<tr style="background:#fafafa;">' +
           '<td><strong>👷 ' + w.name + '</strong>' + (w.phone ? '<br><small style="color:#666;">📞 ' + w.phone + '</small>' : '') + '</td>' +
-          '<td><strong>₹ ' + (Number(w.salary) || 0).toLocaleString() + '</strong></td>' +
-          '<td style="color:#e65100; font-weight:600;">₹ ' + monAdv.toLocaleString() + '</td>' +
-          '<td style="color:#2e7d32; font-weight:600;">₹ ' + monSal.toLocaleString() + '</td>' +
+          '<td><strong>₹ ' + baseSalary.toLocaleString() + '</strong></td>' +
+          '<td>' + attDisplay + '</td>' +
+          '<td style="color:#0277bd; font-weight:bold;">₹ ' + estEarned.toLocaleString() + (totalMarked === 0 ? '<br><small style="color:#888;">(পূর্ণ বেতন)</small>' : '') + '</td>' +
+          '<td><span style="color:#e65100;">অগ্রিম: ₹' + monAdv.toLocaleString() + '</span><br><span style="color:#2e7d32;">বেতন: ₹' + monSal.toLocaleString() + '</span></td>' +
           '<td style="color:#c62828; font-weight:bold;">₹ ' + remPayable.toLocaleString() + '</td>' +
           '<td>' +
             '<button class="action-btn btn-info" onclick="toggleLabourHistory(\'' + subId + '\', this)">ইতিহাস ▼</button>' +
@@ -6241,7 +6974,7 @@
         '</tr>';
 
         historyList.sort(function(a, b) { return parseDateToTime(b.data.date) - parseDateToTime(a.data.date); });
-        html += '<tr id="' + subId + '" style="display:none; background:#fffdf9;"><td colspan="6" style="padding:10px 14px;">' +
+        html += '<tr id="' + subId + '" style="display:none; background:#fffdf9;"><td colspan="7" style="padding:10px 14px;">' +
           '<table style="width:100%; font-size:12px; background:white; border:1px solid #ffe0b2;">' +
             '<thead><tr style="background:#fff3e0;"><th>তারিখ</th><th>ধরন</th><th>টাকা</th><th>নোট</th><th>অ্যাকশন</th></tr></thead><tbody>';
         if (historyList.length === 0) {
@@ -6798,6 +7531,7 @@
       var periodLabel = dt ? formatDateBR(dt) : (mn === 'ALL' ? 'সকল সময় (All Time)' : (mn + '/' + yr));
 
       document.body.setAttribute('data-print', 'invoice');
+      setInvoiceWhatsAppPayload(null);
       getEl('invMainDocTitle').innerText = 'সিমেন স্টক ও সাফল্যের রিপোর্ট / SEMEN STATEMENT (' + periodLabel + ')';
 
       var totStraws = 0, conv = 0, sexed = 0, totVal = 0;
@@ -7030,6 +7764,110 @@
       cancelHealthEdit();
     }
 
+    // Feature 10: Cattle Insurance & Loan Tracker CRUD
+    var eInsKey = null;
+    window.editInsuranceLoan = function(k) {
+      var d = farmStore.insuranceLoans ? farmStore.insuranceLoans[k] : null;
+      if (!d) return;
+      eInsKey = k;
+      if (getEl('insType')) getEl('insType').value = d.type || 'Cattle Insurance';
+      if (getEl('insCowTag')) getEl('insCowTag').value = d.cowTag || '';
+      if (getEl('insPolicyNo')) getEl('insPolicyNo').value = d.policyNo || '';
+      if (getEl('insProvider')) getEl('insProvider').value = d.provider || '';
+      if (getEl('insAmount')) getEl('insAmount').value = d.amount || '';
+      if (getEl('insStartDate')) getEl('insStartDate').value = d.startDate || '';
+      if (getEl('insDueDate')) getEl('insDueDate').value = d.dueDate || '';
+      if (getEl('insStatus')) getEl('insStatus').value = d.status || 'Active';
+      if (getEl('insNote')) getEl('insNote').value = d.note || '';
+      if (getEl('insSubmitBtn')) getEl('insSubmitBtn').innerText = 'Update Insurance / Loan';
+      if (getEl('insCancelBtn')) getEl('insCancelBtn').style.display = 'inline-flex';
+      switchTab('health', document.querySelectorAll('nav button')[13]);
+      if (getEl('insPolicyNo')) getEl('insPolicyNo').scrollIntoView({ behavior: 'smooth' });
+    };
+
+    window.cancelInsuranceEdit = function() {
+      eInsKey = null;
+      ['insCowTag', 'insPolicyNo', 'insProvider', 'insAmount', 'insDueDate', 'insNote'].forEach(function(id) { if (getEl(id)) getEl(id).value = ''; });
+      if (getEl('insStatus')) getEl('insStatus').value = 'Active';
+      if (getEl('insSubmitBtn')) getEl('insSubmitBtn').innerText = 'Save Insurance / Loan';
+      if (getEl('insCancelBtn')) getEl('insCancelBtn').style.display = 'none';
+    };
+
+    window.saveInsuranceLoan = function() {
+      var tag = (getEl('insCowTag') ? getEl('insCowTag').value : '').trim();
+      var pol = (getEl('insPolicyNo') ? getEl('insPolicyNo').value : '').trim();
+      var dueDt = getEl('insDueDate') ? getEl('insDueDate').value : '';
+      if (!tag || !pol || !dueDt) return showAppToast('Tag/বিবরণ, পলিসি/লোন নম্বর এবং মেয়াদ/কিস্তির তারিখ দিন!');
+      var data = {
+        type: getEl('insType') ? getEl('insType').value : 'Cattle Insurance',
+        cowTag: tag,
+        policyNo: pol,
+        provider: getEl('insProvider') ? getEl('insProvider').value.trim() : '',
+        amount: parseFloat(getEl('insAmount') ? getEl('insAmount').value : 0) || 0,
+        startDate: getEl('insStartDate') ? getEl('insStartDate').value : '',
+        dueDate: dueDt,
+        status: getEl('insStatus') ? getEl('insStatus').value : 'Active',
+        note: getEl('insNote') ? getEl('insNote').value.trim() : ''
+      };
+      if (db) {
+        if (eInsKey) db.ref('insuranceLoans/' + eInsKey).update(data);
+        else db.ref('insuranceLoans').push(data);
+      } else {
+        farmStore.insuranceLoans[eInsKey || ('ins_' + Date.now())] = data;
+        renderInsuranceTable();
+        renderDashboardAlerts();
+      }
+      showAppToast('বীমা / লোন তথ্য সফলভাবে সেভ হয়েছে!');
+      cancelInsuranceEdit();
+    };
+
+    window.markInsuranceRenewed = function(k) {
+      if (db && k) {
+        db.ref('insuranceLoans/' + k).update({ status: 'Renewed' });
+      } else if (farmStore.insuranceLoans[k]) {
+        farmStore.insuranceLoans[k].status = 'Renewed';
+        renderInsuranceTable();
+        renderDashboardAlerts();
+      }
+      showAppToast('বীমা/লোন নবায়ন/পরিশোধ সম্পন্ন হিসেবে চিহ্নিত হয়েছে!');
+    };
+
+    window.renderInsuranceTable = function() {
+      var body = getEl('insuranceTableBody');
+      if (!body) return;
+      var list = [];
+      for (var k in farmStore.insuranceLoans) {
+        if (farmStore.insuranceLoans[k]) list.push({ key: k, data: farmStore.insuranceLoans[k] });
+      }
+      list.sort(function(a, b) { return parseDateToTime(a.data.dueDate) - parseDateToTime(b.data.dueDate); });
+
+      if (list.length === 0) {
+        body.innerHTML = '';
+        if (getEl('insuranceNoData')) getEl('insuranceNoData').style.display = 'block';
+        return;
+      }
+      if (getEl('insuranceNoData')) getEl('insuranceNoData').style.display = 'none';
+
+      body.innerHTML = list.map(function(item) {
+        var d = item.data, k = item.key;
+        var stBadge = d.status === 'Active' ? '<span class="badge badge-warning">Active</span>' : '<span class="badge badge-success">' + (d.status || 'Closed') + '</span>';
+        return '<tr>' +
+          '<td><strong>' + (d.type || 'Insurance') + '</strong></td>' +
+          '<td><strong>' + (d.cowTag || '-') + '</strong>' + (d.note ? '<br><small style="color:#666;">' + d.note + '</small>' : '') + '</td>' +
+          '<td><code>' + (d.policyNo || '-') + '</code></td>' +
+          '<td>' + (d.provider || '-') + '</td>' +
+          '<td><strong>₹ ' + (Number(d.amount) || 0).toLocaleString() + '</strong></td>' +
+          '<td><span class="badge badge-danger">' + formatDateBR(d.dueDate) + '</span></td>' +
+          '<td>' + stBadge + '</td>' +
+          '<td>' +
+            (d.status === 'Active' ? '<button class="action-btn" style="background:#2e7d32; color:white;" onclick="markInsuranceRenewed(\'' + k + '\')">✔ Done</button>' : '') +
+            '<button class="action-btn btn-info" onclick="editInsuranceLoan(\'' + k + '\')">Edit</button>' +
+            '<button class="action-btn btn-danger" onclick="deleteRecord(\'insuranceLoans\',\'' + k + '\')">Delete</button>' +
+          '</td>' +
+        '</tr>';
+      }).join('');
+    };
+
     window.currentHlthYear = "";
     window.currentHlthMonth = "ALL";
     window.specificHlthDate = "";
@@ -7134,7 +7972,7 @@
           '<td>' + formatDateBR(d.date) + '</td>' +
           '<td><strong>🐄 ' + (d.cowTag || '-') + '</strong></td>' +
           '<td><strong>' + (d.type || '-') + '</strong>' + (d.disease ? '<br><small style="color:#c62828;">' + d.disease + '</small>' : '') + '</td>' +
-          '<td>' + (d.vet ? '👨‍⚕️ ' + d.vet + '<br>' : '') + '<small style="color:#1b5e20;">' + (d.medicine || d.desc || '-') + '</small>' + wInfo + '</td>' +
+          '<td>' + (d.vet ? '👨⚕️ ' + d.vet + '<br>' : '') + '<small style="color:#1b5e20;">' + (d.medicine || d.desc || '-') + '</small>' + wInfo + '</td>' +
           '<td>' + stBadge + '</td>' +
           '<td>' + formatDateBR(d.nextDate) + '</td>' +
           '<td>₹ ' + (d.cost || 0) + '</td>' +
@@ -7148,6 +7986,7 @@
       if (list.length === 0) return showAppToast('বর্তমান ভিউতে প্রিন্ট করার মতো কোনো স্বাস্থ্য রেকর্ড নেই!');
       var periodLabel = window.specificHlthDate ? formatDateBR(window.specificHlthDate) : (window.currentHlthMonth === 'ALL' ? 'ALL DATA' : (window.currentHlthMonth + '/' + window.currentHlthYear));
       document.body.setAttribute('data-print', 'invoice');
+      setInvoiceWhatsAppPayload(null);
       getEl('invMainDocTitle').innerText = 'মাসিক স্বাস্থ্য ও চিকিৎসা রিপোর্ট / HEALTH REPORT (' + periodLabel + ')';
       var totCost = 0;
       var rows = list.map(function(item) {
@@ -7195,6 +8034,7 @@
     };
 
     function downloadBackup() {
+      if (window.currentUserRole === 'staff') return showAppToast('স্টাফ অ্যাকাউন্ট থেকে ব্যাকআপ ডাউনলোডের অনুমতি নেই!');
       if (!db) return showAppToast('ডাটাবেস নেই!');
       db.ref('/').once('value', function(snap) {
         var dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(snap.val(), null, 2));
@@ -7203,8 +8043,16 @@
     }
 
     window.listenAllData = function() {
+      renderStaffUsersTable();
       if (!db) return;
       checkAndGenerateDailyOrders();
+
+      db.ref('staffUsers').on('value', function(snap) {
+        farmStore.staffUsers = {};
+        snap.forEach(function(c){ farmStore.staffUsers[c.key] = c.val(); });
+        try { localStorage.setItem('nanda_custom_staff_users', JSON.stringify(farmStore.staffUsers)); } catch (e) {}
+        renderStaffUsersTable();
+      });
 
       db.ref('cattle').on('value', function(snap) {
         farmStore.cattle = {};
@@ -7252,7 +8100,9 @@
           var d = c.val(), k = c.key; farmStore.customers[k] = d;
           if (d.name) nameOpt += '<option value="' + d.name + '">' + (d.phone ? d.name + ' (' + d.phone + ')' : d.name) + '</option>';
           if (d.area && !areaSet[d.area]) { areaSet[d.area] = true; areaOpt += '<option value="' + d.area + '">'; }
-          if (body) body.innerHTML += '<tr><td><strong>' + (d.name || '-') + '</strong></td><td>' + (d.phone || '-') + '</td><td>' + (d.area ? '<span class="badge badge-warning">' + d.area + '</span>' : '-') + '</td><td>' + (d.addr || '-') + '</td><td>' + (d.demand || 0) + ' L</td><td>₹ ' + (d.openingDue || 0) + '</td><td><span style="font-size:11px; background:#e3f2fd; padding:2px 6px;">' + (d.type || 'Retail') + '</span> / <span style="font-size:11px; color:#1b5e20;">' + (d.shift || 'Morning') + '</span></td><td><button class="action-btn btn-info" onclick="editCustomer(\'' + k + '\')">Edit</button><button class="action-btn btn-danger" onclick="deleteRecord(\'customers\',\'' + k + '\')">Delete</button></td></tr>';
+          var waBadge = (d.whatsappOpt === 'blocked') ? '<br><span class="badge badge-danger" style="font-size:10px;">🔕 WA বন্ধ</span>' : '<br><span class="badge badge-success" style="font-size:10px;">💬 WA চালু</span>';
+          var rateDisplay = (Number(d.milkRate) > 0) ? '<br><small style="color:#1b5e20; font-weight:700;">₹ ' + d.milkRate + '/L</small>' : '<br><small style="color:#777;">₹ 50/L (Default)</small>';
+          if (body) body.innerHTML += '<tr><td><strong>' + (d.name || '-') + '</strong></td><td>' + (d.phone || '-') + waBadge + '</td><td>' + (d.area ? '<span class="badge badge-warning">' + d.area + '</span>' : '-') + '</td><td>' + (d.addr || '-') + '</td><td>' + (d.demand || 0) + ' L' + rateDisplay + '</td><td>₹ ' + (d.openingDue || 0) + '</td><td><span style="font-size:11px; background:#e3f2fd; padding:2px 6px;">' + (d.type || 'Retail') + '</span> / <span style="font-size:11px; color:#1b5e20;">' + (d.shift || 'Morning') + '</span></td><td><button class="action-btn btn-info" onclick="editCustomer(\'' + k + '\')">Edit</button><button class="action-btn btn-danger" onclick="deleteRecord(\'customers\',\'' + k + '\')">Delete</button></td></tr>';
         });
         if (getEl('customerNameList')) getEl('customerNameList').innerHTML = nameOpt;
         if (getEl('customerAreaList')) getEl('customerAreaList').innerHTML = areaOpt;
@@ -7297,6 +8147,10 @@
         farmStore.labourPayments = {}; snap.forEach(function(c){ farmStore.labourPayments[c.key] = c.val(); });
         renderLabourTable();
       });
+      db.ref('labourAttendance').on('value', function(snap) {
+        farmStore.labourAttendance = snap.val() || {};
+        renderLabourTable();
+      });
 
       db.ref('stock').on('value', function(snap) {
         farmStore.stock = {};
@@ -7322,6 +8176,13 @@
         farmStore.health = {};
         snap.forEach(function(c) { farmStore.health[c.key] = c.val(); });
         renderHealthTable();
+        renderDashboardAlerts();
+      });
+
+      db.ref('insuranceLoans').on('value', function(snap) {
+        farmStore.insuranceLoans = {};
+        snap.forEach(function(c) { farmStore.insuranceLoans[c.key] = c.val(); });
+        renderInsuranceTable();
         renderDashboardAlerts();
       });
     };
@@ -7975,6 +8836,7 @@
     window.showProfitLossStatement = function() {
       var r = getReportPeriodData();
       document.body.setAttribute('data-print', 'invoice');
+      setInvoiceWhatsAppPayload(null);
       getEl('invMainDocTitle').innerText = 'লাভ-ক্ষতি ও পারফরম্যান্স রিপোর্ট / P&L STATEMENT (' + r.label + ')';
 
       var sRows = Object.keys(r.salesByItem).map(function(k) {
