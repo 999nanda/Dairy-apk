@@ -338,9 +338,20 @@
 
     @media print {
       @page { size: A4 portrait; margin: 10mm 12mm; }
-      html, body { height: auto !important; min-height: 0 !important; overflow: visible !important; background: white !important; }
+      html, body { height: auto !important; min-height: 0 !important; overflow: visible !important; background: white !important; margin: 0 !important; padding: 0 !important; }
       body * { visibility: hidden; }
       .no-print { display: none !important; }
+      body[data-print="invoice"] #appBody,
+      body[data-print="invoice"] #loginScreen,
+      body[data-print="invoice"] #ledgerModal,
+      body[data-print="invoice"] #cattleFeedModal,
+      body[data-print="invoice"] #calvingActionModal,
+      body[data-print="invoice"] #bulkMilkModal,
+      body[data-print="invoice"] #bulkFeedModal,
+      body[data-print="invoice"] #stockMoveModal,
+      body[data-print="invoice"] #vendorPayModal,
+      body[data-print="invoice"] #digitalPassportModal { display: none !important; }
+
       body[data-print="invoice"] #invoiceModal,
       body[data-print="invoice"] #invoiceModal .invoice-card,
       body[data-print="invoice"] #invoicePrintArea,
@@ -368,7 +379,7 @@
         width: 100% !important;
         max-width: 100% !important;
         padding: 16px 20px 18px 20px !important;
-        margin: 0 0 24px 0 !important;
+        margin: 0 !important;
         page-break-inside: avoid !important;
         break-inside: avoid !important;
       }
@@ -392,17 +403,22 @@
         padding-top: 10px !important;
       }
 
+      body[data-print="ledger"] #appBody,
+      body[data-print="ledger"] #loginScreen,
+      body[data-print="ledger"] #invoiceModal { display: none !important; }
       body[data-print="ledger"] #ledgerModal,
       body[data-print="ledger"] #ledgerPrintArea,
       body[data-print="ledger"] #ledgerPrintArea * { visibility: visible; }
-      body[data-print="ledger"] #ledgerModal { position: absolute; left: 0; top: 0; width: 100%; background: white; padding: 0; }
-      body[data-print="ledger"] .ledger-card { box-shadow: none; max-height: none; width: 100%; max-width: 100%; padding: 10px; }
+      body[data-print="ledger"] #ledgerModal { position: static !important; display: block !important; width: 100% !important; background: white !important; padding: 0 !important; }
+      body[data-print="ledger"] .ledger-card { box-shadow: none !important; max-height: none !important; width: 100% !important; max-width: 100% !important; padding: 10px !important; }
       body[data-print="ledger"] .table-container { max-height: none !important; overflow: visible !important; }
 
+      body[data-print="passport"] #appBody,
+      body[data-print="passport"] #loginScreen { display: none !important; }
       body[data-print="passport"] #digitalPassportModal,
       body[data-print="passport"] #passportContent,
       body[data-print="passport"] #passportContent * { visibility: visible; }
-      body[data-print="passport"] #digitalPassportModal { position: absolute; left: 0; top: 0; width: 100%; background: white; padding: 0; }
+      body[data-print="passport"] #digitalPassportModal { position: static !important; display: block !important; width: 100% !important; background: white !important; padding: 0 !important; }
     }
 
     /* Mobile Responsive Fixes */
@@ -4184,11 +4200,11 @@
         var html = '';
         events.forEach(function(ev) {
           if (ev.isOpening) {
-            html += '<tr style="background:#fff9c4;"><td>' + ev.date + '</td><td><strong>' + ev.desc + '</strong></td><td>₹ ' + ev.bill + '</td><td>₹ 0</td><td style="color:#e65100; font-weight:bold;">₹ ' + ev.cumDue + '</td><td>-</td></tr>';
+            html += '<tr style="background:#fff9c4;"><td>' + ev.date + '</td><td><strong>' + ev.desc + '</strong></td><td>₹ ' + ev.bill + '</td><td>₹ 0</td><td style="color:#e65100; font-weight:bold;">₹ ' + ev.cumDue + '</td><td><button class="action-btn btn-info" onclick="showLedgerEntryInvoice(\'' + encodeURIComponent(custName) + '\', \'' + encodeURIComponent(ev.date) + '\', \'' + encodeURIComponent(ev.desc) + '\', ' + ev.bill + ', 0, ' + ev.cumDue + ', \'\')">📄 Invoice</button></td></tr>';
           } else if (ev.isSale) {
-            html += '<tr><td>' + ev.date + '</td><td><strong>' + ev.desc + '</strong></td><td>₹ ' + ev.bill + '</td><td style="color:green; font-weight:600;">₹ ' + ev.paid + '</td><td style="color:#e65100; font-weight:bold;">₹ ' + ev.cumDue + '</td><td><button class="action-btn btn-info" onclick="showInvoice(\'' + ev.saleKey + '\')">📄 Invoice</button></td></tr>';
+            html += '<tr><td>' + ev.date + '</td><td><strong>' + ev.desc + '</strong></td><td>₹ ' + ev.bill + '</td><td style="color:green; font-weight:600;">₹ ' + ev.paid + '</td><td style="color:#e65100; font-weight:bold;">₹ ' + ev.cumDue + '</td><td><button class="action-btn btn-info" onclick="showInvoice(\'' + ev.saleKey + '\', ' + ev.cumDue + ')">📄 Invoice</button></td></tr>';
           } else {
-            html += '<tr style="background:#f9fdfa;"><td>' + ev.date + '</td><td><strong style="color:#1b5e20;">' + ev.desc + '</strong></td><td>₹ 0</td><td style="color:green; font-weight:700;">₹ ' + ev.paid + '</td><td style="color:#e65100; font-weight:bold;">₹ ' + ev.cumDue + '</td><td>-</td></tr>';
+            html += '<tr style="background:#f9fdfa;"><td>' + ev.date + '</td><td><strong style="color:#1b5e20;">' + ev.desc + '</strong></td><td>₹ 0</td><td style="color:green; font-weight:700;">₹ ' + ev.paid + '</td><td style="color:#e65100; font-weight:bold;">₹ ' + ev.cumDue + '</td><td><button class="action-btn btn-info" onclick="showLedgerEntryInvoice(\'' + encodeURIComponent(custName) + '\', \'' + encodeURIComponent(ev.date) + '\', \'' + encodeURIComponent(ev.desc) + '\', 0, ' + ev.paid + ', ' + ev.cumDue + ', \'' + (ev.saleKey || '') + '\')">📄 Invoice</button></td></tr>';
           }
         });
         tbody.innerHTML = html;
@@ -4266,19 +4282,56 @@
       getEl('ledgerPayNote').value = '';
     };
 
-    window.showInvoice = function(k) {
+    window.showInvoice = function(k, balanceAfterEntry) {
       var d = farmStore.sales[k];
       if (!d) return;
       document.body.setAttribute('data-print', 'invoice');
       getEl('invMainDocTitle').innerText = 'ইনভয়েস (ক্যাশ মেমো)';
-      var liveDue = getCustomerLiveBalances()[(d.name || '').trim().toLowerCase()]?.currentDue || 0;
-      getEl('invoiceDetails').innerHTML = '<div style="display:flex; justify-content:space-between; margin-bottom:12px;"><div><strong>গ্রাহক:</strong> ' + d.name + '<br>মোবাইল: ' + (d.phone || '-') + '</div><div style="text-align:right;">তারিখ: ' + formatDateBR(d.date) + '<br>ইনভয়েস: #NDA-' + k.substring(1, 6).toUpperCase() + '</div></div><table class="invoice-table" style="border:1px solid #ddd; width:100%; min-width:unset;"><thead><tr style="background:#e8f5e9;"><th>পণ্য</th><th>পরিমাণ</th><th>দর</th><th style="text-align:right;">মোট</th></tr></thead><tbody><tr><td>' + d.item + '</td><td>' + d.qty + '</td><td>₹ ' + d.rate + '</td><td style="text-align:right; font-weight:bold;">₹ ' + d.total + '</td></tr></tbody></table><div style="text-align:right; margin-top:10px;">চালান মূল্য: ₹ ' + d.total + '<br>নগদ পরিশোধ: ₹ ' + d.paid + '<br><span style="color:red; font-weight:bold;">মোট বকেয়া: ₹ ' + liveDue + '</span></div>';
+      var liveDue = (typeof balanceAfterEntry === 'number') ? balanceAfterEntry : (getCustomerLiveBalances()[(d.name || '').trim().toLowerCase()]?.currentDue || 0);
+      var dueLabel = (typeof balanceAfterEntry === 'number') ? 'এই লেনদেনের পর বাকি' : 'মোট বকেয়া';
+      getEl('invoiceDetails').innerHTML = '<div style="display:flex; justify-content:space-between; margin-bottom:12px;"><div><strong>গ্রাহক:</strong> ' + d.name + '<br>মোবাইল: ' + (d.phone || '-') + '</div><div style="text-align:right;">তারিখ: ' + formatDateBR(d.date) + '<br>ইনভয়েস: #NDA-' + k.substring(1, 6).toUpperCase() + '</div></div><table class="invoice-table" style="border:1px solid #ddd; width:100%; min-width:unset;"><thead><tr style="background:#e8f5e9;"><th>পণ্য</th><th>পরিমাণ</th><th>দর</th><th style="text-align:right;">মোট</th></tr></thead><tbody><tr><td>' + d.item + '</td><td>' + d.qty + '</td><td>₹ ' + d.rate + '</td><td style="text-align:right; font-weight:bold;">₹ ' + d.total + '</td></tr></tbody></table><div style="text-align:right; margin-top:10px;">চালান মূল্য: ₹ ' + d.total + '<br>নগদ পরিশোধ: ₹ ' + d.paid + '<br><span style="color:red; font-weight:bold;">' + dueLabel + ': ₹ ' + liveDue + '</span></div>';
+      getEl('invoiceModal').style.display = 'flex';
+    };
+
+    window.showLedgerEntryInvoice = function(encCust, encDate, encDesc, billAmt, paidAmt, balanceAfter, saleKey) {
+      var custName = decodeURIComponent(encCust);
+      var dtStr = decodeURIComponent(encDate);
+      var descStr = decodeURIComponent(encDesc);
+      var cPhone = '';
+      for (var ck in farmStore.customers) {
+        var c = farmStore.customers[ck];
+        if (c && (c.name || '').trim().toLowerCase() === custName.trim().toLowerCase()) {
+          cPhone = c.phone || '';
+          break;
+        }
+      }
+      document.body.setAttribute('data-print', 'invoice');
+      getEl('invMainDocTitle').innerText = paidAmt > 0 ? 'পেমেন্ট রসিদ / PAYMENT RECEIPT' : 'বকেয়া বিবরণী / STATEMENT';
+      var refNo = saleKey ? ('#NDA-' + saleKey.substring(1, 6).toUpperCase()) : ('#REC-' + Date.now().toString().slice(-5));
+      getEl('invoiceDetails').innerHTML =
+        '<div style="display:flex; justify-content:space-between; margin-bottom:12px;">' +
+          '<div><strong>গ্রাহক:</strong> ' + custName + '<br>মোবাইল: ' + (cPhone || '-') + '</div>' +
+          '<div style="text-align:right;">তারিখ: ' + dtStr + '<br>রসিদ নং: ' + refNo + '</div>' +
+        '</div>' +
+        '<table class="invoice-table" style="border:1px solid #ddd; width:100%; min-width:unset;">' +
+          '<thead><tr style="background:#e8f5e9;"><th>বিবরণ</th><th style="text-align:right;">বিলের পরিমাণ</th><th style="text-align:right;">পরিশোধ (জমা)</th></tr></thead>' +
+          '<tbody><tr><td>' + descStr + '</td><td style="text-align:right;">₹ ' + billAmt + '</td><td style="text-align:right; color:green; font-weight:bold;">₹ ' + paidAmt + '</td></tr></tbody>' +
+        '</table>' +
+        '<div style="text-align:right; margin-top:10px; line-height:1.8;">' +
+          (billAmt > 0 ? 'বিলের পরিমাণ: ₹ ' + billAmt + '<br>' : '') +
+          'নগদ জমা / পরিশোধ: <strong style="color:green;">₹ ' + paidAmt + '</strong><br>' +
+          '<span style="color:red; font-weight:bold;">এই লেনদেনের পর বাকি: ₹ ' + balanceAfter + '</span>' +
+        '</div>';
       getEl('invoiceModal').style.display = 'flex';
     };
 
     window.closeInvoice = function() {
       getEl('invoiceModal').style.display = 'none';
-      document.body.removeAttribute('data-print');
+      if (getEl('ledgerModal') && getEl('ledgerModal').style.display === 'flex') {
+        document.body.setAttribute('data-print', 'ledger');
+      } else {
+        document.body.removeAttribute('data-print');
+      }
     };
 
     var eCatKey = null;
