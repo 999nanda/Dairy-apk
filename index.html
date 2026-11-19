@@ -149,10 +149,10 @@
 
     window.onload = function() {
       try {
-        if ('serviceWorker' in navigator) {
+        if ('serviceWorker' in navigator && window.self === window.top && (location.protocol === 'https:' || location.hostname === 'localhost')) {
           navigator.serviceWorker.getRegistrations().then(function(regs) {
             regs.forEach(function(r) { r.update(); });
-          });
+          }).catch(function() {});
         }
       } catch (e) {}
       document.querySelectorAll('img[data-local-logo]').forEach(function(imgEl) {
@@ -319,15 +319,15 @@
       margin-top: 4px;
     }
 
-    #loginScreen { position: fixed; inset: 0; background: #e8f5e9; display: flex; align-items: center; justify-content: center; z-index: 99999; padding: 20px; }
-    .login-box { background: white; padding: 32px; border-radius: 16px; width: 100%; max-width: 380px; box-shadow: 0 8px 24px rgba(0,0,0,0.12); text-align: center; }
+    #loginScreen { position: fixed; inset: 0; background: #e8f5e9; display: flex; align-items: center; justify-content: center; z-index: 99999; padding: 20px; overflow-y: auto; }
+    .login-box { background: white; padding: 32px; border-radius: 16px; width: 100%; max-width: 380px; box-shadow: 0 8px 24px rgba(0,0,0,0.12); text-align: center; margin: auto; }
     .login-box img { height: 95px; width: 95px; border-radius: 50%; object-fit: cover; margin-bottom: 14px; border: 2px solid var(--secondary); }
 
     #ledgerModal, #invoiceModal, #cattleFeedModal, #calvingActionModal {
       display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.65); z-index: 2000; align-items: center; justify-content: center; padding: 15px; overflow-y: auto;
     }
     .invoice-card, .ledger-card, .feed-modal-card {
-      background: white; max-width: 850px; width: 100%; border-radius: 16px; padding: 32px; position: relative; box-shadow: 0 15px 40px rgba(0,0,0,0.35); max-height: 95vh; overflow-y: auto; box-sizing: border-box;
+      background: white; max-width: 850px; width: 100%; border-radius: 16px; padding: 32px; position: relative; box-shadow: 0 15px 40px rgba(0,0,0,0.35); max-height: 92vh; overflow-y: auto; box-sizing: border-box; margin: auto;
     }
     #invoicePrintArea { position: relative; overflow: hidden; }
     .invoice-watermark {
@@ -358,7 +358,7 @@
       body[data-print="passport"] #digitalPassportModal { position: absolute; left: 0; top: 0; width: 100%; background: white; padding: 0; }
     }
 
-    /* Mobile Responsive Fixes (মোবাইলে সব ফিচার ও লেআউট নিখুঁত দেখানোর জন্য) */
+    /* Mobile Responsive Fixes */
     html, body { max-width: 100%; overflow-x: hidden; }
     @media (max-width: 640px) {
       header { padding: 10px 12px; }
@@ -366,8 +366,32 @@
       .header-title h1 { font-size: 15px; }
       .sync-badge { font-size: 10px; padding: 3px 7px; }
       .logout-btn { padding: 5px 10px; font-size: 11px; }
-      nav { padding: 6px 8px; flex-wrap: wrap; gap: 5px; overflow-x: visible; }
-      nav button { padding: 6px 9px; font-size: 11.5px; margin-right: 0; background: #f8faf9; border: 1px solid #e0e0e0; }
+      nav {
+        padding: 8px 10px;
+        display: flex;
+        flex-wrap: nowrap;
+        gap: 6px;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        scrollbar-width: thin;
+        border-bottom: 1px solid #dcedc8;
+      }
+      nav button {
+        flex: 0 0 auto;
+        padding: 7px 12px;
+        font-size: 12px;
+        margin-right: 0;
+        background: #f8faf9;
+        border: 1px solid #e0e0e0;
+        border-radius: 20px;
+      }
+      nav button.active {
+        background: var(--primary);
+        color: #ffffff;
+        border-color: var(--primary);
+        border-bottom: 1px solid var(--primary);
+      }
+      input, select, textarea { font-size: 16px !important; }
       .container { padding: 0 10px; margin: 12px auto; }
       .card { padding: 14px 12px; margin-bottom: 14px; }
       h2 { font-size: 15.5px; }
@@ -393,15 +417,50 @@
       #stkSearchInput, #semFilterType, #semFilterBreed, #semSearchInput, #hlthSearchInput {
         width: 100% !important;
       }
+      #loginScreen { align-items: flex-start; padding: 16px 12px; }
+      .login-box { padding: 22px 18px; margin: auto; }
+      #ledgerModal, #invoiceModal, #cattleFeedModal, #calvingActionModal,
+      #bulkMilkModal, #bulkFeedModal, #stockMoveModal, #vendorPayModal {
+        align-items: flex-start !important;
+        padding: 10px !important;
+      }
       .invoice-card, .ledger-card, .feed-modal-card {
-        padding: 16px 14px;
+        padding: 16px 12px;
         border-radius: 12px;
+        max-height: 92vh;
+        margin: auto;
       }
       #ledgerModal div[style*="grid-template-columns:repeat(3, 1fr)"] {
         grid-template-columns: 1fr !important;
       }
-      table { min-width: 650px; font-size: 12px; }
+      .table-container {
+        width: 100%;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        border: 1px solid #c8e6c9;
+        position: relative;
+        background: white;
+      }
+      .table-container::before {
+        content: "⇆ ডানে-বামে স্ক্রল করুন";
+        display: block;
+        font-size: 10.5px;
+        color: #1b5e20;
+        background: #f1f8e9;
+        padding: 3px 8px;
+        font-weight: 600;
+        border-bottom: 1px solid #dcedc8;
+      }
+      table { min-width: 660px; font-size: 12px; }
       th, td { padding: 8px 10px; }
+      th:last-child, td:last-child {
+        position: sticky;
+        right: 0;
+        background: #ffffff;
+        box-shadow: -3px 0 6px rgba(0,0,0,0.06);
+        z-index: 2;
+      }
+      th:last-child { background: #f8faf9; }
     }
   </style>
 </head>
@@ -496,7 +555,6 @@
       
       <!-- ১. Dashboard -->
       <div id="tab-dashboard" class="tab-content">
-        <!-- কুইক অ্যাকশন শর্টকাট বাটন -->
         <div style="display:flex; gap:10px; flex-wrap:wrap; margin-bottom:16px;">
           <button class="btn" style="padding:8px 14px; font-size:12.5px;" onclick="switchTab('milk', document.querySelectorAll('nav button')[5])">🥛 + দুধ এন্ট্রি</button>
           <button class="btn btn-warning" style="padding:8px 14px; font-size:12.5px;" onclick="switchTab('sales', document.querySelectorAll('nav button')[6])">💰 + বিক্রি এন্ট্রি</button>
@@ -504,7 +562,6 @@
           <button class="btn btn-info" style="padding:8px 14px; font-size:12.5px;" onclick="switchTab('stock', document.querySelectorAll('nav button')[11])">📦 স্টক চেক</button>
         </div>
 
-        <!-- ড্যাশবোর্ড ফিল্টার ও এক্সপোর্ট বার (ALL DATA / বছর / ১২ মাস / নির্দিষ্ট তারিখ) -->
         <div class="card" style="padding:14px 18px; margin-bottom:18px;">
           <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; margin-bottom:12px;">
             <div style="display:flex; flex-wrap:wrap; gap:12px; align-items:center;">
@@ -538,35 +595,32 @@
           <div class="summary-card" style="border-left-color: #00897b;"><p>PENDING ORDERS</p><h3 id="dash-pending-orders">0</h3></div>
         </div>
 
-        <!-- অটোমেটিক অ্যালার্ট কার্ড (আসন্ন ভ্যাকসিন, কৃমির ওষুধ ও বাচ্চা দেওয়ার তারিখ - ৭ দিন আগে থেকে) -->
         <div class="alert-card">
           <div class="alert-header">
             <h2>🔔 জরুরি ও আসন্ন অ্যালার্ট (ভ্যাকসিন • কৃমির ওষুধ • বাচ্চা প্রসব)</h2>
             <span id="dash-alert-badge" class="badge badge-danger" style="font-size:12px; padding:5px 12px;">0 টি অ্যালার্ট</span>
           </div>
           <p style="font-size:12px; color:#666; margin-bottom:14px;">
-            নির্ধারিত তারিখের <strong>৭ দিন আগে থেকে</strong> অটোমেটিক অ্যালার্ট এখানে দেখা যাবে। অ্যাকশন সম্পন্ন করলে এটি এখান থেকে মুছে যাবে এবং পরবর্তী ডোজ বা তারিখের সময় হলে আবার স্বয়ংক্রিয়ভাবে ফিরে আসবে।
+            নির্ধারিত তারিখের <strong>৭ দিন আগে থেকে</strong> অটোমেটিক অ্যালার্ট এখানে দেখা যাবে। অ্যাকশন সম্পন্ন করলে এটি এখান থেকে মুছে যাবে এবং পরবর্তী ডোজ বা তারিখের সময় হলে আবার স্বয়ংক্রিয়ভাবে ফিরে আসবে।
           </p>
           <div id="dashAlertContainer" class="alert-grid"></div>
         </div>
 
-        <!-- ড্যাশবোর্ড চার্ট সেকশন (শেষ ৭ দিনের দুধ ও মাসিক আয়-ব্যয়) -->
         <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(320px, 1fr)); gap:18px; margin-bottom:22px;">
           <div class="card" style="margin-bottom:0;">
-            <h2>🥛 শেষ ৭ দিনের দুধ উৎপাদন (Liters)</h2>
+            <h2>🥛 দুধ উৎপাদন বিশ্লেষণ (Liters)</h2>
             <div style="position:relative; height:250px;">
               <canvas id="dashMilkChart"></canvas>
             </div>
           </div>
           <div class="card" style="margin-bottom:0;">
-            <h2>📊 মাসিক আয় বনাম খরচ (₹)</h2>
+            <h2>📊 মাসিক আয় বনাম খরচ (₹)</h2>
             <div style="position:relative; height:250px;">
               <canvas id="dashFinanceChart"></canvas>
             </div>
           </div>
         </div>
 
-        <!-- সেরা ৫টি দুধেল গাভী (Top 5 Milking Cows) -->
         <div class="card" id="dashTopCowsCard">
           <h2>🏆 সেরা ৫টি দুধেল গাভী (Top 5 Milking Cows)</h2>
           <div id="dashTopCowsList" style="display:grid; grid-template-columns:repeat(auto-fit, minmax(190px, 1fr)); gap:12px;"></div>
@@ -621,7 +675,7 @@
             <div class="input-group"><label>Cattle ID *</label><input type="text" id="brCowTag" list="cattleTagList" oninput="onBreedingSemenOrCowChange()" onchange="onBreedingSemenOrCowChange()" placeholder="Tag সিলেক্ট বা টাইপ করুন"></div>
             <div class="input-group"><label>AI Date *</label><input type="date" id="brAiDate" onchange="autoCalcExpectedCalving()"></div>
             <div class="input-group"><label>Heat Signs</label><select id="brHeatSigns"><option value="-">-</option><option value="Standing Heat">Standing Heat</option><option value="Mucus Discharge">Mucus Discharge</option><option value="Restlessness">Restlessness</option><option value="Riding others">Riding others</option></select></div>
-            <div class="input-group"><label>Semen/Bull (ব্যাচ বা ষাঁড়)</label><input type="text" id="brSemenId" list="semenBatchList" oninput="onBreedingSemenOrCowChange()" onchange="onBreedingSemenOrCowChange()" placeholder="সিমেন ব্যাচ সিলেক্ট বা টাইপ করুন"></div>
+            <div class="input-group"><label>Semen/Bull (ব্যাচ বা ষাঁড়)</label><input type="text" id="brSemenId" list="semenBatchList" oninput="onBreedingSemenOrCowChange()" onchange="onBreedingSemenOrCowChange()" placeholder="সিমেন ব্যাচ সিলেক্ট বা টাইপ করুন"></div>
             <div class="input-group"><label>Company</label><input type="text" id="brCompany" placeholder="কোম্পানির নাম"></div>
             <div class="input-group"><label>AI Cost ₹</label><input type="number" id="brAiCost" placeholder="₹"></div>
             <div class="input-group"><label>Pregnancy Test</label><input type="date" id="brPdDate"></div>
@@ -762,7 +816,6 @@
             </div>
           </div>
 
-          <!-- Filters (Year & Specific Date) -->
           <div style="display:flex; flex-wrap:wrap; gap:15px; margin-bottom:15px; background:#f4fbf5; padding:12px; border-radius:8px; border:1px solid #c8e6c9; align-items:center;">
             <div style="display:flex; align-items:center; gap:8px;">
               <label style="font-size:12px; font-weight:bold; color:var(--primary);">বছর নির্বাচন:</label>
@@ -775,7 +828,6 @@
             </div>
           </div>
 
-          <!-- 12-Month Tabs -->
           <div id="milkMonthTabs" style="display:flex; gap:8px; overflow-x:auto; margin-bottom:15px; padding-bottom:5px; -webkit-overflow-scrolling: touch; white-space:nowrap;"></div>
 
           <div class="table-container">
@@ -826,7 +878,6 @@
             </div>
           </div>
 
-          <!-- Sales Filters (Year, Specific Date, Search & Area) -->
           <div style="display:flex; flex-wrap:wrap; justify-content:space-between; gap:12px; margin-bottom:15px; background:#f4fbf5; padding:12px; border-radius:8px; border:1px solid #c8e6c9; align-items:center;">
             <div style="display:flex; flex-wrap:wrap; gap:15px; align-items:center;">
               <div style="display:flex; align-items:center; gap:8px;">
@@ -845,7 +896,6 @@
             </div>
           </div>
 
-          <!-- Sales 12-Month Tabs -->
           <div id="saleMonthTabs" style="display:flex; gap:8px; overflow-x:auto; margin-bottom:15px; padding-bottom:5px; -webkit-overflow-scrolling: touch; white-space:nowrap;"></div>
 
           <div class="table-container">
@@ -944,13 +994,13 @@
             <div class="input-group"><label>Cattle Feed / Pellets (kg) [স্টক: <span id="stkLbl-Cattle Feed">0</span>]</label><input type="number" step="0.1" id="ratPellet" oninput="autoCalcRation()" value="2.0" placeholder="০.০"></div>
             <div class="input-group"><label>Average Feed Cost per kg (₹)</label><input type="number" step="0.1" id="ratAvgCostPerKg" oninput="autoCalcRation()" value="32" placeholder="₹"></div>
             <div class="input-group"><label>Green Fodder / কাঁচা ঘাস (kg)</label><input type="number" step="0.5" id="ratGreenFodder" value="0" placeholder="০.০"></div>
-            <div class="input-group"><label>Dry Fodder / খড়-সাইলেজ (kg)</label><input type="number" step="0.5" id="ratDryFodder" value="0" placeholder="০.০"></div>
+            <div class="input-group"><label>Dry Fodder / খড়-সাইলেজ (kg)</label><input type="number" step="0.5" id="ratDryFodder" value="0" placeholder="০.০"></div>
             <div class="input-group"><label>Supplement / Vitamin Cost (₹)</label><input type="number" step="1" id="ratSuppCost" oninput="autoCalcRation()" value="0" placeholder="₹"></div>
             <div class="input-group"><label>Total Feeding Cost ₹ (অটো)</label><input type="number" id="ratTotalCost" readonly style="background:#e8f5e9; color:green; font-weight:bold;"></div>
           </div>
           <div style="margin-bottom:12px; display:flex; align-items:center; gap:8px;">
             <input type="checkbox" id="ratAutoExpense" checked style="width:auto; cursor:pointer;">
-            <label for="ratAutoExpense" style="font-size:12.5px; font-weight:600; color:#1b5e20; cursor:pointer;">খরচের খাতায় (Expenses) স্বয়ংক্রিয়ভাবে যোগ করুন (Feed & Fodder)</label>
+            <label for="ratAutoExpense" style="font-size:12.5px; font-weight:600; color:#1b5e20; cursor:pointer;">খরচের খাতায় (Expenses) স্বয়ংক্রিয়ভাবে যোগ করুন (Feed & Fodder)</label>
           </div>
           <div style="display:flex; gap:10px; flex-wrap:wrap; margin-top:10px;">
             <button class="btn" id="ratSubmitBtn" onclick="saveRation()">Save & Deduct Stock</button>
@@ -969,7 +1019,6 @@
             </div>
           </div>
 
-          <!-- Feed Filters (Year, Specific Date & Cattle Tag Search) -->
           <div style="display:flex; flex-wrap:wrap; justify-content:space-between; gap:12px; margin-bottom:15px; background:#f4fbf5; padding:12px; border-radius:8px; border:1px solid #c8e6c9; align-items:center;">
             <div style="display:flex; flex-wrap:wrap; gap:15px; align-items:center;">
               <div style="display:flex; align-items:center; gap:8px;">
@@ -987,12 +1036,11 @@
             </div>
           </div>
 
-          <!-- Feed 12-Month Tabs -->
           <div id="feedMonthTabs" style="display:flex; gap:8px; overflow-x:auto; margin-bottom:15px; padding-bottom:5px; -webkit-overflow-scrolling: touch; white-space:nowrap;"></div>
 
           <div class="table-container">
             <table>
-              <thead><tr><th>Cattle Tag ID (মাসিক বিল)</th><th>মোট ফিড (kg)</th><th>ঘাস ও খড় (kg)</th><th>মোট খরচ (₹)</th><th>দুধ ও প্রতি লিটার খরচ</th><th>এন্ট্রি</th><th>বিস্তারিত / অ্যাকশন</th></tr></thead>
+              <thead><tr><th>Cattle Tag ID (মাসিক বিল)</th><th>মোট ফিড (kg)</th><th>ঘাস ও খড় (kg)</th><th>মোট খরচ (₹)</th><th>দুধ ও প্রতি লিটার খরচ</th><th>এন্ট্রি</th><th>বিস্তারিত / অ্যাকশন</th></tr></thead>
               <tbody id="rationTableBody"></tbody>
             </table>
           </div>
@@ -1020,7 +1068,7 @@
           </div>
           <div style="display:flex; gap:10px; flex-wrap:wrap;">
             <button class="btn" id="expSubmitBtn" onclick="saveExpense()">Save Expense</button>
-            <button class="btn btn-info" type="button" onclick="repeatFixedExpenses()">🔁 আগের মাসের স্থায়ী খরচ কপি</button>
+            <button class="btn btn-info" type="button" onclick="repeatFixedExpenses()">🔁 আগের মাসের স্থায়ী খরচ কপি</button>
             <button class="btn btn-warning" id="expCancelBtn" style="display:none;" onclick="cancelExpenseEdit()">Cancel</button>
           </div>
         </div>
@@ -1036,7 +1084,6 @@
             </div>
           </div>
 
-          <!-- Monthly Budget Limit & Category Summary -->
           <div style="display:flex; flex-wrap:wrap; gap:10px; align-items:center; justify-content:space-between; background:#fffdf9; border:1px solid #ffe0b2; padding:10px 14px; border-radius:8px; margin-bottom:14px;">
             <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
               <label style="font-size:12px; font-weight:700; color:#e65100;">মাসিক বাজেট সীমা (₹):</label>
@@ -1047,7 +1094,6 @@
 
           <div id="expCategorySummaryGrid" style="display:grid; grid-template-columns:repeat(auto-fit, minmax(145px, 1fr)); gap:10px; margin-bottom:15px;"></div>
 
-          <!-- Expense Filters (Year, Date, Category & Search) -->
           <div style="display:flex; flex-wrap:wrap; justify-content:space-between; gap:12px; margin-bottom:15px; background:#f4fbf5; padding:12px; border-radius:8px; border:1px solid #c8e6c9; align-items:center;">
             <div style="display:flex; flex-wrap:wrap; gap:12px; align-items:center;">
               <div style="display:flex; align-items:center; gap:6px;">
@@ -1073,7 +1119,6 @@
             </div>
           </div>
 
-          <!-- Expense 12-Month Tabs -->
           <div id="expMonthTabs" style="display:flex; gap:8px; overflow-x:auto; margin-bottom:15px; padding-bottom:5px; -webkit-overflow-scrolling: touch; white-space:nowrap;"></div>
 
           <div class="table-container">
@@ -1085,10 +1130,9 @@
           <p id="expenseNoData" style="text-align: center; color: #777; font-size: 13px; margin-top: 15px; display: none;">এই মাস বা তারিখে কোনো খরচের রেকর্ড নেই।</p>
         </div>
 
-        <!-- 🏪 দোকানদারের বকেয়া খাতা (Vendor Dues) -->
         <div class="card" id="vendorDueSummaryCard" style="border-left: 5px solid #d32f2f;">
           <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; margin-bottom:12px;">
-            <h2 style="margin:0; border:none; padding:0; color:#c62828;">🏪 দোকানদারের বকেয়া খাতা (Vendor Dues)</h2>
+            <h2 style="margin:0; border:none; padding:0; color:#c62828;">🏪 দোকানদারের বকেয়া খাতা (Vendor Dues)</h2>
             <span id="totalVendorDueBadge" class="badge badge-danger" style="font-size:12.5px; padding:5px 12px;">মোট বাকি: ₹ 0</span>
           </div>
           <div class="table-container">
@@ -1097,14 +1141,12 @@
               <tbody id="vendorDueTableBody"></tbody>
             </table>
           </div>
-          <p id="vendorDueNoData" style="text-align:center; color:#2e7d32; font-size:13px; margin-top:12px; font-weight:600; display:none;">✔ কোনো দোকান বা ব্যক্তির কাছে বকেয়া নেই।</p>
+          <p id="vendorDueNoData" style="text-align:center; color:#2e7d32; font-size:13px; margin-top:12px; font-weight:600; display:none;">✔ কোনো দোকান বা ব্যক্তির কাছে বকেয়া নেই।</p>
         </div>
 
-        <!-- 👷 Labour Salary & Advance Tracker -->
         <div class="card">
           <h2>👷 Labour Salary & Advance (কর্মচারীর বেতন ও অগ্রিম হিসাব)</h2>
           <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(280px, 1fr)); gap:18px; margin-bottom:18px;">
-            <!-- নতুন লেবার যোগ -->
             <div style="background:#f9fdfa; border:1px solid #c8e6c9; border-radius:10px; padding:14px;">
               <strong style="color:var(--primary); font-size:13.5px; display:block; margin-bottom:10px;">➕ নতুন কর্মচারী / লেবার সেভ করুন</strong>
               <div class="form-grid" style="grid-template-columns:1fr 1fr; gap:10px; margin-bottom:10px;">
@@ -1116,7 +1158,6 @@
               <button class="btn" style="padding:8px 16px; font-size:12.5px;" onclick="saveLabour()">Save Labour</button>
             </div>
 
-            <!-- বেতন বা অগ্রিম প্রদান -->
             <div style="background:#fffdf9; border:1px solid #ffe0b2; border-radius:10px; padding:14px;">
               <strong style="color:#e65100; font-size:13.5px; display:block; margin-bottom:10px;">💳 বেতন / অগ্রিম (Advance) প্রদান করুন</strong>
               <div class="form-grid" style="grid-template-columns:1fr 1fr; gap:10px; margin-bottom:10px;">
@@ -1154,7 +1195,7 @@
             <div class="input-group"><label>Unit</label><select id="stkUnit"><option value="kg">kg</option><option value="Bag">Bag</option><option value="Ton">Ton</option><option value="Liter">Liter</option><option value="Pcs">Pcs</option></select></div>
             <div class="input-group"><label>Unit Cost / দাম (₹)</label><input type="number" step="0.1" id="stkCost" placeholder="প্রতি ইউনিট দাম"></div>
             <div class="input-group"><label>Alert Level</label><input type="number" id="stkAlert" placeholder="৫"></div>
-            <div class="input-group"><label>Expiry Date (মেয়াদ)</label><input type="date" id="stkExpiry"></div>
+            <div class="input-group"><label>Expiry Date (মেয়াদ)</label><input type="date" id="stkExpiry"></div>
           </div>
           <div style="display:flex; gap:10px;">
             <button class="btn" id="stkSubmitBtn" onclick="saveStock()">Save Stock</button>
@@ -1162,7 +1203,6 @@
           </div>
         </div>
 
-        <!-- বর্তমান স্টক ও মোট মূল্য -->
         <div class="card">
           <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; margin-bottom:12px;">
             <h2 style="margin:0; border:none; padding:0;">বর্তমান স্টক তালিকা ও মোট মূল্য</h2>
@@ -1195,7 +1235,6 @@
           </div>
         </div>
 
-        <!-- স্টক লেনদেনের ইতিহাস (Stock History Log - বছর, মাস, তারিখ ফিল্টার ও এক্সপোর্টসহ) -->
         <div class="card">
           <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; margin-bottom:12px;">
             <h2 style="margin:0; border:none; padding:0;">📜 স্টক লেনদেনের ইতিহাস (Stock History Log)</h2>
@@ -1240,7 +1279,7 @@
           <div class="form-grid">
             <div class="input-group"><label>Date (আনার তারিখ) *</label><input type="date" id="semDate"></div>
             <div class="input-group"><label>Batch No *</label><input type="text" id="semBatch" placeholder="HF-8902"></div>
-            <div class="input-group"><label>Bull Name / Sire ID</label><input type="text" id="semBullName" placeholder="ষাঁড়ের নাম (যেমন: Romio)"></div>
+            <div class="input-group"><label>Bull Name / Sire ID</label><input type="text" id="semBullName" placeholder="ষাঁড়ের নাম (যেমন: Romio)"></div>
             <div class="input-group"><label>Breed (ব্রিড) *</label><input type="text" id="semBreed" list="semenBreedList" placeholder="যেমন: HF / Jersey / Sahiwal"></div>
             <div class="input-group"><label>Company / Source *</label><input type="text" id="semSource" list="semenCompanyList" placeholder="কোম্পানির নাম (যেমন: NDDB / ABS)"></div>
             <div class="input-group"><label>Semen Type</label><select id="semType"><option value="Conventional">Conventional (সাধারণ)</option><option value="Sexed Sorted">Sexed Sorted (বকনা বাছুর)</option></select></div>
@@ -1292,7 +1331,7 @@
                 <option value="">সকল ব্রিড (Breed)</option>
               </select>
             </div>
-            <input type="text" id="semSearchInput" oninput="renderSemenTable()" placeholder="🔍 ব্যাচ, ষাঁড় বা কোম্পানি..." style="width:210px; padding:7px;">
+            <input type="text" id="semSearchInput" oninput="renderSemenTable()" placeholder="🔍 ব্যাচ, ষাঁড় বা কোম্পানি..." style="width:210px; padding:7px;">
           </div>
 
           <div class="table-container">
@@ -1384,7 +1423,6 @@
             </div>
           </div>
 
-          <!-- Reports Filters (Year, Date, Clear/Reset & 12-Month Tabs) -->
           <div style="display:flex; flex-wrap:wrap; gap:15px; margin-bottom:12px; background:#f4fbf5; padding:12px; border-radius:8px; border:1px solid #c8e6c9; align-items:center;">
             <div style="display:flex; align-items:center; gap:8px;">
               <label style="font-size:12px; font-weight:bold; color:var(--primary);">বছর নির্বাচন:</label>
@@ -1399,7 +1437,6 @@
 
           <div id="repMonthTabs" style="display:flex; gap:8px; overflow-x:auto; margin-bottom:16px; padding-bottom:5px; -webkit-overflow-scrolling:touch; white-space:nowrap;"></div>
 
-          <!-- P&L Summary + Month-over-Month Growth -->
           <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(190px, 1fr)); gap:12px; margin-bottom:18px;">
             <div style="background:#e8f5e9; padding:12px; border-radius:10px; border-left:4px solid #1b5e20;">
               <small style="color:#555; font-weight:600;">মোট দুধ উৎপাদন</small>
@@ -1422,13 +1459,11 @@
             </div>
           </div>
 
-          <!-- Farm Balance Sheet (দেনা-পাওনা ও সম্পদ) -->
           <div style="background:#fffdf9; border:1px solid #ffe0b2; border-radius:10px; padding:14px; margin-bottom:18px;">
             <strong style="color:#e65100; font-size:13.5px; display:block; margin-bottom:10px;">⚖️ ফার্মের দেনা-পাওনা ও সম্পদ (Farm Balance Sheet)</strong>
             <div id="repBalanceSheetGrid" style="display:grid; grid-template-columns:repeat(auto-fit, minmax(180px, 1fr)); gap:10px;"></div>
           </div>
 
-          <!-- Category Expense & Product Sales Doughnut Charts -->
           <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(280px, 1fr)); gap:16px; margin-bottom:18px;">
             <div style="background:#fafafa; border:1px solid #eceff1; border-radius:10px; padding:14px;">
               <h3 style="font-size:14px; color:#c62828; margin-bottom:10px;">🍩 খাত-ভিত্তিক খরচ (Expense Breakdown)</h3>
@@ -1441,19 +1476,18 @@
           </div>
 
           <div style="margin-top:16px;">
-            <h2 style="font-size:15px;">📊 ৬ মাসের লাভ-ক্ষতি ও বিক্রয় বিশ্লেষণ</h2>
+            <h2 style="font-size:15px;">📊 ৬ মাসের লাভ-ক্ষতি ও বিক্রয় বিশ্লেষণ</h2>
             <div style="position:relative; height:260px;">
               <canvas id="reportFinanceChart"></canvas>
             </div>
           </div>
         </div>
 
-        <!-- সকল গরুর পারফরম্যান্স ও লাভ-ক্ষতি টেবিল (Cow-wise ROI) -->
         <div class="card">
           <h2>🐄 সকল গরুর পারফরম্যান্স ও লাভ-ক্ষতি (Cow-wise ROI Report)</h2>
           <div class="table-container">
             <table>
-              <thead><tr><th>#</th><th>Cattle Tag & Breed</th><th>মোট দুধ (L)</th><th>আনুমানিক আয় (₹50/L)</th><th>খাবার খরচ (₹)</th><th>চিকিৎসা ও AI খরচ (₹)</th><th>নিট লাভ / ক্ষতি (₹)</th></tr></thead>
+              <thead><tr><th>#</th><th>Cattle Tag & Breed</th><th>মোট দুধ (L)</th><th>আনুমানিক আয় (₹50/L)</th><th>খাবার খরচ (₹)</th><th>চিকিৎসা ও AI খরচ (₹)</th><th>নিট লাভ / ক্ষতি (₹)</th></tr></thead>
               <tbody id="reportCowRoiTableBody"></tbody>
             </table>
           </div>
@@ -1467,12 +1501,12 @@
             <h2 style="margin:0; border:none; padding:0;">💾 System Backup & Restore</h2>
             <button class="action-btn btn-info" onclick="downloadBackup()">📥 Download Farm Data Backup (JSON)</button>
           </div>
-          <p style="font-size:13px; color:#555; margin-bottom:14px;">আপনার ফার্মের সম্পূর্ণ ডাটাবেস সুরক্ষিত রাখতে নিয়মিত JSON ব্যাকআপ ডাউনলোড করে রাখুন।</p>
+          <p style="font-size:13px; color:#555; margin-bottom:14px;">আপনার ফার্মের সম্পূর্ণ ডাটাবেস সুরক্ষিত রাখতে নিয়মিত JSON ব্যাকআপ ডাউনলোড করে রাখুন।</p>
           <button class="btn btn-info" onclick="downloadBackup()">📥 Download Farm Data Backup (JSON)</button>
 
           <hr style="margin:22px 0; border:none; border-top:1px solid #e0e0e0;">
           <h2 style="font-size:15.5px; color:#c62828; border:none; padding:0; margin-bottom:8px;">📤 ডাটা রিস্টোর (Import JSON Backup)</h2>
-          <p style="font-size:12.5px; color:#666; margin-bottom:12px;">পূর্বে ডাউনলোড করা <code>.json</code> ব্যাকআপ ফাইলটি সিলেক্ট করে ডাটাবেসে ফিরিয়ে আনুন। (সতর্কতা: এটি বর্তমান ডাটাকে ব্যাকআপ ফাইলের ডাটা দিয়ে প্রতিস্থাপন করবে)</p>
+          <p style="font-size:12.5px; color:#666; margin-bottom:12px;">পূর্বে ডাউনলোড করা <code>.json</code> ব্যাকআপ ফাইলটি সিলেক্ট করে ডাটাবেসে ফিরিয়ে আনুন। (সতর্কতা: এটি বর্তমান ডাটাকে ব্যাকআপ ফাইলের ডাটা দিয়ে প্রতিস্থাপন করবে)</p>
           <div style="display:flex; flex-wrap:wrap; gap:12px; align-items:center;">
             <input type="file" id="restoreBackupFile" accept=".json" style="max-width:320px; background:#fff;">
             <button class="btn btn-warning" onclick="openRestoreConfirmModal()">📤 Restore Backup (JSON)</button>
@@ -1493,7 +1527,6 @@
     </div>
   </div>
 
-  <!-- বাল্ক মিল্ক এন্ট্রি (Bulk Milk Entry) মোডাল -->
   <div id="bulkMilkModal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.65); z-index:2000; align-items:center; justify-content:center; padding:15px; overflow-y:auto;">
     <div class="feed-modal-card" style="max-width:560px;">
       <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
@@ -1512,14 +1545,13 @@
     </div>
   </div>
 
-  <!-- বাল্ক ফিডিং (Bulk Feed Entry) মোডাল -->
   <div id="bulkFeedModal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.65); z-index:2000; align-items:center; justify-content:center; padding:15px; overflow-y:auto;">
     <div class="feed-modal-card" style="max-width:520px;">
       <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
         <h2 style="color:var(--primary); margin:0; border:none; padding:0;">⚡ একাধিক গরুতে একসাথে রেশন এন্ট্রি</h2>
         <button class="action-btn btn-danger" onclick="closeBulkFeedModal()">✕</button>
       </div>
-      <p style="font-size:12.5px; color:#555; margin-bottom:12px;">উপরের ফর্মে দেওয়া পরিমাণ ও তারিখ অনুযায়ী নিচের নির্বাচিত সব গরুতে রেশন সেভ হবে।</p>
+      <p style="font-size:12.5px; color:#555; margin-bottom:12px;">উপরের ফর্মে দেওয়া পরিমাণ ও তারিখ অনুযায়ী নিচের নির্বাচিত সব গরুতে রেশন সেভ হবে।</p>
       <div style="display:flex; gap:8px; margin-bottom:10px; flex-wrap:wrap;">
         <button type="button" class="action-btn btn-info" onclick="selectBulkCows('all')">সব গরু সিলেক্ট</button>
         <button type="button" class="action-btn" style="background:#2e7d32; color:white;" onclick="selectBulkCows('milking')">শুধু Milking গরু</button>
@@ -1533,7 +1565,6 @@
     </div>
   </div>
 
-  <!-- স্টক ইন / আউট (Stock In / Out) মোডাল -->
   <div id="stockMoveModal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.65); z-index:2000; align-items:center; justify-content:center; padding:15px; overflow-y:auto;">
     <div class="feed-modal-card" style="max-width:480px;">
       <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
@@ -1554,7 +1585,7 @@
         </div>
         <div style="display:flex; align-items:center; gap:8px;">
           <input type="checkbox" id="stkMoveAutoExp" checked style="width:auto; cursor:pointer;">
-          <label for="stkMoveAutoExp" style="font-size:12.5px; font-weight:600; color:#1b5e20; cursor:pointer;">খরচের খাতায় (Expenses) স্বয়ংক্রিয়ভাবে যোগ করুন</label>
+          <label for="stkMoveAutoExp" style="font-size:12.5px; font-weight:600; color:#1b5e20; cursor:pointer;">খরচের খাতায় (Expenses) স্বয়ংক্রিয়ভাবে যোগ করুন</label>
         </div>
       </div>
       <div class="input-group" style="margin-bottom:16px;"><label>নোট (ঐচ্ছিক)</label><input type="text" id="stkMoveNote" placeholder="বিবরণ বা নোট"></div>
@@ -1565,7 +1596,6 @@
     </div>
   </div>
 
-  <!-- দোকানদারের বাকি পরিশোধ মোডাল -->
   <div id="vendorPayModal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.65); z-index:2000; align-items:center; justify-content:center; padding:15px;">
     <div class="feed-modal-card" style="max-width:440px;">
       <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
@@ -1596,7 +1626,6 @@
     </div>
   </div>
 
-  <!-- বাচ্চা প্রসব (Calving Action) কনফার্মেশন মোডাল -->
   <div id="calvingActionModal">
     <div class="feed-modal-card" style="max-width:460px;">
       <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
@@ -1610,7 +1639,7 @@
       </div>
       <div class="input-group" style="margin-bottom:16px;">
         <label>নোট / বাচ্চার বিবরণ (ঐচ্ছিক)</label>
-        <input type="text" id="calvingNoteInput" placeholder="যেমন: বকনা বাছুর / ষাঁড় বাছুর, সুস্থ">
+        <input type="text" id="calvingNoteInput" placeholder="যেমন: বকনা বাছুর / ষাঁড় বাছুর, সুস্থ">
       </div>
       <div style="display:flex; gap:10px;">
         <button class="btn" style="flex:1; justify-content:center;" onclick="confirmCalvingAction()">✔ প্রসব সম্পন্ন সেভ করুন</button>
@@ -1704,7 +1733,6 @@
     };
     window.activeLedgerCustomerName = '';
 
-    // Helper: Tag ID দিয়ে গরুর তথ্য খোঁজার ফাংশন
     function findCattleByTag(tag) {
       if (!tag || !farmStore.cattle) return null;
       var tClean = String(tag).trim().toUpperCase();
@@ -1729,9 +1757,6 @@
       return null;
     }
 
-    // ==========================================
-    // DASHBOARD AUTOMATIC 7-DAY ALERT SYSTEM
-    // ==========================================
     function getDaysDifferenceFromToday(dateStr) {
       if (!dateStr || dateStr === '-' || dateStr === 'শুরু') return null;
       var clean = String(dateStr).trim();
@@ -1762,7 +1787,6 @@
 
       var alerts = [];
 
-      // ১. আসন্ন ভ্যাকসিন অ্যালার্ট (শুধুমাত্র প্রতিটি গাভী + ভ্যাকসিনের সর্বশেষ অ্যাক্টিভ রেকর্ড চেক করা হবে)
       var latestVaccineMap = {};
       for (var vk in farmStore.vaccine) {
         var v = farmStore.vaccine[vk];
@@ -1778,7 +1802,6 @@
         var vItem = latestVaccineMap[vgKey];
         var vData = vItem.data;
         var diffDays = getDaysDifferenceFromToday(vData.nextDate);
-        // ঠিক ৭ দিন আগে থেকে (diffDays <= 7) অ্যালার্ট দেখাবে
         if (diffDays !== null && diffDays <= 7) {
           alerts.push({
             type: 'vaccine',
@@ -1792,7 +1815,6 @@
         }
       }
 
-      // ২. আসন্ন কৃমির ওষুধ (Deworming) অ্যালার্ট (প্রতিটি গাভীর সর্বশেষ অ্যাক্টিভ রেকর্ড)
       var latestDewormMap = {};
       for (var dk in farmStore.deworm) {
         var dw = farmStore.deworm[dk];
@@ -1821,14 +1843,12 @@
         }
       }
 
-      // ৩. গর্ভবতী গাভীর বাচ্চা দেওয়ার তারিখ (Expected Calving) অ্যালার্ট (Breeding ও Cattle উভয় রেজিস্টার থেকে)
       var calvingTrackedTags = {};
       for (var bk in farmStore.breeding) {
         var br = farmStore.breeding[bk];
         if (!br || !br.tag) continue;
         var expDt = br.expCalvingDate || br.calvingDate || '';
         if (!expDt) continue;
-        // যদি বাচ্চা প্রসব হয়ে গিয়ে থাকে (actCalvingDate থাকে বা status Calved/Failed হয়), তবে অ্যালার্ট দেখাবে না
         var st = String(br.status || '').trim().toLowerCase();
         if (br.actCalvingDate || st === 'calved' || st === 'failed' || br.alertResolved) continue;
 
@@ -1842,7 +1862,7 @@
             key: bk,
             tag: br.tag,
             title: '🐄 সম্ভাব্য বাচ্চা প্রসব (Calving)',
-            subtitle: 'সিমেন/ষাঁড়: ' + (br.semenId || '-') + ' | AI: ' + formatDateBR(br.aiDate),
+            subtitle: 'সিমেন/ষাঁড়: ' + (br.semenId || '-') + ' | AI: ' + formatDateBR(br.aiDate),
             dueDate: expDt,
             diffDays: cDiff
           });
@@ -1873,7 +1893,6 @@
         }
       }
 
-      // ৪. লো স্টক অ্যালার্ট (Low Stock Alert)
       for (var sk in farmStore.stock) {
         var stItem = farmStore.stock[sk];
         if (!stItem || !stItem.name) continue;
@@ -1884,7 +1903,7 @@
             type: 'stock',
             key: sk,
             tag: stItem.name,
-            title: '📦 স্টক ফুরিয়ে আসছে: ' + stItem.name,
+            title: '📦 স্টক ফুরিয়ে আসছে: ' + stItem.name,
             subtitle: 'বর্তমান স্টক: ' + sq + ' ' + (stItem.unit || '') + ' (সতর্কতা সীমা: ' + sa + ')',
             dueDate: new Date().toISOString().split('T')[0],
             diffDays: sq <= 0 ? -1 : 0
@@ -1892,7 +1911,6 @@
         }
       }
 
-      // ৪.খ. স্টক মেয়াদোত্তীর্ণ (Expiry Date) অ্যালার্ট (৩০ দিন আগে থেকে)
       for (var esk in farmStore.stock) {
         var est = farmStore.stock[esk];
         if (!est || !est.name || !est.expiry) continue;
@@ -1902,7 +1920,7 @@
             type: 'stock',
             key: esk,
             tag: est.name,
-            title: (expDiff < 0 ? '🚫 মেয়াদ শেষ (Expired): ' : '⏳ মেয়াদ শেষ হচ্ছে: ') + est.name,
+            title: (expDiff < 0 ? '🚫 মেয়াদ শেষ (Expired): ' : '⏳ মেয়াদ শেষ হচ্ছে: ') + est.name,
             subtitle: 'ক্যাটাগরি: ' + (est.category || 'Stock') + ' | পরিমাণ: ' + (est.qty || 0) + ' ' + (est.unit || ''),
             dueDate: est.expiry,
             diffDays: expDiff
@@ -1910,7 +1928,6 @@
         }
       }
 
-      // ৪.গ. লো সিমেন স্ট্র অ্যালার্ট (Low Semen Straw Alert)
       for (var smk in farmStore.semen) {
         var sm = farmStore.semen[smk];
         if (!sm || !sm.batch) continue;
@@ -1929,7 +1946,6 @@
         }
       }
 
-      // ৪.ঘ. আসন্ন ডাক্তার চেকআপ / হেলথ ফলো-আপ অ্যালার্ট (৭ দিন আগে থেকে)
       for (var hlk in farmStore.health) {
         var hl = farmStore.health[hlk];
         if (!hl || !hl.cowTag || !hl.nextDate || hl.alertResolved) continue;
@@ -1947,7 +1963,6 @@
         }
       }
 
-      // ৫. মিল্ক উইথড্রয়াল (Milk Withdrawal) সতর্কতা (Vaccine + Health উভয় থেকে)
       for (var hwk in farmStore.health) {
         var hw = farmStore.health[hwk];
         if (!hw || !hw.cowTag || !hw.date) continue;
@@ -1962,7 +1977,7 @@
                 key: hwk,
                 tag: hw.cowTag,
                 title: '🚫 Milk Withdrawal (চিকিৎসা): ' + (hw.medicine || hw.disease || 'Treatment'),
-                subtitle: 'ওষুধ দেওয়ার পর আরও ' + remHw + ' দিন এই গাভীর দুধ বিক্রি করা যাবে না।',
+                subtitle: 'ওষুধ দেওয়ার পর আরও ' + remHw + ' দিন এই গাভীর দুধ বিক্রি করা যাবে না।',
                 dueDate: hw.date,
                 diffDays: 0
               });
@@ -1971,13 +1986,12 @@
         }
       }
 
-      // ৫. মিল্ক উইথড্রয়াল (Milk Withdrawal) সতর্কতা
       for (var wvk in farmStore.vaccine) {
         var wv = farmStore.vaccine[wvk];
         if (!wv || !wv.tag || !wv.date) continue;
         var wDays = parseInt(wv.withdrawalDays) || 0;
         if (wDays > 0) {
-          var givenDiff = getDaysDifferenceFromToday(wv.date); // negative if in past
+          var givenDiff = getDaysDifferenceFromToday(wv.date);
           if (givenDiff !== null && givenDiff <= 0) {
             var daysPassed = Math.abs(givenDiff);
             var remWithdrawal = wDays - daysPassed;
@@ -1987,7 +2001,7 @@
                 key: wvk,
                 tag: wv.tag,
                 title: '🚫 Milk Withdrawal: ' + (wv.name || 'Vaccine'),
-                subtitle: 'টিকা দেওয়ার পর আরও ' + remWithdrawal + ' দিন এই গাভীর দুধ বিক্রি করা যাবে না।',
+                subtitle: 'টিকা দেওয়ার পর আরও ' + remWithdrawal + ' দিন এই গাভীর দুধ বিক্রি করা যাবে না।',
                 dueDate: wv.date,
                 diffDays: 0
               });
@@ -1996,13 +2010,11 @@
         }
       }
 
-      // ৬. Dry-off রিমাইন্ডার (প্রসবের ৬০ দিন আগে থেকে) এবং ২১ দিনের Heat Check অ্যালার্ট
       for (var dbk in farmStore.breeding) {
         var dbr = farmStore.breeding[dbk];
         if (!dbr || !dbr.tag) continue;
         var dSt = String(dbr.status || '').trim().toLowerCase();
 
-        // Dry-off check (8 to 60 days before calving)
         var dExp = dbr.expCalvingDate || dbr.calvingDate || '';
         if (dExp && !dbr.actCalvingDate && dSt !== 'calved' && dSt !== 'failed' && !dbr.dryAlertResolved) {
           var dDiff = getDaysDifferenceFromToday(dExp);
@@ -2013,15 +2025,14 @@
               type: 'dryoff',
               key: dbk,
               tag: dbr.tag,
-              title: '🥛 Dry-off রিমাইন্ডার (দুধ দোয়ানো বন্ধ করুন)',
-              subtitle: 'সম্ভাব্য বাচ্চা প্রসবের আর ' + dDiff + ' দিন বাকি। গাভীকে Dry অবস্থায় নেওয়ার সময় হয়েছে।',
+              title: '🥛 Dry-off রিমাইন্ডার (দুধ দোয়ানো বন্ধ করুন)',
+              subtitle: 'সম্ভাব্য বাচ্চা প্রসবের আর ' + dDiff + ' দিন বাকি। গাভীকে Dry অবস্থায় নেওয়ার সময় হয়েছে।',
               dueDate: dExp,
               diffDays: 1
             });
           }
         }
 
-        // 21-Day Heat Check (18 to 25 days after AI if Pending)
         if (dSt === 'pending' && dbr.aiDate && !dbr.heatCheckResolved) {
           var aiDiff = getDaysDifferenceFromToday(dbr.aiDate);
           if (aiDiff !== null && aiDiff <= -18 && aiDiff >= -25) {
@@ -2031,7 +2042,7 @@
               key: dbk,
               tag: dbr.tag,
               title: '🔥 ২১ দিনের হিট চেক (Heat Check)',
-              subtitle: 'AI করার ' + daysSinceAi + ' দিন পূর্ণ হয়েছে। গাভী পুনরায় হিটে এসেছে কিনা পরীক্ষা করুন।',
+              subtitle: 'AI করার ' + daysSinceAi + ' দিন পূর্ণ হয়েছে। গাভী পুনরায় হিটে এসেছে কিনা পরীক্ষা করুন।',
               dueDate: dbr.aiDate,
               diffDays: 0
             });
@@ -2039,7 +2050,6 @@
         }
       }
 
-      // দিন অনুযায়ী সাজানো (যেগুলো আজ বা ওভারডিউ সেগুলো আগে)
       alerts.sort(function(a, b) {
         return a.diffDays - b.diffDays;
       });
@@ -2050,7 +2060,7 @@
       }
 
       if (alerts.length === 0) {
-        container.innerHTML = '<div style="grid-column: 1 / -1; background:#f1f8e9; border:1px dashed #81c784; border-radius:10px; padding:18px; text-align:center; color:#2e7d32; font-weight:600; font-size:13.5px;">✔ আগামী ৭ দিনের মধ্যে কোনো বকেয়া ভ্যাকসিন, কৃমির ওষুধ বা বাচ্চা প্রসবের অ্যালার্ট নেই।</div>';
+        container.innerHTML = '<div style="grid-column: 1 / -1; background:#f1f8e9; border:1px dashed #81c784; border-radius:10px; padding:18px; text-align:center; color:#2e7d32; font-weight:600; font-size:13.5px;">✔ আগামী ৭ দিনের মধ্যে কোনো বকেয়া ভ্যাকসিন, কৃমির ওষুধ বা বাচ্চা প্রসবের অ্যালার্ট নেই।</div>';
         return;
       }
 
@@ -2073,11 +2083,11 @@
 
         if (al.type === 'vaccine') {
           actionButtons =
-            '<button class="action-btn" style="background:#1b5e20; color:white; padding:6px 12px;" onclick="completeVaccineAlert(\'' + al.key + '\')">✔ টিকা দেওয়া হয়েছে (পরবর্তী শিডিউল)</button>' +
+            '<button class="action-btn" style="background:#1b5e20; color:white; padding:6px 12px;" onclick="completeVaccineAlert(\'' + al.key + '\')">✔ টিকা দেওয়া হয়েছে (পরবর্তী শিডিউল)</button>' +
             '<button class="action-btn btn-info" style="padding:6px 10px;" onclick="editVaccineRecord(\'' + al.key + '\')">✎ ফর্ম খুলুন</button>';
         } else if (al.type === 'deworm') {
           actionButtons =
-            '<button class="action-btn" style="background:#1b5e20; color:white; padding:6px 12px;" onclick="completeDewormAlert(\'' + al.key + '\')">✔ ওষুধ দেওয়া হয়েছে (+৯০ দিন)</button>' +
+            '<button class="action-btn" style="background:#1b5e20; color:white; padding:6px 12px;" onclick="completeDewormAlert(\'' + al.key + '\')">✔ ওষুধ দেওয়া হয়েছে (+৯০ দিন)</button>' +
             '<button class="action-btn btn-info" style="padding:6px 10px;" onclick="editDewormRecord(\'' + al.key + '\')">✎ ফর্ম খুলুন</button>';
         } else if (al.type === 'calving') {
           actionButtons =
@@ -2095,7 +2105,7 @@
         } else if (al.type === 'heatcheck') {
           actionButtons =
             '<button class="action-btn" style="background:#2e7d32; color:white; padding:6px 10px;" onclick="resolveHeatCheck(\'' + al.key + '\', \'Pregnant\')">✔ গর্ভবতী</button>' +
-            '<button class="action-btn btn-danger" style="padding:6px 10px;" onclick="resolveHeatCheck(\'' + al.key + '\', \'Failed\')">✖ পুনরায় হিট</button>';
+            '<button class="action-btn btn-danger" style="padding:6px 10px;" onclick="resolveHeatCheck(\'' + al.key + '\', \'Failed\')">✖ পুনরায় হিট</button>';
         } else if (al.type === 'semen') {
           actionButtons =
             '<button class="action-btn btn-info" style="padding:6px 12px;" onclick="switchTab(\'semen\', document.querySelectorAll(\'nav button\')[12])">💉 সিমেন স্টক দেখুন</button>';
@@ -2125,7 +2135,6 @@
       container.innerHTML = html;
     };
 
-    // অ্যাকশন ১: ভ্যাকসিন অ্যালার্ট সম্পন্ন করলে আজকের তারিখে ডোজ আপডেট হবে এবং পরবর্তী বুস্টার তারিখ সেট হবে (ফলে এখন ড্যাশবোর্ড থেকে মুছে যাবে এবং পরের বার ৭ দিন আগে আবার আসবে)
     window.completeVaccineAlert = function(vacKey) {
       var v = farmStore.vaccine ? farmStore.vaccine[vacKey] : null;
       if (!v) return;
@@ -2153,7 +2162,6 @@
       }
     };
 
-    // অ্যাকশন ২: কৃমির ওষুধ অ্যালার্ট সম্পন্ন করলে আজকের তারিখ ও ৯০ দিন পর পরবর্তী ডোজ সেট হবে
     window.completeHealthAlert = function(hKey) {
       if (db && hKey) {
         db.ref('health/' + hKey).update({ alertResolved: true, status: 'Recovered' });
@@ -2161,7 +2169,7 @@
         farmStore.health[hKey].alertResolved = true;
         farmStore.health[hKey].status = 'Recovered';
       }
-      showAppToast('হেলথ ফলো-আপ সম্পন্ন হয়েছে!');
+      showAppToast('হেলথ ফলো-আপ সম্পন্ন হয়েছে!');
       renderDashboardAlerts();
     };
 
@@ -2187,7 +2195,6 @@
       }
     };
 
-    // অ্যাকশন ৩: বাচ্চা প্রসব (Calving) অ্যালার্ট সম্পন্ন করার মোডাল ও লজিক
     window.pendingCalvingAction = null;
 
     window.openCalvingActionModal = function(source, key, encTag) {
@@ -2233,7 +2240,6 @@
         }
       }
 
-      // পাশাপাশি Cattle রেজিস্টারেও ওই গাভীর expCalving ক্লিয়ার ও স্ট্যাটাস Milking করা হবে (যাতে পরবর্তী AI দিলে আবার নতুন করে অ্যালার্ট আসে)
       var cKey = (src === 'cattle') ? k : findCattleKeyByTag(tag);
       if (cKey && farmStore.cattle[cKey]) {
         var cw = farmStore.cattle[cKey];
@@ -2267,7 +2273,7 @@
       } else if (farmStore.breeding[brKey]) {
         farmStore.breeding[brKey].dryAlertResolved = true;
       }
-      showAppToast('গাভী ' + tag + ' কে Dry অবস্থায় আপডেট করা হয়েছে।');
+      showAppToast('গাভী ' + tag + ' কে Dry অবস্থায় আপডেট করা হয়েছে।');
       renderDashboardAlerts();
     };
 
@@ -2278,7 +2284,7 @@
         farmStore.breeding[brKey].status = newStatus;
         farmStore.breeding[brKey].heatCheckResolved = true;
       }
-      showAppToast('হিট চেক ফলাফল (' + newStatus + ') সেভ করা হয়েছে।');
+      showAppToast('হিট চেক ফলাফল (' + newStatus + ') সেভ করা হয়েছে।');
       renderDashboardAlerts();
     };
 
@@ -2297,7 +2303,7 @@
           if (diff !== null && diff <= 0) {
             var rem = wDays - Math.abs(diff);
             if (rem > 0) {
-              warnings.push('⚠️ সতর্কতা: গাভী <strong>' + tag + '</strong>-কে ' + formatDateBR(v.date) + ' তারিখে <strong>' + v.name + '</strong> টিকা দেওয়া হয়েছে। আরও <strong>' + rem + ' দিন</strong> Milk Withdrawal পিরিয়ড চলবে!');
+              warnings.push('⚠️ সতর্কতা: গাভী <strong>' + tag + '</strong>-কে ' + formatDateBR(v.date) + ' তারিখে <strong>' + v.name + '</strong> টিকা দেওয়া হয়েছে। আরও <strong>' + rem + ' দিন</strong> Milk Withdrawal পিরিয়ড চলবে!');
             }
           }
         }
@@ -2311,7 +2317,7 @@
           if (hDiff !== null && hDiff <= 0) {
             var remH = hwDays - Math.abs(hDiff);
             if (remH > 0) {
-              warnings.push('⚠️ চিকিৎসা সতর্কতা: গাভী <strong>' + tag + '</strong>-কে ' + formatDateBR(hl.date) + ' তারিখে <strong>' + (hl.medicine || hl.disease || 'ওষুধ') + '</strong> দেওয়া হয়েছে। আরও <strong>' + remH + ' দিন</strong> Milk Withdrawal পিরিয়ড চলবে!');
+              warnings.push('⚠️ চিকিৎসা সতর্কতা: গাভী <strong>' + tag + '</strong>-কে ' + formatDateBR(hl.date) + ' তারিখে <strong>' + (hl.medicine || hl.disease || 'ওষুধ') + '</strong> দেওয়া হয়েছে। আরও <strong>' + remH + ' দিন</strong> Milk Withdrawal পিরিয়ড চলবে!');
             }
           }
         }
@@ -2330,21 +2336,48 @@
     window.renderAllCharts = function() {
       if (typeof Chart === 'undefined') return;
 
-      // 1. Last 7 Days Milk Production
+      var selYear = window.currentDashYear || new Date().getFullYear().toString();
+      var selMonth = window.currentDashMonth || 'ALL';
+      var selDate = window.specificDashDate || '';
+
       var labels7 = [];
       var data7 = [];
-      for (var i = 6; i >= 0; i--) {
-        var d = new Date();
-        d.setDate(d.getDate() - i);
-        var iso = d.toISOString().split('T')[0];
-        labels7.push(formatDateBR(iso).slice(0, 5));
-        var daySum = 0;
-        for (var mk in farmStore.milk) {
-          if (farmStore.milk[mk] && farmStore.milk[mk].date === iso) {
-            daySum += Number(farmStore.milk[mk].liters) || 0;
+      if (selDate) {
+        var baseD = new Date(selDate + 'T00:00:00');
+        for (var i = 6; i >= 0; i--) {
+          var d = new Date(baseD);
+          d.setDate(baseD.getDate() - i);
+          var iso = d.toISOString().split('T')[0];
+          labels7.push(formatDateBR(iso).slice(0, 5));
+          var daySum = 0;
+          for (var mk in farmStore.milk) {
+            if (farmStore.milk[mk] && farmStore.milk[mk].date === iso) daySum += Number(farmStore.milk[mk].liters) || 0;
           }
+          data7.push(parseFloat(daySum.toFixed(1)));
         }
-        data7.push(parseFloat(daySum.toFixed(1)));
+      } else if (selMonth !== 'ALL') {
+        var daysInM = new Date(parseInt(selYear), parseInt(selMonth), 0).getDate();
+        for (var dayNum = 1; dayNum <= daysInM; dayNum++) {
+          var dIso = selYear + '-' + selMonth + '-' + ('0' + dayNum).slice(-2);
+          labels7.push(('0' + dayNum).slice(-2));
+          var dSum = 0;
+          for (var mk2 in farmStore.milk) {
+            if (farmStore.milk[mk2] && farmStore.milk[mk2].date === dIso) dSum += Number(farmStore.milk[mk2].liters) || 0;
+          }
+          data7.push(parseFloat(dSum.toFixed(1)));
+        }
+      } else {
+        for (var j = 6; j >= 0; j--) {
+          var dNow = new Date();
+          dNow.setDate(dNow.getDate() - j);
+          var isoNow = dNow.toISOString().split('T')[0];
+          labels7.push(formatDateBR(isoNow).slice(0, 5));
+          var daySumNow = 0;
+          for (var mk3 in farmStore.milk) {
+            if (farmStore.milk[mk3] && farmStore.milk[mk3].date === isoNow) daySumNow += Number(farmStore.milk[mk3].liters) || 0;
+          }
+          data7.push(parseFloat(daySumNow.toFixed(1)));
+        }
       }
 
       var cMilk = getEl('dashMilkChart');
@@ -2361,21 +2394,26 @@
               backgroundColor: 'rgba(46, 125, 50, 0.15)',
               fill: true,
               tension: 0.35,
-              pointRadius: 4
+              pointRadius: 3
             }]
           },
           options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } }
         });
       }
 
-      // 2. Last 6 Months Sales vs Expense
       var mLabels = [];
       var mSales = [];
       var mExp = [];
       var bnMonths = ['জানু', 'ফেব্রু', 'মার্চ', 'এপ্রিল', 'মে', 'জুন', 'জুলাই', 'আগস্ট', 'সেপ্টে', 'অক্টো', 'নভে', 'ডিসে'];
+      var anchorDate = new Date();
+      if (selDate) {
+        anchorDate = new Date(selDate + 'T00:00:00');
+      } else if (selMonth !== 'ALL') {
+        anchorDate = new Date(parseInt(selYear), parseInt(selMonth) - 1, 1);
+      }
+
       for (var m = 5; m >= 0; m--) {
-        var md = new Date();
-        md.setMonth(md.getMonth() - m);
+        var md = new Date(anchorDate.getFullYear(), anchorDate.getMonth() - m, 1);
         var yr = md.getFullYear().toString();
         var mn = ('0' + (md.getMonth() + 1)).slice(-2);
         var prefix = yr + '-' + mn;
@@ -2384,16 +2422,12 @@
         var sSum = 0;
         for (var sk in farmStore.sales) {
           var sl = farmStore.sales[sk];
-          if (sl && !sl.isPayment && (sl.date || '').startsWith(prefix)) {
-            sSum += Number(sl.total) || 0;
-          }
+          if (sl && !sl.isPayment && (sl.date || '').startsWith(prefix)) sSum += Number(sl.total) || 0;
         }
         var eSum = 0;
         for (var ek in farmStore.expenses) {
           var ex = farmStore.expenses[ek];
-          if (ex && (ex.date || '').startsWith(prefix)) {
-            eSum += Number(ex.amount) || 0;
-          }
+          if (ex && (ex.date || '').startsWith(prefix)) eSum += Number(ex.amount) || 0;
         }
         mSales.push(sSum);
         mExp.push(eSum);
@@ -2407,7 +2441,7 @@
           data: {
             labels: mLabels,
             datasets: [
-              { label: 'বিক্রয় (₹)', data: mSales, backgroundColor: '#2e7d32', borderRadius: 4 },
+              { label: 'বিক্রয় (₹)', data: mSales, backgroundColor: '#2e7d32', borderRadius: 4 },
               { label: 'খরচ (₹)', data: mExp, backgroundColor: '#d32f2f', borderRadius: 4 }
             ]
           },
@@ -2424,7 +2458,7 @@
           data: {
             labels: mLabels,
             datasets: [
-              { label: 'বিক্রয় (₹)', data: mSales, backgroundColor: '#2e7d32', borderRadius: 4 },
+              { label: 'বিক্রয় (₹)', data: mSales, backgroundColor: '#2e7d32', borderRadius: 4 },
               { label: 'খরচ (₹)', data: mExp, backgroundColor: '#d32f2f', borderRadius: 4 },
               { label: 'নিট লাভ (₹)', data: mProfit, backgroundColor: '#0288d1', borderRadius: 4 }
             ]
@@ -2436,7 +2470,7 @@
 
     window.showCustomerMonthlyBill = function(encName, yearParam, monthParam) {
       var custName = encName ? decodeURIComponent(encName).trim() : (window.activeLedgerCustomerName || '').trim();
-      if (!custName) return showAppToast('গ্রাহক নির্বাচন করা যায়নি!');
+      if (!custName) return showAppToast('গ্রাহক নির্বাচন করা যায়নি!');
       var yr = yearParam || window.currentSaleYear || new Date().getFullYear().toString();
       var mn = monthParam || window.currentSaleMonth || ('0' + (new Date().getMonth() + 1)).slice(-2);
       var prefix = yr + '-' + mn;
@@ -2458,7 +2492,7 @@
       }
 
       if (items.length === 0) {
-        return showAppToast(mn + '/' + yr + ' মাসে ' + custName + '-এর কোনো বিল পাওয়া যায়নি।');
+        return showAppToast(mn + '/' + yr + ' মাসে ' + custName + '-এর কোনো বিল পাওয়া যায়নি।');
       }
 
       items.sort(function(a, b) { return parseDateToTime(a.date) - parseDateToTime(b.date); });
@@ -2484,7 +2518,7 @@
         '<div style="text-align:right; margin-top:12px;">' +
           'এই মাসের মোট বিল: <strong>₹ ' + monthBill.toLocaleString() + '</strong><br>' +
           'এই মাসে পরিশোধ: <span style="color:green;">₹ ' + monthPaid.toLocaleString() + '</span><br>' +
-          '<span style="color:red; font-weight:bold; font-size:15px;">সর্বমোট বকেয়া (পূর্বের বকেয়াসহ): ₹ ' + liveDue.toLocaleString() + '</span>' +
+          '<span style="color:red; font-weight:bold; font-size:15px;">সর্বমোট বকেয়া (পূর্বের বকেয়াসহ): ₹ ' + liveDue.toLocaleString() + '</span>' +
         '</div>';
 
       getEl('invoiceModal').style.display = 'flex';
@@ -2509,7 +2543,7 @@
             m.style.cssText = 'display:none; position:fixed; inset:0; background:rgba(0,0,0,0.65); z-index:99999; align-items:center; justify-content:center; padding:15px;';
             m.innerHTML = '<div style="background:white; max-width:400px; width:100%; border-radius:12px; padding:24px; text-align:center; box-shadow:0 10px 30px rgba(0,0,0,0.3);">' +
               '<h3 style="color:#e65100; margin-bottom:10px; font-size:17px;">⚠️ ব্যাকআপ রিস্টোর নিশ্চিতকরণ</h3>' +
-              '<p style="font-size:13px; color:#555; margin-bottom:18px;">আপনি কি নিশ্চিতভাবে এই ব্যাকআপ ফাইলটি দিয়ে বর্তমান ডাটাবেস প্রতিস্থাপন করতে চান?</p>' +
+              '<p style="font-size:13px; color:#555; margin-bottom:18px;">আপনি কি নিশ্চিতভাবে এই ব্যাকআপ ফাইলটি দিয়ে বর্তমান ডাটাবেস প্রতিস্থাপন করতে চান?</p>' +
               '<div style="display:flex; gap:10px; justify-content:center;">' +
                 '<button class="btn btn-warning" onclick="confirmRestoreBackup()">হ্যাঁ, রিস্টোর করুন</button>' +
                 '<button class="btn btn-info" onclick="cancelRestoreBackup()">বাতিল</button>' +
@@ -2527,9 +2561,13 @@
     window.confirmRestoreBackup = function() {
       if (window._pendingRestoreData && db) {
         db.ref('/').set(window._pendingRestoreData).then(function() {
-          showAppToast('ব্যাকআপ সফলভাবে রিস্টোর হয়েছে!');
+          if (typeof renderAllCharts === 'function') renderAllCharts();
+          if (typeof renderDashboardSummary === 'function') renderDashboardSummary();
+          if (typeof renderReportsSummary === 'function') renderReportsSummary();
+          if (typeof renderDashboardAlerts === 'function') renderDashboardAlerts();
+          showAppToast('ব্যাকআপ সফলভাবে রিস্টোর ও আপডেট হয়েছে!');
         }).catch(function() {
-          showAppToast('ডাটাবেস রিস্টোর করতে সমস্যা হয়েছে।');
+          showAppToast('ডাটাবেস রিস্টোর করতে সমস্যা হয়েছে।');
         });
       }
       cancelRestoreBackup();
@@ -2998,9 +3036,6 @@
       }
     };
 
-    // ==========================================
-    // MILK SECTION ADVANCED LOGIC (Filtering, Tabs, Export)
-    // ==========================================
     window.currentMilkYear = "";
     window.currentMilkMonth = "";
     window.specificMilkDate = "";
@@ -3247,9 +3282,6 @@
       body.innerHTML = html;
     }
 
-    // ==========================================
-    // SALES SECTION ADVANCED LOGIC (Filtering, 12-Month Tabs, Export)
-    // ==========================================
     window.currentSaleYear = "";
     window.currentSaleMonth = "";
     window.specificSaleDate = "";
@@ -3436,9 +3468,6 @@
       }
     };
 
-    // ==========================================
-    // UPDATED SALES TABLE RENDER LOGIC (With Month/Date Filter)
-    // ==========================================
     function renderSalesTable() {
       var body = getEl('salesTableBody');
       if (!body) return;
@@ -3540,8 +3569,12 @@
       var totalLiveFarmDue = 0;
       for (var ck in custBalances) { totalLiveFarmDue += custBalances[ck].currentDue; }
 
-      if (getEl('dash-total-sales')) getEl('dash-total-sales').innerText = '₹ ' + tS.toLocaleString();
-      if (getEl('dash-total-due') && (!window.currentDashMonth || (window.currentDashMonth === 'ALL' && !window.specificDashDate))) getEl('dash-total-due').innerText = '₹ ' + totalLiveFarmDue.toLocaleString();
+      if (getEl('dash-total-sales') && (!window.currentDashMonth || (window.currentDashMonth === 'ALL' && !window.specificDashDate))) {
+        getEl('dash-total-sales').innerText = '₹ ' + tS.toLocaleString();
+      }
+      if (getEl('dash-total-due') && (!window.currentDashMonth || (window.currentDashMonth === 'ALL' && !window.specificDashDate))) {
+        getEl('dash-total-due').innerText = '₹ ' + totalLiveFarmDue.toLocaleString();
+      }
       if (getEl('rep-sales')) getEl('rep-sales').innerText = '₹ ' + tS.toLocaleString();
       calcNet();
 
@@ -3667,9 +3700,6 @@
       }
     }
 
-    // ==========================================
-    // UPDATED ORDERS TABLE RENDER LOGIC 
-    // ==========================================
     function renderOrdersTable() {
       var body = getEl('ordersTableBody');
       if (!body) return;
@@ -3927,7 +3957,7 @@
           });
         }
       }
-      showAppToast('রেশন সফলভাবে সেভ হয়েছে!');
+      showAppToast('রেশন সফলভাবে সেভ হয়েছে!');
       cancelRationEdit();
     }
 
@@ -4012,7 +4042,7 @@
         }
       }
       closeBulkFeedModal();
-      showAppToast(selectedTags.length + ' টি গরুতে রেশন সফলভাবে সেভ হয়েছে!');
+      showAppToast(selectedTags.length + ' টি গরুতে রেশন সফলভাবে সেভ হয়েছে!');
     };
 
     window.showCustomerLedger = function(encName) {
@@ -4282,7 +4312,7 @@
             var bullLow = matchedSemen && matchedSemen.bullName ? matchedSemen.bullName.trim().toLowerCase() : '';
             var batchLow = semVal.toLowerCase();
             if (sireLow && (sireLow === batchLow || (bullLow && sireLow === bullLow) || batchLow.includes(sireLow))) {
-              warnMsg = '⚠️ ইনব্রিডিং সতর্কতা (Inbreeding Alert): গাভী ' + cowTag + '-এর বাবা (' + cow.sire + ') ও নির্বাচিত সিমেন/ষাঁড় একই ব্লাড-লাইনের হতে পারে! অনুগ্রহ করে যাচাই করুন।';
+              warnMsg = '⚠️ ইনব্রিডিং সতর্কতা (Inbreeding Alert): গাভী ' + cowTag + '-এর বাবা (' + cow.sire + ') ও নির্বাচিত সিমেন/ষাঁড় একই ব্লাড-লাইনের হতে পারে! অনুগ্রহ করে যাচাই করুন।';
             }
           }
         }
@@ -4365,14 +4395,11 @@
           vendor: data.company || ''
         });
       }
-      showAppToast('Breeding রেকর্ড ও খরচ সফলভাবে সেভ হয়েছে!');
+      showAppToast('Breeding রেকর্ড ও খরচ সফলভাবে সেভ হয়েছে!');
       if (getEl('brInbreedingWarningBox')) getEl('brInbreedingWarningBox').innerHTML = '';
       cancelBreedingEdit();
     }
 
-    // ==========================================
-    // VACCINATION FUNCTIONS
-    // ==========================================
     var eVacKey = null;
 
     window.onVaccineTagChange = function() {
@@ -4581,9 +4608,6 @@
       modal.style.display = 'flex';
     };
 
-    // ==========================================
-    // DEWORMING FUNCTIONS
-    // ==========================================
     var eDewormKey = null;
 
     function renderDewormTable() {
@@ -4774,9 +4798,6 @@
       cancelMilkEdit();
     }
 
-    // ==========================================
-    // SALES FORM LOGIC
-    // ==========================================
     var eSaleKey = null;
     function calcSale() {
       var q = parseFloat(getEl('saleQty').value) || 0;
@@ -5203,7 +5224,7 @@
       }
 
       if (items.length === 0) {
-        return showAppToast(mn + '/' + yr + ' মাসে ' + tag + '-এর কোনো খাদ্য রেকর্ড পাওয়া যায়নি।');
+        return showAppToast(mn + '/' + yr + ' মাসে ' + tag + '-এর কোনো খাদ্য রেকর্ড পাওয়া যায়নি।');
       }
 
       var monthMilkL = 0;
@@ -5231,11 +5252,11 @@
           '<div style="text-align:right;">বিলের মাস: <strong>' + mn + '/' + yr + '</strong><br>মোট এন্ট্রি: ' + items.length + ' টি</div>' +
         '</div>' +
         '<table class="invoice-table" style="border:1px solid #ddd; width:100%; min-width:unset;">' +
-          '<thead><tr style="background:#e8f5e9;"><th>তারিখ</th><th>ফিড (রেট)</th><th>ঘাস / খড়</th><th>সাপ্লিমেন্ট</th><th style="text-align:right;">মোট খরচ</th></tr></thead>' +
+          '<thead><tr style="background:#e8f5e9;"><th>তারিখ</th><th>ফিড (রেট)</th><th>ঘাস / খড়</th><th>সাপ্লিমেন্ট</th><th style="text-align:right;">মোট খরচ</th></tr></thead>' +
           '<tbody>' + rowsHtml + '</tbody>' +
         '</table>' +
         '<div style="text-align:right; margin-top:12px; line-height:1.8;">' +
-          'মোট ফিড: <strong>' + totPellet.toFixed(1) + ' kg</strong> | কাঁচা ঘাস: <strong>' + totGreen.toFixed(1) + ' kg</strong> | খড়: <strong>' + totDry.toFixed(1) + ' kg</strong><br>' +
+          'মোট ফিড: <strong>' + totPellet.toFixed(1) + ' kg</strong> | কাঁচা ঘাস: <strong>' + totGreen.toFixed(1) + ' kg</strong> | খড়: <strong>' + totDry.toFixed(1) + ' kg</strong><br>' +
           'এই মাসে দুধ উৎপাদন: <strong>' + monthMilkL.toFixed(1) + ' L</strong> (প্রতি লিটার খাদ্য খরচ: <strong>₹ ' + costPerLiter + '</strong>)<br>' +
           '<span style="color:#1b5e20; font-weight:bold; font-size:16px;">মাসিক সর্বমোট খাদ্য খরচ: ₹ ' + totCost.toFixed(2) + '</span>' +
         '</div>';
@@ -5256,7 +5277,6 @@
       var targetDate = window.specificFeedDate;
       var searchTag = (getEl('feedSearchTag') ? getEl('feedSearchTag').value : '').trim().toLowerCase();
 
-      // Calculate monthly milk per cow for Feed Cost per Liter metric
       var monthMilkMap = {};
       var milkPrefix = targetYear + '-' + targetMonth;
       for (var mk in farmStore.milk) {
@@ -5355,7 +5375,7 @@
           html += '<tr id="' + subId + '" style="display:none; background:#f1f8e9;"><td colspan="7" style="padding:10px 15px;">' +
             '<div style="font-size:12px; font-weight:bold; color:#2e7d32; margin-bottom:8px;">📋 ' + g.tag + '-এর তারিখভিত্তিক খাদ্য তালিকা:</div>' +
             '<div style="overflow-x:auto;"><table style="width:100%; font-size:12px; background:white; border:1px solid #c8e6c9; border-collapse:collapse;">' +
-              '<tr style="background:#e8f5e9;"><th style="padding:6px; border:1px solid #c8e6c9;">তারিখ</th><th style="padding:6px; border:1px solid #c8e6c9;">ফিড (kg)</th><th style="padding:6px; border:1px solid #c8e6c9;">রেট (₹)</th><th style="padding:6px; border:1px solid #c8e6c9;">ঘাস / খড় (kg)</th><th style="padding:6px; border:1px solid #c8e6c9;">সাপ্লিমেন্ট (₹)</th><th style="padding:6px; border:1px solid #c8e6c9;">মোট খরচ (₹)</th><th style="padding:6px; border:1px solid #c8e6c9;">অ্যাকশন</th></tr>';
+              '<tr style="background:#e8f5e9;"><th style="padding:6px; border:1px solid #c8e6c9;">তারিখ</th><th style="padding:6px; border:1px solid #c8e6c9;">ফিড (kg)</th><th style="padding:6px; border:1px solid #c8e6c9;">রেট (₹)</th><th style="padding:6px; border:1px solid #c8e6c9;">ঘাস / খড় (kg)</th><th style="padding:6px; border:1px solid #c8e6c9;">সাপ্লিমেন্ট (₹)</th><th style="padding:6px; border:1px solid #c8e6c9;">মোট খরচ (₹)</th><th style="padding:6px; border:1px solid #c8e6c9;">অ্যাকশন</th></tr>';
 
           g.entries.forEach(function(itemObj) {
             var d = itemObj.data;
@@ -5380,9 +5400,6 @@
 
     var renderRationTable = renderFeedTable;
 
-    // ==========================================
-    // EXPENSES SECTION ADVANCED LOGIC (Filtering, 12-Month Tabs, Export)
-    // ==========================================
     window.currentExpYear = "";
     window.currentExpMonth = "";
     window.specificExpDate = "";
@@ -5505,7 +5522,7 @@
       var e = farmStore.expenses ? farmStore.expenses[expKey] : null;
       if (db && expKey && e) {
         db.ref('expenses/' + expKey).update({ status: 'Paid', paidAmount: Number(e.amount) || 0, dueAmount: 0 });
-        showAppToast('খরচটি সম্পূর্ণ পরিশোধিত (Paid) হিসেবে চিহ্নিত করা হয়েছে।');
+        showAppToast('খরচটি সম্পূর্ণ পরিশোধিত (Paid) হিসেবে চিহ্নিত করা হয়েছে।');
       }
     };
 
@@ -5538,8 +5555,8 @@
           copied++;
         }
       }
-      if (copied === 0) showAppToast('আগের মাসে কোনো বেতন বা বিদ্যুৎ বিল পাওয়া যায়নি।');
-      else showAppToast(copied + ' টি স্থায়ী খরচ আজকের তারিখে কপি করা হয়েছে!');
+      if (copied === 0) showAppToast('আগের মাসে কোনো বেতন বা বিদ্যুৎ বিল পাওয়া যায়নি।');
+      else showAppToast(copied + ' টি স্থায়ী খরচ আজকের তারিখে কপি করা হয়েছে!');
     };
 
     window.showMonthlyExpenseStatement = function() {
@@ -5562,7 +5579,7 @@
         }
       }
       if (items.length === 0) {
-        return showAppToast(mn + '/' + yr + ' মাসে কোনো খরচের রেকর্ড পাওয়া যায়নি।');
+        return showAppToast(mn + '/' + yr + ' মাসে কোনো খরচের রেকর্ড পাওয়া যায়নি।');
       }
       items.sort(function(a, b) { return parseDateToTime(a.date) - parseDateToTime(b.date); });
 
@@ -5744,7 +5761,7 @@
         status: statusVal
       };
       if (db) eExpKey ? db.ref('expenses/' + eExpKey).update(data) : db.ref('expenses').push(data);
-      showAppToast('খরচ সফলভাবে সেভ হয়েছে!');
+      showAppToast('খরচ সফলভাবে সেভ হয়েছে!');
       cancelExpenseEdit();
     }
 
@@ -5802,7 +5819,6 @@
         }
       }
 
-      // Render Category Summary Cards
       var catGrid = getEl('expCategorySummaryGrid');
       if (catGrid) {
         var cgHtml = '';
@@ -5816,7 +5832,6 @@
         catGrid.innerHTML = cgHtml;
       }
 
-      // Budget Alert Update
       var bInput = getEl('expMonthlyBudgetInput');
       var savedBudget = 0;
       try { savedBudget = parseFloat(localStorage.getItem('nanda_exp_monthly_budget')) || 0; } catch(ex) {}
@@ -5838,7 +5853,9 @@
         }
       }
 
-      if (getEl('dash-total-exp')) getEl('dash-total-exp').innerText = '₹ ' + totalExpAll.toLocaleString();
+      if (getEl('dash-total-exp') && (!window.currentDashMonth || (window.currentDashMonth === 'ALL' && !window.specificDashDate))) {
+        getEl('dash-total-exp').innerText = '₹ ' + totalExpAll.toLocaleString();
+      }
       if (getEl('rep-expenses')) getEl('rep-expenses').innerText = '₹ ' + totalExpAll.toLocaleString();
       calcNet();
       renderVendorDueTable();
@@ -5876,9 +5893,6 @@
       body.innerHTML = html;
     }
 
-    // ==========================================
-    // VENDOR DUE SUMMARY & PAYMENT FUNCTIONS
-    // ==========================================
     window.renderVendorDueTable = function() {
       var body = getEl('vendorDueTableBody');
       var badge = getEl('totalVendorDueBadge');
@@ -6004,12 +6018,9 @@
       });
 
       closeVendorPayModal();
-      showAppToast(vName + '-কে ₹ ' + amt.toLocaleString() + ' সফলভাবে পরিশোধ করা হয়েছে!');
+      showAppToast(vName + '-কে ₹ ' + amt.toLocaleString() + ' সফলভাবে পরিশোধ করা হয়েছে!');
     };
 
-    // ==========================================
-    // LABOUR SALARY & ADVANCE TRACKER FUNCTIONS
-    // ==========================================
     window.saveLabour = function() {
       var name = (getEl('labName') ? getEl('labName').value : '').trim();
       var salary = parseFloat(getEl('labSalary') ? getEl('labSalary').value : 0) || 0;
@@ -6022,7 +6033,7 @@
       };
       if (db) db.ref('labours').push(data);
       ['labName','labPhone','labSalary'].forEach(function(id) { if (getEl(id)) getEl(id).value = ''; });
-      showAppToast('কর্মচারী সফলভাবে সেভ হয়েছে!');
+      showAppToast('কর্মচারী সফলভাবে সেভ হয়েছে!');
     };
 
     window.saveLabourPayment = function() {
@@ -6057,7 +6068,7 @@
       }
       if (getEl('labPayAmount')) getEl('labPayAmount').value = '';
       if (getEl('labPayNote')) getEl('labPayNote').value = '';
-      showAppToast(wName + '-এর ' + pType + ' সেভ ও খরচে যোগ করা হয়েছে!');
+      showAppToast(wName + '-এর ' + pType + ' সেভ ও খরচে যোগ করা হয়েছে!');
     };
 
     window.toggleLabourHistory = function(subId, btnEl) {
@@ -6200,7 +6211,7 @@
           }
         }
       }
-      showAppToast('স্টক সফলভাবে সেভ হয়েছে!');
+      showAppToast('স্টক সফলভাবে সেভ হয়েছে!');
       cancelStockEdit();
     }
 
@@ -6259,14 +6270,14 @@
           '</td>' +
         '</tr>';
       }
-      body.innerHTML = html || '<tr><td colspan="6" style="text-align:center; color:#888;">কোনো স্টক আইটেম পাওয়া যায়নি।</td></tr>';
+      body.innerHTML = html || '<tr><td colspan="6" style="text-align:center; color:#888;">কোনো স্টক আইটেম পাওয়া যায়নি।</td></tr>';
 
       if (sumGrid) {
         sumGrid.innerHTML =
           '<div style="background:#e8f5e9; padding:10px; border-radius:8px; border-left:4px solid #1b5e20;"><small style="color:#555;">মোট আইটেম</small><div style="font-size:18px; font-weight:bold; color:#1b5e20;">' + totalItems + ' টি</div></div>' +
           '<div style="background:#e3f2fd; padding:10px; border-radius:8px; border-left:4px solid #0288d1;"><small style="color:#555;">মোট স্টক মূল্য</small><div style="font-size:18px; font-weight:bold; color:#0288d1;">₹ ' + Math.round(totalValuation).toLocaleString() + '</div></div>' +
           '<div style="background:#fff3e0; padding:10px; border-radius:8px; border-left:4px solid #f57c00;"><small style="color:#555;">লো স্টক (Low)</small><div style="font-size:18px; font-weight:bold; color:#e65100;">' + lowCount + ' টি</div></div>' +
-          '<div style="background:#ffebee; padding:10px; border-radius:8px; border-left:4px solid #d32f2f;"><small style="color:#555;">মেয়াদ শেষ / আসন্ন</small><div style="font-size:18px; font-weight:bold; color:#c62828;">' + expCount + ' টি</div></div>';
+          '<div style="background:#ffebee; padding:10px; border-radius:8px; border-left:4px solid #d32f2f;"><small style="color:#555;">মেয়াদ শেষ / আসন্ন</small><div style="font-size:18px; font-weight:bold; color:#c62828;">' + expCount + ' টি</div></div>';
       }
     };
 
@@ -6354,7 +6365,7 @@
         }
       }
       closeStockMoveModal();
-      showAppToast('স্টক ' + (mType === 'In' ? 'যোগ' : 'ব্যবহার') + ' সফলভাবে আপডেট হয়েছে!');
+      showAppToast('স্টক ' + (mType === 'In' ? 'যোগ' : 'ব্যবহার') + ' সফলভাবে আপডেট হয়েছে!');
     };
 
     window.exportStockCurrent = function(format) {
@@ -6577,7 +6588,7 @@
           db.ref('semen').push(data);
         }
       }
-      showAppToast('সিমেন স্টক সেভ হয়েছে! (AI করার সময় খরচ Expenses-এ যুক্ত হবে)');
+      showAppToast('সিমেন স্টক সেভ হয়েছে! (AI করার সময় খরচ Expenses-এ যুক্ত হবে)');
       cancelSemenEdit();
     }
 
@@ -6684,7 +6695,7 @@
       if (list.length === 0) return showAppToast('বর্তমান ভিউতে প্রিন্ট করার মতো কোনো সিমেন রেকর্ড নেই!');
       var statsMap = getSemenStatsMap();
       var yr = window.currentSemYear, mn = window.currentSemMonth, dt = window.specificSemDate;
-      var periodLabel = dt ? formatDateBR(dt) : (mn === 'ALL' ? 'সকল সময় (All Time)' : (mn + '/' + yr));
+      var periodLabel = dt ? formatDateBR(dt) : (mn === 'ALL' ? 'সকল সময় (All Time)' : (mn + '/' + yr));
 
       document.body.setAttribute('data-print', 'invoice');
       getEl('invMainDocTitle').innerText = 'সিমেন স্টক ও সাফল্যের রিপোর্ট / SEMEN STATEMENT (' + periodLabel + ')';
@@ -6711,7 +6722,7 @@
           '<div><strong>মোট স্টক মূল্য:</strong> ₹ ' + Math.round(totVal).toLocaleString() + '</div>' +
         '</div>' +
         '<table class="invoice-table" style="border:1px solid #ddd; width:100%; min-width:unset;">' +
-          '<thead><tr style="background:#e8f5e9;"><th>তারিখ</th><th>ব্যাচ ও ষাঁড়</th><th>ব্রিড ও কোম্পানি</th><th>ধরন</th><th>স্ট্র</th><th>সাফল্যের হার</th></tr></thead>' +
+          '<thead><tr style="background:#e8f5e9;"><th>তারিখ</th><th>ব্যাচ ও ষাঁড়</th><th>ব্রিড ও কোম্পানি</th><th>ধরন</th><th>স্ট্র</th><th>সাফল্যের হার</th></tr></thead>' +
           '<tbody>' + rows + '</tbody>' +
         '</table>';
 
@@ -6898,7 +6909,6 @@
         } else {
           hId = db.ref('health').push(data).key;
         }
-        // Auto-update Cattle status (Under Treatment -> Sick, Recovered -> Milking if it was Sick)
         var cKey = findCattleKeyByTag(tag);
         if (cKey && farmStore.cattle[cKey]) {
           var curStat = String(farmStore.cattle[cKey].status || '');
@@ -6916,7 +6926,7 @@
           vendor: vetVal
         });
       }
-      showAppToast('স্বাস্থ্য রেকর্ড ও খরচ সেভ হয়েছে!');
+      showAppToast('স্বাস্থ্য রেকর্ড ও খরচ সেভ হয়েছে!');
       cancelHealthEdit();
     }
 
@@ -7231,9 +7241,6 @@
       return remM + ' মাস';
     };
 
-    // ==========================================
-    // DASHBOARD FILTER, SUMMARY, TOP 5 COWS & EXPORT
-    // ==========================================
     window.currentDashYear = "";
     window.currentDashMonth = "ALL";
     window.specificDashDate = "";
@@ -7274,6 +7281,7 @@
       if (getEl('dashFilterDate')) getEl('dashFilterDate').value = "";
       renderDashMonthTabs();
       renderDashboardSummary();
+      renderAllCharts();
     };
 
     window.applyDashFilter = function() {
@@ -7290,6 +7298,7 @@
       }
       renderDashMonthTabs();
       renderDashboardSummary();
+      renderAllCharts();
     };
 
     window.clearDashDateFilter = function() {
@@ -7298,6 +7307,7 @@
       window.currentDashMonth = "ALL";
       renderDashMonthTabs();
       renderDashboardSummary();
+      renderAllCharts();
     };
 
     window.getDashboardPeriodMetrics = function() {
@@ -7352,7 +7362,6 @@
       for (var tKey in cowMilkMap) totalPeriodMilk += cowMilkMap[tKey];
       var avgMilkPerCow = isAll ? (milkTotal / activeCowsInMilk) : (totalPeriodMilk / activeCowsInMilk);
 
-      // Calculate As-Of-Date Customer Due (যে মাসের বাকি সেই মাস থেকে দেখাবে এবং পরিশোধ না হলে পরের মাসে ক্যারি-ফরওয়ার্ড হবে, আগের মাসে দেখাবে না)
       var cutoffISO = '';
       if (dt) {
         cutoffISO = dt;
@@ -7456,7 +7465,7 @@
       var topEl = getEl('dashTopCowsList');
       if (topEl) {
         if (m.topCows.length === 0) {
-          topEl.innerHTML = '<div style="grid-column:1/-1; color:#777; font-size:13px;">এই সময়ে কোনো দুধ উৎপাদন রেকর্ড নেই।</div>';
+          topEl.innerHTML = '<div style="grid-column:1/-1; color:#777; font-size:13px;">এই সময়ে কোনো দুধ উৎপাদন রেকর্ড নেই।</div>';
         } else {
           topEl.innerHTML = m.topCows.map(function(c, i) {
             return '<div style="background:#f4fbf5; border:1px solid #c8e6c9; border-left:4px solid #2e7d32; border-radius:8px; padding:10px 12px; display:flex; justify-content:space-between; align-items:center;">' +
@@ -7503,9 +7512,6 @@
       }
     };
 
-    // ==========================================
-    // BULK MILK ENTRY FUNCTIONS
-    // ==========================================
     window.openBulkMilkModal = function() {
       var listEl = getEl('bulkMilkList');
       if (!listEl) return;
@@ -7555,12 +7561,9 @@
       });
       if (savedCount === 0) return showAppToast('অন্তত একটি গরুর দুধের পরিমাণ লিখুন!');
       closeBulkMilkModal();
-      showAppToast(savedCount + ' টি গরুর দুধের এন্ট্রি সেভ হয়েছে!');
+      showAppToast(savedCount + ' টি গরুর দুধের এন্ট্রি সেভ হয়েছে!');
     };
 
-    // ==========================================
-    // REPORTS P&L, BALANCE SHEET, CHARTS, COW ROI & EXPORT
-    // ==========================================
     window.currentRepYear = "";
     window.currentRepMonth = "ALL";
     window.specificRepDate = "";
@@ -7670,7 +7673,6 @@
         }
       }
 
-      // Cow-wise ROI in selected period
       var cowRoiMap = {};
       for (var ck in farmStore.cattle) {
         var cw = farmStore.cattle[ck];
@@ -7728,7 +7730,6 @@
         return { tag: c.tag, breed: c.breed, milkL: c.milkL, income: inc, feedCost: c.feedCost, medCost: c.medCost, net: inc - (c.feedCost + c.medCost) };
       }).sort(function(a, b) { return b.net - a.net; });
 
-      // Month-over-Month Comparison (comparing selected month vs previous month, or current month vs last month when ALL DATA)
       var refY = parseInt(yr), refM = (mn === 'ALL') ? (new Date().getMonth() + 1) : parseInt(mn);
       var curPrefix = refY + '-' + ('0' + refM).slice(-2);
       var prevM = refM - 1, prevY = refY;
@@ -7744,7 +7745,6 @@
       }
       var curMo = getMonthTotals(curPrefix), prevMo = getMonthTotals(prevPrefix);
 
-      // Farm Balance Sheet
       var custBalances = getCustomerLiveBalances();
       var custDueTot = 0;
       for (var cbk in custBalances) custDueTot += custBalances[cbk].currentDue;
@@ -7794,14 +7794,14 @@
     function formatMomBadge(curVal, prevVal) {
       if (!prevVal) return '<span style="color:#777;">গত মাস: ০</span>';
       var diffPct = Math.round(((curVal - prevVal) / Math.abs(prevVal)) * 100);
-      if (diffPct >= 0) return '<span style="color:#1b5e20; font-weight:600;">▲ ' + diffPct + '% (গত মাসের তুলনায়)</span>';
-      return '<span style="color:#c62828; font-weight:600;">▼ ' + Math.abs(diffPct) + '% (গত মাসের তুলনায়)</span>';
+      if (diffPct >= 0) return '<span style="color:#1b5e20; font-weight:600;">▲ ' + diffPct + '% (গত মাসের তুলনায়)</span>';
+      return '<span style="color:#c62828; font-weight:600;">▼ ' + Math.abs(diffPct) + '% (গত মাসের তুলনায়)</span>';
     }
 
     window.renderReportsSummary = function() {
       var r = getReportPeriodData();
       if (getEl('rep-milk')) getEl('rep-milk').innerText = r.milkL.toFixed(1) + ' L';
-      if (getEl('rep-avg-cow')) getEl('rep-avg-cow').innerText = 'গড়: ' + r.avgPerCow.toFixed(1) + ' L/গরু';
+      if (getEl('rep-avg-cow')) getEl('rep-avg-cow').innerText = 'গড়: ' + r.avgPerCow.toFixed(1) + ' L/গরু';
       if (getEl('rep-sales')) getEl('rep-sales').innerText = '₹ ' + r.salesTot.toLocaleString();
       if (getEl('rep-expenses')) getEl('rep-expenses').innerText = '₹ ' + r.expTot.toLocaleString();
       var pEl = getEl('rep-profit');
@@ -7887,11 +7887,11 @@
 
       getEl('invoiceDetails').innerHTML =
         '<div style="background:#f1f8e9; padding:10px; border-radius:8px; margin-bottom:12px;">' +
-          '<strong>মোট দুধ উৎপাদন:</strong> ' + r.milkL.toFixed(1) + ' লিটার (গড়: ' + r.avgPerCow.toFixed(1) + ' L/গরু) | ' +
+          '<strong>মোট দুধ উৎপাদন:</strong> ' + r.milkL.toFixed(1) + ' লিটার (গড়: ' + r.avgPerCow.toFixed(1) + ' L/গরু) | ' +
           '<strong>গ্রাহক পাওনা:</strong> ₹ ' + Math.round(r.custDueTot).toLocaleString() + ' | <strong>দোকান বাকি:</strong> ₹ ' + Math.round(r.vendDueTot).toLocaleString() +
         '</div>' +
         '<div style="display:grid; grid-template-columns:1fr 1fr; gap:14px;">' +
-          '<div><strong>বিক্রি / আয় (Sales):</strong><table class="invoice-table" style="width:100%; min-width:unset; margin-top:6px;"><tbody>' + sRows + '</tbody><tfoot><tr style="background:#e8f5e9;"><th>মোট আয়</th><th style="text-align:right;">₹ ' + r.salesTot.toLocaleString() + '</th></tr></tfoot></table></div>' +
+          '<div><strong>বিক্রি / আয় (Sales):</strong><table class="invoice-table" style="width:100%; min-width:unset; margin-top:6px;"><tbody>' + sRows + '</tbody><tfoot><tr style="background:#e8f5e9;"><th>মোট আয়</th><th style="text-align:right;">₹ ' + r.salesTot.toLocaleString() + '</th></tr></tfoot></table></div>' +
           '<div><strong>খরচ (Expenses):</strong><table class="invoice-table" style="width:100%; min-width:unset; margin-top:6px;"><tbody>' + eRows + '</tbody><tfoot><tr style="background:#ffebee;"><th>মোট খরচ</th><th style="text-align:right;">₹ ' + r.expTot.toLocaleString() + '</th></tr></tfoot></table></div>' +
         '</div>' +
         '<div style="text-align:right; margin-top:16px; font-size:17px; font-weight:bold; color:' + (r.netProfit >= 0 ? '#1b5e20' : '#c62828') + ';">নিট লাভ / ক্ষতি (Net Profit): ₹ ' + r.netProfit.toLocaleString() + '</div>';
