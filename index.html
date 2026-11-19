@@ -426,7 +426,8 @@
       }
       #saleSearchInput, #saleAreaFilter, #orderSearchInput, #orderAreaFilter, #orderShiftFilter,
       #feedSearchTag, #expFilterCategory, #expSearchInput, #stkFilterCategory,
-      #stkSearchInput, #semFilterType, #semFilterBreed, #semSearchInput, #hlthSearchInput {
+      #stkSearchInput, #semFilterType, #semFilterBreed, #semSearchInput, #hlthSearchInput,
+      #bkSearchInput, #bkAreaFilter {
         width: 100% !important;
       }
       #loginScreen { align-items: flex-start; padding: 16px 12px; }
@@ -1698,24 +1699,53 @@
 
           <div id="backupStatusBanner" style="margin-bottom:14px;"></div>
 
+          <!-- মাস / তারিখ / এলাকা ভিত্তিক ব্যাকআপ ও এক্সপোর্ট ফিল্টার -->
+          <div style="display:flex; flex-wrap:wrap; justify-content:space-between; gap:12px; margin-bottom:12px; background:#f4fbf5; padding:12px; border-radius:8px; border:1px solid #c8e6c9; align-items:center;">
+            <div style="display:flex; flex-wrap:wrap; gap:12px; align-items:center;">
+              <div style="display:flex; align-items:center; gap:6px;">
+                <label style="font-size:12px; font-weight:bold; color:var(--primary);">বছর নির্বাচন:</label>
+                <select id="bkFilterYear" onchange="applyBackupFilter()" style="padding:6px 10px; border-radius:6px; border:1px solid #bbb; outline:none; font-weight:bold; width:auto;"></select>
+              </div>
+              <div style="display:flex; align-items:center; gap:6px;">
+                <label style="font-size:12px; font-weight:bold; color:var(--primary);">নির্দিষ্ট তারিখ খুঁজুন:</label>
+                <input type="date" id="bkFilterDate" onchange="applyBackupFilter()" style="padding:6px; border-radius:6px; border:1px solid #bbb; outline:none; width:auto;">
+                <button class="action-btn btn-warning" onclick="clearBackupDateFilter()" style="padding:6px 12px;">Clear/Reset</button>
+              </div>
+            </div>
+            <div style="display:flex; gap:8px; flex-wrap:wrap;">
+              <input type="text" id="bkSearchInput" oninput="renderBackupSummary()" placeholder="🔍 খুঁজুন..." style="width:180px; padding:7px;">
+              <select id="bkAreaFilter" onchange="renderBackupSummary()" style="width:140px; padding:7px;"><option value="">সকল এলাকা</option></select>
+            </div>
+          </div>
+
+          <div id="bkMonthTabs" style="display:flex; gap:8px; overflow-x:auto; margin-bottom:15px; padding-bottom:5px; -webkit-overflow-scrolling: touch; white-space:nowrap;"></div>
+
           <div style="margin-bottom:16px;">
-            <strong style="font-size:13px; color:var(--primary); display:block; margin-bottom:8px;">📊 ডাটাবেস রেকর্ড সারসংক্ষেপ (Database Summary):</strong>
-            <div id="backupDbSummaryGrid" style="display:grid; grid-template-columns:repeat(auto-fit, minmax(135px, 1fr)); gap:10px;"></div>
+            <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px; margin-bottom:8px;">
+              <strong id="backupSummaryTitle" style="font-size:13px; color:var(--primary);">📊 ডাটাবেস রেকর্ড সারসংক্ষেপ (ALL DATA):</strong>
+              <div style="display:flex; gap:6px; flex-wrap:wrap;">
+                <button class="action-btn" style="background:#0277bd; color:white; padding:6px 10px; border-radius:6px;" onclick="downloadFilteredBackupJson()">📥 ফিল্টার্ড JSON</button>
+                <button class="action-btn" style="background:#1d6f42; color:white; padding:6px 10px; border-radius:6px;" onclick="exportBackupFiltered('csv')">📥 Excel (CSV)</button>
+                <button class="action-btn" style="background:#2b579a; color:white; padding:6px 10px; border-radius:6px;" onclick="exportBackupFiltered('doc')">📥 Word</button>
+                <button class="action-btn" style="background:#424242; color:white; padding:6px 10px; border-radius:6px;" onclick="exportBackupFiltered('txt')">📥 Text</button>
+              </div>
+            </div>
+            <div id="backupDbSummaryGrid" style="display:grid; grid-template-columns:repeat(auto-fit, minmax(140px, 1fr)); gap:10px;"></div>
           </div>
 
           <p style="font-size:13px; color:#555; margin-bottom:12px;">আপনার ফার্মের সম্পূর্ণ ডাটাবেস সুরক্ষিত রাখতে নিয়মিত JSON ব্যাকআপ ডাউনলোড করে রাখুন।</p>
           <button class="btn btn-info" onclick="downloadBackup()">📥 Download Farm Data Backup (JSON)</button>
 
           <hr style="margin:22px 0; border:none; border-top:1px solid #e0e0e0;">
-          <h2 style="font-size:15.5px; color:#1b5e20; border:none; padding:0; margin-bottom:8px;">📑 অল-ইন-ওয়ান এক্সেল/সিএসভি এক্সপোর্ট (Full Farm CSV Export)</h2>
-          <p style="font-size:12.5px; color:#666; margin-bottom:12px;">যেকোনো মডিউলের সম্পূর্ণ রেকর্ড এক ক্লিকে Excel (CSV) ফরম্যাটে ডাউনলোড করুন (সম্পূর্ণ ফ্রি ও অফলাইন-সাপোর্টেড):</p>
+          <h2 style="font-size:15.5px; color:#1b5e20; border:none; padding:0; margin-bottom:8px;">📑 মডিউল-ভিত্তিক এক্সেল/সিএসভি এক্সপোর্ট (নির্বাচিত মাস / তারিখ অনুযায়ী)</h2>
+          <p style="font-size:12.5px; color:#666; margin-bottom:12px;">উপরের নির্বাচিত বছর, মাস, তারিখ, সার্চ বা এলাকা অনুযায়ী যেকোনো মডিউলের আলাদা Excel (CSV) ডাউনলোড করুন:</p>
           <div style="display:flex; flex-wrap:wrap; gap:8px;">
             <button class="action-btn" style="background:#1b5e20; color:white; padding:8px 12px;" onclick="exportFullFarmCsv('all')">📥 সম্পূর্ণ সারসংক্ষেপ (All CSV)</button>
             <button class="action-btn" style="background:#2e7d32; color:white; padding:8px 12px;" onclick="exportFullFarmCsv('cattle')">🐄 Cattle CSV</button>
-            <button class="action-btn" style="background:#0288d1; color:white; padding:8px 12px;" onclick="exportFullFarmCsv('milk')">🥛 All Milk CSV</button>
-            <button class="action-btn" style="background:#f57c00; color:white; padding:8px 12px;" onclick="exportFullFarmCsv('sales')">💰 All Sales CSV</button>
+            <button class="action-btn" style="background:#0288d1; color:white; padding:8px 12px;" onclick="exportFullFarmCsv('milk')">🥛 Milk CSV</button>
+            <button class="action-btn" style="background:#f57c00; color:white; padding:8px 12px;" onclick="exportFullFarmCsv('sales')">💰 Sales CSV</button>
             <button class="action-btn" style="background:#455a64; color:white; padding:8px 12px;" onclick="exportFullFarmCsv('customers')">👥 Customers CSV</button>
-            <button class="action-btn" style="background:#c62828; color:white; padding:8px 12px;" onclick="exportFullFarmCsv('expenses')">🧾 All Expenses CSV</button>
+            <button class="action-btn" style="background:#c62828; color:white; padding:8px 12px;" onclick="exportFullFarmCsv('expenses')">🧾 Expenses CSV</button>
           </div>
 
           <hr style="margin:22px 0; border:none; border-top:1px solid #e0e0e0;">
@@ -2291,26 +2321,6 @@
         }
       }
 
-      // Feature: Backup Reminder Alert (>= 7 days since last JSON backup)
-      try {
-        var lastBkTs = localStorage.getItem('nanda_last_backup_ts');
-        var hasAnyData = (Object.keys(farmStore.cattle || {}).length + Object.keys(farmStore.milk || {}).length + Object.keys(farmStore.sales || {}).length) > 0;
-        if (hasAnyData) {
-          var daysSinceBk = lastBkTs ? Math.floor((Date.now() - new Date(lastBkTs).getTime()) / (1000 * 60 * 60 * 24)) : 999;
-          if (daysSinceBk >= 7) {
-            alerts.push({
-              type: 'backup_reminder',
-              key: 'backup',
-              tag: 'System Backup',
-              title: '💾 ডাটা ব্যাকআপ রিমাইন্ডার',
-              subtitle: lastBkTs ? ('শেষ ব্যাকআপ নেওয়ার ' + daysSinceBk + ' দিন হয়ে গেছে। নিরাপদ থাকতে নতুন JSON ব্যাকআপ নিন।') : 'এখনো কোনো JSON ব্যাকআপ ডাউনলোড করা হয়নি। নিরাপদ থাকতে ব্যাকআপ নিয়ে রাখুন।',
-              dueDate: new Date().toISOString().split('T')[0],
-              diffDays: 2
-            });
-          }
-        }
-      } catch (e) {}
-
       // Feature 10: Cattle Insurance & Loan Reminders (<= 7 days)
       for (var ik in farmStore.insuranceLoans) {
         var ins = farmStore.insuranceLoans[ik];
@@ -2570,9 +2580,6 @@
         } else if (al.type === 'heifer_breeding') {
           actionButtons =
             '<button class="action-btn" style="background:#7b1fa2; color:white; padding:6px 12px;" onclick="openBreedingForTag(\'' + encodeURIComponent(al.tag) + '\')">🧬 প্রথম AI এন্ট্রি</button>';
-        } else if (al.type === 'backup_reminder') {
-          actionButtons =
-            '<button class="action-btn btn-info" style="padding:6px 12px;" onclick="switchTab(\'backup\', document.querySelectorAll(\'nav button\')[15])">💾 ব্যাকআপ নিন</button>';
         }
 
         html += '<div class="' + itemClass + '">' +
@@ -8168,7 +8175,184 @@
       });
     }
 
+    window.currentBkYear = "";
+    window.currentBkMonth = "ALL";
+    window.specificBkDate = "";
+
+    window.initBackupFilters = function() {
+      if (!window.currentBkYear) {
+        window.currentBkYear = new Date().getFullYear().toString();
+      }
+      var ys = getEl('bkFilterYear');
+      if (ys && ys.options.length === 0) {
+        var curY = new Date().getFullYear();
+        for (var i = 0; i < 5; i++) {
+          var y = (curY - i).toString();
+          ys.options.add(new Option(y, y));
+        }
+        ys.value = window.currentBkYear;
+      }
+      renderBackupMonthTabs();
+    };
+
+    window.renderBackupMonthTabs = function() {
+      var tc = getEl('bkMonthTabs');
+      if (!tc) return;
+      var months = [
+        {val:'ALL',name:'ALL DATA'},{val:'01',name:'Jan'},{val:'02',name:'Feb'},{val:'03',name:'Mar'},{val:'04',name:'Apr'},
+        {val:'05',name:'May'},{val:'06',name:'Jun'},{val:'07',name:'Jul'},{val:'08',name:'Aug'},
+        {val:'09',name:'Sep'},{val:'10',name:'Oct'},{val:'11',name:'Nov'},{val:'12',name:'Dec'}
+      ];
+      tc.innerHTML = months.map(function(m) {
+        var act = (m.val === window.currentBkMonth) && !window.specificBkDate;
+        return '<button onclick="setBackupMonth(\'' + m.val + '\')" style="padding:6px 14px; border:none; border-radius:20px; font-size:12px; font-weight:bold; cursor:pointer; background:' + (act ? 'var(--primary)' : '#e0e0e0') + '; color:' + (act ? 'white' : '#333') + '; min-width:60px; transition:0.2s;">' + m.name + '</button>';
+      }).join('');
+    };
+
+    window.setBackupMonth = function(mVal) {
+      window.currentBkMonth = mVal;
+      window.specificBkDate = "";
+      if (getEl('bkFilterDate')) getEl('bkFilterDate').value = "";
+      renderBackupMonthTabs();
+      renderBackupSummary();
+    };
+
+    window.applyBackupFilter = function() {
+      if (getEl('bkFilterYear')) window.currentBkYear = getEl('bkFilterYear').value;
+      var d = getEl('bkFilterDate') ? getEl('bkFilterDate').value : "";
+      if (d) {
+        window.specificBkDate = d;
+        var doj = new Date(d);
+        window.currentBkYear = doj.getFullYear().toString();
+        window.currentBkMonth = ('0' + (doj.getMonth() + 1)).slice(-2);
+        if (getEl('bkFilterYear')) getEl('bkFilterYear').value = window.currentBkYear;
+      } else {
+        window.specificBkDate = "";
+      }
+      renderBackupMonthTabs();
+      renderBackupSummary();
+    };
+
+    window.clearBackupDateFilter = function() {
+      if (getEl('bkFilterDate')) getEl('bkFilterDate').value = "";
+      if (getEl('bkSearchInput')) getEl('bkSearchInput').value = "";
+      if (getEl('bkAreaFilter')) getEl('bkAreaFilter').value = "";
+      window.specificBkDate = "";
+      window.currentBkMonth = "ALL";
+      renderBackupMonthTabs();
+      renderBackupSummary();
+    };
+
+    window.getFilteredBackupDataset = function() {
+      if (!window.currentBkYear) initBackupFilters();
+      var yr = window.currentBkYear, mn = window.currentBkMonth, dt = window.specificBkDate;
+      var isAll = (!dt && mn === 'ALL');
+      var searchQ = (getEl('bkSearchInput') ? getEl('bkSearchInput').value : '').trim().toLowerCase();
+      var areaFilter = (getEl('bkAreaFilter') ? getEl('bkAreaFilter').value : '').trim().toLowerCase();
+
+      var matchDate = function(dStr) {
+        if (isAll) return true;
+        if (!dStr) return false;
+        if (dt) return String(dStr).trim() === dt;
+        return String(dStr).trim().substring(0, 4) === yr && String(dStr).trim().substring(5, 7) === mn;
+      };
+      var matchSearch = function(obj) {
+        if (!searchQ) return true;
+        try { return JSON.stringify(obj).toLowerCase().includes(searchQ); } catch (e) { return true; }
+      };
+
+      var out = {
+        periodLabel: dt ? formatDateBR(dt) : (isAll ? 'ALL DATA' : (mn + '/' + yr)),
+        fileTag: dt ? dt : (isAll ? 'ALL' : (yr + '_' + mn)),
+        cattle: {}, milk: {}, customers: {}, sales: {}, expenses: {},
+        orders: {}, stock: {}, breeding: {}, health: {}, insuranceLoans: {},
+        feedRations: {}, vaccine: {}, deworm: {}, semen: {}
+      };
+
+      for (var ck in farmStore.cattle) {
+        var c = farmStore.cattle[ck];
+        if (c && matchSearch(c)) out.cattle[ck] = c;
+      }
+      for (var mk in farmStore.milk) {
+        var m = farmStore.milk[mk];
+        if (m && matchDate(m.date) && matchSearch(m)) out.milk[mk] = m;
+      }
+      for (var kuk in farmStore.customers) {
+        var cu = farmStore.customers[kuk];
+        if (!cu) continue;
+        var aMatch = !areaFilter || String(cu.area || '').trim().toLowerCase() === areaFilter;
+        if (aMatch && matchSearch(cu)) out.customers[kuk] = cu;
+      }
+      for (var sk in farmStore.sales) {
+        var sl = farmStore.sales[sk];
+        if (!sl) continue;
+        var sArea = String(sl.area || sl.addr || '').trim().toLowerCase();
+        var sAreaMatch = !areaFilter || sArea === areaFilter;
+        if (matchDate(sl.date) && sAreaMatch && matchSearch(sl)) out.sales[sk] = sl;
+      }
+      for (var ek in farmStore.expenses) {
+        var ex = farmStore.expenses[ek];
+        if (ex && matchDate(ex.date) && matchSearch(ex)) out.expenses[ek] = ex;
+      }
+      for (var ok in farmStore.orders) {
+        var od = farmStore.orders[ok];
+        if (!od) continue;
+        var oAreaMatch = !areaFilter || String(od.area || '').trim().toLowerCase() === areaFilter;
+        if (matchDate(od.date) && oAreaMatch && matchSearch(od)) out.orders[ok] = od;
+      }
+      for (var stk in farmStore.stock) {
+        var st = farmStore.stock[stk];
+        if (st && matchSearch(st)) out.stock[stk] = st;
+      }
+      for (var bk in farmStore.breeding) {
+        var br = farmStore.breeding[bk];
+        if (br && matchDate(br.aiDate) && matchSearch(br)) out.breeding[bk] = br;
+      }
+      for (var hk in farmStore.health) {
+        var hl = farmStore.health[hk];
+        if (hl && matchDate(hl.date) && matchSearch(hl)) out.health[hk] = hl;
+      }
+      for (var ik in farmStore.insuranceLoans) {
+        var ins = farmStore.insuranceLoans[ik];
+        if (ins && (isAll || matchDate(ins.dueDate) || matchDate(ins.startDate)) && matchSearch(ins)) out.insuranceLoans[ik] = ins;
+      }
+      for (var fk in farmStore.feedRations) {
+        var fr = farmStore.feedRations[fk];
+        if (fr && matchDate(fr.date) && matchSearch(fr)) out.feedRations[fk] = fr;
+      }
+      for (var vk in farmStore.vaccine) {
+        var vc = farmStore.vaccine[vk];
+        if (vc && matchDate(vc.date) && matchSearch(vc)) out.vaccine[vk] = vc;
+      }
+      for (var dk in farmStore.deworm) {
+        var dw = farmStore.deworm[dk];
+        if (dw && matchDate(dw.date) && matchSearch(dw)) out.deworm[dk] = dw;
+      }
+      for (var smk in farmStore.semen) {
+        var sm = farmStore.semen[smk];
+        if (sm && (isAll || matchDate(sm.date)) && matchSearch(sm)) out.semen[smk] = sm;
+      }
+
+      return out;
+    };
+
     window.renderBackupSummary = function() {
+      if (!window.currentBkYear) initBackupFilters();
+
+      // Populate Area Filter dropdown
+      var areaSel = getEl('bkAreaFilter');
+      if (areaSel) {
+        var curArea = areaSel.value;
+        var areaSet = {};
+        for (var ck in farmStore.customers) { if (farmStore.customers[ck] && farmStore.customers[ck].area) areaSet[farmStore.customers[ck].area.trim()] = true; }
+        for (var sk in farmStore.sales) { if (farmStore.sales[sk] && farmStore.sales[sk].area) areaSet[farmStore.sales[sk].area.trim()] = true; }
+        var optH = '<option value="">সকল এলাকা</option>';
+        Object.keys(areaSet).sort().forEach(function(a) {
+          optH += '<option value="' + a + '" ' + (curArea.toLowerCase() === a.toLowerCase() ? 'selected' : '') + '>' + a + '</option>';
+        });
+        areaSel.innerHTML = optH;
+      }
+
       var banner = getEl('backupStatusBanner');
       if (banner) {
         var lastTs = null;
@@ -8177,100 +8361,150 @@
           var dtObj = new Date(lastTs);
           var daysAgo = Math.floor((Date.now() - dtObj.getTime()) / (1000 * 60 * 60 * 24));
           var dateStr = dtObj.toLocaleDateString('bn-BD') + ' (' + dtObj.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }) + ')';
-          var isOld = daysAgo >= 7;
-          banner.innerHTML = '<div style="background:' + (isOld ? '#fff3e0' : '#e8f5e9') + '; border-left:4px solid ' + (isOld ? '#f57c00' : '#2e7d32') + '; padding:10px 14px; border-radius:8px; font-size:13px; color:' + (isOld ? '#e65100' : '#1b5e20') + '; font-weight:600;">' +
-            (isOld ? '⚠️ শেষ ব্যাকআপ নেওয়া হয়েছিল ' + daysAgo + ' দিন আগে (' + dateStr + ')। আজই নতুন ব্যাকআপ নিন!' : '✔ সর্বশেষ ব্যাকআপ: ' + dateStr + ' (' + (daysAgo === 0 ? 'আজ' : daysAgo + ' দিন আগে') + ')') +
-          '</div>';
+          banner.innerHTML = '<div style="background:#e8f5e9; border-left:4px solid #2e7d32; padding:10px 14px; border-radius:8px; font-size:13px; color:#1b5e20; font-weight:600;">✔ সর্বশেষ JSON ব্যাকআপ: ' + dateStr + ' (' + (daysAgo === 0 ? 'আজ' : daysAgo + ' দিন আগে') + ')</div>';
         } else {
-          banner.innerHTML = '<div style="background:#fff3e0; border-left:4px solid #f57c00; padding:10px 14px; border-radius:8px; font-size:13px; color:#e65100; font-weight:600;">ℹ️ এখনো কোনো JSON ব্যাকআপ ডাউনলোড করা হয়নি। ডাটা নিরাপদ রাখতে নিয়মিত ব্যাকআপ ডাউনলোড করুন।</div>';
+          banner.innerHTML = '<div style="background:#f4fbf5; border-left:4px solid #2e7d32; padding:10px 14px; border-radius:8px; font-size:13px; color:#1b5e20; font-weight:600;">ℹ️ যেকোনো বছর, মাস বা নির্দিষ্ট তারিখের ডাটা ফিল্টার করে JSON, Excel (CSV), Word বা Text ফরম্যাটে ডাউনলোড করুন।</div>';
         }
       }
+
+      var ds = getFilteredBackupDataset();
+      var titleEl = getEl('backupSummaryTitle');
+      if (titleEl) titleEl.innerText = '📊 ডাটাবেস রেকর্ড সারসংক্ষেপ (' + ds.periodLabel + '):';
+
+      var milkL = 0; for (var mk in ds.milk) milkL += Number(ds.milk[mk].liters) || 0;
+      var salesAmt = 0; for (var sk2 in ds.sales) { if (!(ds.sales[sk2].isPayment && Number(ds.sales[sk2].total) === 0)) salesAmt += Number(ds.sales[sk2].total) || 0; }
+      var expAmt = 0; for (var ek in ds.expenses) expAmt += Number(ds.expenses[ek].amount) || 0;
 
       var grid = getEl('backupDbSummaryGrid');
       if (grid) {
         var cnt = function(obj) { return obj ? Object.keys(obj).length : 0; };
         var cards = [
-          { lbl: '🐄 Cattle', val: cnt(farmStore.cattle), col: '#1b5e20' },
-          { lbl: '🥛 Milk Entries', val: cnt(farmStore.milk), col: '#0288d1' },
-          { lbl: '👥 Customers', val: cnt(farmStore.customers), col: '#2e7d32' },
-          { lbl: '💰 Sales', val: cnt(farmStore.sales), col: '#f57c00' },
-          { lbl: '🧾 Expenses', val: cnt(farmStore.expenses), col: '#c62828' },
-          { lbl: '📦 Stock Items', val: cnt(farmStore.stock), col: '#6a1b9a' },
-          { lbl: '🧬 Breeding', val: cnt(farmStore.breeding), col: '#00838f' },
-          { lbl: '🛡️ Insurance/Loan', val: cnt(farmStore.insuranceLoans), col: '#0277bd' }
+          { lbl: '🐄 Cattle', val: cnt(ds.cattle) + ' টি', sub: '', col: '#1b5e20' },
+          { lbl: '🥛 Milk', val: cnt(ds.milk) + ' টি', sub: milkL.toFixed(1) + ' L', col: '#0288d1' },
+          { lbl: '👥 Customers', val: cnt(ds.customers) + ' জন', sub: '', col: '#2e7d32' },
+          { lbl: '💰 Sales', val: cnt(ds.sales) + ' টি', sub: '₹ ' + Math.round(salesAmt).toLocaleString(), col: '#f57c00' },
+          { lbl: '🧾 Expenses', val: cnt(ds.expenses) + ' টি', sub: '₹ ' + Math.round(expAmt).toLocaleString(), col: '#c62828' },
+          { lbl: '📦 Stock Items', val: cnt(ds.stock) + ' টি', sub: '', col: '#6a1b9a' },
+          { lbl: '🧬 Breeding', val: cnt(ds.breeding) + ' টি', sub: '', col: '#00838f' },
+          { lbl: '🛡️ Insurance/Loan', val: cnt(ds.insuranceLoans) + ' টি', sub: '', col: '#0277bd' }
         ];
         grid.innerHTML = cards.map(function(c) {
           return '<div style="background:#f8faf9; border:1px solid #e0e0e0; border-left:4px solid ' + c.col + '; border-radius:8px; padding:9px 10px;">' +
             '<div style="font-size:11px; color:#555; font-weight:600;">' + c.lbl + '</div>' +
-            '<div style="font-size:17px; font-weight:bold; color:' + c.col + ';">' + c.val + '</div>' +
+            '<div style="font-size:16px; font-weight:bold; color:' + c.col + ';">' + c.val + '</div>' +
+            (c.sub ? '<div style="font-size:11px; color:#444; font-weight:600;">' + c.sub + '</div>' : '') +
           '</div>';
         }).join('');
       }
     };
 
+    window.downloadFilteredBackupJson = function() {
+      var ds = getFilteredBackupDataset();
+      var payload = {
+        meta: { farm: 'Nanda Dairy & Agro', period: ds.periodLabel, exportedAt: new Date().toISOString() },
+        cattle: ds.cattle, milk: ds.milk, customers: ds.customers, sales: ds.sales,
+        expenses: ds.expenses, orders: ds.orders, stock: ds.stock, breeding: ds.breeding,
+        health: ds.health, insuranceLoans: ds.insuranceLoans, feedRations: ds.feedRations,
+        vaccine: ds.vaccine, deworm: ds.deworm, semen: ds.semen
+      };
+      var dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(payload, null, 2));
+      var a = document.createElement('a');
+      a.setAttribute("href", dataStr);
+      a.setAttribute("download", "Nanda_Dairy_Backup_" + ds.fileTag + ".json");
+      document.body.appendChild(a); a.click(); document.body.removeChild(a);
+      showAppToast(ds.periodLabel + ' এর JSON ব্যাকআপ ডাউনলোড হয়েছে!');
+    };
+
+    window.exportBackupFiltered = function(format) {
+      var ds = getFilteredBackupDataset();
+      var milkL = 0; for (var mk in ds.milk) milkL += Number(ds.milk[mk].liters) || 0;
+      var salesAmt = 0; for (var sk in ds.sales) { if (!(ds.sales[sk].isPayment && Number(ds.sales[sk].total) === 0)) salesAmt += Number(ds.sales[sk].total) || 0; }
+      var expAmt = 0; for (var ek in ds.expenses) expAmt += Number(ds.expenses[ek].amount) || 0;
+
+      var rows = [
+        ['Section', 'Details / Count', 'Total Value / Qty'],
+        ['Period', ds.periodLabel, 'Nanda Dairy & Agro'],
+        ['Cattle', Object.keys(ds.cattle).length + ' Cattle', '-'],
+        ['Milk Production', Object.keys(ds.milk).length + ' Entries', milkL.toFixed(1) + ' L'],
+        ['Customers', Object.keys(ds.customers).length + ' Customers', '-'],
+        ['Sales', Object.keys(ds.sales).length + ' Entries', 'Rs ' + Math.round(salesAmt)],
+        ['Expenses', Object.keys(ds.expenses).length + ' Entries', 'Rs ' + Math.round(expAmt)],
+        ['Net Profit / Loss', ds.periodLabel, 'Rs ' + Math.round(salesAmt - expAmt)],
+        ['Breeding Records', Object.keys(ds.breeding).length + ' Entries', '-'],
+        ['Health Records', Object.keys(ds.health).length + ' Entries', '-'],
+        ['Insurance / Loan', Object.keys(ds.insuranceLoans).length + ' Entries', '-']
+      ];
+
+      var fileName = "Nanda_Dairy_Backup_Report_" + ds.fileTag;
+      if (format === 'csv') {
+        var csv = "data:text/csv;charset=utf-8,﻿" + rows.map(function(r){ return r.join(","); }).join("\r\n");
+        var a = document.createElement("a"); a.href = encodeURI(csv); a.download = fileName + ".csv"; document.body.appendChild(a); a.click(); document.body.removeChild(a);
+      } else if (format === 'txt') {
+        var txt = "data:text/plain;charset=utf-8,﻿" + rows.map(function(r){ return r.join(" \t "); }).join("\r\n");
+        var a = document.createElement("a"); a.href = encodeURI(txt); a.download = fileName + ".txt"; document.body.appendChild(a); a.click(); document.body.removeChild(a);
+      } else if (format === 'doc') {
+        var h = "<html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'><head><meta charset='utf-8'><title>Backup Report</title></head><body><h2 style='color:#1b5e20;'>Nanda Dairy & Agro - Backup Summary (" + ds.periodLabel + ")</h2><table border='1' style='border-collapse:collapse; width:100%; font-family:sans-serif; font-size:12.5px;'>";
+        rows.forEach(function(r, idx) {
+          h += "<tr>" + r.map(function(cell){ return idx === 0 ? "<th style='padding:7px; background:#e8f5e9;'>" + cell + "</th>" : "<td style='padding:7px;'>" + cell + "</td>"; }).join("") + "</tr>";
+        });
+        h += "</table></body></html>";
+        var blob = new Blob(['﻿', h], { type: 'application/msword' });
+        var a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = fileName + ".doc"; document.body.appendChild(a); a.click(); document.body.removeChild(a);
+      }
+      showAppToast(ds.periodLabel + ' রিপোর্ট (' + format.toUpperCase() + ') ডাউনলোড হয়েছে!');
+    };
+
     window.exportFullFarmCsv = function(section) {
+      var ds = getFilteredBackupDataset();
       var rows = [];
       var clean = function(v) { return String(v === undefined || v === null ? '-' : v).replace(/,/g, ' ').replace(/\r?\n/g, ' '); };
-      var todayISO = new Date().toISOString().split('T')[0];
 
       if (section === 'cattle') {
         rows.push(['Tag ID','Breed','Type','Gen','DOB','Weight(kg)','Lactation','Status','Sire','Dam','Purchase Price(Rs)','Sale Price(Rs)']);
-        for (var ck in farmStore.cattle) {
-          var c = farmStore.cattle[ck];
+        for (var ck in ds.cattle) {
+          var c = ds.cattle[ck];
           rows.push([clean(c.tag), clean(c.breed), clean(c.breedType), clean(c.generation), formatDateBR(c.dob), c.weight||0, c.lactation||0, clean(c.status), clean(c.sire), clean(c.dam), c.purchasePrice||0, c.salePrice||0]);
         }
       } else if (section === 'milk') {
         rows.push(['Date','Cow Tag','Session','Liters','Fat%','SNF%','CLR']);
-        for (var mk in farmStore.milk) {
-          var m = farmStore.milk[mk];
+        for (var mk in ds.milk) {
+          var m = ds.milk[mk];
           rows.push([formatDateBR(m.date), clean(m.cow), clean(m.session), m.liters||0, m.fat||'-', m.snf||'-', m.clr||'-']);
         }
       } else if (section === 'sales') {
         rows.push(['Date','Customer','Phone','Area','Item','Qty','Rate(Rs)','Total(Rs)','Paid(Rs)','Due(Rs)']);
-        for (var sk in farmStore.sales) {
-          var sl = farmStore.sales[sk];
+        for (var sk in ds.sales) {
+          var sl = ds.sales[sk];
           if (sl.isPayment && Number(sl.total) === 0) continue;
           rows.push([formatDateBR(sl.date), clean(sl.name), clean(sl.phone), clean(sl.area), clean(sl.item), sl.qty||1, sl.rate||0, sl.total||0, sl.paid||0, Math.max(0,(Number(sl.total)||0)-(Number(sl.paid)||0))]);
         }
       } else if (section === 'customers') {
         rows.push(['Name','Phone','Area','Address','Daily Demand(L)','Custom Rate(Rs/L)','Opening Due(Rs)','Type','Shift','WhatsApp']);
-        for (var kuk in farmStore.customers) {
-          var cu = farmStore.customers[kuk];
+        for (var kuk in ds.customers) {
+          var cu = ds.customers[kuk];
           rows.push([clean(cu.name), clean(cu.phone), clean(cu.area), clean(cu.addr), cu.demand||0, cu.milkRate||50, cu.openingDue||0, clean(cu.type), clean(cu.shift), cu.whatsappOpt==='blocked'?'Disabled':'Allowed']);
         }
       } else if (section === 'expenses') {
         rows.push(['Date','Category','Description','Vendor','Mode','Status','Amount(Rs)','Paid(Rs)','Due(Rs)']);
-        for (var ek in farmStore.expenses) {
-          var ex = farmStore.expenses[ek];
+        for (var ek in ds.expenses) {
+          var ex = ds.expenses[ek];
           var pd = getExpensePaidAndDue(ex);
           rows.push([formatDateBR(ex.date), clean(ex.category), clean(ex.title), clean(ex.vendor), clean(ex.payMode||'Cash'), clean(ex.status||'Paid'), pd.total, pd.paid, pd.due]);
         }
       } else {
-        var r = getReportPeriodData();
-        rows.push(['Nanda Dairy & Agro - Full Farm Summary', todayISO]);
-        rows.push(['Total Cattle', Object.keys(farmStore.cattle||{}).length]);
-        rows.push(['Total Customers', Object.keys(farmStore.customers||{}).length]);
-        rows.push(['Total Milk Entries', Object.keys(farmStore.milk||{}).length]);
-        rows.push(['Total Sales Entries', Object.keys(farmStore.sales||{}).length]);
-        rows.push(['Total Expense Entries', Object.keys(farmStore.expenses||{}).length]);
-        rows.push(['Total Sales Revenue (Rs)', r.salesTot]);
-        rows.push(['Total Expenses (Rs)', r.expTot]);
-        rows.push(['Net Profit/Loss (Rs)', r.netProfit]);
-        rows.push(['Customer Receivable Due (Rs)', Math.round(r.custDueTot)]);
-        rows.push(['Vendor Payable Due (Rs)', Math.round(r.vendDueTot)]);
-        rows.push(['Stock & Semen Asset Value (Rs)', Math.round(r.stkVal)]);
-        rows.push(['Active Cattle Capital Value (Rs)', Math.round(r.cattleCapital || 0)]);
+        exportBackupFiltered('csv');
+        return;
       }
 
-      if (rows.length <= 1) return showAppToast('এই বিভাগে এক্সপোর্ট করার মতো কোনো ডাটা নেই!');
+      if (rows.length <= 1) return showAppToast(ds.periodLabel + ' এ এক্সপোর্ট করার মতো কোনো ' + section.toUpperCase() + ' ডাটা নেই!');
       var csv = "data:text/csv;charset=utf-8,﻿" + rows.map(function(rw){ return rw.join(","); }).join("\r\n");
       var link = document.createElement("a");
       link.setAttribute("href", encodeURI(csv));
-      link.setAttribute("download", "Nanda_Dairy_" + section.toUpperCase() + "_" + todayISO + ".csv");
+      link.setAttribute("download", "Nanda_Dairy_" + section.toUpperCase() + "_" + ds.fileTag + ".csv");
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
-      showAppToast(section.toUpperCase() + ' CSV ফাইল ডাউনলোড হয়েছে!');
+      showAppToast(section.toUpperCase() + ' (' + ds.periodLabel + ') CSV ফাইল ডাউনলোড হয়েছে!');
     };
 
     window.listenAllData = function() {
