@@ -100,6 +100,9 @@
       if (target) {
         target.style.display = 'block';
       }
+      if (tab === 'backup' && typeof renderBackupSummary === 'function') {
+        renderBackupSummary();
+      }
 
       if (btn) {
         btn.classList.add('active');
@@ -722,6 +725,8 @@
             <div class="input-group"><label>Sire / Semen</label><input type="text" id="cowSire" placeholder="Romio"></div>
             <div class="input-group"><label>Dam (মায়ের আইডি)</label><input type="text" id="cowDam" placeholder="মায়ের আইডি"></div>
             <div class="input-group"><label>Expected Calving</label><input type="date" id="cowExpCalving"></div>
+            <div class="input-group"><label>কেনার দাম / Purchase Price (₹)</label><input type="number" id="cowPurchasePrice" placeholder="যেমন: 65000"></div>
+            <div class="input-group"><label>বিক্রি দাম / Sale Price (₹)</label><input type="number" id="cowSalePrice" placeholder="বিক্রি হলে লিখুন"></div>
           </div>
           <div style="display:flex; gap:10px;">
             <button class="btn" id="cowSubmitBtn" onclick="saveCattle()">Save Cattle</button>
@@ -962,6 +967,7 @@
           <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px; margin-bottom:12px;">
             <h2 style="margin:0; border:none; padding:0;">বিক্রয় ও বাকি তালিকা (Sales Ledger)</h2>
             <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
+              <button class="action-btn" style="background:#7b1fa2; color:white; padding:6px 10px; border-radius:6px;" onclick="showBulkMonthlyBills()">📄 সব গ্রাহকের মাসিক বিল</button>
               <button class="action-btn" style="background:#1d6f42; color:white; padding:6px 10px; border-radius:6px;" onclick="exportSales('csv')">📥 Excel (CSV)</button>
               <button class="action-btn" style="background:#2b579a; color:white; padding:6px 10px; border-radius:6px;" onclick="exportSales('doc')">📥 Word</button>
               <button class="action-btn" style="background:#424242; color:white; padding:6px 10px; border-radius:6px;" onclick="exportSales('txt')">📥 Text</button>
@@ -1325,7 +1331,8 @@
             </div>
           </div>
 
-          <div id="stockSummaryGrid" style="display:grid; grid-template-columns:repeat(auto-fit, minmax(160px, 1fr)); gap:10px; margin-bottom:14px;"></div>
+          <div id="stockSummaryGrid" style="display:grid; grid-template-columns:repeat(auto-fit, minmax(160px, 1fr)); gap:10px; margin-bottom:12px;"></div>
+          <div id="feedForecastBanner" style="margin-bottom:14px;"></div>
 
           <div style="display:flex; flex-wrap:wrap; gap:10px; justify-content:space-between; margin-bottom:12px; background:#f4fbf5; padding:10px 12px; border-radius:8px; border:1px solid #c8e6c9;">
             <select id="stkFilterCategory" onchange="renderStockTable()" style="width:180px; padding:7px;">
@@ -1641,18 +1648,37 @@
             <h2 style="margin:0; border:none; padding:0;">💾 System Backup & Restore</h2>
             <button class="action-btn btn-info" onclick="downloadBackup()">📥 Download Farm Data Backup (JSON)</button>
           </div>
-          <p style="font-size:13px; color:#555; margin-bottom:14px;">আপনার ফার্মের সম্পূর্ণ ডাটাবেস সুরক্ষিত রাখতে নিয়মিত JSON ব্যাকআপ ডাউনলোড করে রাখুন।</p>
+
+          <div id="backupStatusBanner" style="margin-bottom:14px;"></div>
+
+          <div style="margin-bottom:16px;">
+            <strong style="font-size:13px; color:var(--primary); display:block; margin-bottom:8px;">📊 ডাটাবেস রেকর্ড সারসংক্ষেপ (Database Summary):</strong>
+            <div id="backupDbSummaryGrid" style="display:grid; grid-template-columns:repeat(auto-fit, minmax(135px, 1fr)); gap:10px;"></div>
+          </div>
+
+          <p style="font-size:13px; color:#555; margin-bottom:12px;">আপনার ফার্মের সম্পূর্ণ ডাটাবেস সুরক্ষিত রাখতে নিয়মিত JSON ব্যাকআপ ডাউনলোড করে রাখুন।</p>
           <button class="btn btn-info" onclick="downloadBackup()">📥 Download Farm Data Backup (JSON)</button>
 
           <hr style="margin:22px 0; border:none; border-top:1px solid #e0e0e0;">
-          <h2 style="font-size:15.5px; color:#c62828; border:none; padding:0; margin-bottom:8px;">📤 ডাটা রিস্টোর (Import JSON Backup)</h2>
-          <p style="font-size:12.5px; color:#666; margin-bottom:12px;">পূর্বে ডাউনলোড করা <code>.json</code> ব্যাকআপ ফাইলটি সিলেক্ট করে ডাটাবেসে ফিরিয়ে আনুন। (সতর্কতা: এটি বর্তমান ডাটাকে ব্যাকআপ ফাইলের ডাটা দিয়ে প্রতিস্থাপন করবে)</p>
+          <h2 style="font-size:15.5px; color:#1b5e20; border:none; padding:0; margin-bottom:8px;">📑 অল-ইন-ওয়ান এক্সেল/সিএসভি এক্সপোর্ট (Full Farm CSV Export)</h2>
+          <p style="font-size:12.5px; color:#666; margin-bottom:12px;">যেকোনো মডিউলের সম্পূর্ণ রেকর্ড এক ক্লিকে Excel (CSV) ফরম্যাটে ডাউনলোড করুন (সম্পূর্ণ ফ্রি ও অফলাইন-সাপোর্টেড):</p>
+          <div style="display:flex; flex-wrap:wrap; gap:8px;">
+            <button class="action-btn" style="background:#1b5e20; color:white; padding:8px 12px;" onclick="exportFullFarmCsv('all')">📥 সম্পূর্ণ সারসংক্ষেপ (All CSV)</button>
+            <button class="action-btn" style="background:#2e7d32; color:white; padding:8px 12px;" onclick="exportFullFarmCsv('cattle')">🐄 Cattle CSV</button>
+            <button class="action-btn" style="background:#0288d1; color:white; padding:8px 12px;" onclick="exportFullFarmCsv('milk')">🥛 All Milk CSV</button>
+            <button class="action-btn" style="background:#f57c00; color:white; padding:8px 12px;" onclick="exportFullFarmCsv('sales')">💰 All Sales CSV</button>
+            <button class="action-btn" style="background:#455a64; color:white; padding:8px 12px;" onclick="exportFullFarmCsv('customers')">👥 Customers CSV</button>
+            <button class="action-btn" style="background:#c62828; color:white; padding:8px 12px;" onclick="exportFullFarmCsv('expenses')">🧾 All Expenses CSV</button>
+          </div>
+
+          <hr style="margin:22px 0; border:none; border-top:1px solid #e0e0e0;">
+          <h2 style="font-size:15.5px; color:#c62828; border:none; padding:0; margin-bottom:8px;">📤 ডাটা রিস্টোর (Import JSON Backup with Safe Preview)</h2>
+          <p style="font-size:12.5px; color:#666; margin-bottom:12px;">পূর্বে ডাউনলোড করা <code>.json</code> ব্যাকআপ ফাইলটি সিলেক্ট করলে রিস্টোরের আগে ওই ফাইলের রেকর্ড সংখ্যা প্রিভিউ দেখাবে।</p>
           <div style="display:flex; flex-wrap:wrap; gap:12px; align-items:center;">
             <input type="file" id="restoreBackupFile" accept=".json" style="max-width:320px; background:#fff;">
-            <button class="btn btn-warning" onclick="openRestoreConfirmModal()">📤 Restore Backup (JSON)</button>
+            <button class="btn btn-warning" onclick="openRestoreConfirmModal()">📤 Preview & Restore Backup (JSON)</button>
           </div>
         </div>
-
       </div>
     </div>
   </div>
@@ -2154,6 +2180,90 @@
         }
       }
 
+      // Feature: Heifer First Breeding Alert (14+ months old female calf/heifer with no breeding record)
+      for (var hck in farmStore.cattle) {
+        var hcw = farmStore.cattle[hck];
+        if (!hcw || !hcw.tag || !hcw.dob) continue;
+        var hStat = String(hcw.status || '').trim().toLowerCase();
+        var hType = String(hcw.breedType || '').trim().toLowerCase();
+        if ((hStat === 'heifer' || hStat === 'calf') && !hType.includes('male') && !hType.includes('ষাঁড়')) {
+          var hDob = new Date(hcw.dob);
+          if (!isNaN(hDob.getTime())) {
+            var nowD = new Date();
+            var ageMo = (nowD.getFullYear() - hDob.getFullYear()) * 12 + (nowD.getMonth() - hDob.getMonth());
+            var hTagUp = hcw.tag.trim().toUpperCase();
+            if (ageMo >= 14 && ageMo <= 36 && !brHistoryByTag[hTagUp]) {
+              alerts.push({
+                type: 'heifer_breeding',
+                key: hck,
+                tag: hcw.tag,
+                title: '🧬 প্রথম ব্রিডিংয়ের সময় হয়েছে (Heifer Alert)',
+                subtitle: 'বয়স প্রায় ' + ageMo + ' মাস পূর্ণ হয়েছে। প্রথম AI / প্রজননের জন্য প্রস্তুত কিনা পরীক্ষা করুন।',
+                dueDate: new Date().toISOString().split('T')[0],
+                diffDays: 1
+              });
+            }
+          }
+        }
+      }
+
+      // Feature: Sudden Milk Drop Alert (>= 22% drop compared to previous 3-5 days average)
+      var milkByCowDay = {};
+      for (var mdk in farmStore.milk) {
+        var mdObj = farmStore.milk[mdk];
+        if (!mdObj || !mdObj.cow || !mdObj.date) continue;
+        var mTagUp = mdObj.cow.trim().toUpperCase();
+        if (!milkByCowDay[mTagUp]) milkByCowDay[mTagUp] = {};
+        milkByCowDay[mTagUp][mdObj.date] = (milkByCowDay[mTagUp][mdObj.date] || 0) + (Number(mdObj.liters) || 0);
+      }
+      for (var mdTag in milkByCowDay) {
+        var dMap = milkByCowDay[mdTag];
+        var dList = Object.keys(dMap).sort().reverse();
+        if (dList.length >= 3) {
+          var latestDt = dList[0];
+          var latestDiff = getDaysDifferenceFromToday(latestDt);
+          if (latestDiff !== null && latestDiff >= -2 && latestDiff <= 0) {
+            var latestVal = dMap[latestDt];
+            var prevDays = dList.slice(1, 6);
+            var prevSum = 0;
+            prevDays.forEach(function(pd) { prevSum += dMap[pd]; });
+            var prevAvg = prevSum / prevDays.length;
+            if (prevAvg >= 3 && latestVal < prevAvg * 0.78) {
+              var dropPct = Math.round(((prevAvg - latestVal) / prevAvg) * 100);
+              alerts.push({
+                type: 'milk_drop',
+                key: mdTag,
+                tag: mdTag,
+                title: '📉 হঠাৎ দুধ কমে গেছে (-' + dropPct + '%)',
+                subtitle: 'আগের গড়: ' + prevAvg.toFixed(1) + ' L/দিন → সর্বশেষ: ' + latestVal.toFixed(1) + ' L। Mastitis বা জ্বর যাচাই করুন।',
+                dueDate: latestDt,
+                diffDays: 0
+              });
+            }
+          }
+        }
+      }
+
+      // Feature: Backup Reminder Alert (>= 7 days since last JSON backup)
+      try {
+        var lastBkTs = localStorage.getItem('nanda_last_backup_ts');
+        var hasAnyData = (Object.keys(farmStore.cattle || {}).length + Object.keys(farmStore.milk || {}).length + Object.keys(farmStore.sales || {}).length) > 0;
+        if (hasAnyData) {
+          var daysSinceBk = lastBkTs ? Math.floor((Date.now() - new Date(lastBkTs).getTime()) / (1000 * 60 * 60 * 24)) : 999;
+          if (daysSinceBk >= 7) {
+            alerts.push({
+              type: 'backup_reminder',
+              key: 'backup',
+              tag: 'System Backup',
+              title: '💾 ডাটা ব্যাকআপ রিমাইন্ডার',
+              subtitle: lastBkTs ? ('শেষ ব্যাকআপ নেওয়ার ' + daysSinceBk + ' দিন হয়ে গেছে। নিরাপদ থাকতে নতুন JSON ব্যাকআপ নিন।') : 'এখনো কোনো JSON ব্যাকআপ ডাউনলোড করা হয়নি। নিরাপদ থাকতে ব্যাকআপ নিয়ে রাখুন।',
+              dueDate: new Date().toISOString().split('T')[0],
+              diffDays: 2
+            });
+          }
+        }
+      } catch (e) {}
+
       // Feature 10: Cattle Insurance & Loan Reminders (<= 7 days)
       for (var ik in farmStore.insuranceLoans) {
         var ins = farmStore.insuranceLoans[ik];
@@ -2406,6 +2516,16 @@
         } else if (al.type === 'health_withdrawal') {
           actionButtons =
             '<button class="action-btn btn-info" style="padding:6px 12px;" onclick="editHealth(\'' + al.key + '\')">🩺 চিকিৎসার তথ্য দেখুন</button>';
+        } else if (al.type === 'milk_drop') {
+          actionButtons =
+            '<button class="action-btn btn-danger" style="padding:6px 12px;" onclick="openHealthForTag(\'' + encodeURIComponent(al.tag) + '\', \'Sudden Milk Drop\')">🩺 চেকআপ এন্ট্রি</button>' +
+            '<button class="action-btn btn-info" style="padding:6px 10px;" onclick="switchTab(\'milk\', document.querySelectorAll(\'nav button\')[5])">🥛 দুধ খাতা</button>';
+        } else if (al.type === 'heifer_breeding') {
+          actionButtons =
+            '<button class="action-btn" style="background:#7b1fa2; color:white; padding:6px 12px;" onclick="openBreedingForTag(\'' + encodeURIComponent(al.tag) + '\')">🧬 প্রথম AI এন্ট্রি</button>';
+        } else if (al.type === 'backup_reminder') {
+          actionButtons =
+            '<button class="action-btn btn-info" style="padding:6px 12px;" onclick="switchTab(\'backup\', document.querySelectorAll(\'nav button\')[15])">💾 ব্যাকআপ নিন</button>';
         }
 
         html += '<div class="' + itemClass + '">' +
@@ -2431,6 +2551,21 @@
       if (getEl('hlthCowTag')) getEl('hlthCowTag').value = tag;
       if (getEl('hlthDisease')) getEl('hlthDisease').value = 'Repeat Breeding';
       if (getEl('hlthType')) getEl('hlthType').value = 'Doctor Checkup';
+    };
+
+    window.openHealthForTag = function(encTag, reason) {
+      var tag = decodeURIComponent(encTag);
+      switchTab('health', document.querySelectorAll('nav button')[13]);
+      if (getEl('hlthCowTag')) getEl('hlthCowTag').value = tag;
+      if (getEl('hlthDisease')) getEl('hlthDisease').value = reason || '';
+      if (getEl('hlthType')) getEl('hlthType').value = 'Doctor Checkup';
+    };
+
+    window.openBreedingForTag = function(encTag) {
+      var tag = decodeURIComponent(encTag);
+      switchTab('breeding', document.querySelectorAll('nav button')[2]);
+      if (getEl('brCowTag')) getEl('brCowTag').value = tag;
+      if (typeof onBreedingSemenOrCowChange === 'function') onBreedingSemenOrCowChange();
     };
 
     window.completeVaccineAlert = function(vacKey) {
@@ -2874,6 +3009,65 @@
       getEl('invoiceModal').style.display = 'flex';
     };
 
+    // Feature: Bulk Monthly Bill Sheet (All Regular Customers in Selected Month)
+    window.showBulkMonthlyBills = function() {
+      if (!window.currentSaleYear) initSalesFilters();
+      var yr = window.currentSaleYear;
+      var mn = window.currentSaleMonth;
+      var prefix = yr + '-' + mn;
+      var custBalances = getCustomerLiveBalances();
+
+      var map = {};
+      for (var k in farmStore.sales) {
+        var sl = farmStore.sales[k];
+        if (!sl || (sl.isPayment && Number(sl.total) === 0)) continue;
+        if (!(sl.date || '').startsWith(prefix)) continue;
+        var nm = (sl.name || '').trim();
+        if (!nm) continue;
+        var key = nm.toLowerCase();
+        if (!map[key]) {
+          var cObj = findCustomerByName(nm);
+          map[key] = { name: nm, phone: sl.phone || (cObj ? cObj.phone : '') || '-', area: sl.area || (cObj ? cObj.area : '') || '-', entries: 0, qty: 0, bill: 0, paid: 0 };
+        }
+        map[key].entries++;
+        map[key].qty += (parseFloat(sl.qty) || 1);
+        map[key].bill += (Number(sl.total) || 0);
+        map[key].paid += (Number(sl.paid) || 0);
+      }
+
+      var rowsList = Object.keys(map).map(function(k) {
+        var r = map[k];
+        r.liveDue = custBalances[k] ? custBalances[k].currentDue : Math.max(0, r.bill - r.paid);
+        return r;
+      }).sort(function(a, b) { return a.name.localeCompare(b.name); });
+
+      if (rowsList.length === 0) {
+        return showAppToast(mn + '/' + yr + ' মাসে কোনো গ্রাহকের বিল পাওয়া যায়নি।');
+      }
+
+      var gBill = 0, gPaid = 0, gDue = 0;
+      var tbody = rowsList.map(function(r, idx) {
+        gBill += r.bill; gPaid += r.paid; gDue += r.liveDue;
+        return '<tr><td>' + (idx + 1) + '</td><td><strong>' + r.name + '</strong><br><small>' + r.phone + '</small></td><td>' + r.area + '</td><td>' + r.qty.toFixed(1) + ' (' + r.entries + ' দিন)</td><td style="text-align:right;">₹ ' + r.bill.toLocaleString() + '</td><td style="text-align:right; color:green;">₹ ' + r.paid.toLocaleString() + '</td><td style="text-align:right; color:#c62828; font-weight:bold;">₹ ' + r.liveDue.toLocaleString() + '</td></tr>';
+      }).join('');
+
+      document.body.setAttribute('data-print', 'invoice');
+      setInvoiceWhatsAppPayload(null);
+      getEl('invMainDocTitle').innerText = 'সকল গ্রাহকের মাসিক বিল শিট / BULK MONTHLY BILLS (' + mn + '/' + yr + ')';
+      getEl('invoiceDetails').innerHTML =
+        '<div style="background:#f1f8e9; padding:10px; border-radius:8px; margin-bottom:12px; display:flex; justify-content:space-between; flex-wrap:wrap; gap:8px;">' +
+          '<span>মোট গ্রাহক: <strong>' + rowsList.length + ' জন</strong></span>' +
+          '<span>মাসের মোট বিল: <strong>₹ ' + gBill.toLocaleString() + '</strong></span>' +
+          '<span>মোট বকেয়া: <strong style="color:#c62828;">₹ ' + gDue.toLocaleString() + '</strong></span>' +
+        '</div>' +
+        '<table class="invoice-table" style="border:1px solid #ddd; width:100%; min-width:unset;">' +
+          '<thead><tr style="background:#e8f5e9;"><th>#</th><th>গ্রাহক</th><th>এলাকা</th><th>পরিমাণ</th><th style="text-align:right;">মাসের বিল</th><th style="text-align:right;">পরিশোধ</th><th style="text-align:right;">সর্বমোট বাকি</th></tr></thead>' +
+          '<tbody>' + tbody + '</tbody>' +
+          '<tfoot><tr style="background:#f5f5f5; font-weight:bold;"><td colspan="4">সর্বমোট (Grand Total)</td><td style="text-align:right;">₹ ' + gBill.toLocaleString() + '</td><td style="text-align:right; color:green;">₹ ' + gPaid.toLocaleString() + '</td><td style="text-align:right; color:#c62828;">₹ ' + gDue.toLocaleString() + '</td></tr></tfoot>' +
+        '</table>';
+      getEl('invoiceModal').style.display = 'flex';
+    };
+
     window._pendingRestoreData = null;
     window.openRestoreConfirmModal = function() {
       var fileInput = getEl('restoreBackupFile');
@@ -2886,20 +3080,33 @@
           var parsed = JSON.parse(e.target.result);
           if (!parsed || typeof parsed !== 'object') throw new Error('Invalid JSON');
           window._pendingRestoreData = parsed;
+          var cntOf = function(node) { return (parsed[node] && typeof parsed[node] === 'object') ? Object.keys(parsed[node]).length : 0; };
+          var cC = cntOf('cattle'), cM = cntOf('milk'), cS = cntOf('sales'), cCu = cntOf('customers'), cE = cntOf('expenses'), cSt = cntOf('stock');
+          var totalRecs = cC + cM + cS + cCu + cE + cSt;
+          var previewHtml = '<div style="background:' + (totalRecs === 0 ? '#ffebee' : '#f1f8e9') + '; border:1px solid ' + (totalRecs === 0 ? '#ef9a9a' : '#c5e1a5') + '; border-radius:8px; padding:10px; margin-bottom:14px; text-align:left; font-size:12.5px; line-height:1.7;">' +
+            '<strong>📋 ফাইলের প্রিভিউ (Restore Preview):</strong><br>' +
+            '• গরু (Cattle): <strong>' + cC + '</strong> | দুধ (Milk): <strong>' + cM + '</strong><br>' +
+            '• গ্রাহক (Customers): <strong>' + cCu + '</strong> | বিক্রি (Sales): <strong>' + cS + '</strong><br>' +
+            '• খরচ (Expenses): <strong>' + cE + '</strong> | স্টক (Stock): <strong>' + cSt + '</strong>' +
+            (totalRecs === 0 ? '<br><span style="color:#c62828; font-weight:bold;">⚠️ সতর্কতা: এই ফাইলে কোনো রেকর্ড পাওয়া যায়নি!</span>' : '') +
+          '</div>';
+
           var m = getEl('restoreConfirmModal');
           if (!m) {
             m = document.createElement('div');
             m.id = 'restoreConfirmModal';
             m.style.cssText = 'display:none; position:fixed; inset:0; background:rgba(0,0,0,0.65); z-index:99999; align-items:center; justify-content:center; padding:15px;';
-            m.innerHTML = '<div style="background:white; max-width:400px; width:100%; border-radius:12px; padding:24px; text-align:center; box-shadow:0 10px 30px rgba(0,0,0,0.3);">' +
-              '<h3 style="color:#e65100; margin-bottom:10px; font-size:17px;">⚠️ ব্যাকআপ রিস্টোর নিশ্চিতকরণ</h3>' +
-              '<p style="font-size:13px; color:#555; margin-bottom:18px;">আপনি কি নিশ্চিতভাবে এই ব্যাকআপ ফাইলটি দিয়ে বর্তমান ডাটাবেস প্রতিস্থাপন করতে চান?</p>' +
+            m.innerHTML = '<div style="background:white; max-width:430px; width:100%; border-radius:12px; padding:24px; text-align:center; box-shadow:0 10px 30px rgba(0,0,0,0.3);">' +
+              '<h3 style="color:#e65100; margin-bottom:10px; font-size:17px;">⚠️ ব্যাকআপ রিস্টোর প্রিভিউ ও নিশ্চিতকরণ</h3>' +
+              '<div id="restorePreviewSummary"></div>' +
+              '<p style="font-size:12.5px; color:#555; margin-bottom:16px;">আপনি কি নিশ্চিতভাবে এই ব্যাকআপ ফাইলটি দিয়ে বর্তমান ডাটাবেস প্রতিস্থাপন করতে চান?</p>' +
               '<div style="display:flex; gap:10px; justify-content:center;">' +
                 '<button class="btn btn-warning" onclick="confirmRestoreBackup()">হ্যাঁ, রিস্টোর করুন</button>' +
                 '<button class="btn btn-info" onclick="cancelRestoreBackup()">বাতিল</button>' +
               '</div></div>';
             document.body.appendChild(m);
           }
+          if (getEl('restorePreviewSummary')) getEl('restorePreviewSummary').innerHTML = previewHtml;
           m.style.display = 'flex';
         } catch (err) {
           showAppToast('ভুল JSON ফাইল! সঠিক ব্যাকআপ ফাইল দিন।');
@@ -3296,6 +3503,7 @@
         '<strong>বিয়ান:</strong> ' + (cowInfo ? (cowInfo.lactation || 0) : 0) + ' | ' +
         '<strong>বাবা/সিমেন:</strong> ' + (cowInfo ? (cowInfo.sire || '-') : '-') + ' | ' +
         '<strong>মা:</strong> ' + (cowInfo ? (cowInfo.dam || '-') : '-') +
+        ((cowInfo && (Number(cowInfo.purchasePrice) > 0 || Number(cowInfo.salePrice) > 0)) ? ('<br><strong>কেনার দাম:</strong> ₹ ' + (Number(cowInfo.purchasePrice) || 0).toLocaleString() + (Number(cowInfo.salePrice) > 0 ? ' | <strong>বিক্রি দাম:</strong> ₹ ' + Number(cowInfo.salePrice).toLocaleString() : '')) : '') +
       '</div>' +
       '<div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(140px, 1fr)); gap:8px; margin-bottom:14px; text-align:center;">' +
         '<div style="background:#e3f2fd; padding:8px; border-radius:8px;"><small style="color:#555;">মোট দুধ (' + totalMilkL.toFixed(1) + ' L)</small><br><strong style="color:#0288d1;">₹ ' + Math.round(estMilkIncome).toLocaleString() + '</strong></div>' +
@@ -4788,16 +4996,26 @@
       getEl('cowGeneration').value = d.generation || 'F1'; getEl('cowDob').value = d.dob || ''; getEl('cowWeight').value = d.weight || '';
       getEl('cowLactation').value = d.lactation || ''; getEl('cowStatus').value = d.status || 'Milking'; getEl('cowMilkDay').value = d.milkDay || '';
       getEl('cowSire').value = d.sire || ''; getEl('cowDam').value = d.dam || ''; getEl('cowExpCalving').value = d.expCalving || '';
+      if (getEl('cowPurchasePrice')) getEl('cowPurchasePrice').value = d.purchasePrice || '';
+      if (getEl('cowSalePrice')) getEl('cowSalePrice').value = d.salePrice || '';
       getEl('cowSubmitBtn').innerText = 'Update Cattle'; getEl('cowCancelBtn').style.display = 'inline-flex';
       switchTab('cattle', document.querySelector('nav button:nth-child(2)'));
     }
     function cancelCattleEdit() {
-      eCatKey = null; ['cowTag','cowBreed','cowBreedType','cowDob','cowWeight','cowLactation','cowMilkDay','cowSire','cowDam','cowExpCalving'].forEach(function(i){ getEl(i).value=''; });
+      eCatKey = null; ['cowTag','cowBreed','cowBreedType','cowDob','cowWeight','cowLactation','cowMilkDay','cowSire','cowDam','cowExpCalving','cowPurchasePrice','cowSalePrice'].forEach(function(i){ if(getEl(i)) getEl(i).value=''; });
       getEl('cowSubmitBtn').innerText = 'Save Cattle'; getEl('cowCancelBtn').style.display = 'none';
     }
     function saveCattle() {
       var tag = (getEl('cowTag').value || '').trim(); if (!tag) return showAppToast('Tag ID দিন!');
-      var data = { tag: tag, breed: getEl('cowBreed').value, breedType: getEl('cowBreedType').value, generation: getEl('cowGeneration').value, dob: getEl('cowDob').value, weight: parseFloat(getEl('cowWeight').value)||0, lactation: parseFloat(getEl('cowLactation').value)||0, status: getEl('cowStatus').value, milkDay: parseFloat(getEl('cowMilkDay').value)||0, sire: getEl('cowSire').value, dam: getEl('cowDam').value, expCalving: getEl('cowExpCalving').value };
+      var data = {
+        tag: tag, breed: getEl('cowBreed').value, breedType: getEl('cowBreedType').value,
+        generation: getEl('cowGeneration').value, dob: getEl('cowDob').value,
+        weight: parseFloat(getEl('cowWeight').value)||0, lactation: parseFloat(getEl('cowLactation').value)||0,
+        status: getEl('cowStatus').value, milkDay: parseFloat(getEl('cowMilkDay').value)||0,
+        sire: getEl('cowSire').value, dam: getEl('cowDam').value, expCalving: getEl('cowExpCalving').value,
+        purchasePrice: parseFloat(getEl('cowPurchasePrice') ? getEl('cowPurchasePrice').value : 0) || 0,
+        salePrice: parseFloat(getEl('cowSalePrice') ? getEl('cowSalePrice').value : 0) || 0
+      };
       if (db) eCatKey ? db.ref('cattle/' + eCatKey).update(data) : db.ref('cattle').push(data);
       cancelCattleEdit();
     }
@@ -6922,6 +7140,45 @@
           '<div style="background:#fff3e0; padding:10px; border-radius:8px; border-left:4px solid #f57c00;"><small style="color:#555;">লো স্টক (Low)</small><div style="font-size:18px; font-weight:bold; color:#e65100;">' + lowCount + ' টি</div></div>' +
           '<div style="background:#ffebee; padding:10px; border-radius:8px; border-left:4px solid #d32f2f;"><small style="color:#555;">মেয়াদ শেষ / আসন্ন</small><div style="font-size:18px; font-weight:bold; color:#c62828;">' + expCount + ' টি</div></div>';
       }
+
+      // Feature: Feed Stock Days-Left Forecast
+      var fBanner = getEl('feedForecastBanner');
+      if (fBanner) {
+        var feedStockKg = 0;
+        for (var fsk in farmStore.stock) {
+          var fst = farmStore.stock[fsk];
+          if (!fst) continue;
+          var nmL = String(fst.name || '').toLowerCase();
+          if (nmL.includes('cattle feed') || nmL.includes('pellet') || nmL.includes('ফিড') || (fst.category === 'Feed & Fodder' && fst.unit === 'kg')) {
+            feedStockKg += (Number(fst.qty) || 0);
+          }
+        }
+        var dayFeedMap = {};
+        for (var rtk in farmStore.feedRations) {
+          var rt = farmStore.feedRations[rtk];
+          if (rt && rt.date && Number(rt.pellet) > 0) {
+            dayFeedMap[rt.date] = (dayFeedMap[rt.date] || 0) + (Number(rt.pellet) || 0);
+          }
+        }
+        var recentDays = Object.keys(dayFeedMap).sort().reverse().slice(0, 14);
+        var avgDailyFeed = 0;
+        if (recentDays.length > 0) {
+          var sumF = 0;
+          recentDays.forEach(function(dKey) { sumF += dayFeedMap[dKey]; });
+          avgDailyFeed = sumF / recentDays.length;
+        }
+        if (feedStockKg > 0 && avgDailyFeed > 0) {
+          var daysLeft = Math.floor(feedStockKg / avgDailyFeed);
+          var fBg = daysLeft <= 5 ? '#ffebee' : (daysLeft <= 10 ? '#fff3e0' : '#e8f5e9');
+          var fCol = daysLeft <= 5 ? '#c62828' : (daysLeft <= 10 ? '#e65100' : '#1b5e20');
+          fBanner.innerHTML = '<div style="background:' + fBg + '; border:1px solid ' + fCol + '; border-radius:8px; padding:10px 14px; font-size:13px; color:' + fCol + '; font-weight:600; display:flex; justify-content:space-between; flex-wrap:wrap; gap:8px;">' +
+            '<span>🌾 গো-খাদ্য পূর্বাভাস (Feed Forecast): বর্তমান ফিড স্টক <strong>' + feedStockKg.toFixed(1) + ' kg</strong> (দৈনিক গড় খরচ: ' + avgDailyFeed.toFixed(1) + ' kg/দিন)</span>' +
+            '<span>⏳ আনুমানিক চলবে: <strong style="font-size:14.5px;">প্রায় ' + daysLeft + ' দিন</strong></span>' +
+          '</div>';
+        } else {
+          fBanner.innerHTML = '';
+        }
+      }
     };
 
     window._activeStockMove = null;
@@ -7846,10 +8103,125 @@
     function downloadBackup() {
       if (!db) return showAppToast('ডাটাবেস নেই!');
       db.ref('/').once('value', function(snap) {
+        var todayISO = new Date().toISOString().split('T')[0];
         var dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(snap.val(), null, 2));
-        var a = document.createElement('a'); a.setAttribute("href", dataStr); a.setAttribute("download", "Nanda_Dairy_Backup.json"); a.click();
+        var a = document.createElement('a');
+        a.setAttribute("href", dataStr);
+        a.setAttribute("download", "Nanda_Dairy_Backup_" + todayISO + ".json");
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        try { localStorage.setItem('nanda_last_backup_ts', new Date().toISOString()); } catch (e) {}
+        renderBackupSummary();
+        renderDashboardAlerts();
+        showAppToast('সম্পূর্ণ JSON ব্যাকআপ সফলভাবে ডাউনলোড হয়েছে!');
       });
     }
+
+    window.renderBackupSummary = function() {
+      var banner = getEl('backupStatusBanner');
+      if (banner) {
+        var lastTs = null;
+        try { lastTs = localStorage.getItem('nanda_last_backup_ts'); } catch (e) {}
+        if (lastTs) {
+          var dtObj = new Date(lastTs);
+          var daysAgo = Math.floor((Date.now() - dtObj.getTime()) / (1000 * 60 * 60 * 24));
+          var dateStr = dtObj.toLocaleDateString('bn-BD') + ' (' + dtObj.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }) + ')';
+          var isOld = daysAgo >= 7;
+          banner.innerHTML = '<div style="background:' + (isOld ? '#fff3e0' : '#e8f5e9') + '; border-left:4px solid ' + (isOld ? '#f57c00' : '#2e7d32') + '; padding:10px 14px; border-radius:8px; font-size:13px; color:' + (isOld ? '#e65100' : '#1b5e20') + '; font-weight:600;">' +
+            (isOld ? '⚠️ শেষ ব্যাকআপ নেওয়া হয়েছিল ' + daysAgo + ' দিন আগে (' + dateStr + ')। আজই নতুন ব্যাকআপ নিন!' : '✔ সর্বশেষ ব্যাকআপ: ' + dateStr + ' (' + (daysAgo === 0 ? 'আজ' : daysAgo + ' দিন আগে') + ')') +
+          '</div>';
+        } else {
+          banner.innerHTML = '<div style="background:#fff3e0; border-left:4px solid #f57c00; padding:10px 14px; border-radius:8px; font-size:13px; color:#e65100; font-weight:600;">ℹ️ এখনো কোনো JSON ব্যাকআপ ডাউনলোড করা হয়নি। ডাটা নিরাপদ রাখতে নিয়মিত ব্যাকআপ ডাউনলোড করুন।</div>';
+        }
+      }
+
+      var grid = getEl('backupDbSummaryGrid');
+      if (grid) {
+        var cnt = function(obj) { return obj ? Object.keys(obj).length : 0; };
+        var cards = [
+          { lbl: '🐄 Cattle', val: cnt(farmStore.cattle), col: '#1b5e20' },
+          { lbl: '🥛 Milk Entries', val: cnt(farmStore.milk), col: '#0288d1' },
+          { lbl: '👥 Customers', val: cnt(farmStore.customers), col: '#2e7d32' },
+          { lbl: '💰 Sales', val: cnt(farmStore.sales), col: '#f57c00' },
+          { lbl: '🧾 Expenses', val: cnt(farmStore.expenses), col: '#c62828' },
+          { lbl: '📦 Stock Items', val: cnt(farmStore.stock), col: '#6a1b9a' },
+          { lbl: '🧬 Breeding', val: cnt(farmStore.breeding), col: '#00838f' },
+          { lbl: '🛡️ Insurance/Loan', val: cnt(farmStore.insuranceLoans), col: '#0277bd' }
+        ];
+        grid.innerHTML = cards.map(function(c) {
+          return '<div style="background:#f8faf9; border:1px solid #e0e0e0; border-left:4px solid ' + c.col + '; border-radius:8px; padding:9px 10px;">' +
+            '<div style="font-size:11px; color:#555; font-weight:600;">' + c.lbl + '</div>' +
+            '<div style="font-size:17px; font-weight:bold; color:' + c.col + ';">' + c.val + '</div>' +
+          '</div>';
+        }).join('');
+      }
+    };
+
+    window.exportFullFarmCsv = function(section) {
+      var rows = [];
+      var clean = function(v) { return String(v === undefined || v === null ? '-' : v).replace(/,/g, ' ').replace(/\r?\n/g, ' '); };
+      var todayISO = new Date().toISOString().split('T')[0];
+
+      if (section === 'cattle') {
+        rows.push(['Tag ID','Breed','Type','Gen','DOB','Weight(kg)','Lactation','Status','Sire','Dam','Purchase Price(Rs)','Sale Price(Rs)']);
+        for (var ck in farmStore.cattle) {
+          var c = farmStore.cattle[ck];
+          rows.push([clean(c.tag), clean(c.breed), clean(c.breedType), clean(c.generation), formatDateBR(c.dob), c.weight||0, c.lactation||0, clean(c.status), clean(c.sire), clean(c.dam), c.purchasePrice||0, c.salePrice||0]);
+        }
+      } else if (section === 'milk') {
+        rows.push(['Date','Cow Tag','Session','Liters','Fat%','SNF%','CLR']);
+        for (var mk in farmStore.milk) {
+          var m = farmStore.milk[mk];
+          rows.push([formatDateBR(m.date), clean(m.cow), clean(m.session), m.liters||0, m.fat||'-', m.snf||'-', m.clr||'-']);
+        }
+      } else if (section === 'sales') {
+        rows.push(['Date','Customer','Phone','Area','Item','Qty','Rate(Rs)','Total(Rs)','Paid(Rs)','Due(Rs)']);
+        for (var sk in farmStore.sales) {
+          var sl = farmStore.sales[sk];
+          if (sl.isPayment && Number(sl.total) === 0) continue;
+          rows.push([formatDateBR(sl.date), clean(sl.name), clean(sl.phone), clean(sl.area), clean(sl.item), sl.qty||1, sl.rate||0, sl.total||0, sl.paid||0, Math.max(0,(Number(sl.total)||0)-(Number(sl.paid)||0))]);
+        }
+      } else if (section === 'customers') {
+        rows.push(['Name','Phone','Area','Address','Daily Demand(L)','Custom Rate(Rs/L)','Opening Due(Rs)','Type','Shift','WhatsApp']);
+        for (var kuk in farmStore.customers) {
+          var cu = farmStore.customers[kuk];
+          rows.push([clean(cu.name), clean(cu.phone), clean(cu.area), clean(cu.addr), cu.demand||0, cu.milkRate||50, cu.openingDue||0, clean(cu.type), clean(cu.shift), cu.whatsappOpt==='blocked'?'Disabled':'Allowed']);
+        }
+      } else if (section === 'expenses') {
+        rows.push(['Date','Category','Description','Vendor','Mode','Status','Amount(Rs)','Paid(Rs)','Due(Rs)']);
+        for (var ek in farmStore.expenses) {
+          var ex = farmStore.expenses[ek];
+          var pd = getExpensePaidAndDue(ex);
+          rows.push([formatDateBR(ex.date), clean(ex.category), clean(ex.title), clean(ex.vendor), clean(ex.payMode||'Cash'), clean(ex.status||'Paid'), pd.total, pd.paid, pd.due]);
+        }
+      } else {
+        var r = getReportPeriodData();
+        rows.push(['Nanda Dairy & Agro - Full Farm Summary', todayISO]);
+        rows.push(['Total Cattle', Object.keys(farmStore.cattle||{}).length]);
+        rows.push(['Total Customers', Object.keys(farmStore.customers||{}).length]);
+        rows.push(['Total Milk Entries', Object.keys(farmStore.milk||{}).length]);
+        rows.push(['Total Sales Entries', Object.keys(farmStore.sales||{}).length]);
+        rows.push(['Total Expense Entries', Object.keys(farmStore.expenses||{}).length]);
+        rows.push(['Total Sales Revenue (Rs)', r.salesTot]);
+        rows.push(['Total Expenses (Rs)', r.expTot]);
+        rows.push(['Net Profit/Loss (Rs)', r.netProfit]);
+        rows.push(['Customer Receivable Due (Rs)', Math.round(r.custDueTot)]);
+        rows.push(['Vendor Payable Due (Rs)', Math.round(r.vendDueTot)]);
+        rows.push(['Stock & Semen Asset Value (Rs)', Math.round(r.stkVal)]);
+        rows.push(['Active Cattle Capital Value (Rs)', Math.round(r.cattleCapital || 0)]);
+      }
+
+      if (rows.length <= 1) return showAppToast('এই বিভাগে এক্সপোর্ট করার মতো কোনো ডাটা নেই!');
+      var csv = "data:text/csv;charset=utf-8,﻿" + rows.map(function(rw){ return rw.join(","); }).join("\r\n");
+      var link = document.createElement("a");
+      link.setAttribute("href", encodeURI(csv));
+      link.setAttribute("download", "Nanda_Dairy_" + section.toUpperCase() + "_" + todayISO + ".csv");
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      showAppToast(section.toUpperCase() + ' CSV ফাইল ডাউনলোড হয়েছে!');
+    };
 
     window.listenAllData = function() {
       if (!db) return;
@@ -7933,6 +8305,7 @@
           farmStore.feedRations[c.key] = c.val();
         });
         renderRationTable();
+        renderStockTable();
       });
 
       db.ref('expenses').on('value', function(snap) {
@@ -8519,6 +8892,13 @@
         var stO = farmStore.stock[stkK];
         if (stO) stkVal += (Number(stO.qty)||0) * (Number(stO.unitCost)||0);
       }
+      var cattleCapital = 0;
+      for (var capK in farmStore.cattle) {
+        var capC = farmStore.cattle[capK];
+        if (capC && String(capC.status || '').toLowerCase() !== 'sold/transferred') {
+          cattleCapital += (Number(capC.purchasePrice) || 0);
+        }
+      }
       var availSemenTot = 0, availConv = 0, availSexed = 0;
       for (var semK in farmStore.semen) {
         var smO = farmStore.semen[semK];
@@ -8547,6 +8927,7 @@
         custDueTot: custDueTot,
         vendDueTot: vendDueTot,
         stkVal: stkVal,
+        cattleCapital: cattleCapital,
         availSemenTot: availSemenTot,
         availConv: availConv,
         availSexed: availSexed
@@ -8582,7 +8963,8 @@
           '<div style="background:#e8f5e9; padding:10px; border-radius:8px;"><small style="color:#555;">গ্রাহকের কাছে পাওনা (Receivable)</small><div style="font-size:16px; font-weight:bold; color:#1b5e20;">₹ ' + Math.round(r.custDueTot).toLocaleString() + '</div></div>' +
           '<div style="background:#ffebee; padding:10px; border-radius:8px;"><small style="color:#555;">দোকানদারের বাকি (Payable)</small><div style="font-size:16px; font-weight:bold; color:#c62828;">₹ ' + Math.round(r.vendDueTot).toLocaleString() + '</div></div>' +
           '<div style="background:#e3f2fd; padding:10px; border-radius:8px;"><small style="color:#555;">মোট স্টক ও সিমেন সম্পদ</small><div style="font-size:16px; font-weight:bold; color:#0288d1;">₹ ' + Math.round(r.stkVal).toLocaleString() + '</div></div>' +
-          '<div style="background:#f3e5f5; padding:10px; border-radius:8px;"><small style="color:#555;">মোট ব্যবহারযোগ্য সিমেন স্ট্র</small><div style="font-size:16px; font-weight:bold; color:#7b1fa2;">' + r.availSemenTot + ' টি</div><small style="color:#555;">Conv: ' + r.availConv + ' | Sexed: ' + r.availSexed + '</small></div>';
+          '<div style="background:#f3e5f5; padding:10px; border-radius:8px;"><small style="color:#555;">মোট ব্যবহারযোগ্য সিমেন স্ট্র</small><div style="font-size:16px; font-weight:bold; color:#7b1fa2;">' + r.availSemenTot + ' টি</div><small style="color:#555;">Conv: ' + r.availConv + ' | Sexed: ' + r.availSexed + '</small></div>' +
+          '<div style="background:#e8f5e9; padding:10px; border-radius:8px;"><small style="color:#555;">🐄 মোট গরু মূলধন (Cattle Asset)</small><div style="font-size:16px; font-weight:bold; color:#1b5e20;">₹ ' + Math.round(r.cattleCapital || 0).toLocaleString() + '</div></div>';
       }
 
       var roiBody = getEl('reportCowRoiTableBody');
