@@ -42,9 +42,6 @@
       console.log(e);
     }
 
-    window.currentUserRole = 'owner';
-    window.currentUserName = 'Owner / Admin';
-
     window.formatDateBR = function(dtStr) {
       if (!dtStr || dtStr === '-') return '-';
       var clean = String(dtStr).trim();
@@ -88,27 +85,7 @@
       return [];
     };
 
-    window.applyUserRolePermissions = function() {
-      var isStaff = (window.currentUserRole === 'staff');
-      if (isStaff) {
-        document.body.classList.add('role-staff');
-      } else {
-        document.body.classList.remove('role-staff');
-      }
-      var roleLbl = getEl('headerUserRole');
-      if (roleLbl) {
-        roleLbl.innerText = window.currentUserName || (isStaff ? 'Staff' : 'Owner / Admin');
-      }
-    };
-
     window.switchTab = function(tab, btn) {
-      if (window.currentUserRole === 'staff' && (tab === 'reports' || tab === 'backup')) {
-        if (typeof showAppToast === 'function') {
-          showAppToast('স্টাফ অ্যাকাউন্ট থেকে Reports বা Backup দেখার অনুমতি নেই!');
-        }
-        return;
-      }
-
       var contents = document.querySelectorAll('.tab-content');
       for (var i = 0; i < contents.length; i++) {
         contents[i].style.display = 'none';
@@ -131,79 +108,18 @@
       }
     };
 
-    window.getStoredStaffUsers = function() {
-      var list = {};
-      try {
-        var cached = localStorage.getItem('nanda_custom_staff_users');
-        if (cached) {
-          var parsed = JSON.parse(cached);
-          if (parsed && typeof parsed === 'object') list = parsed;
-        }
-      } catch (e) {}
-      if (window.farmStore && window.farmStore.staffUsers) {
-        for (var k in window.farmStore.staffUsers) {
-          list[k] = window.farmStore.staffUsers[k];
-        }
-      }
-      return list;
-    };
-
-    window.completeLoginSuccess = function(role, displayName) {
-      window.currentUserRole = role;
-      window.currentUserName = displayName;
-      try {
-        localStorage.setItem('nanda_auth_status', 'logged_in');
-        localStorage.setItem('nanda_auth_role', role);
-        localStorage.setItem('nanda_auth_user', displayName);
-      } catch (e) {}
-      if (getEl('loginErr')) getEl('loginErr').innerText = '';
-      getEl('loginScreen').style.display = 'none';
-      getEl('appBody').style.display = 'block';
-      window.applyUserRolePermissions();
-      if (typeof window.listenAllData === 'function') {
-        window.listenAllData();
-      }
-    };
-
     window.doLogin = function() {
       var u = (getEl('loginId') ? getEl('loginId').value : '').trim().toLowerCase();
       var p = (getEl('loginPass') ? getEl('loginPass').value : '').trim();
 
       if (u === 'nanda' && p === '1234') {
-        window.completeLoginSuccess('owner', 'Owner / Admin');
-        return;
-      }
-      if (u === 'staff' && p === '1111') {
-        window.completeLoginSuccess('staff', 'Staff (staff)');
-        return;
-      }
-
-      var checkCustomStaff = function(staffMap) {
-        for (var k in staffMap) {
-          var st = staffMap[k];
-          if (!st || st.active === false) continue;
-          if (String(st.username || '').trim().toLowerCase() === u && String(st.password || '').trim() === p) {
-            window.completeLoginSuccess('staff', 'Staff (' + (st.name || st.username) + ')');
-            return true;
-          }
+        try { localStorage.setItem('nanda_auth_status', 'logged_in'); } catch (e) {}
+        if (getEl('loginErr')) getEl('loginErr').innerText = '';
+        getEl('loginScreen').style.display = 'none';
+        getEl('appBody').style.display = 'block';
+        if (typeof window.listenAllData === 'function') {
+          window.listenAllData();
         }
-        return false;
-      };
-
-      var localStaff = window.getStoredStaffUsers();
-      if (checkCustomStaff(localStaff)) return;
-
-      if (db) {
-        db.ref('staffUsers').once('value', function(snap) {
-          var remoteStaff = snap.val() || {};
-          try { localStorage.setItem('nanda_custom_staff_users', JSON.stringify(remoteStaff)); } catch (e) {}
-          if (window.farmStore) window.farmStore.staffUsers = remoteStaff;
-          if (!checkCustomStaff(remoteStaff)) {
-            if (getEl('loginErr')) getEl('loginErr').innerText = 'ভুল আইডি বা পাসওয়ার্ড!';
-          }
-        }, function() {
-          if (getEl('loginErr')) getEl('loginErr').innerText = 'ভুল আইডি বা পাসওয়ার্ড!';
-        });
       } else {
         if (getEl('loginErr')) {
           getEl('loginErr').innerText = 'ভুল আইডি বা পাসওয়ার্ড!';
@@ -212,11 +128,7 @@
     };
 
     window.doLogout = function() {
-      try {
-        localStorage.removeItem('nanda_auth_status');
-        localStorage.removeItem('nanda_auth_role');
-        localStorage.removeItem('nanda_auth_user');
-      } catch (e) {}
+      try { localStorage.removeItem('nanda_auth_status'); } catch (e) {}
       location.reload();
     };
 
@@ -260,30 +172,11 @@
       if (typeof autoCalcRation === 'function') autoCalcRation();
       if (typeof autoCalcNextDewormDate === 'function') autoCalcNextDewormDate();
 
-      if (db) {
-        try {
-          db.ref('staffUsers').once('value', function(snap) {
-            var val = snap.val() || {};
-            if (window.farmStore) window.farmStore.staffUsers = val;
-            try { localStorage.setItem('nanda_custom_staff_users', JSON.stringify(val)); } catch (e) {}
-          });
-        } catch (e) {}
-      }
-
       var isLogged = false;
-      var savedRole = 'owner';
-      var savedUser = 'Owner / Admin';
-      try {
-        isLogged = (localStorage.getItem('nanda_auth_status') === 'logged_in');
-        savedRole = localStorage.getItem('nanda_auth_role') || 'owner';
-        savedUser = localStorage.getItem('nanda_auth_user') || (savedRole === 'staff' ? 'Staff' : 'Owner / Admin');
-      } catch (e) {}
+      try { isLogged = (localStorage.getItem('nanda_auth_status') === 'logged_in'); } catch (e) {}
       if (isLogged) {
-        window.currentUserRole = savedRole;
-        window.currentUserName = savedUser;
         if (getEl('loginScreen')) getEl('loginScreen').style.display = 'none';
         if (getEl('appBody')) getEl('appBody').style.display = 'block';
-        window.applyUserRolePermissions();
         if (typeof window.listenAllData === 'function') window.listenAllData();
       } else {
         if (getEl('loginScreen')) getEl('loginScreen').style.display = 'flex';
@@ -305,13 +198,6 @@
 
     * { box-sizing: border-box; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 0; padding: 0; }
     body { background-color: #f1f5f2; color: var(--dark); padding-bottom: 60px; }
-
-    /* Staff Role Restrictions */
-    body.role-staff .owner-only,
-    body.role-staff .owner-only-tab,
-    body.role-staff button[onclick*="deleteRecord"] {
-      display: none !important;
-    }
 
     header {
       background: linear-gradient(135deg, #1b5e20, #2e7d32);
@@ -701,7 +587,7 @@
       <img src="https://cdn-icons-png.flaticon.com/512/2395/2395796.png" data-local-logo="logo.png" alt="Logo">
       <h2>Nanda Dairy & Agro</h2>
       <p style="font-size: 13px; color: #666; margin-bottom: 20px;">ফার্ম ম্যানেজমেন্ট সিস্টেমে স্বাগতম</p>
-      <div style="text-align: left; margin-bottom: 14px;"><label style="font-size: 12px; font-weight:600;">User ID (Owner / Staff)</label><input type="text" id="loginId" placeholder="ইউজার আইডি" onkeydown="if(event.key==='Enter') window.doLogin()"></div>
+      <div style="text-align: left; margin-bottom: 14px;"><label style="font-size: 12px; font-weight:600;">User ID</label><input type="text" id="loginId" placeholder="ইউজার আইডি" onkeydown="if(event.key==='Enter') window.doLogin()"></div>
       <div style="text-align: left; margin-bottom: 20px;"><label style="font-size: 12px; font-weight:600;">Password</label><input type="password" id="loginPass" placeholder="পাসওয়ার্ড" onkeydown="if(event.key==='Enter') window.doLogin()"></div>
       <button class="btn" style="width: 100%; padding: 11px; justify-content:center;" onclick="window.doLogin()">লগইন করুন</button>
       <p id="loginErr" style="color: red; font-size: 12px; margin-top: 10px;"></p>
@@ -713,7 +599,7 @@
     <header>
       <div class="header-title">
         <img src="https://cdn-icons-png.flaticon.com/512/2395/2395796.png" data-local-logo="logo.png" alt="Logo">
-        <div><h1>Nanda Dairy & Agro</h1><span id="headerUserRole" style="font-size: 11px; opacity: 0.9;">Owner / Admin</span></div>
+        <div><h1>Nanda Dairy & Agro</h1><span style="font-size: 11px; opacity: 0.85;">Owner / Admin</span></div>
       </div>
       <div class="header-right">
         <span class="sync-badge">● Online Cloud Sync</span>
@@ -736,8 +622,8 @@
       <button onclick="switchTab('stock', this)">📦 Stock</button>
       <button onclick="switchTab('semen', this)">💉 Semen/Bull</button>
       <button onclick="switchTab('health', this)">🩺 Health & Insurance</button>
-      <button class="owner-only-tab" onclick="switchTab('reports', this)">📈 Reports</button>
-      <button class="owner-only-tab" onclick="switchTab('backup', this)">💾 Backup & Staff</button>
+      <button onclick="switchTab('reports', this)">📈 Reports</button>
+      <button onclick="switchTab('backup', this)">💾 Backup</button>
     </nav>
 
     <div class="container">
@@ -1748,7 +1634,7 @@
         </div>
       </div>
 
-      <!-- ১৬. Backup & Staff Login Manager -->
+      <!-- ১৬. Backup -->
       <div id="tab-backup" class="tab-content" style="display: none;">
         <div class="card">
           <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; flex-wrap:wrap; gap:10px;">
@@ -1767,27 +1653,6 @@
           </div>
         </div>
 
-        <!-- ৯. স্টাফ লগইন ম্যানেজার (Owner Only) -->
-        <div class="card owner-only" style="border-left: 5px solid #1b5e20;">
-          <h2>🔐 স্টাফ ও ম্যানেজার লগইন তৈরি করুন (Staff Account Manager)</h2>
-          <p style="font-size:12.5px; color:#555; margin-bottom:14px;">
-            ডিফল্ট মালিক আইডি: <strong>nanda / 1234</strong> | ডিফল্ট স্টাফ আইডি: <strong>staff / 1111</strong>।
-            এছাড়া আপনি নিচ থেকে নতুন স্টাফ আইডি ও পাসওয়ার্ড তৈরি করতে পারবেন। স্টাফরা এন্ট্রি করতে পারবে কিন্তু <strong>Delete, Reports বা Backup</strong> অ্যাক্সেস পাবে না।
-          </p>
-          <div class="form-grid">
-            <div class="input-group"><label>স্টাফের নাম *</label><input type="text" id="newStaffName" placeholder="যেমন: রহিম / ডেলিভারি বয়"></div>
-            <div class="input-group"><label>Login User ID *</label><input type="text" id="newStaffUser" placeholder="যেমন: staff2"></div>
-            <div class="input-group"><label>Password *</label><input type="text" id="newStaffPass" placeholder="যেমন: 2222"></div>
-          </div>
-          <button class="btn" onclick="createStaffAccount()">➕ নতুন স্টাফ আইডি তৈরি করুন</button>
-
-          <div class="table-container" style="margin-top:16px;">
-            <table>
-              <thead><tr><th>স্টাফের নাম</th><th>User ID</th><th>Password</th><th>রোল ও অনুমতি</th><th>Action</th></tr></thead>
-              <tbody id="staffUsersTableBody"></tbody>
-            </table>
-          </div>
-        </div>
       </div>
     </div>
   </div>
@@ -2024,7 +1889,7 @@
       customers: {}, orders: {}, expenses: {}, stock: {},
       semen: {}, health: {}, feedRations: {}, feed: {},
       vaccine: {}, deworm: {}, labours: {}, labourPayments: {},
-      labourAttendance: {}, stockLogs: {}, insuranceLoans: {}, staffUsers: {}
+      labourAttendance: {}, stockLogs: {}, insuranceLoans: {}
     };
     window.farmStore = farmStore;
     window.activeLedgerCustomerName = '';
@@ -3080,9 +2945,6 @@
 
     window._pendingDelete = null;
     function deleteRecord(path, id) {
-      if (window.currentUserRole === 'staff') {
-        return showAppToast('স্টাফ অ্যাকাউন্ট থেকে কোনো তথ্য ডিলিট করার অনুমতি নেই!');
-      }
       window._pendingDelete = { path: path, id: id };
       var m = getEl('deleteConfirmModal');
       if (!m) {
@@ -3111,58 +2973,6 @@
       window._pendingDelete = null;
       var m = getEl('deleteConfirmModal');
       if (m) m.style.display = 'none';
-    };
-
-    // Feature 9: Custom Staff Accounts Management
-    window.createStaffAccount = function() {
-      if (window.currentUserRole === 'staff') return showAppToast('শুধুমাত্র মালিক নতুন স্টাফ তৈরি করতে পারবেন!');
-      var sName = (getEl('newStaffName') ? getEl('newStaffName').value : '').trim();
-      var sUser = (getEl('newStaffUser') ? getEl('newStaffUser').value : '').trim().toLowerCase();
-      var sPass = (getEl('newStaffPass') ? getEl('newStaffPass').value : '').trim();
-      if (!sName || !sUser || !sPass) return showAppToast('স্টাফের নাম, User ID এবং Password দিন!');
-      if (sUser === 'nanda' || sUser === 'staff') return showAppToast('এই User ID সংরক্ষিত! অন্য একটি আইডি দিন।');
-
-      for (var k in farmStore.staffUsers) {
-        if (farmStore.staffUsers[k] && String(farmStore.staffUsers[k].username || '').toLowerCase() === sUser) {
-          return showAppToast('এই User ID ইতিমধ্যেই তৈরি করা আছে!');
-        }
-      }
-
-      var data = { name: sName, username: sUser, password: sPass, role: 'staff', active: true, createdAt: new Date().toISOString().split('T')[0] };
-      if (db) {
-        db.ref('staffUsers').push(data);
-      } else {
-        farmStore.staffUsers['st_' + Date.now()] = data;
-        try { localStorage.setItem('nanda_custom_staff_users', JSON.stringify(farmStore.staffUsers)); } catch (e) {}
-        renderStaffUsersTable();
-      }
-      ['newStaffName', 'newStaffUser', 'newStaffPass'].forEach(function(id) { if (getEl(id)) getEl(id).value = ''; });
-      showAppToast('নতুন স্টাফ আইডি (' + sUser + ') সফলভাবে তৈরি হয়েছে!');
-    };
-
-    window.renderStaffUsersTable = function() {
-      var body = getEl('staffUsersTableBody');
-      if (!body) return;
-      var html = '<tr style="background:#f4fbf5;">' +
-        '<td><strong>ডিফল্ট স্টাফ (Default)</strong></td>' +
-        '<td><code>staff</code></td>' +
-        '<td><code>1111</code></td>' +
-        '<td><span class="badge badge-warning">Staff (No Delete/Reports/Backup)</span></td>' +
-        '<td><small style="color:#666;">সিস্টেম ডিফল্ট</small></td>' +
-      '</tr>';
-
-      for (var k in farmStore.staffUsers) {
-        var st = farmStore.staffUsers[k];
-        if (!st) continue;
-        html += '<tr>' +
-          '<td><strong>' + (st.name || '-') + '</strong></td>' +
-          '<td><code>' + (st.username || '-') + '</code></td>' +
-          '<td><code>' + (st.password || '-') + '</code></td>' +
-          '<td><span class="badge badge-success">Staff (Entry Only)</span></td>' +
-          '<td><button class="action-btn btn-danger" onclick="deleteRecord(\'staffUsers\',\'' + k + '\')">Delete</button></td>' +
-        '</tr>';
-      }
-      body.innerHTML = html;
     };
 
     window.printSpecificModal = function(target) {
@@ -8034,7 +7844,6 @@
     };
 
     function downloadBackup() {
-      if (window.currentUserRole === 'staff') return showAppToast('স্টাফ অ্যাকাউন্ট থেকে ব্যাকআপ ডাউনলোডের অনুমতি নেই!');
       if (!db) return showAppToast('ডাটাবেস নেই!');
       db.ref('/').once('value', function(snap) {
         var dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(snap.val(), null, 2));
@@ -8043,16 +7852,8 @@
     }
 
     window.listenAllData = function() {
-      renderStaffUsersTable();
       if (!db) return;
       checkAndGenerateDailyOrders();
-
-      db.ref('staffUsers').on('value', function(snap) {
-        farmStore.staffUsers = {};
-        snap.forEach(function(c){ farmStore.staffUsers[c.key] = c.val(); });
-        try { localStorage.setItem('nanda_custom_staff_users', JSON.stringify(farmStore.staffUsers)); } catch (e) {}
-        renderStaffUsersTable();
-      });
 
       db.ref('cattle').on('value', function(snap) {
         farmStore.cattle = {};
