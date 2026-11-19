@@ -1,8 +1,11 @@
-/* ==========================================================================
-   Nanda Dairy & Agro - Enterprise Farm ERP (app.js)
-   সম্পূর্ণ অ্যাপ্লিকেশন লজিক, Firebase সিঙ্ক, চার্ট, ফিল্টার ও রিপোর্ট মডিউল
-   ========================================================================== */
+// ============================================================================
+// Nanda Dairy & Agro - Enterprise Farm ERP (app.js)
+// Extracted cleanly from the latest verified index.html
+// Include in index.html right before </body>:
+//   <script src="app.js"></script>
+// ============================================================================
 
+// --- Core Config, Auth, Navigation & Utility Helpers ---
 function getEl(id) {
   return document.getElementById(id);
 }
@@ -49,7 +52,7 @@ window.getCurrentTimeBR = function() {
   var minutes = d.getMinutes();
   var ampm = hours >= 12 ? 'PM' : 'AM';
   hours = hours % 12;
-  hours = hours ? hours : 12;
+  hours = hours ? hours : 12; 
   minutes = minutes < 10 ? '0' + minutes : minutes;
   return hours + ':' + minutes + ' ' + ampm;
 };
@@ -87,11 +90,14 @@ window.switchTab = function(tab, btn) {
   if (target) {
     target.style.display = 'block';
   }
+  if (tab === 'backup' && typeof renderBackupSummary === 'function') {
+    renderBackupSummary();
+  }
 
-  if (btn) {
-    btn.classList.add('active');
-  } else if (window.event && window.event.target) {
-    window.event.target.classList.add('active');
+  var activeBtn = btn || (window.event && window.event.target ? window.event.target : null);
+  if (activeBtn && activeBtn.classList) {
+    activeBtn.classList.add('active');
+    try { activeBtn.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' }); } catch (e) {}
   }
 };
 
@@ -101,6 +107,7 @@ window.doLogin = function() {
 
   if (u === 'nanda' && p === '1234') {
     try { localStorage.setItem('nanda_auth_status', 'logged_in'); } catch (e) {}
+    if (getEl('loginErr')) getEl('loginErr').innerText = '';
     getEl('loginScreen').style.display = 'none';
     getEl('appBody').style.display = 'block';
     if (typeof window.listenAllData === 'function') {
@@ -148,7 +155,7 @@ window.onload = function() {
     testImg.src = imgEl.getAttribute('data-local-logo');
   });
   var todayISO = new Date().toISOString().split('T')[0];
-  var defaultDateIds = ['milkDate', 'saleDate', 'orderDate', 'expDate', 'brAiDate', 'hlthDate', 'ledgerPayDate', 'feedDate', 'rationDate', 'vacDate', 'dewormDate', 'labJoinDate', 'labPayDate', 'semDate'];
+  var defaultDateIds = ['milkDate', 'milkReconDate', 'saleDate', 'orderDate', 'expDate', 'brAiDate', 'hlthDate', 'ledgerPayDate', 'feedDate', 'rationDate', 'vacDate', 'dewormDate', 'labJoinDate', 'labPayDate', 'labAttDate', 'semDate', 'insStartDate'];
   defaultDateIds.forEach(function(id) {
     if (getEl(id)) {
       getEl(id).value = todayISO;
@@ -170,13 +177,17 @@ window.onload = function() {
   }
 };
 
+// --- Farm Store, Modules, Alerts, Charts, Reports & Backup Logic ---
 var farmStore = {
   cattle: {}, breeding: {}, milk: {}, sales: {},
   customers: {}, orders: {}, expenses: {}, stock: {},
   semen: {}, health: {}, feedRations: {}, feed: {},
-  vaccine: {}, deworm: {}, labours: {}, labourPayments: {}, stockLogs: {}
+  vaccine: {}, deworm: {}, labours: {}, labourPayments: {},
+  labourAttendance: {}, stockLogs: {}, insuranceLoans: {}
 };
+window.farmStore = farmStore;
 window.activeLedgerCustomerName = '';
+window._activeInvoiceWhatsApp = null;
 
 function findCattleByTag(tag) {
   if (!tag || !farmStore.cattle) return null;
@@ -201,6 +212,76 @@ function findCattleKeyByTag(tag) {
   }
   return null;
 }
+
+function findCustomerByName(custName) {
+  if (!custName || !farmStore.customers) return null;
+  var cLow = String(custName).trim().toLowerCase();
+  for (var k in farmStore.customers) {
+    var c = farmStore.customers[k];
+    if (c && (c.name || '').trim().toLowerCase() === cLow) return c;
+  }
+  return null;
+}
+
+window.isCustomerWhatsappAllowed = function(custName) {
+  var c = findCustomerByName(custName);
+  if (c && c.whatsappOpt === 'blocked') return false;
+  return true;
+};
+
+window.openWhatsAppLink = function(phone, messageText) {
+  var digits = String(phone || '').replace(/[^0-9]/g, '');
+  if (!digits) {
+    showAppToast('এই গ্রাহকের মোবাইল নম্বর সেভ করা নেই!');
+    return;
+  }
+  if (digits.length === 10) digits = '91' + digits;
+  var url = 'https://wa.me/' + digits + '?text=' + encodeURIComponent(messageText);
+  window.open(url, '_blank');
+};
+
+window.sendWhatsAppDueReminder = function(custName) {
+  var name = String(custName || '').trim();
+  if (!name) return showAppToast('গ্রাহক নির্বাচন করা হয়নি!');
+  if (!isCustomerWhatsappAllowed(name)) {
+    return showAppToast('এই গ্রাহকের জন্য WhatsApp মেসেজ বন্ধ (Disabled) করা আছে!');
+  }
+  var balMap = getCustomerLiveBalances();
+  var info = balMap[name.toLowerCase()];
+  var custObj = findCustomerByName(name);
+  var phone = (custObj && custObj.phone) ? custObj.phone : (info ? info.phone : '');
+  var due = info ? info.currentDue : 0;
+  var billed = info ? info.totalBilled : 0;
+  var paid = info ? info.totalPaid : 0;
+
+  var msg = 'নমস্কার ' + name + ',\n' +
+    '*Nanda Dairy & Agro*-এর পক্ষ থেকে আপনার হিসাবের সারসংক্ষেপ:\n' +
+    '• সর্বমোট বিল: ₹' + billed.toLocaleString() + '\n' +
+    '• মোট পরিশোধ: ₹' + paid.toLocaleString() + '\n' +
+    '• *বর্তমান বকেয়া: ₹' + due.toLocaleString() + '*\n\n' +
+    (due > 0 ? 'অনুগ্রহ করে সুবিধামতো সময়ে বকেয়া টাকা পরিশোধ করবেন। ধন্যবাদ!' : 'আপনার কোনো বকেয়া নেই। আমাদের সাথে থাকার জন্য ধন্যবাদ!');
+  openWhatsAppLink(phone, msg);
+};
+
+window.sendActiveInvoiceWhatsApp = function() {
+  var payload = window._activeInvoiceWhatsApp;
+  if (!payload) return;
+  if (!isCustomerWhatsappAllowed(payload.name)) {
+    return showAppToast('এই গ্রাহকের জন্য WhatsApp মেসেজ বন্ধ (Disabled) করা আছে!');
+  }
+  openWhatsAppLink(payload.phone, payload.text);
+};
+
+window.setInvoiceWhatsAppPayload = function(payload) {
+  window._activeInvoiceWhatsApp = payload;
+  var btn = getEl('invoiceWaBtn');
+  if (!btn) return;
+  if (payload && payload.name && isCustomerWhatsappAllowed(payload.name)) {
+    btn.style.display = 'inline-flex';
+  } else {
+    btn.style.display = 'none';
+  }
+};
 
 function getDaysDifferenceFromToday(dateStr) {
   if (!dateStr || dateStr === '-' || dateStr === 'শুরু') return null;
@@ -289,9 +370,14 @@ window.renderDashboardAlerts = function() {
   }
 
   var calvingTrackedTags = {};
+  var brHistoryByTag = {};
   for (var bk in farmStore.breeding) {
     var br = farmStore.breeding[bk];
     if (!br || !br.tag) continue;
+    var tUpperBr = br.tag.trim().toUpperCase();
+    if (!brHistoryByTag[tUpperBr]) brHistoryByTag[tUpperBr] = [];
+    brHistoryByTag[tUpperBr].push({ key: bk, data: br, t: parseDateToTime(br.aiDate) });
+
     var expDt = br.expCalvingDate || br.calvingDate || '';
     if (!expDt) continue;
     var st = String(br.status || '').trim().toLowerCase();
@@ -299,8 +385,7 @@ window.renderDashboardAlerts = function() {
 
     var cDiff = getDaysDifferenceFromToday(expDt);
     if (cDiff !== null && cDiff <= 7) {
-      var tUpper = br.tag.trim().toUpperCase();
-      calvingTrackedTags[tUpper] = true;
+      calvingTrackedTags[tUpperBr] = true;
       alerts.push({
         type: 'calving',
         source: 'breeding',
@@ -310,6 +395,31 @@ window.renderDashboardAlerts = function() {
         subtitle: 'সিমেন/ষাঁড়: ' + (br.semenId || '-') + ' | AI: ' + formatDateBR(br.aiDate),
         dueDate: expDt,
         diffDays: cDiff
+      });
+    }
+  }
+
+  // Feature 7: Repeat Breeder Alert (3+ consecutive Failed AI)
+  for (var rbTag in brHistoryByTag) {
+    var recs = brHistoryByTag[rbTag];
+    recs.sort(function(a, b) { return b.t - a.t; });
+    var consecutiveFails = 0;
+    var latestAiDate = recs[0] ? (recs[0].data.aiDate || '') : '';
+    for (var ri = 0; ri < recs.length; ri++) {
+      var rSt = String(recs[ri].data.status || '').trim().toLowerCase();
+      if (rSt === 'failed') consecutiveFails++;
+      else if (rSt === 'pregnant' || rSt === 'calved') break;
+      else if (rSt === 'pending') continue;
+    }
+    if (consecutiveFails >= 3) {
+      alerts.push({
+        type: 'repeat_breeder',
+        key: recs[0].key,
+        tag: recs[0].data.tag,
+        title: '🔁 রিপিট ব্রিডার সতর্কতা (Repeat Breeder)',
+        subtitle: 'পরপর ' + consecutiveFails + ' বার AI ব্যর্থ হয়েছে! ভেট ডাক্তারের পরামর্শ নিন।',
+        dueDate: latestAiDate || new Date().toISOString().split('T')[0],
+        diffDays: 0
       });
     }
   }
@@ -334,6 +444,88 @@ window.renderDashboardAlerts = function() {
         subtitle: 'জাত: ' + (cw.breed || '-') + ' | স্ট্যাটাস: ' + (cw.status || 'Pregnant'),
         dueDate: cw.expCalving,
         diffDays: cwDiff
+      });
+    }
+  }
+
+  // Feature: Heifer First Breeding Alert (14+ months old female calf/heifer with no breeding record)
+  for (var hck in farmStore.cattle) {
+    var hcw = farmStore.cattle[hck];
+    if (!hcw || !hcw.tag || !hcw.dob) continue;
+    var hStat = String(hcw.status || '').trim().toLowerCase();
+    var hType = String(hcw.breedType || '').trim().toLowerCase();
+    if ((hStat === 'heifer' || hStat === 'calf') && !hType.includes('male') && !hType.includes('ষাঁড়')) {
+      var hDob = new Date(hcw.dob);
+      if (!isNaN(hDob.getTime())) {
+        var nowD = new Date();
+        var ageMo = (nowD.getFullYear() - hDob.getFullYear()) * 12 + (nowD.getMonth() - hDob.getMonth());
+        var hTagUp = hcw.tag.trim().toUpperCase();
+        if (ageMo >= 14 && ageMo <= 36 && !brHistoryByTag[hTagUp]) {
+          alerts.push({
+            type: 'heifer_breeding',
+            key: hck,
+            tag: hcw.tag,
+            title: '🧬 প্রথম ব্রিডিংয়ের সময় হয়েছে (Heifer Alert)',
+            subtitle: 'বয়স প্রায় ' + ageMo + ' মাস পূর্ণ হয়েছে। প্রথম AI / প্রজননের জন্য প্রস্তুত কিনা পরীক্ষা করুন।',
+            dueDate: new Date().toISOString().split('T')[0],
+            diffDays: 1
+          });
+        }
+      }
+    }
+  }
+
+  // Feature: Sudden Milk Drop Alert (>= 22% drop compared to previous 3-5 days average)
+  var milkByCowDay = {};
+  for (var mdk in farmStore.milk) {
+    var mdObj = farmStore.milk[mdk];
+    if (!mdObj || !mdObj.cow || !mdObj.date) continue;
+    var mTagUp = mdObj.cow.trim().toUpperCase();
+    if (!milkByCowDay[mTagUp]) milkByCowDay[mTagUp] = {};
+    milkByCowDay[mTagUp][mdObj.date] = (milkByCowDay[mTagUp][mdObj.date] || 0) + (Number(mdObj.liters) || 0);
+  }
+  for (var mdTag in milkByCowDay) {
+    var dMap = milkByCowDay[mdTag];
+    var dList = Object.keys(dMap).sort().reverse();
+    if (dList.length >= 3) {
+      var latestDt = dList[0];
+      var latestDiff = getDaysDifferenceFromToday(latestDt);
+      if (latestDiff !== null && latestDiff >= -2 && latestDiff <= 0) {
+        var latestVal = dMap[latestDt];
+        var prevDays = dList.slice(1, 6);
+        var prevSum = 0;
+        prevDays.forEach(function(pd) { prevSum += dMap[pd]; });
+        var prevAvg = prevSum / prevDays.length;
+        if (prevAvg >= 3 && latestVal < prevAvg * 0.78) {
+          var dropPct = Math.round(((prevAvg - latestVal) / prevAvg) * 100);
+          alerts.push({
+            type: 'milk_drop',
+            key: mdTag,
+            tag: mdTag,
+            title: '📉 হঠাৎ দুধ কমে গেছে (-' + dropPct + '%)',
+            subtitle: 'আগের গড়: ' + prevAvg.toFixed(1) + ' L/দিন → সর্বশেষ: ' + latestVal.toFixed(1) + ' L। Mastitis বা জ্বর যাচাই করুন।',
+            dueDate: latestDt,
+            diffDays: 0
+          });
+        }
+      }
+    }
+  }
+
+  // Feature 10: Cattle Insurance & Loan Reminders (<= 7 days)
+  for (var ik in farmStore.insuranceLoans) {
+    var ins = farmStore.insuranceLoans[ik];
+    if (!ins || !ins.dueDate || ins.status === 'Closed' || ins.status === 'Renewed') continue;
+    var iDiff = getDaysDifferenceFromToday(ins.dueDate);
+    if (iDiff !== null && iDiff <= 7) {
+      alerts.push({
+        type: 'insurance',
+        key: ik,
+        tag: ins.cowTag || ins.policyNo || 'Farm',
+        title: '🛡️ ' + (ins.type || 'Insurance/Loan') + ': ' + (ins.policyNo || ''),
+        subtitle: (ins.provider ? ins.provider + ' | ' : '') + 'পরিমাণ: ₹ ' + (Number(ins.amount) || 0).toLocaleString(),
+        dueDate: ins.dueDate,
+        diffDays: iDiff
       });
     }
   }
@@ -505,7 +697,7 @@ window.renderDashboardAlerts = function() {
   }
 
   if (alerts.length === 0) {
-    container.innerHTML = '<div style="grid-column: 1 / -1; background:#f1f8e9; border:1px dashed #81c784; border-radius:10px; padding:18px; text-align:center; color:#2e7d32; font-weight:600; font-size:13.5px;">✔ আগামী ৭ দিনের মধ্যে কোনো বকেয়া ভ্যাকসিন, কৃমির ওষুধ বা বাচ্চা প্রসবের অ্যালার্ট নেই।</div>';
+    container.innerHTML = '<div style="grid-column: 1 / -1; background:#f1f8e9; border:1px dashed #81c784; border-radius:10px; padding:18px; text-align:center; color:#2e7d32; font-weight:600; font-size:13.5px;">✔ আগামী ৭ দিনের মধ্যে কোনো বকেয়া ভ্যাকসিন, কৃমি, প্রসব, রিপিট ব্রিডার বা বীমা/লোনের অ্যালার্ট নেই।</div>';
     return;
   }
 
@@ -513,7 +705,10 @@ window.renderDashboardAlerts = function() {
   alerts.forEach(function(al) {
     var dayBadge = '';
     var isUrgent = false;
-    if (al.diffDays < 0) {
+    if (al.type === 'repeat_breeder') {
+      isUrgent = true;
+      dayBadge = '<span class="badge badge-danger">🔁 ৩+ বার ব্যর্থ!</span>';
+    } else if (al.diffDays < 0) {
       isUrgent = true;
       dayBadge = '<span class="badge badge-danger">⚠️ ' + Math.abs(al.diffDays) + ' দিন অতিক্রান্ত!</span>';
     } else if (al.diffDays === 0) {
@@ -523,7 +718,7 @@ window.renderDashboardAlerts = function() {
       dayBadge = '<span class="badge badge-warning">⏳ আর মাত্র ' + al.diffDays + ' দিন বাকি</span>';
     }
 
-    var itemClass = 'alert-item' + (isUrgent ? ' urgent' : '') + (al.type === 'calving' ? ' calving' : '');
+    var itemClass = 'alert-item' + (isUrgent ? ' urgent' : '') + (al.type === 'calving' ? ' calving' : '') + (al.type === 'insurance' ? ' insurance' : '');
     var actionButtons = '';
 
     if (al.type === 'vaccine') {
@@ -538,6 +733,14 @@ window.renderDashboardAlerts = function() {
       actionButtons =
         '<button class="action-btn" style="background:#7b1fa2; color:white; padding:6px 12px;" onclick="openCalvingActionModal(\'' + al.source + '\', \'' + al.key + '\', \'' + encodeURIComponent(al.tag) + '\')">✔ বাচ্চা প্রসব সম্পন্ন</button>' +
         '<button class="action-btn btn-info" style="padding:6px 10px;" onclick="' + (al.source === 'breeding' ? 'editBreeding(\'' + al.key + '\')' : 'editCattle(\'' + al.key + '\')') + '">✎ বিস্তারিত</button>';
+    } else if (al.type === 'repeat_breeder') {
+      actionButtons =
+        '<button class="action-btn btn-danger" style="padding:6px 12px;" onclick="openHealthForRepeatBreeder(\'' + encodeURIComponent(al.tag) + '\')">🩺 চিকিৎসা এন্ট্রি</button>' +
+        '<button class="action-btn btn-info" style="padding:6px 10px;" onclick="switchTab(\'breeding\', document.querySelectorAll(\'nav button\')[2])">🧬 ব্রিডিং দেখুন</button>';
+    } else if (al.type === 'insurance') {
+      actionButtons =
+        '<button class="action-btn" style="background:#0277bd; color:white; padding:6px 12px;" onclick="markInsuranceRenewed(\'' + al.key + '\')">✔ নবায়ন/পরিশোধ সম্পন্ন</button>' +
+        '<button class="action-btn btn-info" style="padding:6px 10px;" onclick="editInsuranceLoan(\'' + al.key + '\')">✎ বিস্তারিত</button>';
     } else if (al.type === 'stock') {
       actionButtons =
         '<button class="action-btn btn-warning" style="padding:6px 12px;" onclick="switchTab(\'stock\', document.querySelectorAll(\'nav button\')[11])">📦 স্টক আপডেট করুন</button>';
@@ -561,6 +764,13 @@ window.renderDashboardAlerts = function() {
     } else if (al.type === 'health_withdrawal') {
       actionButtons =
         '<button class="action-btn btn-info" style="padding:6px 12px;" onclick="editHealth(\'' + al.key + '\')">🩺 চিকিৎসার তথ্য দেখুন</button>';
+    } else if (al.type === 'milk_drop') {
+      actionButtons =
+        '<button class="action-btn btn-danger" style="padding:6px 12px;" onclick="openHealthForTag(\'' + encodeURIComponent(al.tag) + '\', \'Sudden Milk Drop\')">🩺 চেকআপ এন্ট্রি</button>' +
+        '<button class="action-btn btn-info" style="padding:6px 10px;" onclick="switchTab(\'milk\', document.querySelectorAll(\'nav button\')[5])">🥛 দুধ খাতা</button>';
+    } else if (al.type === 'heifer_breeding') {
+      actionButtons =
+        '<button class="action-btn" style="background:#7b1fa2; color:white; padding:6px 12px;" onclick="openBreedingForTag(\'' + encodeURIComponent(al.tag) + '\')">🧬 প্রথম AI এন্ট্রি</button>';
     }
 
     html += '<div class="' + itemClass + '">' +
@@ -571,13 +781,36 @@ window.renderDashboardAlerts = function() {
         '</div>' +
         '<div style="font-size:13.5px; font-weight:700; color:#222; margin-top:6px;">' + al.title + '</div>' +
         '<div style="font-size:12px; color:#555; margin-top:3px;">' + al.subtitle + '</div>' +
-        '<div style="font-size:12px; color:#c62828; font-weight:600; margin-top:5px;">📅 নির্ধারিত তারিখ: ' + formatDateBR(al.dueDate) + '</div>' +
+        '<div style="font-size:12px; color:#c62828; font-weight:600; margin-top:5px;">📅 তারিখ: ' + formatDateBR(al.dueDate) + '</div>' +
       '</div>' +
       '<div class="alert-actions">' + actionButtons + '</div>' +
     '</div>';
   });
 
   container.innerHTML = html;
+};
+
+window.openHealthForRepeatBreeder = function(encTag) {
+  var tag = decodeURIComponent(encTag);
+  switchTab('health', document.querySelectorAll('nav button')[13]);
+  if (getEl('hlthCowTag')) getEl('hlthCowTag').value = tag;
+  if (getEl('hlthDisease')) getEl('hlthDisease').value = 'Repeat Breeding';
+  if (getEl('hlthType')) getEl('hlthType').value = 'Doctor Checkup';
+};
+
+window.openHealthForTag = function(encTag, reason) {
+  var tag = decodeURIComponent(encTag);
+  switchTab('health', document.querySelectorAll('nav button')[13]);
+  if (getEl('hlthCowTag')) getEl('hlthCowTag').value = tag;
+  if (getEl('hlthDisease')) getEl('hlthDisease').value = reason || '';
+  if (getEl('hlthType')) getEl('hlthType').value = 'Doctor Checkup';
+};
+
+window.openBreedingForTag = function(encTag) {
+  var tag = decodeURIComponent(encTag);
+  switchTab('breeding', document.querySelectorAll('nav button')[2]);
+  if (getEl('brCowTag')) getEl('brCowTag').value = tag;
+  if (typeof onBreedingSemenOrCowChange === 'function') onBreedingSemenOrCowChange();
 };
 
 window.completeVaccineAlert = function(vacKey) {
@@ -648,8 +881,17 @@ window.openCalvingActionModal = function(source, key, encTag) {
   var todayISO = new Date().toISOString().split('T')[0];
   if (getEl('calvingActualDateInput')) getEl('calvingActualDateInput').value = todayISO;
   if (getEl('calvingNoteInput')) getEl('calvingNoteInput').value = '';
+  if (getEl('calvingAutoCalfCheck')) getEl('calvingAutoCalfCheck').checked = true;
+  if (getEl('calvingCalfFields')) getEl('calvingCalfFields').style.display = 'grid';
+  if (getEl('calvingCalfTag')) getEl('calvingCalfTag').value = tag + '-C1';
+  if (getEl('calvingCalfWeight')) getEl('calvingCalfWeight').value = '25';
+  var motherCow = findCattleByTag(tag);
+  if (motherCow && getEl('calvingCalfGen')) {
+    var nextGenMap = { 'F1': 'F2', 'F2': 'F3', 'F3': 'F4+', 'F4+': 'F4+', 'Pure/100%': 'Pure/100%' };
+    getEl('calvingCalfGen').value = nextGenMap[motherCow.generation] || 'F1';
+  }
   if (getEl('calvingModalDesc')) {
-    getEl('calvingModalDesc').innerHTML = 'গাভী <strong>Tag: ' + tag + '</strong>-এর বাচ্চা প্রসব সম্পন্ন হলে নিচের তথ্যটি নিশ্চিত করুন। এটি সেভ করলে ড্যাশবোর্ড থেকে অ্যালার্টটি মুছে যাবে এবং গাভীর স্ট্যাটাস <strong>Milking</strong>-এ আপডেট হবে।';
+    getEl('calvingModalDesc').innerHTML = 'গাভী <strong>Tag: ' + tag + '</strong>-এর বাচ্চা প্রসব সম্পন্ন হলে নিচের তথ্যটি নিশ্চিত করুন। এটি সেভ করলে গাভীর স্ট্যাটাস <strong>Milking</strong>-এ আপডেট হবে এবং নতুন বাছুর অটোমেটিক Cattle Register-এ যুক্ত হবে।';
   }
   if (getEl('calvingActionModal')) getEl('calvingActionModal').style.display = 'flex';
 };
@@ -667,8 +909,10 @@ window.confirmCalvingAction = function() {
   var k = window.pendingCalvingAction.key;
   var tag = window.pendingCalvingAction.tag;
 
+  var sireVal = '';
   if (src === 'breeding' && farmStore.breeding[k]) {
     var br = farmStore.breeding[k];
+    sireVal = br.semenId || '';
     var updatedNote = noteTxt ? (br.note ? br.note + ' | ' + noteTxt : noteTxt) : (br.note || '');
     if (db) {
       db.ref('breeding/' + k).update({
@@ -686,9 +930,10 @@ window.confirmCalvingAction = function() {
   }
 
   var cKey = (src === 'cattle') ? k : findCattleKeyByTag(tag);
-  if (cKey && farmStore.cattle[cKey]) {
-    var cw = farmStore.cattle[cKey];
-    var newLact = (Number(cw.lactation) || 0) + 1;
+  var motherCow = (cKey && farmStore.cattle[cKey]) ? farmStore.cattle[cKey] : null;
+  if (motherCow) {
+    if (!sireVal) sireVal = motherCow.sire || '';
+    var newLact = (Number(motherCow.lactation) || 0) + 1;
     if (db) {
       db.ref('cattle/' + cKey).update({
         status: 'Milking',
@@ -697,16 +942,47 @@ window.confirmCalvingAction = function() {
         calvingAlertResolved: false
       });
     } else {
-      cw.status = 'Milking';
-      cw.lactation = newLact;
-      cw.expCalving = '';
-      cw.calvingAlertResolved = false;
+      motherCow.status = 'Milking';
+      motherCow.lactation = newLact;
+      motherCow.expCalving = '';
+      motherCow.calvingAlertResolved = false;
     }
+  }
+
+  // Feature 6: Auto Calf Registration
+  var autoCalf = getEl('calvingAutoCalfCheck') ? getEl('calvingAutoCalfCheck').checked : false;
+  var calfTag = (getEl('calvingCalfTag') ? getEl('calvingCalfTag').value : '').trim();
+  var calfCreated = false;
+  if (autoCalf && calfTag) {
+    var calfGender = getEl('calvingCalfGender') ? getEl('calvingCalfGender').value : 'Female (বকনা)';
+    var calfWeight = parseFloat(getEl('calvingCalfWeight') ? getEl('calvingCalfWeight').value : 25) || 25;
+    var calfGen = getEl('calvingCalfGen') ? getEl('calvingCalfGen').value : 'F1';
+    var calfData = {
+      tag: calfTag,
+      breed: motherCow ? (motherCow.breed || '') : '',
+      breedType: calfGender,
+      generation: calfGen,
+      dob: actDate,
+      weight: calfWeight,
+      lactation: 0,
+      status: 'Calf',
+      milkDay: 0,
+      sire: sireVal,
+      dam: tag,
+      expCalving: ''
+    };
+    if (db) {
+      db.ref('cattle').push(calfData);
+    } else {
+      farmStore.cattle['local_' + Date.now()] = calfData;
+    }
+    calfCreated = true;
   }
 
   closeCalvingActionModal();
   renderCattleTable();
   renderDashboardAlerts();
+  showAppToast(calfCreated ? ('বাচ্চা প্রসব সম্পন্ন ও নতুন বাছুর (' + calfTag + ') রেজিস্টার হয়েছে!') : 'বাচ্চা প্রসব সফলভাবে আপডেট হয়েছে!');
 };
 
 window.completeDryOffAlert = function(brKey, encTag) {
@@ -925,6 +1201,9 @@ window.showCustomerMonthlyBill = function(encName, yearParam, monthParam) {
   var monthBill = 0;
   var monthPaid = 0;
   var cPhone = '';
+  var custObj = findCustomerByName(custName);
+  if (custObj && custObj.phone) cPhone = custObj.phone;
+
   for (var k in farmStore.sales) {
     var sl = farmStore.sales[k];
     if (!sl || (sl.isPayment && Number(sl.total) === 0)) continue;
@@ -932,7 +1211,7 @@ window.showCustomerMonthlyBill = function(encName, yearParam, monthParam) {
       items.push(sl);
       monthBill += Number(sl.total) || 0;
       monthPaid += Number(sl.paid) || 0;
-      if (sl.phone) cPhone = sl.phone;
+      if (sl.phone && !cPhone) cPhone = sl.phone;
     }
   }
 
@@ -966,6 +1245,71 @@ window.showCustomerMonthlyBill = function(encName, yearParam, monthParam) {
       '<span style="color:red; font-weight:bold; font-size:15px;">সর্বমোট বকেয়া (পূর্বের বকেয়াসহ): ₹ ' + liveDue.toLocaleString() + '</span>' +
     '</div>';
 
+  setInvoiceWhatsAppPayload({
+    name: custName,
+    phone: cPhone,
+    text: 'নমস্কার ' + custName + ',\n*Nanda Dairy & Agro* - মাসিক বিল (' + mn + '/' + yr + ')\n• মোট এন্ট্রি: ' + items.length + ' টি\n• এই মাসের বিল: ₹' + monthBill.toLocaleString() + '\n• এই মাসে পরিশোধ: ₹' + monthPaid.toLocaleString() + '\n• *সর্বমোট বকেয়া: ₹' + liveDue.toLocaleString() + '*\n\nধন্যবাদ!'
+  });
+
+  getEl('invoiceModal').style.display = 'flex';
+};
+
+// Feature: Bulk Monthly Bill Sheet (All Regular Customers in Selected Month)
+window.showBulkMonthlyBills = function() {
+  if (!window.currentSaleYear) initSalesFilters();
+  var yr = window.currentSaleYear;
+  var mn = window.currentSaleMonth;
+  var prefix = yr + '-' + mn;
+  var custBalances = getCustomerLiveBalances();
+
+  var map = {};
+  for (var k in farmStore.sales) {
+    var sl = farmStore.sales[k];
+    if (!sl || (sl.isPayment && Number(sl.total) === 0)) continue;
+    if (!(sl.date || '').startsWith(prefix)) continue;
+    var nm = (sl.name || '').trim();
+    if (!nm) continue;
+    var key = nm.toLowerCase();
+    if (!map[key]) {
+      var cObj = findCustomerByName(nm);
+      map[key] = { name: nm, phone: sl.phone || (cObj ? cObj.phone : '') || '-', area: sl.area || (cObj ? cObj.area : '') || '-', entries: 0, qty: 0, bill: 0, paid: 0 };
+    }
+    map[key].entries++;
+    map[key].qty += (parseFloat(sl.qty) || 1);
+    map[key].bill += (Number(sl.total) || 0);
+    map[key].paid += (Number(sl.paid) || 0);
+  }
+
+  var rowsList = Object.keys(map).map(function(k) {
+    var r = map[k];
+    r.liveDue = custBalances[k] ? custBalances[k].currentDue : Math.max(0, r.bill - r.paid);
+    return r;
+  }).sort(function(a, b) { return a.name.localeCompare(b.name); });
+
+  if (rowsList.length === 0) {
+    return showAppToast(mn + '/' + yr + ' মাসে কোনো গ্রাহকের বিল পাওয়া যায়নি।');
+  }
+
+  var gBill = 0, gPaid = 0, gDue = 0;
+  var tbody = rowsList.map(function(r, idx) {
+    gBill += r.bill; gPaid += r.paid; gDue += r.liveDue;
+    return '<tr><td>' + (idx + 1) + '</td><td><strong>' + r.name + '</strong><br><small>' + r.phone + '</small></td><td>' + r.area + '</td><td>' + r.qty.toFixed(1) + ' (' + r.entries + ' দিন)</td><td style="text-align:right;">₹ ' + r.bill.toLocaleString() + '</td><td style="text-align:right; color:green;">₹ ' + r.paid.toLocaleString() + '</td><td style="text-align:right; color:#c62828; font-weight:bold;">₹ ' + r.liveDue.toLocaleString() + '</td></tr>';
+  }).join('');
+
+  document.body.setAttribute('data-print', 'invoice');
+  setInvoiceWhatsAppPayload(null);
+  getEl('invMainDocTitle').innerText = 'সকল গ্রাহকের মাসিক বিল শিট / BULK MONTHLY BILLS (' + mn + '/' + yr + ')';
+  getEl('invoiceDetails').innerHTML =
+    '<div style="background:#f1f8e9; padding:10px; border-radius:8px; margin-bottom:12px; display:flex; justify-content:space-between; flex-wrap:wrap; gap:8px;">' +
+      '<span>মোট গ্রাহক: <strong>' + rowsList.length + ' জন</strong></span>' +
+      '<span>মাসের মোট বিল: <strong>₹ ' + gBill.toLocaleString() + '</strong></span>' +
+      '<span>মোট বকেয়া: <strong style="color:#c62828;">₹ ' + gDue.toLocaleString() + '</strong></span>' +
+    '</div>' +
+    '<table class="invoice-table" style="border:1px solid #ddd; width:100%; min-width:unset;">' +
+      '<thead><tr style="background:#e8f5e9;"><th>#</th><th>গ্রাহক</th><th>এলাকা</th><th>পরিমাণ</th><th style="text-align:right;">মাসের বিল</th><th style="text-align:right;">পরিশোধ</th><th style="text-align:right;">সর্বমোট বাকি</th></tr></thead>' +
+      '<tbody>' + tbody + '</tbody>' +
+      '<tfoot><tr style="background:#f5f5f5; font-weight:bold;"><td colspan="4">সর্বমোট (Grand Total)</td><td style="text-align:right;">₹ ' + gBill.toLocaleString() + '</td><td style="text-align:right; color:green;">₹ ' + gPaid.toLocaleString() + '</td><td style="text-align:right; color:#c62828;">₹ ' + gDue.toLocaleString() + '</td></tr></tfoot>' +
+    '</table>';
   getEl('invoiceModal').style.display = 'flex';
 };
 
@@ -981,20 +1325,33 @@ window.openRestoreConfirmModal = function() {
       var parsed = JSON.parse(e.target.result);
       if (!parsed || typeof parsed !== 'object') throw new Error('Invalid JSON');
       window._pendingRestoreData = parsed;
+      var cntOf = function(node) { return (parsed[node] && typeof parsed[node] === 'object') ? Object.keys(parsed[node]).length : 0; };
+      var cC = cntOf('cattle'), cM = cntOf('milk'), cS = cntOf('sales'), cCu = cntOf('customers'), cE = cntOf('expenses'), cSt = cntOf('stock');
+      var totalRecs = cC + cM + cS + cCu + cE + cSt;
+      var previewHtml = '<div style="background:' + (totalRecs === 0 ? '#ffebee' : '#f1f8e9') + '; border:1px solid ' + (totalRecs === 0 ? '#ef9a9a' : '#c5e1a5') + '; border-radius:8px; padding:10px; margin-bottom:14px; text-align:left; font-size:12.5px; line-height:1.7;">' +
+        '<strong>📋 ফাইলের প্রিভিউ (Restore Preview):</strong><br>' +
+        '• গরু (Cattle): <strong>' + cC + '</strong> | দুধ (Milk): <strong>' + cM + '</strong><br>' +
+        '• গ্রাহক (Customers): <strong>' + cCu + '</strong> | বিক্রি (Sales): <strong>' + cS + '</strong><br>' +
+        '• খরচ (Expenses): <strong>' + cE + '</strong> | স্টক (Stock): <strong>' + cSt + '</strong>' +
+        (totalRecs === 0 ? '<br><span style="color:#c62828; font-weight:bold;">⚠️ সতর্কতা: এই ফাইলে কোনো রেকর্ড পাওয়া যায়নি!</span>' : '') +
+      '</div>';
+
       var m = getEl('restoreConfirmModal');
       if (!m) {
         m = document.createElement('div');
         m.id = 'restoreConfirmModal';
         m.style.cssText = 'display:none; position:fixed; inset:0; background:rgba(0,0,0,0.65); z-index:99999; align-items:center; justify-content:center; padding:15px;';
-        m.innerHTML = '<div style="background:white; max-width:400px; width:100%; border-radius:12px; padding:24px; text-align:center; box-shadow:0 10px 30px rgba(0,0,0,0.3);">' +
-          '<h3 style="color:#e65100; margin-bottom:10px; font-size:17px;">⚠️ ব্যাকআপ রিস্টোর নিশ্চিতকরণ</h3>' +
-          '<p style="font-size:13px; color:#555; margin-bottom:18px;">আপনি কি নিশ্চিতভাবে এই ব্যাকআপ ফাইলটি দিয়ে বর্তমান ডাটাবেস প্রতিস্থাপন করতে চান?</p>' +
+        m.innerHTML = '<div style="background:white; max-width:430px; width:100%; border-radius:12px; padding:24px; text-align:center; box-shadow:0 10px 30px rgba(0,0,0,0.3);">' +
+          '<h3 style="color:#e65100; margin-bottom:10px; font-size:17px;">⚠️ ব্যাকআপ রিস্টোর প্রিভিউ ও নিশ্চিতকরণ</h3>' +
+          '<div id="restorePreviewSummary"></div>' +
+          '<p style="font-size:12.5px; color:#555; margin-bottom:16px;">আপনি কি নিশ্চিতভাবে এই ব্যাকআপ ফাইলটি দিয়ে বর্তমান ডাটাবেস প্রতিস্থাপন করতে চান?</p>' +
           '<div style="display:flex; gap:10px; justify-content:center;">' +
             '<button class="btn btn-warning" onclick="confirmRestoreBackup()">হ্যাঁ, রিস্টোর করুন</button>' +
             '<button class="btn btn-info" onclick="cancelRestoreBackup()">বাতিল</button>' +
           '</div></div>';
         document.body.appendChild(m);
       }
+      if (getEl('restorePreviewSummary')) getEl('restorePreviewSummary').innerHTML = previewHtml;
       m.style.display = 'flex';
     } catch (err) {
       showAppToast('ভুল JSON ফাইল! সঠিক ব্যাকআপ ফাইল দিন।');
@@ -1073,12 +1430,15 @@ window.cancelDeleteRecord = function() {
 window.printSpecificModal = function(target) {
   document.body.setAttribute('data-print', target);
   var origTitle = document.title;
-  document.title = " ";
-  window.print();
-  setTimeout(function() {
+  document.title = "Nanda Dairy & Agro";
+  var restoreAfterPrint = function() {
     document.title = origTitle;
-    document.body.removeAttribute('data-print');
-  }, 1000);
+    window.removeEventListener('afterprint', restoreAfterPrint);
+  };
+  window.addEventListener('afterprint', restoreAfterPrint);
+  setTimeout(function() {
+    window.print();
+  }, 120);
 };
 
 function onSaleCustomerInput() {
@@ -1099,6 +1459,10 @@ function onSaleCustomerInput() {
       if (c.phone) getEl('salePhone').value = c.phone;
       if (c.area) getEl('saleArea').value = c.area;
       if (c.addr) getEl('saleAddr').value = c.addr;
+      // Feature 2: Auto-fill Custom Milk Rate
+      if (Number(c.milkRate) > 0 && !eSaleKey) {
+        getEl('saleRate').value = Number(c.milkRate);
+      }
       
       if(cBalMap[val]) {
         var currentDue = cBalMap[val].currentDue;
@@ -1124,6 +1488,12 @@ function onOrderCustomerInput() {
     if ((c.name || '').trim().toLowerCase() === val) {
       if (c.phone) getEl('orderPhone').value = c.phone;
       if (c.area) getEl('orderArea').value = c.area;
+      if (c.shift && getEl('orderShift')) getEl('orderShift').value = c.shift;
+      if (Number(c.demand) > 0 && !eOrdKey) {
+        var r = (Number(c.milkRate) > 0) ? Number(c.milkRate) : 50;
+        if (!getEl('orderItems').value) getEl('orderItems').value = c.demand + ' লিটার তরল দুধ';
+        if (!getEl('orderTotal').value) getEl('orderTotal').value = Number(c.demand) * r;
+      }
       break;
     }
   }
@@ -1161,13 +1531,18 @@ function checkAndGenerateDailyOrders() {
             var cKey = cName.toLowerCase();
             
             if (!todayProcessedMap[cKey]) {
+              // Feature 2: Use customer-specific Custom Milk Rate
+              var customRate = (Number(cust.milkRate) > 0) ? Number(cust.milkRate) : 50;
               var autoOrder = {
                 date: todayISO,
                 customer: cName,
                 phone: cust.phone || '',
                 area: cust.area || '',
+                shift: cust.shift || 'Morning',
                 items: cust.demand + ' লিটার তরল দুধ',
-                total: Number(cust.demand) * 50,
+                qty: Number(cust.demand),
+                rate: customRate,
+                total: Number(cust.demand) * customRate,
                 paid: 0,
                 status: 'Pending'
               };
@@ -1373,7 +1748,10 @@ window.openCattleFeedModal = function(tag) {
     '<strong>জেনারেশন:</strong> ' + (cowInfo ? (cowInfo.generation || '-') : '-') + ' | ' +
     '<strong>স্ট্যাটাস:</strong> ' + (cowInfo ? (cowInfo.status || '-') : '-') + '<br>' +
     '<strong>ওজন:</strong> ' + (cowInfo ? (cowInfo.weight || 0) : 0) + ' kg | ' +
-    '<strong>বিয়ান:</strong> ' + (cowInfo ? (cowInfo.lactation || 0) : 0) +
+    '<strong>বিয়ান:</strong> ' + (cowInfo ? (cowInfo.lactation || 0) : 0) + ' | ' +
+    '<strong>বাবা/সিমেন:</strong> ' + (cowInfo ? (cowInfo.sire || '-') : '-') + ' | ' +
+    '<strong>মা:</strong> ' + (cowInfo ? (cowInfo.dam || '-') : '-') +
+    ((cowInfo && (Number(cowInfo.purchasePrice) > 0 || Number(cowInfo.salePrice) > 0)) ? ('<br><strong>কেনার দাম:</strong> ₹ ' + (Number(cowInfo.purchasePrice) || 0).toLocaleString() + (Number(cowInfo.salePrice) > 0 ? ' | <strong>বিক্রি দাম:</strong> ₹ ' + Number(cowInfo.salePrice).toLocaleString() : '')) : '') +
   '</div>' +
   '<div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(140px, 1fr)); gap:8px; margin-bottom:14px; text-align:center;">' +
     '<div style="background:#e3f2fd; padding:8px; border-radius:8px;"><small style="color:#555;">মোট দুধ (' + totalMilkL.toFixed(1) + ' L)</small><br><strong style="color:#0288d1;">₹ ' + Math.round(estMilkIncome).toLocaleString() + '</strong></div>' +
@@ -1435,7 +1813,7 @@ function renderCattleTable() {
     dl.innerHTML = optHtml;
   }
 
-  var body = getEl('cattleTableBody');
+  var body = getEl('cattleTableBody'); 
   if (body) {
     body.innerHTML = '';
     list.forEach(function(item, index) {
@@ -1443,6 +1821,7 @@ function renderCattleTable() {
       var tagKey = (d.tag || '').trim().toUpperCase();
       var mInfo = milkStats[tagKey];
       var milkDisplay = mInfo && mInfo.total > 0 ? '<strong style="color:var(--primary); font-size:13px;">' + mInfo.total.toFixed(1) + ' L</strong> (' + mInfo.days + ' দিন)' : (d.milkDay ? d.milkDay + ' L/day' : '০ L');
+      var sireDam = (d.sire || '-') + (d.dam ? '<br><small style="color:#666;">মা: ' + d.dam + '</small>' : '');
 
       body.innerHTML += '<tr>' +
         '<td><strong>' + (index + 1) + '</strong></td>' +
@@ -1455,7 +1834,7 @@ function renderCattleTable() {
         '<td>' + (d.lactation || 0) + '</td>' +
         '<td><span class="badge badge-success">' + (d.status || '-') + '</span></td>' +
         '<td>' + milkDisplay + '</td>' +
-        '<td>' + (d.sire || '-') + '</td>' +
+        '<td>' + sireDam + '</td>' +
         '<td>' + formatDateBR(d.expCalving) + '</td>' +
         '<td>' +
           '<button class="action-btn btn-info" onclick="editCattle(\'' + k + '\')">Edit</button>' +
@@ -1466,6 +1845,53 @@ function renderCattleTable() {
   }
   if (getEl('dash-cow-count')) getEl('dash-cow-count').innerText = list.length;
 }
+
+// Feature 4 & 5: Daily Milk Reconciliation & Average Quality Card
+window.renderMilkReconciliation = function() {
+  var grid = getEl('milkReconGrid');
+  if (!grid) return;
+  var targetDt = (getEl('milkReconDate') && getEl('milkReconDate').value) ? getEl('milkReconDate').value : new Date().toISOString().split('T')[0];
+
+  var produced = 0, fatSum = 0, fatCnt = 0, snfSum = 0, snfCnt = 0, clrSum = 0, clrCnt = 0;
+  for (var mk in farmStore.milk) {
+    var m = farmStore.milk[mk];
+    if (!m || m.date !== targetDt) continue;
+    produced += Number(m.liters) || 0;
+    if (Number(m.fat) > 0) { fatSum += Number(m.fat); fatCnt++; }
+    if (Number(m.snf) > 0) { snfSum += Number(m.snf); snfCnt++; }
+    if (Number(m.clr) > 0) { clrSum += Number(m.clr); clrCnt++; }
+  }
+
+  var sold = 0;
+  for (var sk in farmStore.sales) {
+    var s = farmStore.sales[sk];
+    if (!s || (s.isPayment && Number(s.total) === 0) || s.date !== targetDt) continue;
+    var itemLow = String(s.item || '').toLowerCase();
+    if (itemLow.includes('milk') || itemLow.includes('দুধ')) {
+      var q = parseFloat(s.qty) || 0;
+      if (q <= 1 && itemLow.match(/([0-9]+(\.[0-9]+)?)/)) {
+        var parsedFromText = parseFloat(itemLow.match(/([0-9]+(\.[0-9]+)?)/)[1]);
+        if (parsedFromText > 0 && q <= 1) q = parsedFromText;
+      }
+      sold += q;
+    }
+  }
+
+  var diff = produced - sold;
+  var diffColor = diff < 0 ? '#c62828' : '#1b5e20';
+  var diffBg = diff < 0 ? '#ffebee' : '#e8f5e9';
+  var diffLabel = diff < 0 ? '⚠️ ঘাটতি / অসামঞ্জস্য' : 'অবশিষ্ট (বাছুর / ঘরোয়া)';
+
+  var avgFat = fatCnt > 0 ? (fatSum / fatCnt).toFixed(2) + '%' : '-';
+  var avgSnf = snfCnt > 0 ? (snfSum / snfCnt).toFixed(2) + '%' : '-';
+  var avgClr = clrCnt > 0 ? (clrSum / clrCnt).toFixed(1) : '-';
+
+  grid.innerHTML =
+    '<div style="background:#e8f5e9; padding:12px; border-radius:8px; border-left:4px solid #1b5e20;"><small style="color:#555; font-weight:600;">মোট উৎপন্ন দুধ (' + formatDateBR(targetDt) + ')</small><div style="font-size:20px; font-weight:bold; color:#1b5e20;">' + produced.toFixed(1) + ' L</div></div>' +
+    '<div style="background:#fff3e0; padding:12px; border-radius:8px; border-left:4px solid #f57c00;"><small style="color:#555; font-weight:600;">মোট বিক্রি হওয়া দুধ (Sales)</small><div style="font-size:20px; font-weight:bold; color:#e65100;">' + sold.toFixed(1) + ' L</div></div>' +
+    '<div style="background:' + diffBg + '; padding:12px; border-radius:8px; border-left:4px solid ' + diffColor + ';"><small style="color:#555; font-weight:600;">' + diffLabel + '</small><div style="font-size:20px; font-weight:bold; color:' + diffColor + ';">' + (diff > 0 ? '+' : '') + diff.toFixed(1) + ' L</div></div>' +
+    '<div style="background:#e3f2fd; padding:12px; border-radius:8px; border-left:4px solid #0288d1;"><small style="color:#555; font-weight:600;">🧪 গড় কোয়ালিটি (Fat / SNF / CLR)</small><div style="font-size:15px; font-weight:bold; color:#0277bd; margin-top:4px;">Fat: ' + avgFat + ' | SNF: ' + avgSnf + '<br><small style="color:#555;">CLR: ' + avgClr + '</small></div></div>';
+};
 
 window.toggleMilkDate = function(safeDt) {
   var row = getEl('milk-det-' + safeDt);
@@ -1539,11 +1965,13 @@ window.applyMilkFilter = function() {
     window.currentMilkYear = dateObj.getFullYear().toString();
     window.currentMilkMonth = ('0' + (dateObj.getMonth() + 1)).slice(-2);
     if (getEl('milkFilterYear')) getEl('milkFilterYear').value = window.currentMilkYear;
+    if (getEl('milkReconDate')) getEl('milkReconDate').value = d;
   } else {
     window.specificMilkDate = "";
   }
   renderMilkMonthTabs();
   renderGroupedMilkTable();
+  renderMilkReconciliation();
 };
 
 window.clearMilkDateFilter = function() {
@@ -1559,7 +1987,7 @@ window.exportMilk = function(format) {
   var targetDate = window.specificMilkDate;
 
   var exportData = [];
-  exportData.push(["Date", "Cow Tag", "Session", "Quantity (Liters)"]);
+  exportData.push(["Date", "Cow Tag", "Session", "Quantity (Liters)", "Fat %", "SNF %", "CLR"]);
 
   var list = [];
   for (var k in farmStore.milk) {
@@ -1584,13 +2012,13 @@ window.exportMilk = function(format) {
   }
 
   list.forEach(function(m) {
-    exportData.push([formatDateBR(m.date), m.cow, m.session, m.liters]);
+    exportData.push([formatDateBR(m.date), m.cow, m.session, m.liters, m.fat || '-', m.snf || '-', m.clr || '-']);
   });
 
   var fileName = "Milk_Record_" + (targetDate ? targetDate : (targetYear + "_" + targetMonth));
 
   if (format === 'csv') {
-    var csvContent = "data:text/csv;charset=utf-8,\uFEFF";
+    var csvContent = "data:text/csv;charset=utf-8,\uFEFF"; 
     exportData.forEach(function(rowArray) {
       csvContent += rowArray.join(",") + "\r\n";
     });
@@ -1655,12 +2083,12 @@ function renderGroupedMilkTable() {
 
   for (var k in farmStore.milk) {
     var m = farmStore.milk[k];
-    var dtISO = m.date;
+    var dtISO = m.date; 
     if (!dtISO) continue;
 
     var dt = formatDateBR(dtISO) || 'Unknown';
     var lit = Number(m.liters) || 0;
-
+    
     totalMilkAll += lit;
     if (dtISO === todayISO || dt === todayBR) todayTotal += lit;
 
@@ -1676,8 +2104,10 @@ function renderGroupedMilkTable() {
     }
 
     if (match) {
-      if (!dateGroups[dt]) dateGroups[dt] = { date: dt, dateISO: dtISO, total: 0, cows: {}, items: [] };
+      if (!dateGroups[dt]) dateGroups[dt] = { date: dt, dateISO: dtISO, total: 0, fatSum: 0, fatCnt: 0, snfSum: 0, snfCnt: 0, cows: {}, items: [] };
       dateGroups[dt].total += lit;
+      if (Number(m.fat) > 0) { dateGroups[dt].fatSum += Number(m.fat); dateGroups[dt].fatCnt++; }
+      if (Number(m.snf) > 0) { dateGroups[dt].snfSum += Number(m.snf); dateGroups[dt].snfCnt++; }
       if (m.cow) dateGroups[dt].cows[m.cow.trim().toUpperCase()] = true;
       dateGroups[dt].items.push({ key: k, data: m });
     }
@@ -1685,9 +2115,10 @@ function renderGroupedMilkTable() {
 
   if (getEl('dash-milk-today')) getEl('dash-milk-today').innerText = todayTotal.toFixed(1) + ' L';
   if (getEl('rep-milk')) getEl('rep-milk').innerText = totalMilkAll.toFixed(1);
+  renderMilkReconciliation();
 
-  var sortedDates = Object.keys(dateGroups).sort(function(a, b) {
-    return parseDateToTime(dateGroups[b].dateISO) - parseDateToTime(dateGroups[a].dateISO);
+  var sortedDates = Object.keys(dateGroups).sort(function(a, b) { 
+    return parseDateToTime(dateGroups[b].dateISO) - parseDateToTime(dateGroups[a].dateISO); 
   });
 
   if (sortedDates.length === 0) {
@@ -1702,24 +2133,30 @@ function renderGroupedMilkTable() {
     var group = dateGroups[dt];
     var safeDt = dt.replace(/[^a-zA-Z0-9]/g, '_');
     var cowCount = Object.keys(group.cows).length;
+    var avgFatStr = group.fatCnt > 0 ? (group.fatSum / group.fatCnt).toFixed(1) + '%' : '-';
+    var avgSnfStr = group.snfCnt > 0 ? (group.snfSum / group.snfCnt).toFixed(1) + '%' : '-';
+    var qualStr = (group.fatCnt > 0 || group.snfCnt > 0) ? ('<span class="badge" style="background:#e3f2fd; color:#0277bd;">Fat ' + avgFatStr + ' / SNF ' + avgSnfStr + '</span>') : '<span style="color:#999;">-</span>';
 
     html += '<tr style="background:#fff; cursor:pointer;" onclick="toggleMilkDate(\'' + safeDt + '\')">' +
       '<td><strong>📅 ' + dt + '</strong></td>' +
       '<td><strong style="color:var(--primary); font-size:14px;">' + group.total.toFixed(1) + ' L</strong></td>' +
+      '<td>' + qualStr + '</td>' +
       '<td><span class="badge badge-success">' + cowCount + ' টি গরু</span></td>' +
       '<td>' + group.items.length + ' টি এন্ট্রি</td>' +
       '<td><button class="action-btn btn-info" id="milk-btn-' + safeDt + '" onclick="event.stopPropagation(); toggleMilkDate(\'' + safeDt + '\')">বিস্তারিত দেখুন ▼</button></td>' +
     '</tr>';
 
     html += '<tr id="milk-det-' + safeDt + '" style="display:none; background:#f4fbf5;">' +
-      '<td colspan="5" style="padding:12px 18px;">' +
+      '<td colspan="6" style="padding:12px 18px;">' +
         '<div style="background:white; border:1px solid #c8e6c9; border-radius:8px; padding:12px;">' +
           '<table style="width:100%; font-size:12px;">' +
-            '<thead><tr style="background:#e8f5e9;"><th>গরুর ট্যাগ</th><th>সেশন</th><th>দুধ</th><th>অ্যাকশন</th></tr></thead>' +
+            '<thead><tr style="background:#e8f5e9;"><th>গরুর ট্যাগ</th><th>সেশন</th><th>দুধ</th><th>Fat / SNF / CLR</th><th>অ্যাকশন</th></tr></thead>' +
             '<tbody>';
 
     group.items.forEach(function(item) {
-      html += '<tr><td><strong>' + (item.data.cow || '-') + '</strong></td><td>' + (item.data.session || '-') + '</td><td><strong>' + (item.data.liters || 0) + ' L</strong></td><td><button class="action-btn btn-info" onclick="editMilk(\'' + item.key + '\')">Edit</button><button class="action-btn btn-danger" onclick="deleteRecord(\'milk\',\'' + item.key + '\')">Delete</button></td></tr>';
+      var md = item.data;
+      var qInfo = (md.fat || md.snf || md.clr) ? ('F: ' + (md.fat || '-') + '% | S: ' + (md.snf || '-') + '% | C: ' + (md.clr || '-')) : '-';
+      html += '<tr><td><strong>' + (md.cow || '-') + '</strong></td><td>' + (md.session || '-') + '</td><td><strong>' + (md.liters || 0) + ' L</strong></td><td>' + qInfo + '</td><td><button class="action-btn btn-info" onclick="editMilk(\'' + item.key + '\')">Edit</button><button class="action-btn btn-danger" onclick="deleteRecord(\'milk\',\'' + item.key + '\')">Delete</button></td></tr>';
     });
 
     html += '</tbody></table></div></td></tr>';
@@ -1955,8 +2392,8 @@ function renderSalesTable() {
 
     var rawName = (s.name || '').trim();
     if (!rawName) continue;
-
-    var groupKey = rawName.toLowerCase();
+    
+    var groupKey = rawName.toLowerCase(); 
 
     if (!groupedMap[groupKey]) {
       groupedMap[groupKey] = {
@@ -1979,14 +2416,14 @@ function renderSalesTable() {
     groupedMap[groupKey].totalQty += qtyVal;
     groupedMap[groupKey].totalAmount += amtVal;
     groupedMap[groupKey].totalPaid += paidVal;
-
+    
     if (s.phone && !groupedMap[groupKey].phone) groupedMap[groupKey].phone = s.phone;
     if (s.area && !groupedMap[groupKey].area) groupedMap[groupKey].area = s.area;
 
     var curTime = parseDateToTime(dtISO);
     if (curTime > groupedMap[groupKey].latestTime) {
-      groupedMap[groupKey].latestTime = curTime;
-      groupedMap[groupKey].latestDate = dtISO;
+       groupedMap[groupKey].latestTime = curTime;
+       groupedMap[groupKey].latestDate = dtISO;
     }
 
     groupedMap[groupKey].entries.push({ key: k, sale: s });
@@ -2022,6 +2459,7 @@ function renderSalesTable() {
   }
   if (getEl('rep-sales')) getEl('rep-sales').innerText = '₹ ' + tS.toLocaleString();
   calcNet();
+  renderMilkReconciliation();
 
   var areaSelect = getEl('saleAreaFilter');
   if (areaSelect) {
@@ -2057,6 +2495,8 @@ function renderSalesTable() {
     var hasMultiple = totalEntries > 1;
     var rowStyle = 'background:#fafafa; border-top:2px solid #e0e0e0;';
     var dueBadge = dueVal > 0 ? '<strong style="color:red;">₹ ' + dueVal + '</strong>' : '<span class="badge badge-success">পরিশোধ</span>';
+    var waAllowed = isCustomerWhatsappAllowed(item.name);
+    var waBtn = waAllowed ? '<button class="action-btn btn-wa" style="padding:4px 8px; font-size:11px; margin:0;" onclick="sendWhatsAppDueReminder(\'' + item.name.replace(/'/g, "\\'") + '\')" title="WhatsApp রিমাইন্ডার পাঠান">💬 WA</button>' : '<span class="badge" style="background:#eceff1; color:#78909c; font-size:10px;" title="WhatsApp বন্ধ">🔕</span>';
 
     var productSummary = '';
     if (hasMultiple) {
@@ -2066,24 +2506,26 @@ function renderSalesTable() {
       productSummary = (singleSale.item || 'দুধ') + ' (' + (singleSale.qty || 1) + ')';
     }
 
-    var detailsBtn = hasMultiple ?
-      '<button class="action-btn btn-info" id="sale-btn-' + subTableId + '" onclick="toggleSubSales(\'' + subTableId + '\', this)" style="padding:4px 8px; font-size:11px; white-space:nowrap; margin:0;">বিস্তারিত (' + totalEntries + ') ▼</button>' :
+    var detailsBtn = hasMultiple ? 
+      '<button class="action-btn btn-info" id="sale-btn-' + subTableId + '" onclick="toggleSubSales(\'' + subTableId + '\', this)" style="padding:4px 8px; font-size:11px; white-space:nowrap; margin:0;">বিস্তারিত (' + totalEntries + ') ▼</button>' : 
       '';
 
     var actionCol = '';
     if (!hasMultiple) {
       var singleKey = item.entries[0].key;
-      actionCol = '<div style="display:flex; gap:6px; flex-wrap:nowrap;">' +
+      actionCol = '<div style="display:flex; gap:5px; flex-wrap:nowrap; align-items:center;">' +
+                  waBtn +
                   '<button class="action-btn" style="background:#455a64; color:white; padding:4px 8px; font-size:11px; margin:0;" onclick="showCustomerLedger(\'' + encodeURIComponent(item.name) + '\')">খাতা</button>' +
                   '<button class="action-btn btn-info" style="padding:4px 8px; font-size:11px; margin:0;" onclick="showInvoice(\'' + singleKey + '\')">Invoice</button>' +
                   '<button class="action-btn btn-warning" style="padding:4px 8px; font-size:11px; margin:0;" onclick="editSale(\'' + singleKey + '\')">Edit</button>' +
                   '<button class="action-btn btn-danger" style="padding:4px 8px; font-size:11px; margin:0;" onclick="deleteRecord(\'sales\',\'' + singleKey + '\')">Delete</button>' +
                   '</div>';
     } else {
-      actionCol = '<div style="display:flex; gap:6px; flex-wrap:nowrap;">' +
-                  detailsBtn +
+      actionCol = '<div style="display:flex; gap:5px; flex-wrap:nowrap; align-items:center;">' + 
+                  detailsBtn + 
+                  waBtn +
                   '<button class="action-btn" style="background:#455a64; color:white; padding:4px 8px; font-size:11px; margin:0; white-space:nowrap;" onclick="showCustomerLedger(\'' + encodeURIComponent(item.name) + '\')">খাতা</button>' +
-                  '<button class="action-btn" style="background:#2e7d32; color:white; padding:4px 8px; font-size:11px; margin:0; white-space:nowrap;" onclick="showCustomerMonthlyBill(\'' + encodeURIComponent(item.name) + '\')">মাসিক বিল</button>' +
+                  '<button class="action-btn" style="background:#2e7d32; color:white; padding:4px 8px; font-size:11px; margin:0; white-space:nowrap;" onclick="showCustomerMonthlyBill(\'' + encodeURIComponent(item.name) + '\')">মাসিক বিল</button>' + 
                   '</div>';
     }
 
@@ -2103,7 +2545,7 @@ function renderSalesTable() {
         '<div style="font-size:12px; font-weight:bold; color:#2e7d32; margin-bottom:8px;">📋 এই গ্রাহকের সমস্ত বিক্রয় রেকর্ড ও অপশন:</div>' +
         '<div style="overflow-x:auto;"><table style="width:100%; font-size:12px; background:white; border:1px solid #c8e6c9; border-collapse:collapse;">' +
           '<tr style="background:#e8f5e9;"><th style="padding:6px; border:1px solid #c8e6c9;">তারিখ</th><th style="padding:6px; border:1px solid #c8e6c9;">বিবরণ / আইটেম</th><th style="padding:6px; border:1px solid #c8e6c9;">পরিমাণ</th><th style="padding:6px; border:1px solid #c8e6c9;">মোট দাম</th><th style="padding:6px; border:1px solid #c8e6c9;">পরিশোধ</th><th style="padding:6px; border:1px solid #c8e6c9;">কার্যক্রম</th></tr>';
-
+      
       item.entries.sort(function(a,b){ return parseDateToTime(b.sale.date) - parseDateToTime(a.sale.date); });
 
       item.entries.forEach(function(itemObj) {
@@ -2145,12 +2587,51 @@ function toggleSubSales(subId, linkEl) {
   }
 }
 
+// Feature 3: 1-Click Quick Delivered (Delivery Boy Mode)
+window.quickDeliverOrder = function(ordKey) {
+  var d = farmStore.orders ? farmStore.orders[ordKey] : null;
+  if (!d) return;
+  var cust = (d.customer || d.name || '').trim();
+  var custObj = findCustomerByName(cust);
+  var phone = d.phone || (custObj ? custObj.phone : '') || '';
+  var area = d.area || (custObj ? custObj.area : '') || '';
+  var addr = (custObj ? custObj.addr : '') || '';
+  var total = Number(d.total) || Number(d.amount) || 0;
+  var paid = Number(d.paid) || 0;
+  var qty = Number(d.qty) || 1;
+  if (qty === 1 && d.items) {
+    var m = String(d.items).match(/([0-9]+(\.[0-9]+)?)/);
+    if (m) qty = parseFloat(m[1]) || 1;
+  }
+  var rate = Number(d.rate) || (qty > 0 ? parseFloat((total / qty).toFixed(2)) : total);
+  var saleObj = {
+    date: d.date || new Date().toISOString().split('T')[0],
+    name: cust,
+    phone: phone,
+    area: area,
+    addr: addr,
+    item: d.items || 'Liquid Milk',
+    qty: qty,
+    rate: rate,
+    total: total,
+    paid: paid,
+    due: Math.max(0, total - paid),
+    payments: []
+  };
+  if (db) {
+    if (total > 0) db.ref('sales').push(saleObj);
+    db.ref('orders/' + ordKey).remove();
+  }
+  showAppToast(cust + '-এর অর্ডার ডেলিভারড হয়ে সরাসরি Sales-এ যুক্ত হয়েছে!');
+};
+
 function renderOrdersTable() {
   var body = getEl('ordersTableBody');
   if (!body) return;
 
   var searchQ = (getEl('orderSearchInput') ? getEl('orderSearchInput').value : '').trim().toLowerCase();
   var areaFilter = (getEl('orderAreaFilter') ? getEl('orderAreaFilter').value : '').trim().toLowerCase();
+  var shiftFilter = (getEl('orderShiftFilter') ? getEl('orderShiftFilter').value : '').trim().toLowerCase();
 
   var uniqueAreas = {};
   var groupedMap = {};
@@ -2161,22 +2642,27 @@ function renderOrdersTable() {
     if (!d) continue;
     var custName = (d.customer || d.name || d.customerName || '').trim();
     if (!custName) continue;
-
+    
     var stat = String(d.status || 'Pending').trim();
-
+    
     if (stat.toLowerCase().includes('pending') || stat === 'Pending' || stat === '' || !d.status) {
       pendingCount++;
-      var custArea = d.area || '';
+      var custObj = findCustomerByName(custName);
+      var custArea = d.area || (custObj ? custObj.area : '') || '';
+      var custShift = d.shift || (custObj ? custObj.shift : '') || 'Morning';
       if (custArea) uniqueAreas[custArea] = true;
 
+      if (shiftFilter && custShift.toLowerCase() !== shiftFilter && custShift.toLowerCase() !== 'both') continue;
+
       var rawName = custName;
-      var groupKey = rawName.toLowerCase();
+      var groupKey = rawName.toLowerCase(); 
 
       if (!groupedMap[groupKey]) {
         groupedMap[groupKey] = {
           customer: rawName,
-          phone: d.phone || '',
+          phone: d.phone || (custObj ? custObj.phone : '') || '',
           area: custArea,
+          shift: custShift,
           totalAmount: 0,
           entries: [],
           latestDate: (d.date || '').trim(),
@@ -2187,12 +2673,12 @@ function renderOrdersTable() {
       var totVal = Number(d.total) || Number(d.amount) || 0;
       groupedMap[groupKey].totalAmount += totVal;
       if (d.phone && !groupedMap[groupKey].phone) groupedMap[groupKey].phone = d.phone;
-      if (d.area && !groupedMap[groupKey].area) groupedMap[groupKey].area = d.area;
-
+      if (custArea && !groupedMap[groupKey].area) groupedMap[groupKey].area = custArea;
+      
       var curTime = parseDateToTime(d.date || '');
       if (curTime > groupedMap[groupKey].latestTime) {
-        groupedMap[groupKey].latestTime = curTime;
-        groupedMap[groupKey].latestDate = (d.date || '').trim();
+         groupedMap[groupKey].latestTime = curTime;
+         groupedMap[groupKey].latestDate = (d.date || '').trim();
       }
 
       groupedMap[groupKey].entries.push({ key: k, order: d });
@@ -2222,6 +2708,13 @@ function renderOrdersTable() {
 
   filtered.sort(function(a, b) { return b.latestTime - a.latestTime; });
 
+  var sumEl = getEl('orderChecklistSummary');
+  if (sumEl) {
+    var filtCount = 0, filtAmt = 0;
+    filtered.forEach(function(it) { filtCount += it.entries.length; filtAmt += it.totalAmount; });
+    sumEl.innerHTML = '<span>🛵 ডেলিভারি বাকি: <strong>' + filtCount + ' টি অর্ডার</strong> (' + filtered.length + ' জন গ্রাহক)</span><span>মোট সম্ভাব্য বিল: <strong>₹ ' + filtAmt.toLocaleString() + '</strong></span>';
+  }
+
   if (filtered.length === 0) {
     body.innerHTML = '<tr><td colspan="6" style="text-align:center; color:#888;">কোনো অর্ডার রেকর্ড নেই।</td></tr>';
     if (getEl('ordersNoData')) getEl('ordersNoData').style.display = 'block';
@@ -2245,27 +2738,28 @@ function renderOrdersTable() {
       orderSummary = '<span style="font-size:12px;">' + (singleOrder.items || '-') + '</span><br><span style="font-size:11px; color:#555;">মূল্য:</span> <strong>₹ ' + (singleOrder.total || item.totalAmount) + '</strong>';
     }
 
-    var detailsBtn = hasMultiple ?
-      '<button class="action-btn btn-info" id="ord-btn-' + subTableId + '" onclick="toggleSubOrders(\'' + subTableId + '\', this)" style="padding:4px 8px; font-size:11px; white-space:nowrap; margin:0;">বিস্তারিত (' + totalEntries + ') ▼</button>' :
+    var detailsBtn = hasMultiple ? 
+      '<button class="action-btn btn-info" id="ord-btn-' + subTableId + '" onclick="toggleSubOrders(\'' + subTableId + '\', this)" style="padding:4px 8px; font-size:11px; white-space:nowrap; margin:0;">বিস্তারিত (' + totalEntries + ') ▼</button>' : 
       '';
 
     var actionCol = '';
     if (!hasMultiple) {
       var singleKey = item.entries[0].key;
-      actionCol = '<div style="display:flex; gap:6px; flex-wrap:nowrap;">' +
+      actionCol = '<div style="display:flex; gap:5px; flex-wrap:nowrap;">' +
+                  '<button class="action-btn" style="background:#2e7d32; color:white; padding:4px 9px; font-size:11px; margin:0;" onclick="quickDeliverOrder(\'' + singleKey + '\')">✔ Delivered</button>' +
                   '<button class="action-btn" style="background:#455a64; color:white; padding:4px 8px; font-size:11px; margin:0;" onclick="showCustomerLedger(\'' + encodeURIComponent(item.customer) + '\')">খাতা</button>' +
                   '<button class="action-btn btn-info" style="padding:4px 8px; font-size:11px; margin:0;" onclick="editOrder(\'' + singleKey + '\')">Edit</button>' +
                   '<button class="action-btn btn-danger" style="padding:4px 8px; font-size:11px; margin:0;" onclick="deleteRecord(\'orders\',\'' + singleKey + '\')">Delete</button>' +
                   '</div>';
     } else {
-      actionCol = '<div style="display:flex; gap:6px; flex-wrap:nowrap;">' +
-                  detailsBtn +
-                  '<button class="action-btn" style="background:#455a64; color:white; padding:4px 8px; font-size:11px; margin:0; white-space:nowrap;" onclick="showCustomerLedger(\'' + encodeURIComponent(item.customer) + '\')">খাতা</button>' +
+      actionCol = '<div style="display:flex; gap:5px; flex-wrap:nowrap;">' + 
+                  detailsBtn + 
+                  '<button class="action-btn" style="background:#455a64; color:white; padding:4px 8px; font-size:11px; margin:0; white-space:nowrap;" onclick="showCustomerLedger(\'' + encodeURIComponent(item.customer) + '\')">খাতা</button>' + 
                   '</div>';
     }
 
     html += '<tr style="' + rowStyle + '">' +
-      '<td>' + dateBR + '</td>' +
+      '<td>' + dateBR + '<br><span class="badge" style="background:#e3f2fd; color:#0277bd;">' + (item.shift || 'Morning') + '</span></td>' +
       '<td><strong>' + item.customer + '</strong>' + (item.phone ? '<br><small style="color:#666;">📞 ' + item.phone + '</small>' : '') + '</td>' +
       '<td>' + (item.area ? '<span class="badge badge-warning">' + item.area + '</span>' : '-') + '</td>' +
       '<td>' + orderSummary + '</td>' +
@@ -2275,10 +2769,10 @@ function renderOrdersTable() {
 
     if (hasMultiple) {
       html += '<tr id="' + subTableId + '" style="display:none; background:#f1f8e9;"><td colspan="6" style="padding:10px 15px;">' +
-        '<div style="font-size:12px; font-weight:bold; color:#2e7d32; margin-bottom:8px;">📋 এই গ্রাহকের সমস্ত পেন্ডিং অর্ডার ও এডিট/ডিলিট অপশন:</div>' +
+        '<div style="font-size:12px; font-weight:bold; color:#2e7d32; margin-bottom:8px;">📋 এই গ্রাহকের সমস্ত পেন্ডিং অর্ডার ও দ্রুত ডেলিভারি অপশন:</div>' +
         '<div style="overflow-x:auto;"><table style="width:100%; font-size:12px; background:white; border:1px solid #c8e6c9; border-collapse:collapse;">' +
           '<tr style="background:#e8f5e9;"><th style="padding:6px; border:1px solid #c8e6c9;">তারিখ</th><th style="padding:6px; border:1px solid #c8e6c9;">বিবরণ / আইটেম</th><th style="padding:6px; border:1px solid #c8e6c9;">টাকা</th><th style="padding:6px; border:1px solid #c8e6c9;">স্ট্যাটাস</th><th style="padding:6px; border:1px solid #c8e6c9;">কার্যক্রম</th></tr>';
-
+      
       item.entries.sort(function(a,b){ return parseDateToTime(b.order.date) - parseDateToTime(a.order.date); });
 
       item.entries.forEach(function(itemObj) {
@@ -2289,6 +2783,7 @@ function renderOrdersTable() {
           '<td style="padding:6px; border:1px solid #c8e6c9;">₹ ' + (Number(oItem.total) || 0) + '</td>' +
           '<td style="padding:6px; border:1px solid #c8e6c9;"><span class="badge badge-danger">' + (oItem.status || 'Pending') + '</span></td>' +
           '<td style="padding:6px; border:1px solid #c8e6c9; white-space:nowrap;">' +
+            '<button class="action-btn" style="background:#2e7d32; color:white; padding:3px 7px; font-size:11px;" onclick="quickDeliverOrder(\'' + itemObj.key + '\')">✔ Delivered</button> ' +
             '<button class="action-btn btn-info" style="padding:3px 7px; font-size:11px;" onclick="editOrder(\'' + itemObj.key + '\')">Edit</button> ' +
             '<button class="action-btn btn-danger" style="padding:3px 7px; font-size:11px;" onclick="deleteRecord(\'orders\',\'' + itemObj.key + '\')">Delete</button>' +
           '</td>' +
@@ -2494,7 +2989,7 @@ window.showCustomerLedger = function(encName) {
   var custName = decodeURIComponent(encName).trim();
   window.activeLedgerCustomerName = custName;
   document.body.setAttribute('data-print', 'ledger');
-
+  
   var custLower = custName.toLowerCase();
   var cPhone = '', cArea = '', cAddr = '', opDue = 0;
 
@@ -2503,6 +2998,15 @@ window.showCustomerLedger = function(encName) {
     if (cust && cust.name && cust.name.trim().toLowerCase() === custLower) {
       cPhone = cust.phone || ''; cArea = cust.area || ''; cAddr = cust.addr || ''; opDue = Number(cust.openingDue) || 0;
       break;
+    }
+  }
+
+  var ledgerWaBtn = getEl('ledgerWaBtn');
+  if (ledgerWaBtn) {
+    if (isCustomerWhatsappAllowed(custName)) {
+      ledgerWaBtn.style.display = 'inline-flex';
+    } else {
+      ledgerWaBtn.style.display = 'none';
     }
   }
 
@@ -2529,33 +3033,33 @@ window.showCustomerLedger = function(encName) {
       var initialPaid = Math.max(0, bCurPaid - subsequentSum);
 
       if (bTot > 0 || initialPaid > 0) {
-        totalBillAmount += bTot;
+        totalBillAmount += bTot; 
         totalPaidAmount += initialPaid;
-        events.push({
-          date: formatDateBR(s.date),
-          desc: (s.item || 'পণ্য') + (s.qty ? ' (' + s.qty + ')' : ''),
-          bill: bTot,
-          paid: initialPaid,
-          netDiff: bTot - initialPaid,
-          isSale: true,
-          saleKey: k,
-          timestamp: parseDateToTime(s.date)
+        events.push({ 
+          date: formatDateBR(s.date), 
+          desc: (s.item || 'পণ্য') + (s.qty ? ' (' + s.qty + ')' : ''), 
+          bill: bTot, 
+          paid: initialPaid, 
+          netDiff: bTot - initialPaid, 
+          isSale: true, 
+          saleKey: k, 
+          timestamp: parseDateToTime(s.date) 
         });
       }
 
       pList.forEach(function(p, pIdx) {
-        var pAmt = Number(p.amount) || 0;
+        var pAmt = Number(p.amount) || 0; 
         totalPaidAmount += pAmt;
-        events.push({
-          date: formatDateBR(p.date || s.date),
-          desc: '💳 বকেয়া জমা (' + (p.note || 'ক্যাশ') + ')',
-          bill: 0,
-          paid: pAmt,
-          netDiff: -pAmt,
-          isPayment: true,
-          payObj: p,
-          saleKey: k,
-          timestamp: parseDateToTime(p.date || s.date) + (pIdx + 1)
+        events.push({ 
+          date: formatDateBR(p.date || s.date), 
+          desc: '💳 বকেয়া জমা (' + (p.note || 'ক্যাশ') + ')', 
+          bill: 0, 
+          paid: pAmt, 
+          netDiff: -pAmt, 
+          isPayment: true, 
+          payObj: p, 
+          saleKey: k, 
+          timestamp: parseDateToTime(p.date || s.date) + (pIdx + 1) 
         });
       });
     }
@@ -2566,7 +3070,7 @@ window.showCustomerLedger = function(encName) {
   events.forEach(function(ev) { runningBalance += ev.netDiff; ev.cumDue = Math.max(0, runningBalance); });
   events.reverse();
 
-  getEl('ledgerCustSub').innerHTML = 'গ্রাহক: <strong>' + custName + '</strong> ' + (cPhone ? '| 📞 ' + cPhone : '');
+  getEl('ledgerCustSub').innerHTML = 'গ্রাহক: <strong>' + custName + '</strong> ' + (cPhone ? '| 📞 ' + cPhone : '') + (!isCustomerWhatsappAllowed(custName) ? ' <span class="badge" style="background:#eceff1; color:#607d8b;">🔕 WhatsApp বন্ধ</span>' : '');
   getEl('ledgerTotalBill').innerText = '₹ ' + totalBillAmount.toLocaleString();
   getEl('ledgerTotalPaid').innerText = '₹ ' + totalPaidAmount.toLocaleString();
   getEl('ledgerTotalDue').innerText = '₹ ' + Math.max(0, totalBillAmount - totalPaidAmount).toLocaleString();
@@ -2582,11 +3086,11 @@ window.showCustomerLedger = function(encName) {
     var html = '';
     events.forEach(function(ev) {
       if (ev.isOpening) {
-        html += '<tr style="background:#fff9c4;"><td>' + ev.date + '</td><td><strong>' + ev.desc + '</strong></td><td>₹ ' + ev.bill + '</td><td>₹ 0</td><td style="color:#e65100; font-weight:bold;">₹ ' + ev.cumDue + '</td><td>-</td></tr>';
+        html += '<tr style="background:#fff9c4;"><td>' + ev.date + '</td><td><strong>' + ev.desc + '</strong></td><td>₹ ' + ev.bill + '</td><td>₹ 0</td><td style="color:#e65100; font-weight:bold;">₹ ' + ev.cumDue + '</td><td><button class="action-btn btn-info" onclick="showLedgerEntryInvoice(\'' + encodeURIComponent(custName) + '\', \'' + encodeURIComponent(ev.date) + '\', \'' + encodeURIComponent(ev.desc) + '\', ' + ev.bill + ', 0, ' + ev.cumDue + ', \'\')">📄 Invoice</button></td></tr>';
       } else if (ev.isSale) {
-        html += '<tr><td>' + ev.date + '</td><td><strong>' + ev.desc + '</strong></td><td>₹ ' + ev.bill + '</td><td style="color:green; font-weight:600;">₹ ' + ev.paid + '</td><td style="color:#e65100; font-weight:bold;">₹ ' + ev.cumDue + '</td><td><button class="action-btn btn-info" onclick="showInvoice(\'' + ev.saleKey + '\')">📄 Invoice</button></td></tr>';
+        html += '<tr><td>' + ev.date + '</td><td><strong>' + ev.desc + '</strong></td><td>₹ ' + ev.bill + '</td><td style="color:green; font-weight:600;">₹ ' + ev.paid + '</td><td style="color:#e65100; font-weight:bold;">₹ ' + ev.cumDue + '</td><td><button class="action-btn btn-info" onclick="showInvoice(\'' + ev.saleKey + '\', ' + ev.cumDue + ')">📄 Invoice</button></td></tr>';
       } else {
-        html += '<tr style="background:#f9fdfa;"><td>' + ev.date + '</td><td><strong style="color:#1b5e20;">' + ev.desc + '</strong></td><td>₹ 0</td><td style="color:green; font-weight:700;">₹ ' + ev.paid + '</td><td style="color:#e65100; font-weight:bold;">₹ ' + ev.cumDue + '</td><td>-</td></tr>';
+        html += '<tr style="background:#f9fdfa;"><td>' + ev.date + '</td><td><strong style="color:#1b5e20;">' + ev.desc + '</strong></td><td>₹ 0</td><td style="color:green; font-weight:700;">₹ ' + ev.paid + '</td><td style="color:#e65100; font-weight:bold;">₹ ' + ev.cumDue + '</td><td><button class="action-btn btn-info" onclick="showLedgerEntryInvoice(\'' + encodeURIComponent(custName) + '\', \'' + encodeURIComponent(ev.date) + '\', \'' + encodeURIComponent(ev.desc) + '\', 0, ' + ev.paid + ', ' + ev.cumDue + ', \'' + (ev.saleKey || '') + '\')">📄 Invoice</button></td></tr>';
       }
     });
     tbody.innerHTML = html;
@@ -2614,14 +3118,14 @@ window.saveCustomerPayment = function() {
     if (s && (s.name || '').trim().toLowerCase() === custName.toLowerCase()) {
       var sTot = Number(s.total) || 0;
       var sPd = Number(s.paid) || 0;
-      var actualDue = sTot - sPd;
+      var actualDue = sTot - sPd; 
       if (actualDue > 0) {
         unpaidSales.push({ key: k, data: s, actualDue: actualDue });
       }
     }
   }
-  unpaidSales.sort(function(a, b) {
-    return parseDateToTime(a.data.date) - parseDateToTime(b.data.date);
+  unpaidSales.sort(function(a, b) { 
+    return parseDateToTime(a.data.date) - parseDateToTime(b.data.date); 
   });
 
   var paymentId = 'PAY-' + Date.now();
@@ -2633,50 +3137,104 @@ window.saveCustomerPayment = function() {
     var curPaid = Number(item.data.paid) || 0;
     var payAmount = Math.min(rem, curDue);
     rem -= payAmount;
-
+    
     var pList = getPaymentsArray(item.data.payments);
     pList.push({ id: paymentId, date: pDate, amount: payAmount, note: pNote });
-
+    
     var newPaid = curPaid + payAmount;
     var newDue = Math.max(0, (Number(item.data.total) || 0) - newPaid);
-
+    
     if (db) {
       db.ref('sales/' + item.key).update({ paid: newPaid, due: newDue, payments: pList });
     }
   });
 
   if (rem > 0) {
-    var advRecord = {
-      date: pDate,
-      name: custName,
-      phone: '', area: '', addr: '',
-      item: 'অগ্রিম/অতিরিক্ত জমা (' + pNote + ')',
-      qty: 1, rate: 0, total: 0,
-      paid: rem, due: 0,
-      isPayment: true,
-      payments: [{ id: paymentId, date: pDate, amount: rem, note: pNote }]
+    var advRecord = { 
+      date: pDate, 
+      name: custName, 
+      phone: '', area: '', addr: '', 
+      item: 'অগ্রিম/অতিরিক্ত জমা (' + pNote + ')', 
+      qty: 1, rate: 0, total: 0, 
+      paid: rem, due: 0, 
+      isPayment: true, 
+      payments: [{ id: paymentId, date: pDate, amount: rem, note: pNote }] 
     };
     if (db) db.ref('sales').push(advRecord);
   }
 
   showAppToast('পেমেন্ট সফলভাবে জমা হয়েছে!');
-  getEl('ledgerPayAmount').value = '';
+  getEl('ledgerPayAmount').value = ''; 
   getEl('ledgerPayNote').value = '';
 };
 
-window.showInvoice = function(k) {
+window.showInvoice = function(k, balanceAfterEntry) {
   var d = farmStore.sales[k];
   if (!d) return;
   document.body.setAttribute('data-print', 'invoice');
   getEl('invMainDocTitle').innerText = 'ইনভয়েস (ক্যাশ মেমো)';
-  var liveDue = getCustomerLiveBalances()[(d.name || '').trim().toLowerCase()]?.currentDue || 0;
-  getEl('invoiceDetails').innerHTML = '<div style="display:flex; justify-content:space-between; margin-bottom:12px;"><div><strong>গ্রাহক:</strong> ' + d.name + '<br>মোবাইল: ' + (d.phone || '-') + '</div><div style="text-align:right;">তারিখ: ' + formatDateBR(d.date) + '<br>ইনভয়েস: #NDA-' + k.substring(1, 6).toUpperCase() + '</div></div><table class="invoice-table" style="border:1px solid #ddd; width:100%; min-width:unset;"><thead><tr style="background:#e8f5e9;"><th>পণ্য</th><th>পরিমাণ</th><th>দর</th><th style="text-align:right;">মোট</th></tr></thead><tbody><tr><td>' + d.item + '</td><td>' + d.qty + '</td><td>₹ ' + d.rate + '</td><td style="text-align:right; font-weight:bold;">₹ ' + d.total + '</td></tr></tbody></table><div style="text-align:right; margin-top:10px;">চালান মূল্য: ₹ ' + d.total + '<br>নগদ পরিশোধ: ₹ ' + d.paid + '<br><span style="color:red; font-weight:bold;">মোট বকেয়া: ₹ ' + liveDue + '</span></div>';
+  var liveDue = (typeof balanceAfterEntry === 'number') ? balanceAfterEntry : (getCustomerLiveBalances()[(d.name || '').trim().toLowerCase()]?.currentDue || 0);
+  var dueLabel = (typeof balanceAfterEntry === 'number') ? 'এই লেনদেনের পর বাকি' : 'মোট বকেয়া';
+  var custObj = findCustomerByName(d.name);
+  var cPhone = d.phone || (custObj ? custObj.phone : '') || '';
+  getEl('invoiceDetails').innerHTML = '<div style="display:flex; justify-content:space-between; margin-bottom:12px;"><div><strong>গ্রাহক:</strong> ' + d.name + '<br>মোবাইল: ' + (cPhone || '-') + '</div><div style="text-align:right;">তারিখ: ' + formatDateBR(d.date) + '<br>ইনভয়েস: #NDA-' + k.substring(1, 6).toUpperCase() + '</div></div><table class="invoice-table" style="border:1px solid #ddd; width:100%; min-width:unset;"><thead><tr style="background:#e8f5e9;"><th>পণ্য</th><th>পরিমাণ</th><th>দর</th><th style="text-align:right;">মোট</th></tr></thead><tbody><tr><td>' + d.item + '</td><td>' + d.qty + '</td><td>₹ ' + d.rate + '</td><td style="text-align:right; font-weight:bold;">₹ ' + d.total + '</td></tr></tbody></table><div style="text-align:right; margin-top:10px;">চালান মূল্য: ₹ ' + d.total + '<br>নগদ পরিশোধ: ₹ ' + d.paid + '<br><span style="color:red; font-weight:bold;">' + dueLabel + ': ₹ ' + liveDue + '</span></div>';
+
+  setInvoiceWhatsAppPayload({
+    name: d.name,
+    phone: cPhone,
+    text: 'নমস্কার ' + d.name + ',\n*Nanda Dairy & Agro* - ইনভয়েস (' + formatDateBR(d.date) + ')\n• পণ্য: ' + (d.item || 'দুধ') + ' (' + (d.qty || 1) + ' × ₹' + (d.rate || 0) + ')\n• চালান মূল্য: ₹' + (d.total || 0) + '\n• পরিশোধ: ₹' + (d.paid || 0) + '\n• *' + dueLabel + ': ₹' + liveDue + '*\n\nধন্যবাদ!'
+  });
+
+  getEl('invoiceModal').style.display = 'flex';
+};
+
+window.showLedgerEntryInvoice = function(encCust, encDate, encDesc, billAmt, paidAmt, balanceAfter, saleKey) {
+  var custName = decodeURIComponent(encCust);
+  var dtStr = decodeURIComponent(encDate);
+  var descStr = decodeURIComponent(encDesc);
+  var cPhone = '';
+  for (var ck in farmStore.customers) {
+    var c = farmStore.customers[ck];
+    if (c && (c.name || '').trim().toLowerCase() === custName.trim().toLowerCase()) {
+      cPhone = c.phone || '';
+      break;
+    }
+  }
+  document.body.setAttribute('data-print', 'invoice');
+  getEl('invMainDocTitle').innerText = paidAmt > 0 ? 'পেমেন্ট রসিদ / PAYMENT RECEIPT' : 'বকেয়া বিবরণী / STATEMENT';
+  var refNo = saleKey ? ('#NDA-' + saleKey.substring(1, 6).toUpperCase()) : ('#REC-' + Date.now().toString().slice(-5));
+  getEl('invoiceDetails').innerHTML =
+    '<div style="display:flex; justify-content:space-between; margin-bottom:12px;">' +
+      '<div><strong>গ্রাহক:</strong> ' + custName + '<br>মোবাইল: ' + (cPhone || '-') + '</div>' +
+      '<div style="text-align:right;">তারিখ: ' + dtStr + '<br>রসিদ নং: ' + refNo + '</div>' +
+    '</div>' +
+    '<table class="invoice-table" style="border:1px solid #ddd; width:100%; min-width:unset;">' +
+      '<thead><tr style="background:#e8f5e9;"><th>বিবরণ</th><th style="text-align:right;">বিলের পরিমাণ</th><th style="text-align:right;">পরিশোধ (জমা)</th></tr></thead>' +
+      '<tbody><tr><td>' + descStr + '</td><td style="text-align:right;">₹ ' + billAmt + '</td><td style="text-align:right; color:green; font-weight:bold;">₹ ' + paidAmt + '</td></tr></tbody>' +
+    '</table>' +
+    '<div style="text-align:right; margin-top:10px; line-height:1.8;">' +
+      (billAmt > 0 ? 'বিলের পরিমাণ: ₹ ' + billAmt + '<br>' : '') +
+      'নগদ জমা / পরিশোধ: <strong style="color:green;">₹ ' + paidAmt + '</strong><br>' +
+      '<span style="color:red; font-weight:bold;">এই লেনদেনের পর বাকি: ₹ ' + balanceAfter + '</span>' +
+    '</div>';
+
+  setInvoiceWhatsAppPayload({
+    name: custName,
+    phone: cPhone,
+    text: 'নমস্কার ' + custName + ',\n*Nanda Dairy & Agro* - পেমেন্ট রসিদ (' + dtStr + ')\n• বিবরণ: ' + descStr + '\n• জমা/পরিশোধ: ₹' + paidAmt + '\n• *বর্তমান বাকি: ₹' + balanceAfter + '*\n\nধন্যবাদ!'
+  });
+
   getEl('invoiceModal').style.display = 'flex';
 };
 
 window.closeInvoice = function() {
   getEl('invoiceModal').style.display = 'none';
-  document.body.removeAttribute('data-print');
+  setInvoiceWhatsAppPayload(null);
+  if (getEl('ledgerModal') && getEl('ledgerModal').style.display === 'flex') {
+    document.body.setAttribute('data-print', 'ledger');
+  } else {
+    document.body.removeAttribute('data-print');
+  }
 };
 
 var eCatKey = null;
@@ -2686,16 +3244,26 @@ function editCattle(k) {
   getEl('cowGeneration').value = d.generation || 'F1'; getEl('cowDob').value = d.dob || ''; getEl('cowWeight').value = d.weight || '';
   getEl('cowLactation').value = d.lactation || ''; getEl('cowStatus').value = d.status || 'Milking'; getEl('cowMilkDay').value = d.milkDay || '';
   getEl('cowSire').value = d.sire || ''; getEl('cowDam').value = d.dam || ''; getEl('cowExpCalving').value = d.expCalving || '';
+  if (getEl('cowPurchasePrice')) getEl('cowPurchasePrice').value = d.purchasePrice || '';
+  if (getEl('cowSalePrice')) getEl('cowSalePrice').value = d.salePrice || '';
   getEl('cowSubmitBtn').innerText = 'Update Cattle'; getEl('cowCancelBtn').style.display = 'inline-flex';
   switchTab('cattle', document.querySelector('nav button:nth-child(2)'));
 }
 function cancelCattleEdit() {
-  eCatKey = null; ['cowTag','cowBreed','cowBreedType','cowDob','cowWeight','cowLactation','cowMilkDay','cowSire','cowDam','cowExpCalving'].forEach(function(i){ getEl(i).value=''; });
+  eCatKey = null; ['cowTag','cowBreed','cowBreedType','cowDob','cowWeight','cowLactation','cowMilkDay','cowSire','cowDam','cowExpCalving','cowPurchasePrice','cowSalePrice'].forEach(function(i){ if(getEl(i)) getEl(i).value=''; });
   getEl('cowSubmitBtn').innerText = 'Save Cattle'; getEl('cowCancelBtn').style.display = 'none';
 }
 function saveCattle() {
   var tag = (getEl('cowTag').value || '').trim(); if (!tag) return showAppToast('Tag ID দিন!');
-  var data = { tag: tag, breed: getEl('cowBreed').value, breedType: getEl('cowBreedType').value, generation: getEl('cowGeneration').value, dob: getEl('cowDob').value, weight: parseFloat(getEl('cowWeight').value)||0, lactation: parseFloat(getEl('cowLactation').value)||0, status: getEl('cowStatus').value, milkDay: parseFloat(getEl('cowMilkDay').value)||0, sire: getEl('cowSire').value, dam: getEl('cowDam').value, expCalving: getEl('cowExpCalving').value };
+  var data = {
+    tag: tag, breed: getEl('cowBreed').value, breedType: getEl('cowBreedType').value,
+    generation: getEl('cowGeneration').value, dob: getEl('cowDob').value,
+    weight: parseFloat(getEl('cowWeight').value)||0, lactation: parseFloat(getEl('cowLactation').value)||0,
+    status: getEl('cowStatus').value, milkDay: parseFloat(getEl('cowMilkDay').value)||0,
+    sire: getEl('cowSire').value, dam: getEl('cowDam').value, expCalving: getEl('cowExpCalving').value,
+    purchasePrice: parseFloat(getEl('cowPurchasePrice') ? getEl('cowPurchasePrice').value : 0) || 0,
+    salePrice: parseFloat(getEl('cowSalePrice') ? getEl('cowSalePrice').value : 0) || 0
+  };
   if (db) eCatKey ? db.ref('cattle/' + eCatKey).update(data) : db.ref('cattle').push(data);
   cancelCattleEdit();
 }
@@ -2703,27 +3271,27 @@ function saveCattle() {
 var eBrKey = null;
 function editBreeding(k) {
   var d = farmStore.breeding[k]; if (!d) return; eBrKey = k;
-  getEl('brCowTag').value = d.tag || '';
-  getEl('brAiDate').value = d.aiDate || '';
+  getEl('brCowTag').value = d.tag || ''; 
+  getEl('brAiDate').value = d.aiDate || ''; 
   getEl('brHeatSigns').value = d.heatSigns || '-';
-  getEl('brSemenId').value = d.semenId || '';
-  getEl('brCompany').value = d.company || '';
-  getEl('brAiCost').value = d.aiCost || '';
+  getEl('brSemenId').value = d.semenId || ''; 
+  getEl('brCompany').value = d.company || ''; 
+  getEl('brAiCost').value = d.aiCost || ''; 
   getEl('brPdDate').value = d.pdDate || '';
-  getEl('brStatus').value = d.status || 'Pending';
-  getEl('brExpCalvingDate').value = d.expCalvingDate || d.calvingDate || '';
+  getEl('brStatus').value = d.status || 'Pending'; 
+  getEl('brExpCalvingDate').value = d.expCalvingDate || d.calvingDate || ''; 
   getEl('brActCalvingDate').value = d.actCalvingDate || '';
   getEl('brNote').value = d.note || '';
-  getEl('brSubmitBtn').innerText = 'Update Breeding';
+  getEl('brSubmitBtn').innerText = 'Update Breeding'; 
   getEl('brCancelBtn').style.display = 'inline-flex';
   switchTab('breeding', document.querySelector('nav button:nth-child(3)'));
 }
 function cancelBreedingEdit() {
-  eBrKey = null;
+  eBrKey = null; 
   ['brCowTag','brSemenId','brCompany','brAiCost','brPdDate','brExpCalvingDate','brActCalvingDate','brNote'].forEach(function(id){ if(getEl(id)) getEl(id).value=''; });
   if(getEl('brHeatSigns')) getEl('brHeatSigns').value = '-';
-  getEl('brStatus').value = 'Pending';
-  getEl('brSubmitBtn').innerText = 'Save Breeding Record';
+  getEl('brStatus').value = 'Pending'; 
+  getEl('brSubmitBtn').innerText = 'Save Breeding Record'; 
   getEl('brCancelBtn').style.display = 'none';
 }
 window.onBreedingSemenOrCowChange = function() {
@@ -2801,16 +3369,16 @@ window.syncAutoExpense = function(sourceRefId, expObj) {
 function saveBreeding() {
   var tag = (getEl('brCowTag').value || '').trim(); if (!tag) return showAppToast('Cattle ID দিন!');
   var semId = (getEl('brSemenId').value || '').trim();
-  var data = {
-    tag: tag,
-    aiDate: getEl('brAiDate').value,
+  var data = { 
+    tag: tag, 
+    aiDate: getEl('brAiDate').value, 
     heatSigns: getEl('brHeatSigns').value,
-    semenId: semId,
-    company: getEl('brCompany').value,
-    aiCost: parseFloat(getEl('brAiCost').value)||0,
-    pdDate: getEl('brPdDate').value,
-    status: getEl('brStatus').value,
-    expCalvingDate: getEl('brExpCalvingDate').value,
+    semenId: semId, 
+    company: getEl('brCompany').value, 
+    aiCost: parseFloat(getEl('brAiCost').value)||0, 
+    pdDate: getEl('brPdDate').value, 
+    status: getEl('brStatus').value, 
+    expCalvingDate: getEl('brExpCalvingDate').value, 
     actCalvingDate: getEl('brActCalvingDate').value,
     note: getEl('brNote').value || ''
   };
@@ -2933,7 +3501,7 @@ function editVaccineRecord(k) {
   getEl('vacDate').value = d.date || '';
   getEl('vacNextDate').value = d.nextDate || '';
   getEl('vacCost').value = d.cost || '';
-
+  
   if(getEl('vacDose')) getEl('vacDose').value = d.dose || '5.0';
   if(getEl('vacRoute')) getEl('vacRoute').value = d.route || 'Subcutaneous (S/C)';
   if(getEl('vacBatchNo')) getEl('vacBatchNo').value = d.batchNo || '';
@@ -3005,7 +3573,7 @@ window.downloadHealthPassport = function(tag) {
 window.showDigitalHealthPassport = function(encTag) {
   var tag = decodeURIComponent(encTag).trim();
   var cow = findCattleByTag(tag);
-
+  
   var historyHtml = '<div style="font-family:sans-serif; padding:15px;">';
   historyHtml += '<div style="text-align:center; border-bottom:2px solid #1b5e20; padding-bottom:10px; margin-bottom:15px;">';
   historyHtml += '<h2 style="color:#1b5e20; margin:0;">Nanda Dairy & Agro</h2>';
@@ -3042,7 +3610,7 @@ window.showDigitalHealthPassport = function(encTag) {
     modal = document.createElement('div');
     modal.id = 'digitalPassportModal';
     modal.style.cssText = "display:flex; position:fixed; inset:0; background:rgba(0,0,0,0.65); z-index:3000; align-items:center; justify-content:center; padding:15px;";
-    modal.innerHTML = '<div style="background:white; max-width:700px; width:100%; border-radius:12px; padding:25px; max-height:90vh; overflow-y:auto;"><div id="passportContent"></div><div class="no-print" style="text-align:right; margin-top:15px; display:flex; justify-content:flex-end; gap:10px;"><button class="btn btn-info" onclick="printSpecificModal(\'passport\')">🖨️ প্রিন্ট করুন</button><button class="btn btn-success" id="passportDownloadBtn" style="background:#2e7d32; color:white; border:none; padding:8px 14px; border-radius:6px; cursor:pointer;">📥 ডাউনলোড করুন</button><button class="btn btn-danger" onclick="document.getElementById(\'digitalPassportModal\').style.display=\'none\'">বন্ধ করুন</button></div></div>';
+    modal.innerHTML = '<div style="background:white; max-width:700px; width:100%; border-radius:12px; padding:25px; max-height:90vh; overflow-y:auto;"><div id="passportContent"></div><div class="no-print" style="text-align:right; margin-top:15px; display:flex; justify-content:flex-end; gap:10px;"><button class="btn btn-info" onclick="printSpecificModal(\'passport\')">🖨️ প্রিন্ট করুন</button><button class="btn btn-success" id="passportDownloadBtn" style="background:#2e7d32; color:white; border:none; padding:8px 14px; border-radius:6px; cursor:pointer;">📥 ডাউনলোড করুন</button><button class="btn btn-danger" onclick="document.getElementById(\'digitalPassportModal\').style.display=\'none\'; document.body.removeAttribute(\'data-print\');">বন্ধ করুন</button></div></div>';
     document.body.appendChild(modal);
   }
   getEl('passportContent').innerHTML = historyHtml;
@@ -3108,7 +3676,7 @@ function onDewormTagChange() {
   var cow = findCattleByTag(tag);
   if (cow) {
     if (getEl('dewormWeight')) getEl('dewormWeight').value = cow.weight || '';
-
+    
     if (cow.status === 'Pregnant' || (cow.status || '').toLowerCase() === 'pregnant') {
       alertBox.innerHTML = '<div style="background:#ffebee; color:#c62828; padding:10px; border-radius:8px; border:1px solid #ef9a9a; margin-bottom:12px; font-weight:bold;">⚠️ প্রেগন্যান্সি হাইলাইট অ্যালার্ট: এই গাভীটি গর্ভবতী (Pregnant)! অনুগ্রহ করে গর্ভকালীন নিরাপদ (Safe for Pregnant Cattle) কৃমিনাশক ব্যবহার করুন।</div>';
     } else {
@@ -3228,17 +3796,31 @@ var eMlkKey = null;
 function editMilk(k) {
   var d = farmStore.milk[k]; if (!d) return; eMlkKey = k;
   getEl('milkDate').value = d.date || ''; getEl('milkCowTag').value = d.cow || ''; getEl('milkSession').value = d.session || 'Morning'; getEl('milkLiters').value = d.liters || '';
+  if (getEl('milkFat')) getEl('milkFat').value = d.fat || '';
+  if (getEl('milkSnf')) getEl('milkSnf').value = d.snf || '';
+  if (getEl('milkClr')) getEl('milkClr').value = d.clr || '';
   getEl('milkSubmitBtn').innerText = 'Update Milk'; getEl('milkCancelBtn').style.display = 'inline-flex';
   switchTab('milk', document.querySelector('nav button:nth-child(6)'));
 }
 function cancelMilkEdit() {
   eMlkKey = null; getEl('milkCowTag').value = ''; getEl('milkLiters').value = '';
+  if (getEl('milkFat')) getEl('milkFat').value = '';
+  if (getEl('milkSnf')) getEl('milkSnf').value = '';
+  if (getEl('milkClr')) getEl('milkClr').value = '';
   getEl('milkSubmitBtn').innerText = 'Save Milk Record'; getEl('milkCancelBtn').style.display = 'none';
 }
 function saveMilk() {
   var lit = parseFloat(getEl('milkLiters').value) || 0; if (!lit) return showAppToast('দুধের পরিমাণ দিন!');
   var cowTag = (getEl('milkCowTag').value || '').trim(); if (!cowTag) return showAppToast('Tag ID দিন!');
-  var data = { date: getEl('milkDate').value, cow: cowTag, session: getEl('milkSession').value, liters: lit };
+  var data = {
+    date: getEl('milkDate').value,
+    cow: cowTag,
+    session: getEl('milkSession').value,
+    liters: lit,
+    fat: parseFloat(getEl('milkFat') ? getEl('milkFat').value : 0) || 0,
+    snf: parseFloat(getEl('milkSnf') ? getEl('milkSnf').value : 0) || 0,
+    clr: parseFloat(getEl('milkClr') ? getEl('milkClr').value : 0) || 0
+  };
   if (db) eMlkKey ? db.ref('milk/' + eMlkKey).update(data) : db.ref('milk').push(data);
   cancelMilkEdit();
 }
@@ -3254,31 +3836,31 @@ function calcSale() {
 
 function editSale(k) {
   var d = farmStore.sales[k]; if (!d) return; eSaleKey = k;
-  getEl('saleDate').value = d.date || '';
-  getEl('saleCustomer').value = d.name || '';
+  getEl('saleDate').value = d.date || ''; 
+  getEl('saleCustomer').value = d.name || ''; 
   getEl('salePhone').value = d.phone || '';
-  getEl('saleArea').value = d.area || '';
-  getEl('saleAddr').value = d.addr || '';
+  getEl('saleArea').value = d.area || ''; 
+  getEl('saleAddr').value = d.addr || ''; 
   getEl('saleItem').value = d.item || 'Liquid Milk';
-
+  
   var qVal = parseFloat(d.qty) || 1;
   var tVal = parseFloat(d.total) || 0;
   var rVal = parseFloat(d.rate) || (qVal > 0 ? tVal / qVal : 0);
   var paidVal = parseFloat(d.paid) || 0;
 
-  getEl('saleQty').value = qVal;
-  getEl('saleRate').value = rVal;
+  getEl('saleQty').value = qVal; 
+  getEl('saleRate').value = rVal; 
   getEl('saleTotal').value = tVal;
-  getEl('salePaid').value = paidVal;
-
+  getEl('salePaid').value = paidVal; 
+  
   var prevDueInput = getEl('salePrevDue');
   if(prevDueInput) prevDueInput.value = 0;
 
-  getEl('saleSubmitBtn').innerText = 'Update Sale';
+  getEl('saleSubmitBtn').innerText = 'Update Sale'; 
   getEl('saleCancelBtn').style.display = 'inline-flex';
   switchTab('sales', document.querySelector('nav button:nth-child(7)'));
   getEl('saleCustomer').scrollIntoView({ behavior: 'smooth' });
-  onSaleCustomerInput();
+  onSaleCustomerInput(); 
 }
 
 function cancelSaleEdit() {
@@ -3292,9 +3874,9 @@ function cancelSaleEdit() {
 }
 
 function saveSale() {
-  var name = (getEl('saleCustomer').value || '').trim();
+  var name = (getEl('saleCustomer').value || '').trim(); 
   if (!name) return showAppToast('Customer Name দিন!');
-
+  
   var q = parseFloat(getEl('saleQty').value) || 0;
   var r = parseFloat(getEl('saleRate').value) || 0;
   var totalVal = q * r;
@@ -3309,19 +3891,19 @@ function saveSale() {
     existingPayments = farmStore.sales[eSaleKey].payments;
   }
 
-  var data = {
-    date: getEl('saleDate').value,
-    name: name,
-    phone: (getEl('salePhone').value || '').trim(),
-    area: (getEl('saleArea').value || '').trim(),
-    addr: (getEl('saleAddr').value || '').trim(),
-    item: getEl('saleItem').value,
-    qty: q,
-    rate: r,
-    total: totalVal,
-    paid: paidVal,
-    due: dueVal,
-    payments: existingPayments
+  var data = { 
+    date: getEl('saleDate').value, 
+    name: name, 
+    phone: (getEl('salePhone').value || '').trim(), 
+    area: (getEl('saleArea').value || '').trim(), 
+    addr: (getEl('saleAddr').value || '').trim(), 
+    item: getEl('saleItem').value, 
+    qty: q, 
+    rate: r, 
+    total: totalVal, 
+    paid: paidVal, 
+    due: dueVal, 
+    payments: existingPayments 
   };
 
   if (db) {
@@ -3339,19 +3921,33 @@ function editCustomer(k) {
   var d = farmStore.customers[k]; if (!d) return; eCustKey = k;
   getEl('custName').value = d.name || ''; getEl('custPhone').value = d.phone || ''; getEl('custArea').value = d.area || '';
   getEl('custAddress').value = d.addr || ''; getEl('custDailyDemand').value = d.demand || '';
+  if (getEl('custMilkRate')) getEl('custMilkRate').value = d.milkRate || '';
   if (getEl('custOpeningDue')) getEl('custOpeningDue').value = d.openingDue || 0;
   if (getEl('custType')) getEl('custType').value = d.type || 'Regular Retailer';
   if (getEl('custShift')) getEl('custShift').value = d.shift || 'Morning';
+  if (getEl('custWhatsappOpt')) getEl('custWhatsappOpt').value = d.whatsappOpt || 'allowed';
   getEl('custSubmitBtn').innerText = 'Update Customer'; getEl('custCancelBtn').style.display = 'inline-flex';
   switchTab('customers', document.querySelector('nav button:nth-child(8)'));
 }
 function cancelCustomerEdit() {
-  eCustKey = null; ['custName','custPhone','custArea','custAddress','custDailyDemand','custOpeningDue'].forEach(function(i){ if(getEl(i)) getEl(i).value=''; });
+  eCustKey = null; ['custName','custPhone','custArea','custAddress','custDailyDemand','custMilkRate','custOpeningDue'].forEach(function(i){ if(getEl(i)) getEl(i).value=''; });
+  if (getEl('custWhatsappOpt')) getEl('custWhatsappOpt').value = 'allowed';
   getEl('custSubmitBtn').innerText = 'Save Customer'; getEl('custCancelBtn').style.display = 'none';
 }
 function saveCustomer() {
   var name = (getEl('custName').value || '').trim(); if (!name) return showAppToast('নাম দিন!');
-  var data = { name: name, phone: (getEl('custPhone').value || '').trim(), area: (getEl('custArea').value || '').trim(), addr: (getEl('custAddress').value || '').trim(), demand: parseFloat(getEl('custDailyDemand').value)||0, openingDue: parseFloat(getEl('custOpeningDue')?.value)||0, type: getEl('custType')?.value||'Regular Retailer', shift: getEl('custShift')?.value||'Morning' };
+  var data = {
+    name: name,
+    phone: (getEl('custPhone').value || '').trim(),
+    area: (getEl('custArea').value || '').trim(),
+    addr: (getEl('custAddress').value || '').trim(),
+    demand: parseFloat(getEl('custDailyDemand').value)||0,
+    milkRate: parseFloat(getEl('custMilkRate')?.value)||0,
+    openingDue: parseFloat(getEl('custOpeningDue')?.value)||0,
+    type: getEl('custType')?.value||'Regular Retailer',
+    shift: getEl('custShift')?.value||'Morning',
+    whatsappOpt: getEl('custWhatsappOpt')?.value||'allowed'
+  };
   if (db) eCustKey ? db.ref('customers/' + eCustKey).update(data) : db.ref('customers').push(data);
   cancelCustomerEdit();
 }
@@ -3360,7 +3956,8 @@ var eOrdKey = null;
 function editOrder(k) {
   var d = farmStore.orders[k]; if (!d) return; eOrdKey = k;
   getEl('orderDate').value = d.date || ''; getEl('orderCustomer').value = d.customer || d.name || ''; getEl('orderPhone').value = d.phone || '';
-  getEl('orderArea').value = d.area || ''; getEl('orderItems').value = d.items || ''; getEl('orderTotal').value = d.total || '';
+  getEl('orderArea').value = d.area || ''; if (getEl('orderShift')) getEl('orderShift').value = d.shift || 'Morning';
+  getEl('orderItems').value = d.items || ''; getEl('orderTotal').value = d.total || '';
   getEl('orderPaid').value = d.paid || ''; getEl('orderStatus').value = d.status || 'Pending';
   getEl('orderSubmitBtn').innerText = 'Update Order'; getEl('orderCancelBtn').style.display = 'inline-flex';
   switchTab('orders', document.querySelector('nav button:nth-child(9)'));
@@ -3368,24 +3965,26 @@ function editOrder(k) {
 }
 
 function cancelOrderEdit() {
-  eOrdKey = null;
+  eOrdKey = null; 
   ['orderCustomer','orderPhone','orderArea','orderItems','orderTotal','orderPaid'].forEach(function(i){ if(getEl(i)) getEl(i).value=''; });
-  getEl('orderStatus').value = 'Pending';
-  getEl('orderSubmitBtn').innerText = 'Save Order';
+  if (getEl('orderShift')) getEl('orderShift').value = 'Morning';
+  getEl('orderStatus').value = 'Pending'; 
+  getEl('orderSubmitBtn').innerText = 'Save Order'; 
   getEl('orderCancelBtn').style.display = 'none';
 }
 
 function saveOrder() {
-  var cust = (getEl('orderCustomer').value || '').trim();
+  var cust = (getEl('orderCustomer').value || '').trim(); 
   var items = (getEl('orderItems').value || '').trim();
   if (!cust || !items) return showAppToast('নাম ও বিবরণ দিন!');
-
-  var status = getEl('orderStatus').value;
-  var total = parseFloat(getEl('orderTotal').value) || 0;
+  
+  var status = getEl('orderStatus').value; 
+  var total = parseFloat(getEl('orderTotal').value) || 0; 
   var paid = parseFloat(getEl('orderPaid').value) || 0;
   var deliveryDate = getEl('orderDate').value;
   var phone = (getEl('orderPhone') ? getEl('orderPhone').value : '').trim();
   var area = (getEl('orderArea') ? getEl('orderArea').value : '').trim();
+  var shift = getEl('orderShift') ? getEl('orderShift').value : 'Morning';
 
   for (var ck in farmStore.customers) {
     var cObj = farmStore.customers[ck];
@@ -3399,36 +3998,36 @@ function saveOrder() {
   if (db) {
     if (eOrdKey) {
       db.ref('orders/' + eOrdKey).remove();
-
+      
       if (status === 'Delivered') {
         if (total > 0) {
-          db.ref('sales').push({
-            date: deliveryDate, name: cust, phone: phone, area: area, addr: '',
-            item: items, qty: 1, rate: total, total: total, paid: paid,
-            due: Math.max(0, total - paid), payments: []
+          db.ref('sales').push({ 
+            date: deliveryDate, name: cust, phone: phone, area: area, addr: '', 
+            item: items, qty: 1, rate: total, total: total, paid: paid, 
+            due: Math.max(0, total - paid), payments: [] 
           });
         }
-      }
+      } 
       else if (status === 'Pending') {
-        db.ref('orders').push({
-          date: deliveryDate, customer: cust, phone: phone, area: area,
-          items: items, total: total, paid: paid, status: status
+        db.ref('orders').push({ 
+          date: deliveryDate, customer: cust, phone: phone, area: area, shift: shift,
+          items: items, total: total, paid: paid, status: status 
         });
       }
-      eOrdKey = null;
+      eOrdKey = null; 
     } else {
       if (status === 'Delivered') {
         if (total > 0) {
-          db.ref('sales').push({
-            date: deliveryDate, name: cust, phone: phone, area: area, addr: '',
-            item: items, qty: 1, rate: total, total: total, paid: paid,
-            due: Math.max(0, total - paid), payments: []
+          db.ref('sales').push({ 
+            date: deliveryDate, name: cust, phone: phone, area: area, addr: '', 
+            item: items, qty: 1, rate: total, total: total, paid: paid, 
+            due: Math.max(0, total - paid), payments: [] 
           });
         }
       } else if (status === 'Pending') {
-        db.ref('orders').push({
-          date: deliveryDate, customer: cust, phone: phone, area: area,
-          items: items, total: total, paid: paid, status: status
+        db.ref('orders').push({ 
+          date: deliveryDate, customer: cust, phone: phone, area: area, shift: shift,
+          items: items, total: total, paid: paid, status: status 
         });
       }
     }
@@ -3684,6 +4283,7 @@ window.showCattleMonthlyFeedBill = function(encTag) {
   items.sort(function(a, b) { return parseDateToTime(a.date) - parseDateToTime(b.date); });
 
   document.body.setAttribute('data-print', 'invoice');
+  setInvoiceWhatsAppPayload(null);
   getEl('invMainDocTitle').innerText = 'মাসিক গরুর খাদ্য বিল / MONTHLY CATTLE FEED STATEMENT (' + mn + '/' + yr + ')';
 
   var rowsHtml = '';
@@ -4029,6 +4629,7 @@ window.showMonthlyExpenseStatement = function() {
   items.sort(function(a, b) { return parseDateToTime(a.date) - parseDateToTime(b.date); });
 
   document.body.setAttribute('data-print', 'invoice');
+  setInvoiceWhatsAppPayload(null);
   getEl('invMainDocTitle').innerText = 'মাসিক খরচ রিপোর্ট / MONTHLY EXPENSE STATEMENT (' + mn + '/' + yr + ')';
 
   var catRows = '';
@@ -4516,6 +5117,46 @@ window.saveLabourPayment = function() {
   showAppToast(wName + '-এর ' + pType + ' সেভ ও খরচে যোগ করা হয়েছে!');
 };
 
+// Feature 8: Daily Labour Attendance (P / H / A)
+window.markLabourAttendance = function(workerKey, status) {
+  var dt = (getEl('labAttDate') && getEl('labAttDate').value) ? getEl('labAttDate').value : new Date().toISOString().split('T')[0];
+  if (!workerKey || !dt) return;
+  if (db) {
+    db.ref('labourAttendance/' + dt + '/' + workerKey).set(status);
+  } else {
+    if (!farmStore.labourAttendance[dt]) farmStore.labourAttendance[dt] = {};
+    farmStore.labourAttendance[dt][workerKey] = status;
+    renderLabourAttendancePanel();
+    renderLabourTable();
+  }
+  showAppToast('হাজিরা (' + status + ') সেভ হয়েছে!');
+};
+
+window.renderLabourAttendancePanel = function() {
+  var panel = getEl('labourAttendancePanel');
+  if (!panel) return;
+  var dt = (getEl('labAttDate') && getEl('labAttDate').value) ? getEl('labAttDate').value : new Date().toISOString().split('T')[0];
+  var dayRec = (farmStore.labourAttendance && farmStore.labourAttendance[dt]) ? farmStore.labourAttendance[dt] : {};
+  var keys = Object.keys(farmStore.labours || {});
+  if (keys.length === 0) {
+    panel.innerHTML = '<div style="grid-column:1/-1; color:#666; font-size:12.5px;">হাজিরা নেওয়ার জন্য আগে কর্মচারী সেভ করুন।</div>';
+    return;
+  }
+  panel.innerHTML = keys.map(function(lk) {
+    var w = farmStore.labours[lk];
+    if (!w) return '';
+    var cur = dayRec[lk] || '';
+    return '<div style="background:white; border:1px solid #bbdefb; border-radius:8px; padding:10px; display:flex; justify-content:space-between; align-items:center; gap:8px;">' +
+      '<div><strong style="font-size:13px;">👷 ' + w.name + '</strong><br><small style="color:#666;">' + (cur ? ('স্ট্যাটাস: ' + cur) : 'হাজিরা বাকি') + '</small></div>' +
+      '<div style="white-space:nowrap;">' +
+        '<button type="button" class="att-btn ' + (cur === 'P' ? 'active-P' : '') + '" onclick="markLabourAttendance(\'' + lk + '\', \'P\')">P</button>' +
+        '<button type="button" class="att-btn ' + (cur === 'H' ? 'active-H' : '') + '" onclick="markLabourAttendance(\'' + lk + '\', \'H\')">H</button>' +
+        '<button type="button" class="att-btn ' + (cur === 'A' ? 'active-A' : '') + '" onclick="markLabourAttendance(\'' + lk + '\', \'A\')">A</button>' +
+      '</div>' +
+    '</div>';
+  }).join('');
+};
+
 window.toggleLabourHistory = function(subId, btnEl) {
   var row = getEl(subId);
   if (!row) return;
@@ -4535,6 +5176,9 @@ window.renderLabourTable = function() {
 
   if (!window.currentExpYear) initExpenseFilters();
   var prefix = window.currentExpYear + '-' + window.currentExpMonth;
+  var daysInMonth = new Date(parseInt(window.currentExpYear), parseInt(window.currentExpMonth), 0).getDate() || 30;
+
+  renderLabourAttendancePanel();
 
   if (sel) {
     var curVal = sel.value;
@@ -4570,14 +5214,34 @@ window.renderLabourTable = function() {
         historyList.push({ key: pk, data: p });
       }
     }
-    var remPayable = Math.max(0, (Number(w.salary) || 0) - (monAdv + monSal));
+
+    // Monthly Attendance summary
+    var pCnt = 0, hCnt = 0, aCnt = 0;
+    for (var attDt in farmStore.labourAttendance) {
+      if (attDt.startsWith(prefix) && farmStore.labourAttendance[attDt] && farmStore.labourAttendance[attDt][lk]) {
+        var st = farmStore.labourAttendance[attDt][lk];
+        if (st === 'P') pCnt++;
+        else if (st === 'H') hCnt++;
+        else if (st === 'A') aCnt++;
+      }
+    }
+    var totalMarked = pCnt + hCnt + aCnt;
+    var effDays = pCnt + (hCnt * 0.5);
+    var baseSalary = Number(w.salary) || 0;
+    var estEarned = totalMarked > 0 ? Math.round((baseSalary / daysInMonth) * effDays) : baseSalary;
+    var remPayable = Math.max(0, estEarned - (monAdv + monSal));
     var subId = 'sub_lab_' + idx;
+
+    var attDisplay = totalMarked > 0
+      ? ('<span class="badge badge-success">P:' + pCnt + '</span> <span class="badge badge-warning">H:' + hCnt + '</span> <span class="badge badge-danger">A:' + aCnt + '</span><br><small style="color:#555;">মোট দিন: ' + effDays + '</small>')
+      : '<span style="color:#888;">হাজিরা নেই</span>';
 
     html += '<tr style="background:#fafafa;">' +
       '<td><strong>👷 ' + w.name + '</strong>' + (w.phone ? '<br><small style="color:#666;">📞 ' + w.phone + '</small>' : '') + '</td>' +
-      '<td><strong>₹ ' + (Number(w.salary) || 0).toLocaleString() + '</strong></td>' +
-      '<td style="color:#e65100; font-weight:600;">₹ ' + monAdv.toLocaleString() + '</td>' +
-      '<td style="color:#2e7d32; font-weight:600;">₹ ' + monSal.toLocaleString() + '</td>' +
+      '<td><strong>₹ ' + baseSalary.toLocaleString() + '</strong></td>' +
+      '<td>' + attDisplay + '</td>' +
+      '<td style="color:#0277bd; font-weight:bold;">₹ ' + estEarned.toLocaleString() + (totalMarked === 0 ? '<br><small style="color:#888;">(পূর্ণ বেতন)</small>' : '') + '</td>' +
+      '<td><span style="color:#e65100;">অগ্রিম: ₹' + monAdv.toLocaleString() + '</span><br><span style="color:#2e7d32;">বেতন: ₹' + monSal.toLocaleString() + '</span></td>' +
       '<td style="color:#c62828; font-weight:bold;">₹ ' + remPayable.toLocaleString() + '</td>' +
       '<td>' +
         '<button class="action-btn btn-info" onclick="toggleLabourHistory(\'' + subId + '\', this)">ইতিহাস ▼</button>' +
@@ -4586,7 +5250,7 @@ window.renderLabourTable = function() {
     '</tr>';
 
     historyList.sort(function(a, b) { return parseDateToTime(b.data.date) - parseDateToTime(a.data.date); });
-    html += '<tr id="' + subId + '" style="display:none; background:#fffdf9;"><td colspan="6" style="padding:10px 14px;">' +
+    html += '<tr id="' + subId + '" style="display:none; background:#fffdf9;"><td colspan="7" style="padding:10px 14px;">' +
       '<table style="width:100%; font-size:12px; background:white; border:1px solid #ffe0b2;">' +
         '<thead><tr style="background:#fff3e0;"><th>তারিখ</th><th>ধরন</th><th>টাকা</th><th>নোট</th><th>অ্যাকশন</th></tr></thead><tbody>';
     if (historyList.length === 0) {
@@ -4723,6 +5387,45 @@ window.renderStockTable = function() {
       '<div style="background:#e3f2fd; padding:10px; border-radius:8px; border-left:4px solid #0288d1;"><small style="color:#555;">মোট স্টক মূল্য</small><div style="font-size:18px; font-weight:bold; color:#0288d1;">₹ ' + Math.round(totalValuation).toLocaleString() + '</div></div>' +
       '<div style="background:#fff3e0; padding:10px; border-radius:8px; border-left:4px solid #f57c00;"><small style="color:#555;">লো স্টক (Low)</small><div style="font-size:18px; font-weight:bold; color:#e65100;">' + lowCount + ' টি</div></div>' +
       '<div style="background:#ffebee; padding:10px; border-radius:8px; border-left:4px solid #d32f2f;"><small style="color:#555;">মেয়াদ শেষ / আসন্ন</small><div style="font-size:18px; font-weight:bold; color:#c62828;">' + expCount + ' টি</div></div>';
+  }
+
+  // Feature: Feed Stock Days-Left Forecast
+  var fBanner = getEl('feedForecastBanner');
+  if (fBanner) {
+    var feedStockKg = 0;
+    for (var fsk in farmStore.stock) {
+      var fst = farmStore.stock[fsk];
+      if (!fst) continue;
+      var nmL = String(fst.name || '').toLowerCase();
+      if (nmL.includes('cattle feed') || nmL.includes('pellet') || nmL.includes('ফিড') || (fst.category === 'Feed & Fodder' && fst.unit === 'kg')) {
+        feedStockKg += (Number(fst.qty) || 0);
+      }
+    }
+    var dayFeedMap = {};
+    for (var rtk in farmStore.feedRations) {
+      var rt = farmStore.feedRations[rtk];
+      if (rt && rt.date && Number(rt.pellet) > 0) {
+        dayFeedMap[rt.date] = (dayFeedMap[rt.date] || 0) + (Number(rt.pellet) || 0);
+      }
+    }
+    var recentDays = Object.keys(dayFeedMap).sort().reverse().slice(0, 14);
+    var avgDailyFeed = 0;
+    if (recentDays.length > 0) {
+      var sumF = 0;
+      recentDays.forEach(function(dKey) { sumF += dayFeedMap[dKey]; });
+      avgDailyFeed = sumF / recentDays.length;
+    }
+    if (feedStockKg > 0 && avgDailyFeed > 0) {
+      var daysLeft = Math.floor(feedStockKg / avgDailyFeed);
+      var fBg = daysLeft <= 5 ? '#ffebee' : (daysLeft <= 10 ? '#fff3e0' : '#e8f5e9');
+      var fCol = daysLeft <= 5 ? '#c62828' : (daysLeft <= 10 ? '#e65100' : '#1b5e20');
+      fBanner.innerHTML = '<div style="background:' + fBg + '; border:1px solid ' + fCol + '; border-radius:8px; padding:10px 14px; font-size:13px; color:' + fCol + '; font-weight:600; display:flex; justify-content:space-between; flex-wrap:wrap; gap:8px;">' +
+        '<span>🌾 গো-খাদ্য পূর্বাভাস (Feed Forecast): বর্তমান ফিড স্টক <strong>' + feedStockKg.toFixed(1) + ' kg</strong> (দৈনিক গড় খরচ: ' + avgDailyFeed.toFixed(1) + ' kg/দিন)</span>' +
+        '<span>⏳ আনুমানিক চলবে: <strong style="font-size:14.5px;">প্রায় ' + daysLeft + ' দিন</strong></span>' +
+      '</div>';
+    } else {
+      fBanner.innerHTML = '';
+    }
   }
 };
 
@@ -5143,6 +5846,7 @@ window.showMonthlySemenStatement = function() {
   var periodLabel = dt ? formatDateBR(dt) : (mn === 'ALL' ? 'সকল সময় (All Time)' : (mn + '/' + yr));
 
   document.body.setAttribute('data-print', 'invoice');
+  setInvoiceWhatsAppPayload(null);
   getEl('invMainDocTitle').innerText = 'সিমেন স্টক ও সাফল্যের রিপোর্ট / SEMEN STATEMENT (' + periodLabel + ')';
 
   var totStraws = 0, conv = 0, sexed = 0, totVal = 0;
@@ -5375,6 +6079,110 @@ function saveHealth() {
   cancelHealthEdit();
 }
 
+// Feature 10: Cattle Insurance & Loan Tracker CRUD
+var eInsKey = null;
+window.editInsuranceLoan = function(k) {
+  var d = farmStore.insuranceLoans ? farmStore.insuranceLoans[k] : null;
+  if (!d) return;
+  eInsKey = k;
+  if (getEl('insType')) getEl('insType').value = d.type || 'Cattle Insurance';
+  if (getEl('insCowTag')) getEl('insCowTag').value = d.cowTag || '';
+  if (getEl('insPolicyNo')) getEl('insPolicyNo').value = d.policyNo || '';
+  if (getEl('insProvider')) getEl('insProvider').value = d.provider || '';
+  if (getEl('insAmount')) getEl('insAmount').value = d.amount || '';
+  if (getEl('insStartDate')) getEl('insStartDate').value = d.startDate || '';
+  if (getEl('insDueDate')) getEl('insDueDate').value = d.dueDate || '';
+  if (getEl('insStatus')) getEl('insStatus').value = d.status || 'Active';
+  if (getEl('insNote')) getEl('insNote').value = d.note || '';
+  if (getEl('insSubmitBtn')) getEl('insSubmitBtn').innerText = 'Update Insurance / Loan';
+  if (getEl('insCancelBtn')) getEl('insCancelBtn').style.display = 'inline-flex';
+  switchTab('health', document.querySelectorAll('nav button')[13]);
+  if (getEl('insPolicyNo')) getEl('insPolicyNo').scrollIntoView({ behavior: 'smooth' });
+};
+
+window.cancelInsuranceEdit = function() {
+  eInsKey = null;
+  ['insCowTag', 'insPolicyNo', 'insProvider', 'insAmount', 'insDueDate', 'insNote'].forEach(function(id) { if (getEl(id)) getEl(id).value = ''; });
+  if (getEl('insStatus')) getEl('insStatus').value = 'Active';
+  if (getEl('insSubmitBtn')) getEl('insSubmitBtn').innerText = 'Save Insurance / Loan';
+  if (getEl('insCancelBtn')) getEl('insCancelBtn').style.display = 'none';
+};
+
+window.saveInsuranceLoan = function() {
+  var tag = (getEl('insCowTag') ? getEl('insCowTag').value : '').trim();
+  var pol = (getEl('insPolicyNo') ? getEl('insPolicyNo').value : '').trim();
+  var dueDt = getEl('insDueDate') ? getEl('insDueDate').value : '';
+  if (!tag || !pol || !dueDt) return showAppToast('Tag/বিবরণ, পলিসি/লোন নম্বর এবং মেয়াদ/কিস্তির তারিখ দিন!');
+  var data = {
+    type: getEl('insType') ? getEl('insType').value : 'Cattle Insurance',
+    cowTag: tag,
+    policyNo: pol,
+    provider: getEl('insProvider') ? getEl('insProvider').value.trim() : '',
+    amount: parseFloat(getEl('insAmount') ? getEl('insAmount').value : 0) || 0,
+    startDate: getEl('insStartDate') ? getEl('insStartDate').value : '',
+    dueDate: dueDt,
+    status: getEl('insStatus') ? getEl('insStatus').value : 'Active',
+    note: getEl('insNote') ? getEl('insNote').value.trim() : ''
+  };
+  if (db) {
+    if (eInsKey) db.ref('insuranceLoans/' + eInsKey).update(data);
+    else db.ref('insuranceLoans').push(data);
+  } else {
+    farmStore.insuranceLoans[eInsKey || ('ins_' + Date.now())] = data;
+    renderInsuranceTable();
+    renderDashboardAlerts();
+  }
+  showAppToast('বীমা / লোন তথ্য সফলভাবে সেভ হয়েছে!');
+  cancelInsuranceEdit();
+};
+
+window.markInsuranceRenewed = function(k) {
+  if (db && k) {
+    db.ref('insuranceLoans/' + k).update({ status: 'Renewed' });
+  } else if (farmStore.insuranceLoans[k]) {
+    farmStore.insuranceLoans[k].status = 'Renewed';
+    renderInsuranceTable();
+    renderDashboardAlerts();
+  }
+  showAppToast('বীমা/লোন নবায়ন/পরিশোধ সম্পন্ন হিসেবে চিহ্নিত হয়েছে!');
+};
+
+window.renderInsuranceTable = function() {
+  var body = getEl('insuranceTableBody');
+  if (!body) return;
+  var list = [];
+  for (var k in farmStore.insuranceLoans) {
+    if (farmStore.insuranceLoans[k]) list.push({ key: k, data: farmStore.insuranceLoans[k] });
+  }
+  list.sort(function(a, b) { return parseDateToTime(a.data.dueDate) - parseDateToTime(b.data.dueDate); });
+
+  if (list.length === 0) {
+    body.innerHTML = '';
+    if (getEl('insuranceNoData')) getEl('insuranceNoData').style.display = 'block';
+    return;
+  }
+  if (getEl('insuranceNoData')) getEl('insuranceNoData').style.display = 'none';
+
+  body.innerHTML = list.map(function(item) {
+    var d = item.data, k = item.key;
+    var stBadge = d.status === 'Active' ? '<span class="badge badge-warning">Active</span>' : '<span class="badge badge-success">' + (d.status || 'Closed') + '</span>';
+    return '<tr>' +
+      '<td><strong>' + (d.type || 'Insurance') + '</strong></td>' +
+      '<td><strong>' + (d.cowTag || '-') + '</strong>' + (d.note ? '<br><small style="color:#666;">' + d.note + '</small>' : '') + '</td>' +
+      '<td><code>' + (d.policyNo || '-') + '</code></td>' +
+      '<td>' + (d.provider || '-') + '</td>' +
+      '<td><strong>₹ ' + (Number(d.amount) || 0).toLocaleString() + '</strong></td>' +
+      '<td><span class="badge badge-danger">' + formatDateBR(d.dueDate) + '</span></td>' +
+      '<td>' + stBadge + '</td>' +
+      '<td>' +
+        (d.status === 'Active' ? '<button class="action-btn" style="background:#2e7d32; color:white;" onclick="markInsuranceRenewed(\'' + k + '\')">✔ Done</button>' : '') +
+        '<button class="action-btn btn-info" onclick="editInsuranceLoan(\'' + k + '\')">Edit</button>' +
+        '<button class="action-btn btn-danger" onclick="deleteRecord(\'insuranceLoans\',\'' + k + '\')">Delete</button>' +
+      '</td>' +
+    '</tr>';
+  }).join('');
+};
+
 window.currentHlthYear = "";
 window.currentHlthMonth = "ALL";
 window.specificHlthDate = "";
@@ -5479,7 +6287,7 @@ window.renderHealthTable = function() {
       '<td>' + formatDateBR(d.date) + '</td>' +
       '<td><strong>🐄 ' + (d.cowTag || '-') + '</strong></td>' +
       '<td><strong>' + (d.type || '-') + '</strong>' + (d.disease ? '<br><small style="color:#c62828;">' + d.disease + '</small>' : '') + '</td>' +
-      '<td>' + (d.vet ? '👨‍⚕️ ' + d.vet + '<br>' : '') + '<small style="color:#1b5e20;">' + (d.medicine || d.desc || '-') + '</small>' + wInfo + '</td>' +
+      '<td>' + (d.vet ? '👨⚕️ ' + d.vet + '<br>' : '') + '<small style="color:#1b5e20;">' + (d.medicine || d.desc || '-') + '</small>' + wInfo + '</td>' +
       '<td>' + stBadge + '</td>' +
       '<td>' + formatDateBR(d.nextDate) + '</td>' +
       '<td>₹ ' + (d.cost || 0) + '</td>' +
@@ -5493,6 +6301,7 @@ window.showMonthlyHealthReport = function() {
   if (list.length === 0) return showAppToast('বর্তমান ভিউতে প্রিন্ট করার মতো কোনো স্বাস্থ্য রেকর্ড নেই!');
   var periodLabel = window.specificHlthDate ? formatDateBR(window.specificHlthDate) : (window.currentHlthMonth === 'ALL' ? 'ALL DATA' : (window.currentHlthMonth + '/' + window.currentHlthYear));
   document.body.setAttribute('data-print', 'invoice');
+  setInvoiceWhatsAppPayload(null);
   getEl('invMainDocTitle').innerText = 'মাসিক স্বাস্থ্য ও চিকিৎসা রিপোর্ট / HEALTH REPORT (' + periodLabel + ')';
   var totCost = 0;
   var rows = list.map(function(item) {
@@ -5542,10 +6351,331 @@ window.exportHealth = function(format) {
 function downloadBackup() {
   if (!db) return showAppToast('ডাটাবেস নেই!');
   db.ref('/').once('value', function(snap) {
+    var todayISO = new Date().toISOString().split('T')[0];
     var dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(snap.val(), null, 2));
-    var a = document.createElement('a'); a.setAttribute("href", dataStr); a.setAttribute("download", "Nanda_Dairy_Backup.json"); a.click();
+    var a = document.createElement('a');
+    a.setAttribute("href", dataStr);
+    a.setAttribute("download", "Nanda_Dairy_Backup_" + todayISO + ".json");
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    try { localStorage.setItem('nanda_last_backup_ts', new Date().toISOString()); } catch (e) {}
+    renderBackupSummary();
+    renderDashboardAlerts();
+    showAppToast('সম্পূর্ণ JSON ব্যাকআপ সফলভাবে ডাউনলোড হয়েছে!');
   });
 }
+
+window.currentBkYear = "";
+window.currentBkMonth = "ALL";
+window.specificBkDate = "";
+
+window.initBackupFilters = function() {
+  if (!window.currentBkYear) {
+    window.currentBkYear = new Date().getFullYear().toString();
+  }
+  var ys = getEl('bkFilterYear');
+  if (ys && ys.options.length === 0) {
+    var curY = new Date().getFullYear();
+    for (var i = 0; i < 5; i++) {
+      var y = (curY - i).toString();
+      ys.options.add(new Option(y, y));
+    }
+    ys.value = window.currentBkYear;
+  }
+  renderBackupMonthTabs();
+};
+
+window.renderBackupMonthTabs = function() {
+  var tc = getEl('bkMonthTabs');
+  if (!tc) return;
+  var months = [
+    {val:'ALL',name:'ALL DATA'},{val:'01',name:'Jan'},{val:'02',name:'Feb'},{val:'03',name:'Mar'},{val:'04',name:'Apr'},
+    {val:'05',name:'May'},{val:'06',name:'Jun'},{val:'07',name:'Jul'},{val:'08',name:'Aug'},
+    {val:'09',name:'Sep'},{val:'10',name:'Oct'},{val:'11',name:'Nov'},{val:'12',name:'Dec'}
+  ];
+  tc.innerHTML = months.map(function(m) {
+    var act = (m.val === window.currentBkMonth) && !window.specificBkDate;
+    return '<button onclick="setBackupMonth(\'' + m.val + '\')" style="padding:6px 14px; border:none; border-radius:20px; font-size:12px; font-weight:bold; cursor:pointer; background:' + (act ? 'var(--primary)' : '#e0e0e0') + '; color:' + (act ? 'white' : '#333') + '; min-width:60px; transition:0.2s;">' + m.name + '</button>';
+  }).join('');
+};
+
+window.setBackupMonth = function(mVal) {
+  window.currentBkMonth = mVal;
+  window.specificBkDate = "";
+  if (getEl('bkFilterDate')) getEl('bkFilterDate').value = "";
+  renderBackupMonthTabs();
+  renderBackupSummary();
+};
+
+window.applyBackupFilter = function() {
+  if (getEl('bkFilterYear')) window.currentBkYear = getEl('bkFilterYear').value;
+  var d = getEl('bkFilterDate') ? getEl('bkFilterDate').value : "";
+  if (d) {
+    window.specificBkDate = d;
+    var doj = new Date(d);
+    window.currentBkYear = doj.getFullYear().toString();
+    window.currentBkMonth = ('0' + (doj.getMonth() + 1)).slice(-2);
+    if (getEl('bkFilterYear')) getEl('bkFilterYear').value = window.currentBkYear;
+  } else {
+    window.specificBkDate = "";
+  }
+  renderBackupMonthTabs();
+  renderBackupSummary();
+};
+
+window.clearBackupDateFilter = function() {
+  if (getEl('bkFilterDate')) getEl('bkFilterDate').value = "";
+  window.specificBkDate = "";
+  window.currentBkMonth = "ALL";
+  renderBackupMonthTabs();
+  renderBackupSummary();
+};
+
+window.getFilteredBackupDataset = function() {
+  if (!window.currentBkYear) initBackupFilters();
+  var yr = window.currentBkYear, mn = window.currentBkMonth, dt = window.specificBkDate;
+  var isAll = (!dt && mn === 'ALL');
+  var matchDate = function(dStr) {
+    if (isAll) return true;
+    if (!dStr) return false;
+    if (dt) return String(dStr).trim() === dt;
+    return String(dStr).trim().substring(0, 4) === yr && String(dStr).trim().substring(5, 7) === mn;
+  };
+  var matchSearch = function() { return true; };
+  var areaFilter = '';
+
+  var out = {
+    periodLabel: dt ? formatDateBR(dt) : (isAll ? 'ALL DATA' : (mn + '/' + yr)),
+    fileTag: dt ? dt : (isAll ? 'ALL' : (yr + '_' + mn)),
+    cattle: {}, milk: {}, customers: {}, sales: {}, expenses: {},
+    orders: {}, stock: {}, breeding: {}, health: {}, insuranceLoans: {},
+    feedRations: {}, vaccine: {}, deworm: {}, semen: {}
+  };
+
+  for (var ck in farmStore.cattle) {
+    var c = farmStore.cattle[ck];
+    if (c && matchSearch(c)) out.cattle[ck] = c;
+  }
+  for (var mk in farmStore.milk) {
+    var m = farmStore.milk[mk];
+    if (m && matchDate(m.date) && matchSearch(m)) out.milk[mk] = m;
+  }
+  for (var kuk in farmStore.customers) {
+    var cu = farmStore.customers[kuk];
+    if (!cu) continue;
+    var aMatch = !areaFilter || String(cu.area || '').trim().toLowerCase() === areaFilter;
+    if (aMatch && matchSearch(cu)) out.customers[kuk] = cu;
+  }
+  for (var sk in farmStore.sales) {
+    var sl = farmStore.sales[sk];
+    if (!sl) continue;
+    var sArea = String(sl.area || sl.addr || '').trim().toLowerCase();
+    var sAreaMatch = !areaFilter || sArea === areaFilter;
+    if (matchDate(sl.date) && sAreaMatch && matchSearch(sl)) out.sales[sk] = sl;
+  }
+  for (var ek in farmStore.expenses) {
+    var ex = farmStore.expenses[ek];
+    if (ex && matchDate(ex.date) && matchSearch(ex)) out.expenses[ek] = ex;
+  }
+  for (var ok in farmStore.orders) {
+    var od = farmStore.orders[ok];
+    if (!od) continue;
+    var oAreaMatch = !areaFilter || String(od.area || '').trim().toLowerCase() === areaFilter;
+    if (matchDate(od.date) && oAreaMatch && matchSearch(od)) out.orders[ok] = od;
+  }
+  for (var stk in farmStore.stock) {
+    var st = farmStore.stock[stk];
+    if (st && matchSearch(st)) out.stock[stk] = st;
+  }
+  for (var bk in farmStore.breeding) {
+    var br = farmStore.breeding[bk];
+    if (br && matchDate(br.aiDate) && matchSearch(br)) out.breeding[bk] = br;
+  }
+  for (var hk in farmStore.health) {
+    var hl = farmStore.health[hk];
+    if (hl && matchDate(hl.date) && matchSearch(hl)) out.health[hk] = hl;
+  }
+  for (var ik in farmStore.insuranceLoans) {
+    var ins = farmStore.insuranceLoans[ik];
+    if (ins && (isAll || matchDate(ins.dueDate) || matchDate(ins.startDate)) && matchSearch(ins)) out.insuranceLoans[ik] = ins;
+  }
+  for (var fk in farmStore.feedRations) {
+    var fr = farmStore.feedRations[fk];
+    if (fr && matchDate(fr.date) && matchSearch(fr)) out.feedRations[fk] = fr;
+  }
+  for (var vk in farmStore.vaccine) {
+    var vc = farmStore.vaccine[vk];
+    if (vc && matchDate(vc.date) && matchSearch(vc)) out.vaccine[vk] = vc;
+  }
+  for (var dk in farmStore.deworm) {
+    var dw = farmStore.deworm[dk];
+    if (dw && matchDate(dw.date) && matchSearch(dw)) out.deworm[dk] = dw;
+  }
+  for (var smk in farmStore.semen) {
+    var sm = farmStore.semen[smk];
+    if (sm && (isAll || matchDate(sm.date)) && matchSearch(sm)) out.semen[smk] = sm;
+  }
+
+  return out;
+};
+
+window.renderBackupSummary = function() {
+  if (!window.currentBkYear) initBackupFilters();
+
+  var banner = getEl('backupStatusBanner');
+  if (banner) {
+    var lastTs = null;
+    try { lastTs = localStorage.getItem('nanda_last_backup_ts'); } catch (e) {}
+    if (lastTs) {
+      var dtObj = new Date(lastTs);
+      var daysAgo = Math.floor((Date.now() - dtObj.getTime()) / (1000 * 60 * 60 * 24));
+      var dateStr = dtObj.toLocaleDateString('bn-BD') + ' (' + dtObj.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }) + ')';
+      banner.innerHTML = '<div style="background:#e8f5e9; border-left:4px solid #2e7d32; padding:10px 14px; border-radius:8px; font-size:13px; color:#1b5e20; font-weight:600;">✔ সর্বশেষ JSON ব্যাকআপ: ' + dateStr + ' (' + (daysAgo === 0 ? 'আজ' : daysAgo + ' দিন আগে') + ')</div>';
+    } else {
+      banner.innerHTML = '<div style="background:#f4fbf5; border-left:4px solid #2e7d32; padding:10px 14px; border-radius:8px; font-size:13px; color:#1b5e20; font-weight:600;">ℹ️ যেকোনো বছর, মাস বা নির্দিষ্ট তারিখের ডাটা ফিল্টার করে JSON, Excel (CSV), Word বা Text ফরম্যাটে ডাউনলোড করুন।</div>';
+    }
+  }
+
+  var ds = getFilteredBackupDataset();
+  var titleEl = getEl('backupSummaryTitle');
+  if (titleEl) titleEl.innerText = '📊 ডাটাবেস রেকর্ড সারসংক্ষেপ (' + ds.periodLabel + '):';
+
+  var milkL = 0; for (var mk in ds.milk) milkL += Number(ds.milk[mk].liters) || 0;
+  var salesAmt = 0; for (var sk2 in ds.sales) { if (!(ds.sales[sk2].isPayment && Number(ds.sales[sk2].total) === 0)) salesAmt += Number(ds.sales[sk2].total) || 0; }
+  var expAmt = 0; for (var ek in ds.expenses) expAmt += Number(ds.expenses[ek].amount) || 0;
+
+  var grid = getEl('backupDbSummaryGrid');
+  if (grid) {
+    var cnt = function(obj) { return obj ? Object.keys(obj).length : 0; };
+    var cards = [
+      { lbl: '🐄 Cattle', val: cnt(ds.cattle) + ' টি', sub: '', col: '#1b5e20' },
+      { lbl: '🥛 Milk', val: cnt(ds.milk) + ' টি', sub: milkL.toFixed(1) + ' L', col: '#0288d1' },
+      { lbl: '👥 Customers', val: cnt(ds.customers) + ' জন', sub: '', col: '#2e7d32' },
+      { lbl: '💰 Sales', val: cnt(ds.sales) + ' টি', sub: '₹ ' + Math.round(salesAmt).toLocaleString(), col: '#f57c00' },
+      { lbl: '🧾 Expenses', val: cnt(ds.expenses) + ' টি', sub: '₹ ' + Math.round(expAmt).toLocaleString(), col: '#c62828' },
+      { lbl: '📦 Stock Items', val: cnt(ds.stock) + ' টি', sub: '', col: '#6a1b9a' },
+      { lbl: '🧬 Breeding', val: cnt(ds.breeding) + ' টি', sub: '', col: '#00838f' },
+      { lbl: '🛡️ Insurance/Loan', val: cnt(ds.insuranceLoans) + ' টি', sub: '', col: '#0277bd' }
+    ];
+    grid.innerHTML = cards.map(function(c) {
+      return '<div style="background:#f8faf9; border:1px solid #e0e0e0; border-left:4px solid ' + c.col + '; border-radius:8px; padding:9px 10px;">' +
+        '<div style="font-size:11px; color:#555; font-weight:600;">' + c.lbl + '</div>' +
+        '<div style="font-size:16px; font-weight:bold; color:' + c.col + ';">' + c.val + '</div>' +
+        (c.sub ? '<div style="font-size:11px; color:#444; font-weight:600;">' + c.sub + '</div>' : '') +
+      '</div>';
+    }).join('');
+  }
+};
+
+window.downloadFilteredBackupJson = function() {
+  var ds = getFilteredBackupDataset();
+  var payload = {
+    meta: { farm: 'Nanda Dairy & Agro', period: ds.periodLabel, exportedAt: new Date().toISOString() },
+    cattle: ds.cattle, milk: ds.milk, customers: ds.customers, sales: ds.sales,
+    expenses: ds.expenses, orders: ds.orders, stock: ds.stock, breeding: ds.breeding,
+    health: ds.health, insuranceLoans: ds.insuranceLoans, feedRations: ds.feedRations,
+    vaccine: ds.vaccine, deworm: ds.deworm, semen: ds.semen
+  };
+  var dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(payload, null, 2));
+  var a = document.createElement('a');
+  a.setAttribute("href", dataStr);
+  a.setAttribute("download", "Nanda_Dairy_Backup_" + ds.fileTag + ".json");
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  showAppToast(ds.periodLabel + ' এর JSON ব্যাকআপ ডাউনলোড হয়েছে!');
+};
+
+window.exportBackupFiltered = function(format) {
+  var ds = getFilteredBackupDataset();
+  var milkL = 0; for (var mk in ds.milk) milkL += Number(ds.milk[mk].liters) || 0;
+  var salesAmt = 0; for (var sk in ds.sales) { if (!(ds.sales[sk].isPayment && Number(ds.sales[sk].total) === 0)) salesAmt += Number(ds.sales[sk].total) || 0; }
+  var expAmt = 0; for (var ek in ds.expenses) expAmt += Number(ds.expenses[ek].amount) || 0;
+
+  var rows = [
+    ['Section', 'Details / Count', 'Total Value / Qty'],
+    ['Period', ds.periodLabel, 'Nanda Dairy & Agro'],
+    ['Cattle', Object.keys(ds.cattle).length + ' Cattle', '-'],
+    ['Milk Production', Object.keys(ds.milk).length + ' Entries', milkL.toFixed(1) + ' L'],
+    ['Customers', Object.keys(ds.customers).length + ' Customers', '-'],
+    ['Sales', Object.keys(ds.sales).length + ' Entries', 'Rs ' + Math.round(salesAmt)],
+    ['Expenses', Object.keys(ds.expenses).length + ' Entries', 'Rs ' + Math.round(expAmt)],
+    ['Net Profit / Loss', ds.periodLabel, 'Rs ' + Math.round(salesAmt - expAmt)],
+    ['Breeding Records', Object.keys(ds.breeding).length + ' Entries', '-'],
+    ['Health Records', Object.keys(ds.health).length + ' Entries', '-'],
+    ['Insurance / Loan', Object.keys(ds.insuranceLoans).length + ' Entries', '-']
+  ];
+
+  var fileName = "Nanda_Dairy_Backup_Report_" + ds.fileTag;
+  if (format === 'csv') {
+    var csv = "data:text/csv;charset=utf-8,﻿" + rows.map(function(r){ return r.join(","); }).join("\r\n");
+    var a = document.createElement("a"); a.href = encodeURI(csv); a.download = fileName + ".csv"; document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  } else if (format === 'txt') {
+    var txt = "data:text/plain;charset=utf-8,﻿" + rows.map(function(r){ return r.join(" \t "); }).join("\r\n");
+    var a = document.createElement("a"); a.href = encodeURI(txt); a.download = fileName + ".txt"; document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  } else if (format === 'doc') {
+    var h = "<html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'><head><meta charset='utf-8'><title>Backup Report</title></head><body><h2 style='color:#1b5e20;'>Nanda Dairy & Agro - Backup Summary (" + ds.periodLabel + ")</h2><table border='1' style='border-collapse:collapse; width:100%; font-family:sans-serif; font-size:12.5px;'>";
+    rows.forEach(function(r, idx) {
+      h += "<tr>" + r.map(function(cell){ return idx === 0 ? "<th style='padding:7px; background:#e8f5e9;'>" + cell + "</th>" : "<td style='padding:7px;'>" + cell + "</td>"; }).join("") + "</tr>";
+    });
+    h += "</table></body></html>";
+    var blob = new Blob(['﻿', h], { type: 'application/msword' });
+    var a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = fileName + ".doc"; document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  }
+  showAppToast(ds.periodLabel + ' রিপোর্ট (' + format.toUpperCase() + ') ডাউনলোড হয়েছে!');
+};
+
+window.exportFullFarmCsv = function(section) {
+  var ds = getFilteredBackupDataset();
+  var rows = [];
+  var clean = function(v) { return String(v === undefined || v === null ? '-' : v).replace(/,/g, ' ').replace(/\r?\n/g, ' '); };
+
+  if (section === 'cattle') {
+    rows.push(['Tag ID','Breed','Type','Gen','DOB','Weight(kg)','Lactation','Status','Sire','Dam','Purchase Price(Rs)','Sale Price(Rs)']);
+    for (var ck in ds.cattle) {
+      var c = ds.cattle[ck];
+      rows.push([clean(c.tag), clean(c.breed), clean(c.breedType), clean(c.generation), formatDateBR(c.dob), c.weight||0, c.lactation||0, clean(c.status), clean(c.sire), clean(c.dam), c.purchasePrice||0, c.salePrice||0]);
+    }
+  } else if (section === 'milk') {
+    rows.push(['Date','Cow Tag','Session','Liters','Fat%','SNF%','CLR']);
+    for (var mk in ds.milk) {
+      var m = ds.milk[mk];
+      rows.push([formatDateBR(m.date), clean(m.cow), clean(m.session), m.liters||0, m.fat||'-', m.snf||'-', m.clr||'-']);
+    }
+  } else if (section === 'sales') {
+    rows.push(['Date','Customer','Phone','Area','Item','Qty','Rate(Rs)','Total(Rs)','Paid(Rs)','Due(Rs)']);
+    for (var sk in ds.sales) {
+      var sl = ds.sales[sk];
+      if (sl.isPayment && Number(sl.total) === 0) continue;
+      rows.push([formatDateBR(sl.date), clean(sl.name), clean(sl.phone), clean(sl.area), clean(sl.item), sl.qty||1, sl.rate||0, sl.total||0, sl.paid||0, Math.max(0,(Number(sl.total)||0)-(Number(sl.paid)||0))]);
+    }
+  } else if (section === 'customers') {
+    rows.push(['Name','Phone','Area','Address','Daily Demand(L)','Custom Rate(Rs/L)','Opening Due(Rs)','Type','Shift','WhatsApp']);
+    for (var kuk in ds.customers) {
+      var cu = ds.customers[kuk];
+      rows.push([clean(cu.name), clean(cu.phone), clean(cu.area), clean(cu.addr), cu.demand||0, cu.milkRate||50, cu.openingDue||0, clean(cu.type), clean(cu.shift), cu.whatsappOpt==='blocked'?'Disabled':'Allowed']);
+    }
+  } else if (section === 'expenses') {
+    rows.push(['Date','Category','Description','Vendor','Mode','Status','Amount(Rs)','Paid(Rs)','Due(Rs)']);
+    for (var ek in ds.expenses) {
+      var ex = ds.expenses[ek];
+      var pd = getExpensePaidAndDue(ex);
+      rows.push([formatDateBR(ex.date), clean(ex.category), clean(ex.title), clean(ex.vendor), clean(ex.payMode||'Cash'), clean(ex.status||'Paid'), pd.total, pd.paid, pd.due]);
+    }
+  } else {
+    exportBackupFiltered('csv');
+    return;
+  }
+
+  if (rows.length <= 1) return showAppToast(ds.periodLabel + ' এ এক্সপোর্ট করার মতো কোনো ' + section.toUpperCase() + ' ডাটা নেই!');
+  var csv = "data:text/csv;charset=utf-8,﻿" + rows.map(function(rw){ return rw.join(","); }).join("\r\n");
+  var link = document.createElement("a");
+  link.setAttribute("href", encodeURI(csv));
+  link.setAttribute("download", "Nanda_Dairy_" + section.toUpperCase() + "_" + ds.fileTag + ".csv");
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  showAppToast(section.toUpperCase() + ' (' + ds.periodLabel + ') CSV ফাইল ডাউনলোড হয়েছে!');
+};
 
 window.listenAllData = function() {
   if (!db) return;
@@ -5597,7 +6727,9 @@ window.listenAllData = function() {
       var d = c.val(), k = c.key; farmStore.customers[k] = d;
       if (d.name) nameOpt += '<option value="' + d.name + '">' + (d.phone ? d.name + ' (' + d.phone + ')' : d.name) + '</option>';
       if (d.area && !areaSet[d.area]) { areaSet[d.area] = true; areaOpt += '<option value="' + d.area + '">'; }
-      if (body) body.innerHTML += '<tr><td><strong>' + (d.name || '-') + '</strong></td><td>' + (d.phone || '-') + '</td><td>' + (d.area ? '<span class="badge badge-warning">' + d.area + '</span>' : '-') + '</td><td>' + (d.addr || '-') + '</td><td>' + (d.demand || 0) + ' L</td><td>₹ ' + (d.openingDue || 0) + '</td><td><span style="font-size:11px; background:#e3f2fd; padding:2px 6px;">' + (d.type || 'Retail') + '</span> / <span style="font-size:11px; color:#1b5e20;">' + (d.shift || 'Morning') + '</span></td><td><button class="action-btn btn-info" onclick="editCustomer(\'' + k + '\')">Edit</button><button class="action-btn btn-danger" onclick="deleteRecord(\'customers\',\'' + k + '\')">Delete</button></td></tr>';
+      var waBadge = (d.whatsappOpt === 'blocked') ? '<br><span class="badge badge-danger" style="font-size:10px;">🔕 WA বন্ধ</span>' : '<br><span class="badge badge-success" style="font-size:10px;">💬 WA চালু</span>';
+      var rateDisplay = (Number(d.milkRate) > 0) ? '<br><small style="color:#1b5e20; font-weight:700;">₹ ' + d.milkRate + '/L</small>' : '<br><small style="color:#777;">₹ 50/L (Default)</small>';
+      if (body) body.innerHTML += '<tr><td><strong>' + (d.name || '-') + '</strong></td><td>' + (d.phone || '-') + waBadge + '</td><td>' + (d.area ? '<span class="badge badge-warning">' + d.area + '</span>' : '-') + '</td><td>' + (d.addr || '-') + '</td><td>' + (d.demand || 0) + ' L' + rateDisplay + '</td><td>₹ ' + (d.openingDue || 0) + '</td><td><span style="font-size:11px; background:#e3f2fd; padding:2px 6px;">' + (d.type || 'Retail') + '</span> / <span style="font-size:11px; color:#1b5e20;">' + (d.shift || 'Morning') + '</span></td><td><button class="action-btn btn-info" onclick="editCustomer(\'' + k + '\')">Edit</button><button class="action-btn btn-danger" onclick="deleteRecord(\'customers\',\'' + k + '\')">Delete</button></td></tr>';
     });
     if (getEl('customerNameList')) getEl('customerNameList').innerHTML = nameOpt;
     if (getEl('customerAreaList')) getEl('customerAreaList').innerHTML = areaOpt;
@@ -5627,6 +6759,7 @@ window.listenAllData = function() {
       farmStore.feedRations[c.key] = c.val();
     });
     renderRationTable();
+    renderStockTable();
   });
 
   db.ref('expenses').on('value', function(snap) {
@@ -5640,6 +6773,10 @@ window.listenAllData = function() {
   });
   db.ref('labourPayments').on('value', function(snap) {
     farmStore.labourPayments = {}; snap.forEach(function(c){ farmStore.labourPayments[c.key] = c.val(); });
+    renderLabourTable();
+  });
+  db.ref('labourAttendance').on('value', function(snap) {
+    farmStore.labourAttendance = snap.val() || {};
     renderLabourTable();
   });
 
@@ -5667,6 +6804,13 @@ window.listenAllData = function() {
     farmStore.health = {};
     snap.forEach(function(c) { farmStore.health[c.key] = c.val(); });
     renderHealthTable();
+    renderDashboardAlerts();
+  });
+
+  db.ref('insuranceLoans').on('value', function(snap) {
+    farmStore.insuranceLoans = {};
+    snap.forEach(function(c) { farmStore.insuranceLoans[c.key] = c.val(); });
+    renderInsuranceTable();
     renderDashboardAlerts();
   });
 };
@@ -6202,6 +7346,13 @@ window.getReportPeriodData = function() {
     var stO = farmStore.stock[stkK];
     if (stO) stkVal += (Number(stO.qty)||0) * (Number(stO.unitCost)||0);
   }
+  var cattleCapital = 0;
+  for (var capK in farmStore.cattle) {
+    var capC = farmStore.cattle[capK];
+    if (capC && String(capC.status || '').toLowerCase() !== 'sold/transferred') {
+      cattleCapital += (Number(capC.purchasePrice) || 0);
+    }
+  }
   var availSemenTot = 0, availConv = 0, availSexed = 0;
   for (var semK in farmStore.semen) {
     var smO = farmStore.semen[semK];
@@ -6230,6 +7381,7 @@ window.getReportPeriodData = function() {
     custDueTot: custDueTot,
     vendDueTot: vendDueTot,
     stkVal: stkVal,
+    cattleCapital: cattleCapital,
     availSemenTot: availSemenTot,
     availConv: availConv,
     availSexed: availSexed
@@ -6265,7 +7417,8 @@ window.renderReportsSummary = function() {
       '<div style="background:#e8f5e9; padding:10px; border-radius:8px;"><small style="color:#555;">গ্রাহকের কাছে পাওনা (Receivable)</small><div style="font-size:16px; font-weight:bold; color:#1b5e20;">₹ ' + Math.round(r.custDueTot).toLocaleString() + '</div></div>' +
       '<div style="background:#ffebee; padding:10px; border-radius:8px;"><small style="color:#555;">দোকানদারের বাকি (Payable)</small><div style="font-size:16px; font-weight:bold; color:#c62828;">₹ ' + Math.round(r.vendDueTot).toLocaleString() + '</div></div>' +
       '<div style="background:#e3f2fd; padding:10px; border-radius:8px;"><small style="color:#555;">মোট স্টক ও সিমেন সম্পদ</small><div style="font-size:16px; font-weight:bold; color:#0288d1;">₹ ' + Math.round(r.stkVal).toLocaleString() + '</div></div>' +
-      '<div style="background:#f3e5f5; padding:10px; border-radius:8px;"><small style="color:#555;">মোট ব্যবহারযোগ্য সিমেন স্ট্র</small><div style="font-size:16px; font-weight:bold; color:#7b1fa2;">' + r.availSemenTot + ' টি</div><small style="color:#555;">Conv: ' + r.availConv + ' | Sexed: ' + r.availSexed + '</small></div>';
+      '<div style="background:#f3e5f5; padding:10px; border-radius:8px;"><small style="color:#555;">মোট ব্যবহারযোগ্য সিমেন স্ট্র</small><div style="font-size:16px; font-weight:bold; color:#7b1fa2;">' + r.availSemenTot + ' টি</div><small style="color:#555;">Conv: ' + r.availConv + ' | Sexed: ' + r.availSexed + '</small></div>' +
+      '<div style="background:#e8f5e9; padding:10px; border-radius:8px;"><small style="color:#555;">🐄 মোট গরু মূলধন (Cattle Asset)</small><div style="font-size:16px; font-weight:bold; color:#1b5e20;">₹ ' + Math.round(r.cattleCapital || 0).toLocaleString() + '</div></div>';
   }
 
   var roiBody = getEl('reportCowRoiTableBody');
@@ -6320,6 +7473,7 @@ window.renderReportsSummary = function() {
 window.showProfitLossStatement = function() {
   var r = getReportPeriodData();
   document.body.setAttribute('data-print', 'invoice');
+  setInvoiceWhatsAppPayload(null);
   getEl('invMainDocTitle').innerText = 'লাভ-ক্ষতি ও পারফরম্যান্স রিপোর্ট / P&L STATEMENT (' + r.label + ')';
 
   var sRows = Object.keys(r.salesByItem).map(function(k) {
@@ -6335,7 +7489,7 @@ window.showProfitLossStatement = function() {
       '<strong>মোট দুধ উৎপাদন:</strong> ' + r.milkL.toFixed(1) + ' লিটার (গড়: ' + r.avgPerCow.toFixed(1) + ' L/গরু) | ' +
       '<strong>গ্রাহক পাওনা:</strong> ₹ ' + Math.round(r.custDueTot).toLocaleString() + ' | <strong>দোকান বাকি:</strong> ₹ ' + Math.round(r.vendDueTot).toLocaleString() +
     '</div>' +
-    '<div style="display:grid; grid-template-columns:1fr 1fr; gap:14px;">' +
+    '<div class="pl-two-col">' +
       '<div><strong>বিক্রি / আয় (Sales):</strong><table class="invoice-table" style="width:100%; min-width:unset; margin-top:6px;"><tbody>' + sRows + '</tbody><tfoot><tr style="background:#e8f5e9;"><th>মোট আয়</th><th style="text-align:right;">₹ ' + r.salesTot.toLocaleString() + '</th></tr></tfoot></table></div>' +
       '<div><strong>খরচ (Expenses):</strong><table class="invoice-table" style="width:100%; min-width:unset; margin-top:6px;"><tbody>' + eRows + '</tbody><tfoot><tr style="background:#ffebee;"><th>মোট খরচ</th><th style="text-align:right;">₹ ' + r.expTot.toLocaleString() + '</th></tr></tfoot></table></div>' +
     '</div>' +
