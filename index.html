@@ -426,8 +426,7 @@
       }
       #saleSearchInput, #saleAreaFilter, #orderSearchInput, #orderAreaFilter, #orderShiftFilter,
       #feedSearchTag, #expFilterCategory, #expSearchInput, #stkFilterCategory,
-      #stkSearchInput, #semFilterType, #semFilterBreed, #semSearchInput, #hlthSearchInput,
-      #bkSearchInput, #bkAreaFilter {
+      #stkSearchInput, #semFilterType, #semFilterBreed, #semSearchInput, #hlthSearchInput {
         width: 100% !important;
       }
       #loginScreen { align-items: flex-start; padding: 16px 12px; }
@@ -1712,10 +1711,6 @@
                 <button class="action-btn btn-warning" onclick="clearBackupDateFilter()" style="padding:6px 12px;">Clear/Reset</button>
               </div>
             </div>
-            <div style="display:flex; gap:8px; flex-wrap:wrap;">
-              <input type="text" id="bkSearchInput" oninput="renderBackupSummary()" placeholder="🔍 খুঁজুন..." style="width:180px; padding:7px;">
-              <select id="bkAreaFilter" onchange="renderBackupSummary()" style="width:140px; padding:7px;"><option value="">সকল এলাকা</option></select>
-            </div>
           </div>
 
           <div id="bkMonthTabs" style="display:flex; gap:8px; overflow-x:auto; margin-bottom:15px; padding-bottom:5px; -webkit-overflow-scrolling: touch; white-space:nowrap;"></div>
@@ -1738,7 +1733,7 @@
 
           <hr style="margin:22px 0; border:none; border-top:1px solid #e0e0e0;">
           <h2 style="font-size:15.5px; color:#1b5e20; border:none; padding:0; margin-bottom:8px;">📑 মডিউল-ভিত্তিক এক্সেল/সিএসভি এক্সপোর্ট (নির্বাচিত মাস / তারিখ অনুযায়ী)</h2>
-          <p style="font-size:12.5px; color:#666; margin-bottom:12px;">উপরের নির্বাচিত বছর, মাস, তারিখ, সার্চ বা এলাকা অনুযায়ী যেকোনো মডিউলের আলাদা Excel (CSV) ডাউনলোড করুন:</p>
+          <p style="font-size:12.5px; color:#666; margin-bottom:12px;">উপরের নির্বাচিত বছর, মাস বা তারিখ অনুযায়ী যেকোনো মডিউলের আলাদা Excel (CSV) ডাউনলোড করুন:</p>
           <div style="display:flex; flex-wrap:wrap; gap:8px;">
             <button class="action-btn" style="background:#1b5e20; color:white; padding:8px 12px;" onclick="exportFullFarmCsv('all')">📥 সম্পূর্ণ সারসংক্ষেপ (All CSV)</button>
             <button class="action-btn" style="background:#2e7d32; color:white; padding:8px 12px;" onclick="exportFullFarmCsv('cattle')">🐄 Cattle CSV</button>
@@ -8235,8 +8230,6 @@
 
     window.clearBackupDateFilter = function() {
       if (getEl('bkFilterDate')) getEl('bkFilterDate').value = "";
-      if (getEl('bkSearchInput')) getEl('bkSearchInput').value = "";
-      if (getEl('bkAreaFilter')) getEl('bkAreaFilter').value = "";
       window.specificBkDate = "";
       window.currentBkMonth = "ALL";
       renderBackupMonthTabs();
@@ -8247,19 +8240,14 @@
       if (!window.currentBkYear) initBackupFilters();
       var yr = window.currentBkYear, mn = window.currentBkMonth, dt = window.specificBkDate;
       var isAll = (!dt && mn === 'ALL');
-      var searchQ = (getEl('bkSearchInput') ? getEl('bkSearchInput').value : '').trim().toLowerCase();
-      var areaFilter = (getEl('bkAreaFilter') ? getEl('bkAreaFilter').value : '').trim().toLowerCase();
-
       var matchDate = function(dStr) {
         if (isAll) return true;
         if (!dStr) return false;
         if (dt) return String(dStr).trim() === dt;
         return String(dStr).trim().substring(0, 4) === yr && String(dStr).trim().substring(5, 7) === mn;
       };
-      var matchSearch = function(obj) {
-        if (!searchQ) return true;
-        try { return JSON.stringify(obj).toLowerCase().includes(searchQ); } catch (e) { return true; }
-      };
+      var matchSearch = function() { return true; };
+      var areaFilter = '';
 
       var out = {
         periodLabel: dt ? formatDateBR(dt) : (isAll ? 'ALL DATA' : (mn + '/' + yr)),
@@ -8338,20 +8326,6 @@
 
     window.renderBackupSummary = function() {
       if (!window.currentBkYear) initBackupFilters();
-
-      // Populate Area Filter dropdown
-      var areaSel = getEl('bkAreaFilter');
-      if (areaSel) {
-        var curArea = areaSel.value;
-        var areaSet = {};
-        for (var ck in farmStore.customers) { if (farmStore.customers[ck] && farmStore.customers[ck].area) areaSet[farmStore.customers[ck].area.trim()] = true; }
-        for (var sk in farmStore.sales) { if (farmStore.sales[sk] && farmStore.sales[sk].area) areaSet[farmStore.sales[sk].area.trim()] = true; }
-        var optH = '<option value="">সকল এলাকা</option>';
-        Object.keys(areaSet).sort().forEach(function(a) {
-          optH += '<option value="' + a + '" ' + (curArea.toLowerCase() === a.toLowerCase() ? 'selected' : '') + '>' + a + '</option>';
-        });
-        areaSel.innerHTML = optH;
-      }
 
       var banner = getEl('backupStatusBanner');
       if (banner) {
