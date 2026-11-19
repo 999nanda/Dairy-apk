@@ -1,8 +1,34 @@
+/* ==========================================================================
+   Nanda Dairy & Agro - Enterprise Farm ERP (app.js)
+   সম্পূর্ণ অ্যাপ্লিকেশন লজিক, Firebase সিঙ্ক, চার্ট, ফিল্টার ও রিপোর্ট মডিউল
+   ========================================================================== */
+
 function getEl(id) {
   return document.getElementById(id);
 }
 
-// ভারতীয় ফরম্যাটে তারিখ ও সময় দেখানোর ফাংশন (DD-MM-YYYY ও Time)
+var firebaseConfig = {
+  apiKey: "AIzaSyAtmDkYLV6rh4jfJT2OPJZ5_R4c99S8-t4",
+  authDomain: "nanda-dairy-agro-b5888.firebaseapp.com",
+  databaseURL: "https://nanda-dairy-agro-b5888-default-rtdb.firebaseio.com",
+  projectId: "nanda-dairy-agro-b5888",
+  storageBucket: "nanda-dairy-agro-b5888.firebasestorage.app",
+  messagingSenderId: "284932687587",
+  appId: "1:284932687587:web:1613d832d65dabfb5f67d6"
+};
+
+var db = null;
+try {
+  if (window.firebase && !firebase.apps.length) {
+    firebase.initializeApp(firebaseConfig);
+  }
+  if (window.firebase) {
+    db = firebase.database();
+  }
+} catch (e) {
+  console.log(e);
+}
+
 window.formatDateBR = function(dtStr) {
   if (!dtStr || dtStr === '-') return '-';
   var clean = String(dtStr).trim();
@@ -23,14 +49,18 @@ window.getCurrentTimeBR = function() {
   var minutes = d.getMinutes();
   var ampm = hours >= 12 ? 'PM' : 'AM';
   hours = hours % 12;
-  hours = hours ? hours : 12; 
+  hours = hours ? hours : 12;
   minutes = minutes < 10 ? '0' + minutes : minutes;
   return hours + ':' + minutes + ' ' + ampm;
 };
 
 window.parseDateToTime = function(dtStr) {
-  if (!dtStr) return 0;
+  if (!dtStr || dtStr === '-' || dtStr === 'শুরু') return 0;
   var clean = String(dtStr).trim();
+  var parts = clean.split('-');
+  if (parts.length === 3 && parts[2].length === 4) {
+    clean = parts[2] + '-' + parts[1] + '-' + parts[0];
+  }
   var t = new Date(clean).getTime();
   return isNaN(t) ? 0 : t;
 };
@@ -65,89 +95,980 @@ window.switchTab = function(tab, btn) {
   }
 };
 
-window.dologin = function() {
-  var userIdEl = getEl('userId') || getEl('loginId');
-  var passwordEl = getEl('password') || getEl('loginPass');
-  
-  var userId = userIdEl ? userIdEl.value.trim() : '';
-  var password = passwordEl ? passwordEl.value.trim() : '';
-  
-  if ((userId.toLowerCase() === 'nanda' && password === '1234') || (userId && password)) {
-    localStorage.setItem('nanda_auth_status', 'logged_in');
-    var loginScreen = getEl('loginScreen');
-    var appBody = getEl('appBody');
-    
-    if (loginScreen) loginScreen.style.display = 'none';
-    if (appBody) appBody.style.display = 'block';
-    
+window.doLogin = function() {
+  var u = (getEl('loginId') ? getEl('loginId').value : '').trim().toLowerCase();
+  var p = (getEl('loginPass') ? getEl('loginPass').value : '').trim();
+
+  if (u === 'nanda' && p === '1234') {
+    try { localStorage.setItem('nanda_auth_status', 'logged_in'); } catch (e) {}
+    getEl('loginScreen').style.display = 'none';
+    getEl('appBody').style.display = 'block';
     if (typeof window.listenAllData === 'function') {
       window.listenAllData();
     }
-    if (typeof renderSalesTable === 'function') {
-      renderSalesTable();
-    }
   } else {
-    alert('দয়া করে সঠিক ইউজার আইডি এবং পাসওয়ার্ড দিন!');
+    if (getEl('loginErr')) {
+      getEl('loginErr').innerText = 'ভুল আইডি বা পাসওয়ার্ড!';
+    }
   }
 };
 
-document.addEventListener('DOMContentLoaded', function() {
-  var loginBtn = document.querySelector('#loginScreen button') || document.querySelector('button[onclick*="dologin"]');
-  if (loginBtn) {
-    loginBtn.onclick = window.dologin;
+window.doLogout = function() {
+  try { localStorage.removeItem('nanda_auth_status'); } catch (e) {}
+  location.reload();
+};
+
+window.autoCalcExpectedCalving = function() {
+  var aiDateVal = getEl('brAiDate').value;
+  if (!aiDateVal) return;
+  var d = new Date(aiDateVal);
+  if (isNaN(d.getTime())) return;
+  d.setDate(d.getDate() + 283);
+  var year = d.getFullYear();
+  var month = ('0' + (d.getMonth() + 1)).slice(-2);
+  var day = ('0' + d.getDate()).slice(-2);
+  var expDateStr = year + '-' + month + '-' + day;
+  var expCalvingEl = getEl('brExpCalvingDate');
+  if (expCalvingEl) {
+    expCalvingEl.value = expDateStr;
   }
-});
+};
 
 window.onload = function() {
+  try {
+    if ('serviceWorker' in navigator && window.self === window.top && (location.protocol === 'https:' || location.hostname === 'localhost')) {
+      navigator.serviceWorker.getRegistrations().then(function(regs) {
+        regs.forEach(function(r) { r.update(); });
+      }).catch(function() {});
+    }
+  } catch (e) {}
+  document.querySelectorAll('img[data-local-logo]').forEach(function(imgEl) {
+    var testImg = new Image();
+    testImg.onload = function() { imgEl.src = imgEl.getAttribute('data-local-logo'); };
+    testImg.src = imgEl.getAttribute('data-local-logo');
+  });
   var todayISO = new Date().toISOString().split('T')[0];
-  var defaultDateIds = ['milkDate', 'saleDate', 'orderDate', 'expDate', 'brAiDate', 'hlthDate', 'ledgerPayDate', 'feedDate', 'rationDate'];
+  var defaultDateIds = ['milkDate', 'saleDate', 'orderDate', 'expDate', 'brAiDate', 'hlthDate', 'ledgerPayDate', 'feedDate', 'rationDate', 'vacDate', 'dewormDate', 'labJoinDate', 'labPayDate', 'semDate'];
   defaultDateIds.forEach(function(id) {
     if (getEl(id)) {
       getEl(id).value = todayISO;
     }
   });
 
-  if (localStorage.getItem('nanda_auth_status') === 'logged_in') {
-    if (getEl('loginScreen')) {
-      getEl('loginScreen').style.display = 'none';
-    }
-    if (getEl('appBody')) {
-      getEl('appBody').style.display = 'block';
-    }
-    if (typeof window.listenAllData === 'function') {
-      window.listenAllData();
-    }
+  if (typeof autoCalcRation === 'function') autoCalcRation();
+  if (typeof autoCalcNextDewormDate === 'function') autoCalcNextDewormDate();
+
+  var isLogged = false;
+  try { isLogged = (localStorage.getItem('nanda_auth_status') === 'logged_in'); } catch (e) {}
+  if (isLogged) {
+    if (getEl('loginScreen')) getEl('loginScreen').style.display = 'none';
+    if (getEl('appBody')) getEl('appBody').style.display = 'block';
+    if (typeof window.listenAllData === 'function') window.listenAllData();
   } else {
-    if (getEl('loginScreen')) {
-      getEl('loginScreen').style.display = 'flex';
-    }
-    if (getEl('appBody')) {
-      getEl('appBody').style.display = 'none';
-    }
+    if (getEl('loginScreen')) getEl('loginScreen').style.display = 'flex';
+    if (getEl('appBody')) getEl('appBody').style.display = 'none';
   }
 };
-
-function autoCalcExpectedCalving() {
-  var aiVal = getEl('brAiDate').value;
-  if (aiVal) {
-    var d = new Date(aiVal);
-    d.setDate(d.getDate() + 280);
-    getEl('brExpCalvingDate').value = d.toISOString().split('T')[0];
-  }
-}
 
 var farmStore = {
   cattle: {}, breeding: {}, milk: {}, sales: {},
   customers: {}, orders: {}, expenses: {}, stock: {},
-  semen: {}, health: {}, feedRations: {}, feed: {}
+  semen: {}, health: {}, feedRations: {}, feed: {},
+  vaccine: {}, deworm: {}, labours: {}, labourPayments: {}, stockLogs: {}
 };
 window.activeLedgerCustomerName = '';
 
-function deleteRecord(path, id) {
-  if (confirm('আপনি কি নিশ্চিতভাবে এই তথ্যটি মুছে ফেলতে চান?')) {
-    if (db) db.ref(path).child(id).remove();
+function findCattleByTag(tag) {
+  if (!tag || !farmStore.cattle) return null;
+  var tClean = String(tag).trim().toUpperCase();
+  for (var k in farmStore.cattle) {
+    var c = farmStore.cattle[k];
+    if (c && (c.tag || '').trim().toUpperCase() === tClean) {
+      return c;
+    }
   }
+  return null;
 }
+
+function findCattleKeyByTag(tag) {
+  if (!tag || !farmStore.cattle) return null;
+  var tClean = String(tag).trim().toUpperCase();
+  for (var k in farmStore.cattle) {
+    var c = farmStore.cattle[k];
+    if (c && (c.tag || '').trim().toUpperCase() === tClean) {
+      return k;
+    }
+  }
+  return null;
+}
+
+function getDaysDifferenceFromToday(dateStr) {
+  if (!dateStr || dateStr === '-' || dateStr === 'শুরু') return null;
+  var clean = String(dateStr).trim();
+  var parts = clean.split('-');
+  if (parts.length === 3 && parts[2].length === 4) {
+    clean = parts[2] + '-' + parts[1] + '-' + parts[0];
+  }
+  var target = new Date(clean + 'T00:00:00');
+  if (isNaN(target.getTime())) return null;
+  var now = new Date();
+  var today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  var diffMs = target.getTime() - today.getTime();
+  return Math.round(diffMs / (1000 * 60 * 60 * 24));
+}
+
+function getVaccineBoosterGapDays(vName) {
+  var n = String(vName || '').trim().toLowerCase();
+  if (n.includes('fmd')) return 180;
+  if (n.includes('bq') || n.includes('hs') || n.includes('theileria') || n.includes('theileriosis')) return 365;
+  if (n.includes('brucella') || n.includes('brucellosis')) return 0;
+  return 180;
+}
+
+window.renderDashboardAlerts = function() {
+  var container = getEl('dashAlertContainer');
+  var badgeEl = getEl('dash-alert-badge');
+  if (!container) return;
+
+  var alerts = [];
+
+  var latestVaccineMap = {};
+  for (var vk in farmStore.vaccine) {
+    var v = farmStore.vaccine[vk];
+    if (!v || !v.tag || !v.nextDate || v.alertResolved) continue;
+    var vGroupKey = (v.tag || '').trim().toUpperCase() + '||' + (v.name || '').trim().toLowerCase();
+    var givenTime = parseDateToTime(v.date) || 0;
+    if (!latestVaccineMap[vGroupKey] || givenTime >= latestVaccineMap[vGroupKey].givenTime) {
+      latestVaccineMap[vGroupKey] = { key: vk, data: v, givenTime: givenTime };
+    }
+  }
+
+  for (var vgKey in latestVaccineMap) {
+    var vItem = latestVaccineMap[vgKey];
+    var vData = vItem.data;
+    var diffDays = getDaysDifferenceFromToday(vData.nextDate);
+    if (diffDays !== null && diffDays <= 7) {
+      alerts.push({
+        type: 'vaccine',
+        key: vItem.key,
+        tag: vData.tag,
+        title: '💉 ভ্যাকসিন: ' + (vData.name || 'Booster'),
+        subtitle: 'ডোজ: ' + (vData.dose || 5) + ' mL (' + (vData.route || 'S/C') + ')',
+        dueDate: vData.nextDate,
+        diffDays: diffDays
+      });
+    }
+  }
+
+  var latestDewormMap = {};
+  for (var dk in farmStore.deworm) {
+    var dw = farmStore.deworm[dk];
+    if (!dw || !dw.tag || !dw.nextDate || dw.alertResolved) continue;
+    var dGroupKey = (dw.tag || '').trim().toUpperCase();
+    var dGivenTime = parseDateToTime(dw.date) || 0;
+    if (!latestDewormMap[dGroupKey] || dGivenTime >= latestDewormMap[dGroupKey].givenTime) {
+      latestDewormMap[dGroupKey] = { key: dk, data: dw, givenTime: dGivenTime };
+    }
+  }
+
+  for (var dgKey in latestDewormMap) {
+    var dItem = latestDewormMap[dgKey];
+    var dData = dItem.data;
+    var diffDaysDw = getDaysDifferenceFromToday(dData.nextDate);
+    if (diffDaysDw !== null && diffDaysDw <= 7) {
+      alerts.push({
+        type: 'deworm',
+        key: dItem.key,
+        tag: dData.tag,
+        title: '💊 কৃমির ওষুধ: ' + (dData.medName || 'Deworming'),
+        subtitle: 'ডোজ: ' + (dData.dose || '-') + ' (' + (dData.formType || 'Syrup') + ')',
+        dueDate: dData.nextDate,
+        diffDays: diffDaysDw
+      });
+    }
+  }
+
+  var calvingTrackedTags = {};
+  for (var bk in farmStore.breeding) {
+    var br = farmStore.breeding[bk];
+    if (!br || !br.tag) continue;
+    var expDt = br.expCalvingDate || br.calvingDate || '';
+    if (!expDt) continue;
+    var st = String(br.status || '').trim().toLowerCase();
+    if (br.actCalvingDate || st === 'calved' || st === 'failed' || br.alertResolved) continue;
+
+    var cDiff = getDaysDifferenceFromToday(expDt);
+    if (cDiff !== null && cDiff <= 7) {
+      var tUpper = br.tag.trim().toUpperCase();
+      calvingTrackedTags[tUpper] = true;
+      alerts.push({
+        type: 'calving',
+        source: 'breeding',
+        key: bk,
+        tag: br.tag,
+        title: '🐄 সম্ভাব্য বাচ্চা প্রসব (Calving)',
+        subtitle: 'সিমেন/ষাঁড়: ' + (br.semenId || '-') + ' | AI: ' + formatDateBR(br.aiDate),
+        dueDate: expDt,
+        diffDays: cDiff
+      });
+    }
+  }
+
+  for (var ck in farmStore.cattle) {
+    var cw = farmStore.cattle[ck];
+    if (!cw || !cw.tag || !cw.expCalving) continue;
+    var tUp = cw.tag.trim().toUpperCase();
+    if (calvingTrackedTags[tUp]) continue;
+    var cStat = String(cw.status || '').trim().toLowerCase();
+    if (cStat !== 'pregnant' && cw.calvingAlertResolved) continue;
+    if (cw.calvingAlertResolved) continue;
+
+    var cwDiff = getDaysDifferenceFromToday(cw.expCalving);
+    if (cwDiff !== null && cwDiff <= 7) {
+      alerts.push({
+        type: 'calving',
+        source: 'cattle',
+        key: ck,
+        tag: cw.tag,
+        title: '🐄 সম্ভাব্য বাচ্চা প্রসব (Calving)',
+        subtitle: 'জাত: ' + (cw.breed || '-') + ' | স্ট্যাটাস: ' + (cw.status || 'Pregnant'),
+        dueDate: cw.expCalving,
+        diffDays: cwDiff
+      });
+    }
+  }
+
+  for (var sk in farmStore.stock) {
+    var stItem = farmStore.stock[sk];
+    if (!stItem || !stItem.name) continue;
+    var sq = Number(stItem.qty) || 0;
+    var sa = Number(stItem.alertLevel) || 0;
+    if (sq <= sa) {
+      alerts.push({
+        type: 'stock',
+        key: sk,
+        tag: stItem.name,
+        title: '📦 স্টক ফুরিয়ে আসছে: ' + stItem.name,
+        subtitle: 'বর্তমান স্টক: ' + sq + ' ' + (stItem.unit || '') + ' (সতর্কতা সীমা: ' + sa + ')',
+        dueDate: new Date().toISOString().split('T')[0],
+        diffDays: sq <= 0 ? -1 : 0
+      });
+    }
+  }
+
+  for (var esk in farmStore.stock) {
+    var est = farmStore.stock[esk];
+    if (!est || !est.name || !est.expiry) continue;
+    var expDiff = getDaysDifferenceFromToday(est.expiry);
+    if (expDiff !== null && expDiff <= 30) {
+      alerts.push({
+        type: 'stock',
+        key: esk,
+        tag: est.name,
+        title: (expDiff < 0 ? '🚫 মেয়াদ শেষ (Expired): ' : '⏳ মেয়াদ শেষ হচ্ছে: ') + est.name,
+        subtitle: 'ক্যাটাগরি: ' + (est.category || 'Stock') + ' | পরিমাণ: ' + (est.qty || 0) + ' ' + (est.unit || ''),
+        dueDate: est.expiry,
+        diffDays: expDiff
+      });
+    }
+  }
+
+  for (var smk in farmStore.semen) {
+    var sm = farmStore.semen[smk];
+    if (!sm || !sm.batch) continue;
+    var smCnt = Number(sm.count) || 0;
+    var smAl = Number(sm.alertLevel) || 0;
+    if ((smAl > 0 && smCnt <= smAl) || smCnt <= 0) {
+      alerts.push({
+        type: 'semen',
+        key: smk,
+        tag: sm.batch,
+        title: '💉 সিমেন স্ট্র কমে গেছে: ' + sm.batch + (sm.breed ? ' (' + sm.breed + ')' : ''),
+        subtitle: 'কোম্পানি: ' + (sm.source || '-') + ' | অবশিষ্ট স্ট্র: ' + smCnt + ' পিস',
+        dueDate: new Date().toISOString().split('T')[0],
+        diffDays: smCnt <= 0 ? -1 : 0
+      });
+    }
+  }
+
+  for (var hlk in farmStore.health) {
+    var hl = farmStore.health[hlk];
+    if (!hl || !hl.cowTag || !hl.nextDate || hl.alertResolved) continue;
+    var hDiff = getDaysDifferenceFromToday(hl.nextDate);
+    if (hDiff !== null && hDiff <= 7) {
+      alerts.push({
+        type: 'health',
+        key: hlk,
+        tag: hl.cowTag,
+        title: '🩺 ফলো-আপ / চেকআপ: ' + (hl.disease || hl.type || 'Checkup'),
+        subtitle: (hl.vet ? 'ডাক্তার: ' + hl.vet + ' | ' : '') + (hl.medicine ? 'ওষুধ: ' + hl.medicine : (hl.desc || '')),
+        dueDate: hl.nextDate,
+        diffDays: hDiff
+      });
+    }
+  }
+
+  for (var hwk in farmStore.health) {
+    var hw = farmStore.health[hwk];
+    if (!hw || !hw.cowTag || !hw.date) continue;
+    var hwDays = parseInt(hw.withdrawalDays) || 0;
+    if (hwDays > 0) {
+      var hwDiff = getDaysDifferenceFromToday(hw.date);
+      if (hwDiff !== null && hwDiff <= 0) {
+        var remHw = hwDays - Math.abs(hwDiff);
+        if (remHw > 0) {
+          alerts.push({
+            type: 'health_withdrawal',
+            key: hwk,
+            tag: hw.cowTag,
+            title: '🚫 Milk Withdrawal (চিকিৎসা): ' + (hw.medicine || hw.disease || 'Treatment'),
+            subtitle: 'ওষুধ দেওয়ার পর আরও ' + remHw + ' দিন এই গাভীর দুধ বিক্রি করা যাবে না।',
+            dueDate: hw.date,
+            diffDays: 0
+          });
+        }
+      }
+    }
+  }
+
+  for (var wvk in farmStore.vaccine) {
+    var wv = farmStore.vaccine[wvk];
+    if (!wv || !wv.tag || !wv.date) continue;
+    var wDays = parseInt(wv.withdrawalDays) || 0;
+    if (wDays > 0) {
+      var givenDiff = getDaysDifferenceFromToday(wv.date);
+      if (givenDiff !== null && givenDiff <= 0) {
+        var daysPassed = Math.abs(givenDiff);
+        var remWithdrawal = wDays - daysPassed;
+        if (remWithdrawal > 0) {
+          alerts.push({
+            type: 'withdrawal',
+            key: wvk,
+            tag: wv.tag,
+            title: '🚫 Milk Withdrawal: ' + (wv.name || 'Vaccine'),
+            subtitle: 'টিকা দেওয়ার পর আরও ' + remWithdrawal + ' দিন এই গাভীর দুধ বিক্রি করা যাবে না।',
+            dueDate: wv.date,
+            diffDays: 0
+          });
+        }
+      }
+    }
+  }
+
+  for (var dbk in farmStore.breeding) {
+    var dbr = farmStore.breeding[dbk];
+    if (!dbr || !dbr.tag) continue;
+    var dSt = String(dbr.status || '').trim().toLowerCase();
+
+    var dExp = dbr.expCalvingDate || dbr.calvingDate || '';
+    if (dExp && !dbr.actCalvingDate && dSt !== 'calved' && dSt !== 'failed' && !dbr.dryAlertResolved) {
+      var dDiff = getDaysDifferenceFromToday(dExp);
+      var cowObj = findCattleByTag(dbr.tag);
+      var isAlreadyDry = cowObj && String(cowObj.status || '').toLowerCase() === 'dry';
+      if (dDiff !== null && dDiff > 7 && dDiff <= 60 && !isAlreadyDry) {
+        alerts.push({
+          type: 'dryoff',
+          key: dbk,
+          tag: dbr.tag,
+          title: '🥛 Dry-off রিমাইন্ডার (দুধ দোয়ানো বন্ধ করুন)',
+          subtitle: 'সম্ভাব্য বাচ্চা প্রসবের আর ' + dDiff + ' দিন বাকি। গাভীকে Dry অবস্থায় নেওয়ার সময় হয়েছে।',
+          dueDate: dExp,
+          diffDays: 1
+        });
+      }
+    }
+
+    if (dSt === 'pending' && dbr.aiDate && !dbr.heatCheckResolved) {
+      var aiDiff = getDaysDifferenceFromToday(dbr.aiDate);
+      if (aiDiff !== null && aiDiff <= -18 && aiDiff >= -25) {
+        var daysSinceAi = Math.abs(aiDiff);
+        alerts.push({
+          type: 'heatcheck',
+          key: dbk,
+          tag: dbr.tag,
+          title: '🔥 ২১ দিনের হিট চেক (Heat Check)',
+          subtitle: 'AI করার ' + daysSinceAi + ' দিন পূর্ণ হয়েছে। গাভী পুনরায় হিটে এসেছে কিনা পরীক্ষা করুন।',
+          dueDate: dbr.aiDate,
+          diffDays: 0
+        });
+      }
+    }
+  }
+
+  alerts.sort(function(a, b) {
+    return a.diffDays - b.diffDays;
+  });
+
+  if (badgeEl) {
+    badgeEl.innerText = alerts.length + ' টি অ্যালার্ট';
+    badgeEl.className = alerts.length > 0 ? 'badge badge-danger' : 'badge badge-success';
+  }
+
+  if (alerts.length === 0) {
+    container.innerHTML = '<div style="grid-column: 1 / -1; background:#f1f8e9; border:1px dashed #81c784; border-radius:10px; padding:18px; text-align:center; color:#2e7d32; font-weight:600; font-size:13.5px;">✔ আগামী ৭ দিনের মধ্যে কোনো বকেয়া ভ্যাকসিন, কৃমির ওষুধ বা বাচ্চা প্রসবের অ্যালার্ট নেই।</div>';
+    return;
+  }
+
+  var html = '';
+  alerts.forEach(function(al) {
+    var dayBadge = '';
+    var isUrgent = false;
+    if (al.diffDays < 0) {
+      isUrgent = true;
+      dayBadge = '<span class="badge badge-danger">⚠️ ' + Math.abs(al.diffDays) + ' দিন অতিক্রান্ত!</span>';
+    } else if (al.diffDays === 0) {
+      isUrgent = true;
+      dayBadge = '<span class="badge badge-danger">🔥 আজ নির্ধারিত দিন!</span>';
+    } else {
+      dayBadge = '<span class="badge badge-warning">⏳ আর মাত্র ' + al.diffDays + ' দিন বাকি</span>';
+    }
+
+    var itemClass = 'alert-item' + (isUrgent ? ' urgent' : '') + (al.type === 'calving' ? ' calving' : '');
+    var actionButtons = '';
+
+    if (al.type === 'vaccine') {
+      actionButtons =
+        '<button class="action-btn" style="background:#1b5e20; color:white; padding:6px 12px;" onclick="completeVaccineAlert(\'' + al.key + '\')">✔ টিকা দেওয়া হয়েছে (পরবর্তী শিডিউল)</button>' +
+        '<button class="action-btn btn-info" style="padding:6px 10px;" onclick="editVaccineRecord(\'' + al.key + '\')">✎ ফর্ম খুলুন</button>';
+    } else if (al.type === 'deworm') {
+      actionButtons =
+        '<button class="action-btn" style="background:#1b5e20; color:white; padding:6px 12px;" onclick="completeDewormAlert(\'' + al.key + '\')">✔ ওষুধ দেওয়া হয়েছে (+৯০ দিন)</button>' +
+        '<button class="action-btn btn-info" style="padding:6px 10px;" onclick="editDewormRecord(\'' + al.key + '\')">✎ ফর্ম খুলুন</button>';
+    } else if (al.type === 'calving') {
+      actionButtons =
+        '<button class="action-btn" style="background:#7b1fa2; color:white; padding:6px 12px;" onclick="openCalvingActionModal(\'' + al.source + '\', \'' + al.key + '\', \'' + encodeURIComponent(al.tag) + '\')">✔ বাচ্চা প্রসব সম্পন্ন</button>' +
+        '<button class="action-btn btn-info" style="padding:6px 10px;" onclick="' + (al.source === 'breeding' ? 'editBreeding(\'' + al.key + '\')' : 'editCattle(\'' + al.key + '\')') + '">✎ বিস্তারিত</button>';
+    } else if (al.type === 'stock') {
+      actionButtons =
+        '<button class="action-btn btn-warning" style="padding:6px 12px;" onclick="switchTab(\'stock\', document.querySelectorAll(\'nav button\')[11])">📦 স্টক আপডেট করুন</button>';
+    } else if (al.type === 'withdrawal') {
+      actionButtons =
+        '<button class="action-btn btn-info" style="padding:6px 12px;" onclick="editVaccineRecord(\'' + al.key + '\')">💉 টিকার তথ্য দেখুন</button>';
+    } else if (al.type === 'dryoff') {
+      actionButtons =
+        '<button class="action-btn" style="background:#0288d1; color:white; padding:6px 12px;" onclick="completeDryOffAlert(\'' + al.key + '\', \'' + encodeURIComponent(al.tag) + '\')">✔ Dry-off সম্পন্ন</button>';
+    } else if (al.type === 'heatcheck') {
+      actionButtons =
+        '<button class="action-btn" style="background:#2e7d32; color:white; padding:6px 10px;" onclick="resolveHeatCheck(\'' + al.key + '\', \'Pregnant\')">✔ গর্ভবতী</button>' +
+        '<button class="action-btn btn-danger" style="padding:6px 10px;" onclick="resolveHeatCheck(\'' + al.key + '\', \'Failed\')">✖ পুনরায় হিট</button>';
+    } else if (al.type === 'semen') {
+      actionButtons =
+        '<button class="action-btn btn-info" style="padding:6px 12px;" onclick="switchTab(\'semen\', document.querySelectorAll(\'nav button\')[12])">💉 সিমেন স্টক দেখুন</button>';
+    } else if (al.type === 'health') {
+      actionButtons =
+        '<button class="action-btn" style="background:#1b5e20; color:white; padding:6px 12px;" onclick="completeHealthAlert(\'' + al.key + '\')">✔ ফলো-আপ সম্পন্ন</button>' +
+        '<button class="action-btn btn-info" style="padding:6px 10px;" onclick="editHealth(\'' + al.key + '\')">✎ বিস্তারিত</button>';
+    } else if (al.type === 'health_withdrawal') {
+      actionButtons =
+        '<button class="action-btn btn-info" style="padding:6px 12px;" onclick="editHealth(\'' + al.key + '\')">🩺 চিকিৎসার তথ্য দেখুন</button>';
+    }
+
+    html += '<div class="' + itemClass + '">' +
+      '<div>' +
+        '<div class="alert-item-top">' +
+          '<strong style="font-size:14px; color:#1b5e20;">🐄 Tag: ' + al.tag + '</strong>' +
+          dayBadge +
+        '</div>' +
+        '<div style="font-size:13.5px; font-weight:700; color:#222; margin-top:6px;">' + al.title + '</div>' +
+        '<div style="font-size:12px; color:#555; margin-top:3px;">' + al.subtitle + '</div>' +
+        '<div style="font-size:12px; color:#c62828; font-weight:600; margin-top:5px;">📅 নির্ধারিত তারিখ: ' + formatDateBR(al.dueDate) + '</div>' +
+      '</div>' +
+      '<div class="alert-actions">' + actionButtons + '</div>' +
+    '</div>';
+  });
+
+  container.innerHTML = html;
+};
+
+window.completeVaccineAlert = function(vacKey) {
+  var v = farmStore.vaccine ? farmStore.vaccine[vacKey] : null;
+  if (!v) return;
+  var todayISO = new Date().toISOString().split('T')[0];
+  var gapDays = getVaccineBoosterGapDays(v.name);
+  var nextISO = '';
+  if (gapDays > 0) {
+    var d = new Date(todayISO);
+    d.setDate(d.getDate() + gapDays);
+    nextISO = d.toISOString().split('T')[0];
+  }
+
+  if (db) {
+    db.ref('vaccine/' + vacKey).update({
+      date: todayISO,
+      nextDate: nextISO,
+      alertResolved: gapDays === 0 ? true : false
+    });
+  } else {
+    v.date = todayISO;
+    v.nextDate = nextISO;
+    v.alertResolved = gapDays === 0 ? true : false;
+    renderVaccineTable();
+    renderDashboardAlerts();
+  }
+};
+
+window.completeHealthAlert = function(hKey) {
+  if (db && hKey) {
+    db.ref('health/' + hKey).update({ alertResolved: true, status: 'Recovered' });
+  } else if (farmStore.health[hKey]) {
+    farmStore.health[hKey].alertResolved = true;
+    farmStore.health[hKey].status = 'Recovered';
+  }
+  showAppToast('হেলথ ফলো-আপ সম্পন্ন হয়েছে!');
+  renderDashboardAlerts();
+};
+
+window.completeDewormAlert = function(dwKey) {
+  var dw = farmStore.deworm ? farmStore.deworm[dwKey] : null;
+  if (!dw) return;
+  var todayISO = new Date().toISOString().split('T')[0];
+  var d = new Date(todayISO);
+  d.setDate(d.getDate() + 90);
+  var nextISO = d.toISOString().split('T')[0];
+
+  if (db) {
+    db.ref('deworm/' + dwKey).update({
+      date: todayISO,
+      nextDate: nextISO,
+      alertResolved: false
+    });
+  } else {
+    dw.date = todayISO;
+    dw.nextDate = nextISO;
+    renderDewormTable();
+    renderDashboardAlerts();
+  }
+};
+
+window.pendingCalvingAction = null;
+
+window.openCalvingActionModal = function(source, key, encTag) {
+  var tag = decodeURIComponent(encTag);
+  window.pendingCalvingAction = { source: source, key: key, tag: tag };
+  var todayISO = new Date().toISOString().split('T')[0];
+  if (getEl('calvingActualDateInput')) getEl('calvingActualDateInput').value = todayISO;
+  if (getEl('calvingNoteInput')) getEl('calvingNoteInput').value = '';
+  if (getEl('calvingModalDesc')) {
+    getEl('calvingModalDesc').innerHTML = 'গাভী <strong>Tag: ' + tag + '</strong>-এর বাচ্চা প্রসব সম্পন্ন হলে নিচের তথ্যটি নিশ্চিত করুন। এটি সেভ করলে ড্যাশবোর্ড থেকে অ্যালার্টটি মুছে যাবে এবং গাভীর স্ট্যাটাস <strong>Milking</strong>-এ আপডেট হবে।';
+  }
+  if (getEl('calvingActionModal')) getEl('calvingActionModal').style.display = 'flex';
+};
+
+window.closeCalvingActionModal = function() {
+  window.pendingCalvingAction = null;
+  if (getEl('calvingActionModal')) getEl('calvingActionModal').style.display = 'none';
+};
+
+window.confirmCalvingAction = function() {
+  if (!window.pendingCalvingAction) return;
+  var actDate = getEl('calvingActualDateInput') ? getEl('calvingActualDateInput').value : new Date().toISOString().split('T')[0];
+  var noteTxt = getEl('calvingNoteInput') ? getEl('calvingNoteInput').value.trim() : '';
+  var src = window.pendingCalvingAction.source;
+  var k = window.pendingCalvingAction.key;
+  var tag = window.pendingCalvingAction.tag;
+
+  if (src === 'breeding' && farmStore.breeding[k]) {
+    var br = farmStore.breeding[k];
+    var updatedNote = noteTxt ? (br.note ? br.note + ' | ' + noteTxt : noteTxt) : (br.note || '');
+    if (db) {
+      db.ref('breeding/' + k).update({
+        status: 'Calved',
+        actCalvingDate: actDate,
+        note: updatedNote,
+        alertResolved: true
+      });
+    } else {
+      br.status = 'Calved';
+      br.actCalvingDate = actDate;
+      br.note = updatedNote;
+      br.alertResolved = true;
+    }
+  }
+
+  var cKey = (src === 'cattle') ? k : findCattleKeyByTag(tag);
+  if (cKey && farmStore.cattle[cKey]) {
+    var cw = farmStore.cattle[cKey];
+    var newLact = (Number(cw.lactation) || 0) + 1;
+    if (db) {
+      db.ref('cattle/' + cKey).update({
+        status: 'Milking',
+        lactation: newLact,
+        expCalving: '',
+        calvingAlertResolved: false
+      });
+    } else {
+      cw.status = 'Milking';
+      cw.lactation = newLact;
+      cw.expCalving = '';
+      cw.calvingAlertResolved = false;
+    }
+  }
+
+  closeCalvingActionModal();
+  renderCattleTable();
+  renderDashboardAlerts();
+};
+
+window.completeDryOffAlert = function(brKey, encTag) {
+  var tag = decodeURIComponent(encTag);
+  if (db) {
+    db.ref('breeding/' + brKey).update({ dryAlertResolved: true });
+    var cKey = findCattleKeyByTag(tag);
+    if (cKey) db.ref('cattle/' + cKey).update({ status: 'Dry' });
+  } else if (farmStore.breeding[brKey]) {
+    farmStore.breeding[brKey].dryAlertResolved = true;
+  }
+  showAppToast('গাভী ' + tag + ' কে Dry অবস্থায় আপডেট করা হয়েছে।');
+  renderDashboardAlerts();
+};
+
+window.resolveHeatCheck = function(brKey, newStatus) {
+  if (db) {
+    db.ref('breeding/' + brKey).update({ status: newStatus, heatCheckResolved: true });
+  } else if (farmStore.breeding[brKey]) {
+    farmStore.breeding[brKey].status = newStatus;
+    farmStore.breeding[brKey].heatCheckResolved = true;
+  }
+  showAppToast('হিট চেক ফলাফল (' + newStatus + ') সেভ করা হয়েছে।');
+  renderDashboardAlerts();
+};
+
+window.checkMilkWithdrawalWarning = function() {
+  var box = getEl('milkWithdrawalWarningBox');
+  if (!box) return;
+  var tag = (getEl('milkCowTag') ? getEl('milkCowTag').value : '').trim().toUpperCase();
+  if (!tag) { box.innerHTML = ''; return; }
+  var warnings = [];
+  for (var k in farmStore.vaccine) {
+    var v = farmStore.vaccine[k];
+    if (!v || (v.tag || '').trim().toUpperCase() !== tag) continue;
+    var wDays = parseInt(v.withdrawalDays) || 0;
+    if (wDays > 0 && v.date) {
+      var diff = getDaysDifferenceFromToday(v.date);
+      if (diff !== null && diff <= 0) {
+        var rem = wDays - Math.abs(diff);
+        if (rem > 0) {
+          warnings.push('⚠️ সতর্কতা: গাভী <strong>' + tag + '</strong>-কে ' + formatDateBR(v.date) + ' তারিখে <strong>' + v.name + '</strong> টিকা দেওয়া হয়েছে। আরও <strong>' + rem + ' দিন</strong> Milk Withdrawal পিরিয়ড চলবে!');
+        }
+      }
+    }
+  }
+  for (var hk in farmStore.health) {
+    var hl = farmStore.health[hk];
+    if (!hl || (hl.cowTag || '').trim().toUpperCase() !== tag) continue;
+    var hwDays = parseInt(hl.withdrawalDays) || 0;
+    if (hwDays > 0 && hl.date) {
+      var hDiff = getDaysDifferenceFromToday(hl.date);
+      if (hDiff !== null && hDiff <= 0) {
+        var remH = hwDays - Math.abs(hDiff);
+        if (remH > 0) {
+          warnings.push('⚠️ চিকিৎসা সতর্কতা: গাভী <strong>' + tag + '</strong>-কে ' + formatDateBR(hl.date) + ' তারিখে <strong>' + (hl.medicine || hl.disease || 'ওষুধ') + '</strong> দেওয়া হয়েছে। আরও <strong>' + remH + ' দিন</strong> Milk Withdrawal পিরিয়ড চলবে!');
+        }
+      }
+    }
+  }
+  if (warnings.length > 0) {
+    box.innerHTML = '<div style="background:#ffebee; color:#c62828; border:1px solid #ef9a9a; border-radius:8px; padding:10px; margin-bottom:12px; font-size:12.5px;">' + warnings.join('<br>') + '</div>';
+  } else {
+    box.innerHTML = '';
+  }
+};
+
+window._dashMilkChartInst = null;
+window._dashFinanceChartInst = null;
+window._reportFinanceChartInst = null;
+
+window.renderAllCharts = function() {
+  if (typeof Chart === 'undefined') return;
+
+  var selYear = window.currentDashYear || new Date().getFullYear().toString();
+  var selMonth = window.currentDashMonth || 'ALL';
+  var selDate = window.specificDashDate || '';
+
+  var labels7 = [];
+  var data7 = [];
+  if (selDate) {
+    var baseD = new Date(selDate + 'T00:00:00');
+    for (var i = 6; i >= 0; i--) {
+      var d = new Date(baseD);
+      d.setDate(baseD.getDate() - i);
+      var iso = d.toISOString().split('T')[0];
+      labels7.push(formatDateBR(iso).slice(0, 5));
+      var daySum = 0;
+      for (var mk in farmStore.milk) {
+        if (farmStore.milk[mk] && farmStore.milk[mk].date === iso) daySum += Number(farmStore.milk[mk].liters) || 0;
+      }
+      data7.push(parseFloat(daySum.toFixed(1)));
+    }
+  } else if (selMonth !== 'ALL') {
+    var daysInM = new Date(parseInt(selYear), parseInt(selMonth), 0).getDate();
+    for (var dayNum = 1; dayNum <= daysInM; dayNum++) {
+      var dIso = selYear + '-' + selMonth + '-' + ('0' + dayNum).slice(-2);
+      labels7.push(('0' + dayNum).slice(-2));
+      var dSum = 0;
+      for (var mk2 in farmStore.milk) {
+        if (farmStore.milk[mk2] && farmStore.milk[mk2].date === dIso) dSum += Number(farmStore.milk[mk2].liters) || 0;
+      }
+      data7.push(parseFloat(dSum.toFixed(1)));
+    }
+  } else {
+    for (var j = 6; j >= 0; j--) {
+      var dNow = new Date();
+      dNow.setDate(dNow.getDate() - j);
+      var isoNow = dNow.toISOString().split('T')[0];
+      labels7.push(formatDateBR(isoNow).slice(0, 5));
+      var daySumNow = 0;
+      for (var mk3 in farmStore.milk) {
+        if (farmStore.milk[mk3] && farmStore.milk[mk3].date === isoNow) daySumNow += Number(farmStore.milk[mk3].liters) || 0;
+      }
+      data7.push(parseFloat(daySumNow.toFixed(1)));
+    }
+  }
+
+  var cMilk = getEl('dashMilkChart');
+  if (cMilk) {
+    if (window._dashMilkChartInst) window._dashMilkChartInst.destroy();
+    window._dashMilkChartInst = new Chart(cMilk.getContext('2d'), {
+      type: 'line',
+      data: {
+        labels: labels7,
+        datasets: [{
+          label: 'দুধ উৎপাদন (L)',
+          data: data7,
+          borderColor: '#1b5e20',
+          backgroundColor: 'rgba(46, 125, 50, 0.15)',
+          fill: true,
+          tension: 0.35,
+          pointRadius: 3
+        }]
+      },
+      options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } }
+    });
+  }
+
+  var mLabels = [];
+  var mSales = [];
+  var mExp = [];
+  var bnMonths = ['জানু', 'ফেব্রু', 'মার্চ', 'এপ্রিল', 'মে', 'জুন', 'জুলাই', 'আগস্ট', 'সেপ্টে', 'অক্টো', 'নভে', 'ডিসে'];
+  var anchorDate = new Date();
+  if (selDate) {
+    anchorDate = new Date(selDate + 'T00:00:00');
+  } else if (selMonth !== 'ALL') {
+    anchorDate = new Date(parseInt(selYear), parseInt(selMonth) - 1, 1);
+  }
+
+  for (var m = 5; m >= 0; m--) {
+    var md = new Date(anchorDate.getFullYear(), anchorDate.getMonth() - m, 1);
+    var yr = md.getFullYear().toString();
+    var mn = ('0' + (md.getMonth() + 1)).slice(-2);
+    var prefix = yr + '-' + mn;
+    mLabels.push(bnMonths[md.getMonth()] + ' ' + yr.slice(2));
+
+    var sSum = 0;
+    for (var sk in farmStore.sales) {
+      var sl = farmStore.sales[sk];
+      if (sl && !sl.isPayment && (sl.date || '').startsWith(prefix)) sSum += Number(sl.total) || 0;
+    }
+    var eSum = 0;
+    for (var ek in farmStore.expenses) {
+      var ex = farmStore.expenses[ek];
+      if (ex && (ex.date || '').startsWith(prefix)) eSum += Number(ex.amount) || 0;
+    }
+    mSales.push(sSum);
+    mExp.push(eSum);
+  }
+
+  var cFin = getEl('dashFinanceChart');
+  if (cFin) {
+    if (window._dashFinanceChartInst) window._dashFinanceChartInst.destroy();
+    window._dashFinanceChartInst = new Chart(cFin.getContext('2d'), {
+      type: 'bar',
+      data: {
+        labels: mLabels,
+        datasets: [
+          { label: 'বিক্রয় (₹)', data: mSales, backgroundColor: '#2e7d32', borderRadius: 4 },
+          { label: 'খরচ (₹)', data: mExp, backgroundColor: '#d32f2f', borderRadius: 4 }
+        ]
+      },
+      options: { responsive: true, maintainAspectRatio: false }
+    });
+  }
+
+  var cRep = getEl('reportFinanceChart');
+  if (cRep) {
+    if (window._reportFinanceChartInst) window._reportFinanceChartInst.destroy();
+    var mProfit = mSales.map(function(val, idx) { return val - mExp[idx]; });
+    window._reportFinanceChartInst = new Chart(cRep.getContext('2d'), {
+      type: 'bar',
+      data: {
+        labels: mLabels,
+        datasets: [
+          { label: 'বিক্রয় (₹)', data: mSales, backgroundColor: '#2e7d32', borderRadius: 4 },
+          { label: 'খরচ (₹)', data: mExp, backgroundColor: '#d32f2f', borderRadius: 4 },
+          { label: 'নিট লাভ (₹)', data: mProfit, backgroundColor: '#0288d1', borderRadius: 4 }
+        ]
+      },
+      options: { responsive: true, maintainAspectRatio: false }
+    });
+  }
+};
+
+window.showCustomerMonthlyBill = function(encName, yearParam, monthParam) {
+  var custName = encName ? decodeURIComponent(encName).trim() : (window.activeLedgerCustomerName || '').trim();
+  if (!custName) return showAppToast('গ্রাহক নির্বাচন করা যায়নি!');
+  var yr = yearParam || window.currentSaleYear || new Date().getFullYear().toString();
+  var mn = monthParam || window.currentSaleMonth || ('0' + (new Date().getMonth() + 1)).slice(-2);
+  var prefix = yr + '-' + mn;
+  var custLower = custName.toLowerCase();
+
+  var items = [];
+  var monthBill = 0;
+  var monthPaid = 0;
+  var cPhone = '';
+  for (var k in farmStore.sales) {
+    var sl = farmStore.sales[k];
+    if (!sl || (sl.isPayment && Number(sl.total) === 0)) continue;
+    if ((sl.name || '').trim().toLowerCase() === custLower && (sl.date || '').startsWith(prefix)) {
+      items.push(sl);
+      monthBill += Number(sl.total) || 0;
+      monthPaid += Number(sl.paid) || 0;
+      if (sl.phone) cPhone = sl.phone;
+    }
+  }
+
+  if (items.length === 0) {
+    return showAppToast(mn + '/' + yr + ' মাসে ' + custName + '-এর কোনো বিল পাওয়া যায়নি।');
+  }
+
+  items.sort(function(a, b) { return parseDateToTime(a.date) - parseDateToTime(b.date); });
+  var liveDue = getCustomerLiveBalances()[custLower]?.currentDue || 0;
+
+  document.body.setAttribute('data-print', 'invoice');
+  getEl('invMainDocTitle').innerText = 'মাসিক সমন্বিত বিল / MONTHLY STATEMENT (' + mn + '/' + yr + ')';
+
+  var rowsHtml = '';
+  items.forEach(function(it) {
+    rowsHtml += '<tr><td>' + formatDateBR(it.date) + '</td><td>' + (it.item || 'দুধ') + '</td><td>' + (it.qty || 1) + '</td><td>₹ ' + (it.rate || it.total || 0) + '</td><td style="text-align:right; font-weight:bold;">₹ ' + (it.total || 0) + '</td></tr>';
+  });
+
+  getEl('invoiceDetails').innerHTML =
+    '<div style="display:flex; justify-content:space-between; margin-bottom:12px;">' +
+      '<div><strong>গ্রাহক:</strong> ' + custName + '<br>মোবাইল: ' + (cPhone || '-') + '</div>' +
+      '<div style="text-align:right;">বিলের মাস: <strong>' + mn + '/' + yr + '</strong><br>মোট এন্ট্রি: ' + items.length + ' টি</div>' +
+    '</div>' +
+    '<table class="invoice-table" style="border:1px solid #ddd; width:100%; min-width:unset;">' +
+      '<thead><tr style="background:#e8f5e9;"><th>তারিখ</th><th>পণ্য</th><th>পরিমাণ</th><th>দর</th><th style="text-align:right;">মোট</th></tr></thead>' +
+      '<tbody>' + rowsHtml + '</tbody>' +
+    '</table>' +
+    '<div style="text-align:right; margin-top:12px;">' +
+      'এই মাসের মোট বিল: <strong>₹ ' + monthBill.toLocaleString() + '</strong><br>' +
+      'এই মাসে পরিশোধ: <span style="color:green;">₹ ' + monthPaid.toLocaleString() + '</span><br>' +
+      '<span style="color:red; font-weight:bold; font-size:15px;">সর্বমোট বকেয়া (পূর্বের বকেয়াসহ): ₹ ' + liveDue.toLocaleString() + '</span>' +
+    '</div>';
+
+  getEl('invoiceModal').style.display = 'flex';
+};
+
+window._pendingRestoreData = null;
+window.openRestoreConfirmModal = function() {
+  var fileInput = getEl('restoreBackupFile');
+  if (!fileInput || !fileInput.files || !fileInput.files[0]) {
+    return showAppToast('অনুগ্রহ করে প্রথমে একটি .json ব্যাকআপ ফাইল সিলেক্ট করুন!');
+  }
+  var reader = new FileReader();
+  reader.onload = function(e) {
+    try {
+      var parsed = JSON.parse(e.target.result);
+      if (!parsed || typeof parsed !== 'object') throw new Error('Invalid JSON');
+      window._pendingRestoreData = parsed;
+      var m = getEl('restoreConfirmModal');
+      if (!m) {
+        m = document.createElement('div');
+        m.id = 'restoreConfirmModal';
+        m.style.cssText = 'display:none; position:fixed; inset:0; background:rgba(0,0,0,0.65); z-index:99999; align-items:center; justify-content:center; padding:15px;';
+        m.innerHTML = '<div style="background:white; max-width:400px; width:100%; border-radius:12px; padding:24px; text-align:center; box-shadow:0 10px 30px rgba(0,0,0,0.3);">' +
+          '<h3 style="color:#e65100; margin-bottom:10px; font-size:17px;">⚠️ ব্যাকআপ রিস্টোর নিশ্চিতকরণ</h3>' +
+          '<p style="font-size:13px; color:#555; margin-bottom:18px;">আপনি কি নিশ্চিতভাবে এই ব্যাকআপ ফাইলটি দিয়ে বর্তমান ডাটাবেস প্রতিস্থাপন করতে চান?</p>' +
+          '<div style="display:flex; gap:10px; justify-content:center;">' +
+            '<button class="btn btn-warning" onclick="confirmRestoreBackup()">হ্যাঁ, রিস্টোর করুন</button>' +
+            '<button class="btn btn-info" onclick="cancelRestoreBackup()">বাতিল</button>' +
+          '</div></div>';
+        document.body.appendChild(m);
+      }
+      m.style.display = 'flex';
+    } catch (err) {
+      showAppToast('ভুল JSON ফাইল! সঠিক ব্যাকআপ ফাইল দিন।');
+    }
+  };
+  reader.readAsText(fileInput.files[0]);
+};
+
+window.confirmRestoreBackup = function() {
+  if (window._pendingRestoreData && db) {
+    db.ref('/').set(window._pendingRestoreData).then(function() {
+      if (typeof renderAllCharts === 'function') renderAllCharts();
+      if (typeof renderDashboardSummary === 'function') renderDashboardSummary();
+      if (typeof renderReportsSummary === 'function') renderReportsSummary();
+      if (typeof renderDashboardAlerts === 'function') renderDashboardAlerts();
+      showAppToast('ব্যাকআপ সফলভাবে রিস্টোর ও আপডেট হয়েছে!');
+    }).catch(function() {
+      showAppToast('ডাটাবেস রিস্টোর করতে সমস্যা হয়েছে।');
+    });
+  }
+  cancelRestoreBackup();
+};
+
+window.cancelRestoreBackup = function() {
+  window._pendingRestoreData = null;
+  var m = getEl('restoreConfirmModal');
+  if (m) m.style.display = 'none';
+};
+
+window.showAppToast = function(msg) {
+  var t = getEl('appToastBanner');
+  if (!t) {
+    t = document.createElement('div');
+    t.id = 'appToastBanner';
+    t.style.cssText = 'position:fixed; bottom:24px; right:24px; background:#1b5e20; color:white; padding:12px 20px; border-radius:10px; box-shadow:0 6px 20px rgba(0,0,0,0.25); z-index:999999; font-size:13.5px; font-weight:600; transition:0.3s;';
+    document.body.appendChild(t);
+  }
+  t.innerText = msg;
+  t.style.display = 'block';
+  clearTimeout(window._toastTimer);
+  window._toastTimer = setTimeout(function() { t.style.display = 'none'; }, 3500);
+};
+
+window._pendingDelete = null;
+function deleteRecord(path, id) {
+  window._pendingDelete = { path: path, id: id };
+  var m = getEl('deleteConfirmModal');
+  if (!m) {
+    m = document.createElement('div');
+    m.id = 'deleteConfirmModal';
+    m.style.cssText = 'display:none; position:fixed; inset:0; background:rgba(0,0,0,0.6); z-index:99999; align-items:center; justify-content:center; padding:15px;';
+    m.innerHTML = '<div style="background:white; max-width:360px; width:100%; border-radius:12px; padding:22px; text-align:center; box-shadow:0 10px 30px rgba(0,0,0,0.3);">' +
+      '<h3 style="color:#c62828; margin-bottom:10px; font-size:16px;">⚠️ তথ্য মুছে ফেলার নিশ্চিতকরণ</h3>' +
+      '<p style="font-size:13px; color:#555; margin-bottom:18px;">আপনি কি নিশ্চিতভাবে এই তথ্যটি মুছে ফেলতে চান?</p>' +
+      '<div style="display:flex; gap:10px; justify-content:center;">' +
+        '<button class="btn btn-danger" onclick="confirmDeleteRecord()">হ্যাঁ, মুছে ফেলুন</button>' +
+        '<button class="btn btn-info" onclick="cancelDeleteRecord()">না, বাতিল</button>' +
+      '</div></div>';
+    document.body.appendChild(m);
+  }
+  m.style.display = 'flex';
+}
+window.confirmDeleteRecord = function() {
+  if (window._pendingDelete && db) {
+    db.ref(window._pendingDelete.path).child(window._pendingDelete.id).remove();
+    showAppToast('তথ্যটি সফলভাবে মুছে ফেলা হয়েছে।');
+  }
+  cancelDeleteRecord();
+};
+window.cancelDeleteRecord = function() {
+  window._pendingDelete = null;
+  var m = getEl('deleteConfirmModal');
+  if (m) m.style.display = 'none';
+};
 
 window.printSpecificModal = function(target) {
   document.body.setAttribute('data-print', target);
@@ -162,16 +1083,37 @@ window.printSpecificModal = function(target) {
 
 function onSaleCustomerInput() {
   var val = (getEl('saleCustomer').value || '').trim().toLowerCase();
-  if (!val) return;
+  var lbl = document.getElementById('lblSaleCustomer');
+  if(lbl) lbl.innerHTML = 'Customer Name *';
+  var prevDueInput = getEl('salePrevDue');
+  if(prevDueInput) prevDueInput.value = 0;
+
+  if (!val) { calcSale(); return; }
+  var cBalMap = getCustomerLiveBalances();
+  var matched = false;
+
   for (var k in farmStore.customers) {
     var c = farmStore.customers[k];
     if ((c.name || '').trim().toLowerCase() === val) {
+      matched = true;
       if (c.phone) getEl('salePhone').value = c.phone;
       if (c.area) getEl('saleArea').value = c.area;
       if (c.addr) getEl('saleAddr').value = c.addr;
+      
+      if(cBalMap[val]) {
+        var currentDue = cBalMap[val].currentDue;
+        if(lbl) lbl.innerHTML = 'Customer Name * <span style="color:red; font-size:11.5px; margin-left:8px;">(পূর্বের বকেয়া: ₹ ' + currentDue + ')</span>';
+        if(prevDueInput) prevDueInput.value = currentDue;
+      }
       break;
     }
   }
+  
+  if(!matched && cBalMap[val]) {
+     if(lbl) lbl.innerHTML = 'Customer Name * <span style="color:red; font-size:11.5px; margin-left:8px;">(পূর্বের বকেয়া: ₹ ' + cBalMap[val].currentDue + ')</span>';
+     if(prevDueInput) prevDueInput.value = cBalMap[val].currentDue;
+  }
+  calcSale();
 }
 
 function onOrderCustomerInput() {
@@ -190,66 +1132,108 @@ function onOrderCustomerInput() {
 function checkAndGenerateDailyOrders() {
   if (!db) return;
   var todayISO = new Date().toISOString().split('T')[0];
-  var todayBR = formatDateBR(todayISO);
-
-  db.ref('/').once('value', function(snap) {
-    var allData = snap.val() || {};
-    var existingOrders = allData.orders || {};
-    var existingSales = allData.sales || {};
-    var existingCustomers = allData.customers || {};
+  
+  db.ref('orders').once('value', function(orderSnap) {
+    var existingOrders = orderSnap.val() || {};
     var todayProcessedMap = {};
-
+    
     Object.keys(existingOrders).forEach(function(k) {
       var o = existingOrders[k];
-      if (o && o.customer) {
-        var oDate = String(o.date || '').trim();
-        if (oDate === todayISO || formatDateBR(oDate) === todayBR) {
-          todayProcessedMap[o.customer.trim().toLowerCase()] = true;
-        }
+      if (o && o.date === todayISO && (o.customer || o.name)) {
+        todayProcessedMap[(o.customer || o.name).trim().toLowerCase()] = true;
       }
     });
 
-    Object.keys(existingSales).forEach(function(k) {
-      var s = existingSales[k];
-      if (s && s.name && !s.isPayment) {
-        var sDate = String(s.date || '').trim();
-        if (sDate === todayISO || formatDateBR(sDate) === todayBR) {
-          todayProcessedMap[s.name.trim().toLowerCase()] = true;
+    db.ref('sales').once('value', function(saleSnap) {
+      var existingSales = saleSnap.val() || {};
+      Object.keys(existingSales).forEach(function(k) {
+        var s = existingSales[k];
+        if (s && s.date === todayISO && (s.name || s.customer)) {
+          todayProcessedMap[(s.name || s.customer).trim().toLowerCase()] = true;
         }
-      }
-    });
+      });
 
-    Object.keys(existingCustomers).forEach(function(k) {
-      var cust = existingCustomers[k];
-      if (cust && cust.name && Number(cust.demand) > 0) {
-        var cName = cust.name.trim();
-        var cKey = cName.toLowerCase();
-
-        if (!todayProcessedMap[cKey]) {
-          var safeCustKey = cKey.replace(/[^a-z0-9\u0980-\u09FF]/g, '_');
-          var deterministicOrderId = 'auto_' + todayISO + '_' + safeCustKey;
-
-          if (!existingOrders[deterministicOrderId]) {
-            var autoOrder = {
-              date: todayISO,
-              customer: cName,
-              phone: cust.phone || '',
-              area: cust.area || '',
-              items: cust.demand + ' লিটার তরল দুধ',
-              total: Number(cust.demand) * 50,
-              paid: 0,
-              status: 'Pending'
-            };
-            db.ref('orders/' + deterministicOrderId).set(autoOrder);
-            todayProcessedMap[cKey] = true;
+      db.ref('customers').once('value', function(custSnap) {
+        custSnap.forEach(function(cNode) {
+          var cust = cNode.val();
+          if (cust && cust.name && Number(cust.demand) > 0) {
+            var cName = cust.name.trim();
+            var cKey = cName.toLowerCase();
+            
+            if (!todayProcessedMap[cKey]) {
+              var autoOrder = {
+                date: todayISO,
+                customer: cName,
+                phone: cust.phone || '',
+                area: cust.area || '',
+                items: cust.demand + ' লিটার তরল দুধ',
+                total: Number(cust.demand) * 50,
+                paid: 0,
+                status: 'Pending'
+              };
+              db.ref('orders').push(autoOrder);
+            }
           }
-        }
-      }
+        });
+      });
     });
   });
 }
 
-// নিখুঁত লাইভ বকেয়া হিসাব করার ফাংশন
+function renderStockAutocomplete() {
+  var stockDL = getEl('stockItemList');
+  if (!stockDL) return;
+  var optHtml = '';
+  for (var k in farmStore.stock) {
+    var sName = farmStore.stock[k].name;
+    if (sName) {
+      optHtml += '<option value="' + sName + '">';
+    }
+  }
+  stockDL.innerHTML = optHtml;
+  updateStockLabels();
+}
+
+function updateStockLabels() {
+  var stockMap = {};
+  for (var sk in farmStore.stock) {
+    var st = farmStore.stock[sk];
+    if (st && st.name) {
+      stockMap[st.name.trim().toLowerCase()] = Number(st.qty) || 0;
+    }
+  }
+
+  ['Cattle Feed', 'Wheat Bran', 'Corn', 'Oilcake'].forEach(function(item) {
+    var qty = 0;
+    for (var sName in stockMap) {
+      if (sName.includes(item.toLowerCase()) || item.toLowerCase().includes(sName)) {
+        qty = stockMap[sName];
+        break;
+      }
+    }
+    var lbl = document.getElementById('stkLbl-' + item);
+    if (lbl) lbl.innerText = qty;
+  });
+}
+
+window.loadCattleDefaultRation = function() {
+  var tag = (getEl('ratCowTag').value || '').trim();
+  if (!tag) return;
+  if (!getEl('ratPellet').value) getEl('ratPellet').value = "2.0";
+  if (!getEl('ratAvgCostPerKg').value) getEl('ratAvgCostPerKg').value = "32";
+  if (!getEl('ratSuppCost').value) getEl('ratSuppCost').value = "0";
+  autoCalcRation();
+};
+
+function autoCalcRation() {
+  var pellet = parseFloat(getEl('ratPellet') ? getEl('ratPellet').value : 0) || 0;
+  var avgCost = parseFloat(getEl('ratAvgCostPerKg') ? getEl('ratAvgCostPerKg').value : 0) || 0;
+  var suppCost = parseFloat(getEl('ratSuppCost') ? getEl('ratSuppCost').value : 0) || 0;
+
+  var totalCost = (pellet * avgCost) + suppCost;
+  if (getEl('ratTotalCost')) getEl('ratTotalCost').value = totalCost.toFixed(2);
+}
+
 function getCustomerLiveBalances() {
   var map = {};
   var now = new Date();
@@ -280,11 +1264,11 @@ function getCustomerLiveBalances() {
     if (s.area) map[cKey].area = s.area;
     if (s.addr) map[cKey].addr = s.addr;
 
-    var bTot = Number(s.total) || (parseFloat(s.qty || 1) * parseFloat(s.rate || 0)) || 0;
+    var bTot = Number(s.total) || 0;
     var bPaid = Number(s.paid) || 0;
     var billTime = parseDateToTime(s.date);
 
-    if (bTot > 0 && !s.isPayment) {
+    if (bTot > 0) {
       map[cKey].totalBilled += bTot;
       if (billTime && billTime < map[cKey].earliestBillTime) {
         map[cKey].earliestBillTime = billTime;
@@ -296,6 +1280,7 @@ function getCustomerLiveBalances() {
       var subsequentSum = 0;
       pList.forEach(function(p) {
         var pAmt = Number(p.amount) || 0;
+        map[cKey].totalPaid += pAmt;
         subsequentSum += pAmt;
         if (pAmt > 0 && p.date) {
           var pTime = parseDateToTime(p.date);
@@ -304,9 +1289,6 @@ function getCustomerLiveBalances() {
           }
         }
       });
-      map[cKey].totalPaid += subsequentSum;
-      
-      // যদি মোট paid এ আলাদা পেমেন্টের যোগফলের চেয়ে বেশি থাকে
       var initialPaid = Math.max(0, bPaid - subsequentSum);
       map[cKey].totalPaid += initialPaid;
       if (initialPaid > 0 && billTime && billTime > map[cKey].lastPaymentTime) {
@@ -344,6 +1326,93 @@ function getMilkStatsByTag() {
   return res;
 }
 
+window.openCattleFeedModal = function(tag) {
+  var cowInfo = findCattleByTag(tag);
+
+  var titleEl = getEl('modalCattleTitle');
+  var contentEl = getEl('modalCattleContent');
+  if (!titleEl || !contentEl) return;
+
+  titleEl.innerText = 'গরুর খাদ্য ও পুষ্টি প্রোফাইল (Tag: ' + tag + ')';
+
+  var tagUp = tag.toUpperCase();
+  var totalMilkL = 0;
+  for (var mk in farmStore.milk) {
+    var mObj = farmStore.milk[mk];
+    if (mObj && (mObj.cow || '').trim().toUpperCase() === tagUp) {
+      totalMilkL += Number(mObj.liters) || 0;
+    }
+  }
+  var estMilkIncome = totalMilkL * 50;
+
+  var totalFeedCost = 0;
+  for (var fk in farmStore.feedRations) {
+    var fObj = farmStore.feedRations[fk];
+    if (fObj && (fObj.cowTag || '').trim().toUpperCase() === tagUp) {
+      totalFeedCost += Number(fObj.totalCost) || 0;
+    }
+  }
+
+  var totalMedCost = 0;
+  for (var vk in farmStore.vaccine) {
+    var vObj = farmStore.vaccine[vk];
+    if (vObj && (vObj.tag || '').trim().toUpperCase() === tagUp) totalMedCost += Number(vObj.cost) || 0;
+  }
+  for (var dk in farmStore.deworm) {
+    var dObj = farmStore.deworm[dk];
+    if (dObj && (dObj.tag || '').trim().toUpperCase() === tagUp) totalMedCost += Number(dObj.cost) || 0;
+  }
+  for (var bk in farmStore.breeding) {
+    var bObj = farmStore.breeding[bk];
+    if (bObj && (bObj.tag || '').trim().toUpperCase() === tagUp) totalMedCost += Number(bObj.aiCost) || 0;
+  }
+  var netCowProfit = estMilkIncome - (totalFeedCost + totalMedCost);
+
+  var profileHtml = '<div style="background:#e8f5e9; padding:12px; border-radius:8px; margin-bottom:12px;">' +
+    '<strong>জাত (Breed):</strong> ' + (cowInfo ? (cowInfo.breed || '-') : '-') + ' | ' +
+    '<strong>জেনারেশন:</strong> ' + (cowInfo ? (cowInfo.generation || '-') : '-') + ' | ' +
+    '<strong>স্ট্যাটাস:</strong> ' + (cowInfo ? (cowInfo.status || '-') : '-') + '<br>' +
+    '<strong>ওজন:</strong> ' + (cowInfo ? (cowInfo.weight || 0) : 0) + ' kg | ' +
+    '<strong>বিয়ান:</strong> ' + (cowInfo ? (cowInfo.lactation || 0) : 0) +
+  '</div>' +
+  '<div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(140px, 1fr)); gap:8px; margin-bottom:14px; text-align:center;">' +
+    '<div style="background:#e3f2fd; padding:8px; border-radius:8px;"><small style="color:#555;">মোট দুধ (' + totalMilkL.toFixed(1) + ' L)</small><br><strong style="color:#0288d1;">₹ ' + Math.round(estMilkIncome).toLocaleString() + '</strong></div>' +
+    '<div style="background:#fff3e0; padding:8px; border-radius:8px;"><small style="color:#555;">খাবার খরচ</small><br><strong style="color:#e65100;">₹ ' + Math.round(totalFeedCost).toLocaleString() + '</strong></div>' +
+    '<div style="background:#fce4ec; padding:8px; border-radius:8px;"><small style="color:#555;">চিকিৎসা ও AI</small><br><strong style="color:#c2185b;">₹ ' + Math.round(totalMedCost).toLocaleString() + '</strong></div>' +
+    '<div style="background:' + (netCowProfit >= 0 ? '#e8f5e9' : '#ffebee') + '; padding:8px; border-radius:8px;"><small style="color:#555;">আনুমানিক নিট লাভ</small><br><strong style="color:' + (netCowProfit >= 0 ? '#1b5e20' : '#c62828') + ';">₹ ' + Math.round(netCowProfit).toLocaleString() + '</strong></div>' +
+  '</div>';
+
+  profileHtml += '<strong>সাম্প্রতিক খাদ্য বরাদ্দ ও খরচ (Feeding History):</strong>';
+  profileHtml += '<div class="table-container" style="max-height:220px; overflow-y:auto; margin-top:8px;"><table><thead><tr style="background:#f1f5f2;"><th>তারিখ</th><th>ফিড (কেজি)</th><th>ফিড রেট (₹)</th><th>সাপ্লিমেন্ট/ভিটামিন (₹)</th><th>মোট খরচ (₹)</th></tr></thead><tbody>';
+
+  var hasRation = false;
+  for (var rk in farmStore.feedRations) {
+    var r = farmStore.feedRations[rk];
+    if (r && (r.cowTag || '').trim().toUpperCase() === tag.toUpperCase()) {
+      hasRation = true;
+      profileHtml += '<tr>' +
+        '<td>' + formatDateBR(r.date) + '</td>' +
+        '<td>' + (r.pellet || 0) + ' kg</td>' +
+        '<td>₹ ' + (r.avgCostPerKg || 0) + '</td>' +
+        '<td>₹ ' + (r.suppCost || 0) + '</td>' +
+        '<td style="color:green; font-weight:bold;">₹ ' + (r.totalCost || 0) + '</td>' +
+      '</tr>';
+    }
+  }
+
+  if (!hasRation) {
+    profileHtml += '<tr><td colspan="5" style="text-align:center; color:#777;">এই গরুর জন্য কোনো রেশন রেকর্ড এন্ট্রি করা হয়নি।</td></tr>';
+  }
+
+  profileHtml += '</tbody></table></div>';
+  contentEl.innerHTML = profileHtml;
+  getEl('cattleFeedModal').style.display = 'flex';
+};
+
+window.closeCattleFeedModal = function() {
+  getEl('cattleFeedModal').style.display = 'none';
+};
+
 function renderCattleTable() {
   var milkStats = getMilkStatsByTag();
   var list = [];
@@ -366,30 +1435,22 @@ function renderCattleTable() {
     dl.innerHTML = optHtml;
   }
 
-  var body = getEl('cattleTableBody'); 
+  var body = getEl('cattleTableBody');
   if (body) {
     body.innerHTML = '';
     list.forEach(function(item, index) {
       var d = item.data, k = item.key;
       var tagKey = (d.tag || '').trim().toUpperCase();
       var mInfo = milkStats[tagKey];
-      var milkDisplay = '-';
-
-      if (mInfo && mInfo.total > 0) {
-        milkDisplay = '<strong style="color:var(--primary); font-size:13px;">' + mInfo.total.toFixed(1) + ' L</strong> <span style="color:#555; font-size:11px;">(' + mInfo.days + ' দিন)</span>';
-      } else if (d.milkDay && d.milkDay > 0) {
-        milkDisplay = d.milkDay + ' L/day';
-      } else {
-        milkDisplay = '<span style="color:#999;">০ L</span>';
-      }
+      var milkDisplay = mInfo && mInfo.total > 0 ? '<strong style="color:var(--primary); font-size:13px;">' + mInfo.total.toFixed(1) + ' L</strong> (' + mInfo.days + ' দিন)' : (d.milkDay ? d.milkDay + ' L/day' : '০ L');
 
       body.innerHTML += '<tr>' +
         '<td><strong>' + (index + 1) + '</strong></td>' +
-        '<td><strong>' + (d.tag || '-') + '</strong></td>' +
+        '<td><a href="javascript:void(0)" onclick="openCattleFeedModal(\'' + (d.tag || '') + '\')" style="color:var(--primary); font-weight:bold; text-decoration:underline;" title="প্রোফাইল দেখতে ক্লিক করুন">🐄 ' + (d.tag || '-') + '</a></td>' +
         '<td>' + (d.breed || '-') + '</td>' +
         '<td>' + (d.breedType || '-') + '</td>' +
         '<td>' + (d.generation || '-') + '</td>' +
-        '<td>' + formatDateBR(d.dob) + '</td>' +
+        '<td>' + formatDateBR(d.dob) + (calcCattleAgeText(d.dob) ? '<br><small style="color:#1b5e20; font-weight:600;">(' + calcCattleAgeText(d.dob) + ')</small>' : '') + '</td>' +
         '<td>' + (d.weight || 0) + ' kg</td>' +
         '<td>' + (d.lactation || 0) + '</td>' +
         '<td><span class="badge badge-success">' + (d.status || '-') + '</span></td>' +
@@ -420,9 +1481,167 @@ window.toggleMilkDate = function(safeDt) {
   }
 };
 
+window.currentMilkYear = "";
+window.currentMilkMonth = "";
+window.specificMilkDate = "";
+
+window.initMilkFilters = function() {
+  if (!window.currentMilkYear) {
+    var d = new Date();
+    window.currentMilkYear = d.getFullYear().toString();
+    window.currentMilkMonth = ('0' + (d.getMonth() + 1)).slice(-2);
+  }
+  var yearSelect = getEl('milkFilterYear');
+  if (yearSelect && yearSelect.options.length === 0) {
+    var curY = new Date().getFullYear();
+    for (var i = 0; i < 5; i++) {
+      var y = (curY - i).toString();
+      yearSelect.options.add(new Option(y, y));
+    }
+    yearSelect.value = window.currentMilkYear;
+  }
+  renderMilkMonthTabs();
+};
+
+window.renderMilkMonthTabs = function() {
+  var tabsContainer = getEl('milkMonthTabs');
+  if (!tabsContainer) return;
+  var months = [
+    { val: '01', name: 'Jan' }, { val: '02', name: 'Feb' }, { val: '03', name: 'Mar' },
+    { val: '04', name: 'Apr' }, { val: '05', name: 'May' }, { val: '06', name: 'Jun' },
+    { val: '07', name: 'Jul' }, { val: '08', name: 'Aug' }, { val: '09', name: 'Sep' },
+    { val: '10', name: 'Oct' }, { val: '11', name: 'Nov' }, { val: '12', name: 'Dec' }
+  ];
+  var html = '';
+  months.forEach(function(m) {
+    var isActive = (m.val === window.currentMilkMonth) && !window.specificMilkDate;
+    var bg = isActive ? 'var(--primary)' : '#e0e0e0';
+    var color = isActive ? 'white' : '#333';
+    html += '<button onclick="setMilkMonth(\'' + m.val + '\')" style="padding:6px 14px; border:none; border-radius:20px; font-size:12px; font-weight:bold; cursor:pointer; background:' + bg + '; color:' + color + '; min-width:60px; transition:0.2s;">' + m.name + '</button>';
+  });
+  tabsContainer.innerHTML = html;
+};
+
+window.setMilkMonth = function(mVal) {
+  window.currentMilkMonth = mVal;
+  window.specificMilkDate = "";
+  if (getEl('milkFilterDate')) getEl('milkFilterDate').value = "";
+  renderMilkMonthTabs();
+  renderGroupedMilkTable();
+};
+
+window.applyMilkFilter = function() {
+  if (getEl('milkFilterYear')) window.currentMilkYear = getEl('milkFilterYear').value;
+  var d = getEl('milkFilterDate') ? getEl('milkFilterDate').value : "";
+  if (d) {
+    window.specificMilkDate = d;
+    var dateObj = new Date(d);
+    window.currentMilkYear = dateObj.getFullYear().toString();
+    window.currentMilkMonth = ('0' + (dateObj.getMonth() + 1)).slice(-2);
+    if (getEl('milkFilterYear')) getEl('milkFilterYear').value = window.currentMilkYear;
+  } else {
+    window.specificMilkDate = "";
+  }
+  renderMilkMonthTabs();
+  renderGroupedMilkTable();
+};
+
+window.clearMilkDateFilter = function() {
+  if (getEl('milkFilterDate')) getEl('milkFilterDate').value = "";
+  window.specificMilkDate = "";
+  renderMilkMonthTabs();
+  renderGroupedMilkTable();
+};
+
+window.exportMilk = function(format) {
+  var targetYear = window.currentMilkYear;
+  var targetMonth = window.currentMilkMonth;
+  var targetDate = window.specificMilkDate;
+
+  var exportData = [];
+  exportData.push(["Date", "Cow Tag", "Session", "Quantity (Liters)"]);
+
+  var list = [];
+  for (var k in farmStore.milk) {
+    var m = farmStore.milk[k];
+    if (!m.date) continue;
+    var match = false;
+    if (targetDate) {
+      if (m.date === targetDate) match = true;
+    } else {
+      if (m.date.substring(0, 4) === targetYear && m.date.substring(5, 7) === targetMonth) {
+        match = true;
+      }
+    }
+    if (match) list.push(m);
+  }
+
+  list.sort(function(a, b) { return parseDateToTime(b.date) - parseDateToTime(a.date); });
+
+  if (list.length === 0) {
+    showAppToast('বর্তমান ভিউতে এক্সপোর্ট করার মতো কোনো ডেটা নেই!');
+    return;
+  }
+
+  list.forEach(function(m) {
+    exportData.push([formatDateBR(m.date), m.cow, m.session, m.liters]);
+  });
+
+  var fileName = "Milk_Record_" + (targetDate ? targetDate : (targetYear + "_" + targetMonth));
+
+  if (format === 'csv') {
+    var csvContent = "data:text/csv;charset=utf-8,\uFEFF";
+    exportData.forEach(function(rowArray) {
+      csvContent += rowArray.join(",") + "\r\n";
+    });
+    var encodedUri = encodeURI(csvContent);
+    var link = document.createElement("a");
+    link.setAttribute("href", encodedUri);
+    link.setAttribute("download", fileName + ".csv");
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  } else if (format === 'txt') {
+    var txtContent = "data:text/plain;charset=utf-8,\uFEFF";
+    exportData.forEach(function(rowArray) {
+      txtContent += rowArray.join(" \t ") + "\r\n";
+    });
+    var encodedUri = encodeURI(txtContent);
+    var link = document.createElement("a");
+    link.setAttribute("href", encodedUri);
+    link.setAttribute("download", fileName + ".txt");
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  } else if (format === 'doc') {
+    var docHtml = "<html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'><head><meta charset='utf-8'><title>Milk Record</title></head><body><h2 style='color:#1b5e20;'>Nanda Dairy & Agro - Milk Production Record</h2><p><strong>Period/Date:</strong> " + (targetDate ? targetDate : (targetMonth + "/" + targetYear)) + "</p><table border='1' style='border-collapse:collapse; width:100%; text-align:left; font-family:sans-serif;'>";
+    exportData.forEach(function(rowArray, idx) {
+      docHtml += "<tr>";
+      rowArray.forEach(function(cell) {
+        if (idx === 0) docHtml += "<th style='padding:8px; background:#e8f5e9;'>" + cell + "</th>";
+        else docHtml += "<td style='padding:8px;'>" + cell + "</td>";
+      });
+      docHtml += "</tr>";
+    });
+    docHtml += "</table></body></html>";
+    var blob = new Blob(['\ufeff', docHtml], { type: 'application/msword' });
+    var url = URL.createObjectURL(blob);
+    var link = document.createElement("a");
+    link.href = url;
+    link.download = fileName + ".doc";
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  }
+};
+
 function renderGroupedMilkTable() {
   var body = getEl('milkGroupTableBody');
   if (!body) return;
+
+  if (!window.currentMilkYear) {
+    initMilkFilters();
+  }
 
   var dateGroups = {};
   var totalMilkAll = 0;
@@ -430,23 +1649,46 @@ function renderGroupedMilkTable() {
   var todayBR = formatDateBR(todayISO);
   var todayTotal = 0;
 
+  var targetYear = window.currentMilkYear;
+  var targetMonth = window.currentMilkMonth;
+  var targetDate = window.specificMilkDate;
+
   for (var k in farmStore.milk) {
     var m = farmStore.milk[k];
-    var dt = formatDateBR(m.date) || 'Unknown';
-    var lit = Number(m.liters) || 0;
-    totalMilkAll += lit;
-    if (m.date === todayISO || dt === todayBR) todayTotal += lit;
+    var dtISO = m.date;
+    if (!dtISO) continue;
 
-    if (!dateGroups[dt]) dateGroups[dt] = { date: dt, total: 0, cows: {}, items: [] };
-    dateGroups[dt].total += lit;
-    if (m.cow) dateGroups[dt].cows[m.cow.trim().toUpperCase()] = true;
-    dateGroups[dt].items.push({ key: k, data: m });
+    var dt = formatDateBR(dtISO) || 'Unknown';
+    var lit = Number(m.liters) || 0;
+
+    totalMilkAll += lit;
+    if (dtISO === todayISO || dt === todayBR) todayTotal += lit;
+
+    var match = false;
+    if (targetDate) {
+      if (dtISO === targetDate) match = true;
+    } else {
+      var mYear = dtISO.substring(0, 4);
+      var mMonth = dtISO.substring(5, 7);
+      if (mYear === targetYear && mMonth === targetMonth) {
+        match = true;
+      }
+    }
+
+    if (match) {
+      if (!dateGroups[dt]) dateGroups[dt] = { date: dt, dateISO: dtISO, total: 0, cows: {}, items: [] };
+      dateGroups[dt].total += lit;
+      if (m.cow) dateGroups[dt].cows[m.cow.trim().toUpperCase()] = true;
+      dateGroups[dt].items.push({ key: k, data: m });
+    }
   }
 
   if (getEl('dash-milk-today')) getEl('dash-milk-today').innerText = todayTotal.toFixed(1) + ' L';
   if (getEl('rep-milk')) getEl('rep-milk').innerText = totalMilkAll.toFixed(1);
 
-  var sortedDates = Object.keys(dateGroups).sort(function(a, b) { return parseDateToTime(b) - parseDateToTime(a); });
+  var sortedDates = Object.keys(dateGroups).sort(function(a, b) {
+    return parseDateToTime(dateGroups[b].dateISO) - parseDateToTime(dateGroups[a].dateISO);
+  });
 
   if (sortedDates.length === 0) {
     body.innerHTML = '';
@@ -485,34 +1727,211 @@ function renderGroupedMilkTable() {
   body.innerHTML = html;
 }
 
-// সেলস লেজার টেবিল রেন্ডারিং
-function renderSalesTable(salesData) {
+window.currentSaleYear = "";
+window.currentSaleMonth = "";
+window.specificSaleDate = "";
+
+window.initSalesFilters = function() {
+  if (!window.currentSaleYear) {
+    var d = new Date();
+    window.currentSaleYear = d.getFullYear().toString();
+    window.currentSaleMonth = ('0' + (d.getMonth() + 1)).slice(-2);
+  }
+  var yearSelect = getEl('saleFilterYear');
+  if (yearSelect && yearSelect.options.length === 0) {
+    var curY = new Date().getFullYear();
+    for (var i = 0; i < 5; i++) {
+      var y = (curY - i).toString();
+      yearSelect.options.add(new Option(y, y));
+    }
+    yearSelect.value = window.currentSaleYear;
+  }
+  renderSalesMonthTabs();
+};
+
+window.renderSalesMonthTabs = function() {
+  var tabsContainer = getEl('saleMonthTabs');
+  if (!tabsContainer) return;
+  var months = [
+    { val: '01', name: 'Jan' }, { val: '02', name: 'Feb' }, { val: '03', name: 'Mar' },
+    { val: '04', name: 'Apr' }, { val: '05', name: 'May' }, { val: '06', name: 'Jun' },
+    { val: '07', name: 'Jul' }, { val: '08', name: 'Aug' }, { val: '09', name: 'Sep' },
+    { val: '10', name: 'Oct' }, { val: '11', name: 'Nov' }, { val: '12', name: 'Dec' }
+  ];
+  var html = '';
+  months.forEach(function(m) {
+    var isActive = (m.val === window.currentSaleMonth) && !window.specificSaleDate;
+    var bg = isActive ? 'var(--primary)' : '#e0e0e0';
+    var color = isActive ? 'white' : '#333';
+    html += '<button onclick="setSalesMonth(\'' + m.val + '\')" style="padding:6px 14px; border:none; border-radius:20px; font-size:12px; font-weight:bold; cursor:pointer; background:' + bg + '; color:' + color + '; min-width:60px; transition:0.2s;">' + m.name + '</button>';
+  });
+  tabsContainer.innerHTML = html;
+};
+
+window.setSalesMonth = function(mVal) {
+  window.currentSaleMonth = mVal;
+  window.specificSaleDate = "";
+  if (getEl('saleFilterDate')) getEl('saleFilterDate').value = "";
+  renderSalesMonthTabs();
+  renderSalesTable();
+};
+
+window.applySalesFilter = function() {
+  if (getEl('saleFilterYear')) window.currentSaleYear = getEl('saleFilterYear').value;
+  var d = getEl('saleFilterDate') ? getEl('saleFilterDate').value : "";
+  if (d) {
+    window.specificSaleDate = d;
+    var dateObj = new Date(d);
+    window.currentSaleYear = dateObj.getFullYear().toString();
+    window.currentSaleMonth = ('0' + (dateObj.getMonth() + 1)).slice(-2);
+    if (getEl('saleFilterYear')) getEl('saleFilterYear').value = window.currentSaleYear;
+  } else {
+    window.specificSaleDate = "";
+  }
+  renderSalesMonthTabs();
+  renderSalesTable();
+};
+
+window.clearSalesDateFilter = function() {
+  if (getEl('saleFilterDate')) getEl('saleFilterDate').value = "";
+  window.specificSaleDate = "";
+  renderSalesMonthTabs();
+  renderSalesTable();
+};
+
+window.exportSales = function(format) {
+  if (!window.currentSaleYear) initSalesFilters();
+  var targetYear = window.currentSaleYear;
+  var targetMonth = window.currentSaleMonth;
+  var targetDate = window.specificSaleDate;
+  var searchQ = (getEl('saleSearchInput') ? getEl('saleSearchInput').value : '').trim().toLowerCase();
+  var areaFilter = (getEl('saleAreaFilter') ? getEl('saleAreaFilter').value : '').trim().toLowerCase();
+  var custBalances = getCustomerLiveBalances();
+
+  var exportData = [];
+  exportData.push(["Date", "Customer Name", "Phone", "Area", "Item", "Quantity", "Rate (Rs)", "Total Bill (Rs)", "Paid (Rs)", "Customer Total Due (Rs)"]);
+
+  var list = [];
+  for (var k in farmStore.sales) {
+    var s = farmStore.sales[k];
+    if (!s || (s.isPayment && Number(s.total) === 0)) continue;
+    var dtISO = (s.date || '').trim();
+    if (!dtISO) continue;
+
+    var dateMatch = false;
+    if (targetDate) {
+      if (dtISO === targetDate) dateMatch = true;
+    } else {
+      if (dtISO.substring(0, 4) === targetYear && dtISO.substring(5, 7) === targetMonth) {
+        dateMatch = true;
+      }
+    }
+    if (!dateMatch) continue;
+
+    var cName = (s.name || '').trim();
+    var cPhone = (s.phone || '').trim();
+    var cArea = (s.area || s.addr || '').trim();
+    var nameMatch = cName.toLowerCase().includes(searchQ) || cPhone.toLowerCase().includes(searchQ);
+    var areaMatch = !areaFilter || cArea.toLowerCase() === areaFilter;
+
+    if ((!searchQ || nameMatch) && areaMatch) {
+      list.push(s);
+    }
+  }
+
+  list.sort(function(a, b) { return parseDateToTime(b.date) - parseDateToTime(a.date); });
+
+  if (list.length === 0) {
+    showAppToast('বর্তমান ভিউতে এক্সপোর্ট করার মতো কোনো বিক্রয় ডেটা নেই!');
+    return;
+  }
+
+  list.forEach(function(s) {
+    var cKey = (s.name || '').trim().toLowerCase();
+    var liveDue = custBalances[cKey] ? custBalances[cKey].currentDue : Math.max(0, (Number(s.total) || 0) - (Number(s.paid) || 0));
+    var qtyVal = (s.qty !== undefined && s.qty !== '') ? s.qty : 1;
+    var rateVal = (s.rate !== undefined && s.rate !== '') ? s.rate : (Number(s.total) || 0);
+    exportData.push([
+      formatDateBR(s.date),
+      (s.name || '-').replace(/,/g, ' '),
+      (s.phone || '-').replace(/,/g, ' '),
+      (s.area || s.addr || '-').replace(/,/g, ' '),
+      (s.item || 'Milk').replace(/,/g, ' '),
+      qtyVal,
+      rateVal,
+      Number(s.total) || 0,
+      Number(s.paid) || 0,
+      liveDue
+    ]);
+  });
+
+  var fileName = "Sales_Record_" + (targetDate ? targetDate : (targetYear + "_" + targetMonth));
+
+  if (format === 'csv') {
+    var csvContent = "data:text/csv;charset=utf-8,\uFEFF";
+    exportData.forEach(function(rowArray) {
+      csvContent += rowArray.join(",") + "\r\n";
+    });
+    var encodedUri = encodeURI(csvContent);
+    var link = document.createElement("a");
+    link.setAttribute("href", encodedUri);
+    link.setAttribute("download", fileName + ".csv");
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  } else if (format === 'txt') {
+    var txtContent = "data:text/plain;charset=utf-8,\uFEFF";
+    exportData.forEach(function(rowArray) {
+      txtContent += rowArray.join(" \t ") + "\r\n";
+    });
+    var encodedUri = encodeURI(txtContent);
+    var link = document.createElement("a");
+    link.setAttribute("href", encodedUri);
+    link.setAttribute("download", fileName + ".txt");
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  } else if (format === 'doc') {
+    var docHtml = "<html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'><head><meta charset='utf-8'><title>Sales Record</title></head><body><h2 style='color:#1b5e20;'>Nanda Dairy & Agro - Sales & Billing Record</h2><p><strong>Period/Date:</strong> " + (targetDate ? targetDate : (targetMonth + "/" + targetYear)) + "</p><table border='1' style='border-collapse:collapse; width:100%; text-align:left; font-family:sans-serif; font-size:12px;'>";
+    exportData.forEach(function(rowArray, idx) {
+      docHtml += "<tr>";
+      rowArray.forEach(function(cell) {
+        if (idx === 0) docHtml += "<th style='padding:6px; background:#e8f5e9;'>" + cell + "</th>";
+        else docHtml += "<td style='padding:6px;'>" + cell + "</td>";
+      });
+      docHtml += "</tr>";
+    });
+    docHtml += "</table></body></html>";
+    var blob = new Blob(['\ufeff', docHtml], { type: 'application/msword' });
+    var url = URL.createObjectURL(blob);
+    var link = document.createElement("a");
+    link.href = url;
+    link.download = fileName + ".doc";
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  }
+};
+
+function renderSalesTable() {
   var body = getEl('salesTableBody');
   if (!body) return;
+
+  if (!window.currentSaleYear) {
+    initSalesFilters();
+  }
 
   var custBalances = getCustomerLiveBalances();
   var searchQ = (getEl('saleSearchInput') ? getEl('saleSearchInput').value : '').trim().toLowerCase();
   var areaFilter = (getEl('saleAreaFilter') ? getEl('saleAreaFilter').value : '').trim().toLowerCase();
 
+  var targetYear = window.currentSaleYear;
+  var targetMonth = window.currentSaleMonth;
+  var targetDate = window.specificSaleDate;
+
   var tS = 0;
   var uniqueAreas = {};
-  var customerMap = {};
-
-  for (var ck in farmStore.customers) {
-    var cust = farmStore.customers[ck];
-    if (!cust || !cust.name) continue;
-    var rName = cust.name.trim();
-    var cKey = rName.toLowerCase();
-    customerMap[cKey] = {
-      customerName: rName,
-      phone: cust.phone || '',
-      area: cust.area || '',
-      addr: cust.addr || '',
-      salesEntries: [],
-      latestTime: 0,
-      latestDate: '-'
-    };
-  }
+  var groupedMap = {};
 
   for (var k in farmStore.sales) {
     var s = farmStore.sales[k];
@@ -520,66 +1939,74 @@ function renderSalesTable(salesData) {
     tS += Number(s.total) || 0;
     if (s.area) uniqueAreas[s.area.trim()] = true;
 
+    var dtISO = (s.date || '').trim();
+    var dateMatch = false;
+    if (targetDate) {
+      if (dtISO === targetDate) dateMatch = true;
+    } else if (dtISO) {
+      var sYear = dtISO.substring(0, 4);
+      var sMonth = dtISO.substring(5, 7);
+      if (sYear === targetYear && sMonth === targetMonth) {
+        dateMatch = true;
+      }
+    }
+
+    if (!dateMatch) continue;
+
     var rawName = (s.name || '').trim();
     if (!rawName) continue;
-    var cKey = rawName.toLowerCase();
-    var saleTime = parseDateToTime(s.date);
 
-    if (!customerMap[cKey]) {
-      customerMap[cKey] = {
-        customerName: rawName,
+    var groupKey = rawName.toLowerCase();
+
+    if (!groupedMap[groupKey]) {
+      groupedMap[groupKey] = {
+        name: rawName,
         phone: s.phone || '',
         area: s.area || s.addr || '',
-        addr: s.addr || '',
-        salesEntries: [],
-        latestTime: 0,
-        latestDate: '-'
+        totalQty: 0,
+        totalAmount: 0,
+        totalPaid: 0,
+        entries: [],
+        latestDate: dtISO,
+        latestTime: parseDateToTime(dtISO)
       };
     }
 
-    customerMap[cKey].salesEntries.push({ key: k, sale: s, time: saleTime });
+    var qtyVal = (s.qty !== undefined && s.qty !== '') ? parseFloat(s.qty) : 1;
+    var amtVal = (s.total !== undefined && s.total !== '') ? Number(s.total) : (qtyVal * (parseFloat(s.rate) || 0));
+    var paidVal = Number(s.paid) || 0;
+
+    groupedMap[groupKey].totalQty += qtyVal;
+    groupedMap[groupKey].totalAmount += amtVal;
+    groupedMap[groupKey].totalPaid += paidVal;
+
+    if (s.phone && !groupedMap[groupKey].phone) groupedMap[groupKey].phone = s.phone;
+    if (s.area && !groupedMap[groupKey].area) groupedMap[groupKey].area = s.area;
+
+    var curTime = parseDateToTime(dtISO);
+    if (curTime > groupedMap[groupKey].latestTime) {
+      groupedMap[groupKey].latestTime = curTime;
+      groupedMap[groupKey].latestDate = dtISO;
+    }
+
+    groupedMap[groupKey].entries.push({ key: k, sale: s });
   }
 
   var list = [];
-  for (var cKey in customerMap) {
-    var cObj = customerMap[cKey];
-    cObj.salesEntries.sort(function(a, b) { return b.time - a.time; });
-
-    var latestTime = 0;
-    var latestDateBR = '-';
-    var totalQty = 0;
-    var totalAmount = 0;
-    var totalPaid = 0;
-    var phone = cObj.phone;
-    var area = cObj.area;
-    var addr = cObj.addr;
-
-    cObj.salesEntries.forEach(function(entry) {
-      if (entry.time > latestTime) {
-        latestTime = entry.time;
-        latestDateBR = formatDateBR(entry.sale.date);
-      }
-      totalQty += parseFloat(entry.sale.qty || entry.sale.quantity || 1) || 1;
-      totalAmount += Number(entry.sale.total) || 0;
-      totalPaid += Number(entry.sale.paid) || 0;
-      if (!phone && entry.sale.phone) phone = entry.sale.phone;
-      if (!area && entry.sale.area) area = entry.sale.area;
-      if (!addr && entry.sale.addr) addr = entry.sale.addr;
-    });
-
-    var cBal = custBalances[cKey] || { currentDue: Math.max(0, totalAmount - totalPaid) };
-
+  for (var gKey in groupedMap) {
+    var g = groupedMap[gKey];
+    var cBal = custBalances[gKey] || { currentDue: Math.max(0, g.totalAmount - g.totalPaid) };
     list.push({
-      customerName: cObj.customerName,
-      phone: phone,
-      area: area,
-      addr: addr,
-      salesEntries: cObj.salesEntries,
-      latestDate: latestDateBR,
-      latestTime: latestTime,
-      totalQty: totalQty,
-      totalAmount: totalAmount,
-      totalPaid: totalPaid,
+      groupKey: gKey,
+      name: g.name,
+      phone: g.phone,
+      area: g.area,
+      totalQty: g.totalQty,
+      totalAmount: g.totalAmount,
+      totalPaid: g.totalPaid,
+      entries: g.entries,
+      latestDate: g.latestDate,
+      latestTime: g.latestTime,
       liveCustomerDue: cBal.currentDue
     });
   }
@@ -587,8 +2014,12 @@ function renderSalesTable(salesData) {
   var totalLiveFarmDue = 0;
   for (var ck in custBalances) { totalLiveFarmDue += custBalances[ck].currentDue; }
 
-  if (getEl('dash-total-sales')) getEl('dash-total-sales').innerText = '₹ ' + tS.toLocaleString();
-  if (getEl('dash-total-due')) getEl('dash-total-due').innerText = '₹ ' + totalLiveFarmDue.toLocaleString();
+  if (getEl('dash-total-sales') && (!window.currentDashMonth || (window.currentDashMonth === 'ALL' && !window.specificDashDate))) {
+    getEl('dash-total-sales').innerText = '₹ ' + tS.toLocaleString();
+  }
+  if (getEl('dash-total-due') && (!window.currentDashMonth || (window.currentDashMonth === 'ALL' && !window.specificDashDate))) {
+    getEl('dash-total-due').innerText = '₹ ' + totalLiveFarmDue.toLocaleString();
+  }
   if (getEl('rep-sales')) getEl('rep-sales').innerText = '₹ ' + tS.toLocaleString();
   calcNet();
 
@@ -603,69 +2034,80 @@ function renderSalesTable(salesData) {
   }
 
   var filtered = list.filter(function(item) {
-    var nameMatch = item.customerName.toLowerCase().includes(searchQ);
+    var nameMatch = item.name.toLowerCase().includes(searchQ);
     var phoneMatch = (item.phone || '').toLowerCase().includes(searchQ);
     return (!searchQ || nameMatch || phoneMatch) && (!areaFilter || (item.area || '').toLowerCase() === areaFilter);
   });
 
   filtered.sort(function(a, b) { return b.latestTime - a.latestTime; });
 
-  var activeFiltered = filtered.filter(function(item) {
-    return item.salesEntries.length > 0;
-  });
-
-  if (activeFiltered.length === 0) {
-    body.innerHTML = '<tr><td colspan="8" style="text-align:center; color:#888;">কোনো বিক্রয় রেকর্ড নেই।</td></tr>';
+  if (filtered.length === 0) {
+    body.innerHTML = '';
     if (getEl('salesNoData')) getEl('salesNoData').style.display = 'block';
     return;
   }
   if (getEl('salesNoData')) getEl('salesNoData').style.display = 'none';
 
   var html = '';
-  activeFiltered.forEach(function(item, idx) {
-    var dueVal = item.liveCustomerDue;
+  filtered.forEach(function(item, idx) {
+    var dateBR = formatDateBR(item.latestDate);
+    var dueVal = Math.max(0, item.liveCustomerDue);
     var subTableId = 'sub_sales_' + idx;
-    var hasMultiple = item.salesEntries.length > 1;
+    var totalEntries = item.entries.length;
+    var hasMultiple = totalEntries > 1;
     var rowStyle = 'background:#fafafa; border-top:2px solid #e0e0e0;';
     var dueBadge = dueVal > 0 ? '<strong style="color:red;">₹ ' + dueVal + '</strong>' : '<span class="badge badge-success">পরিশোধ</span>';
 
-    var primaryKey = item.salesEntries.length > 0 ? item.salesEntries[0].key : '';
-
-    var actionBtns = '<button class="action-btn" style="background:#455a64; color:white; padding:4px 8px; font-size:11px;" onclick="showCustomerLedger(\'' + encodeURIComponent(item.customerName) + '\')">খাতা</button> ' +
-                     '<button class="action-btn btn-info" style="padding:4px 8px; font-size:11px;" onclick="showInvoice(\'' + primaryKey + '\')">Invoice</button> ' +
-                     '<button class="action-btn btn-warning" style="padding:4px 8px; font-size:11px;" onclick="editSale(\'' + primaryKey + '\')">Edit</button> ' +
-                     '<button class="action-btn btn-danger" style="padding:4px 8px; font-size:11px;" onclick="deleteRecord(\'sales\',\'' + primaryKey + '\')">Delete</button>';
-
-    var productColContent = '';
+    var productSummary = '';
     if (hasMultiple) {
-      productColContent = '<span style="color:#1b5e20; font-weight:600;">মোট ' + item.salesEntries.length + 'টি এন্ট্রি (' + item.totalQty + ' লিটার)</span><br>' +
-                          '<a href="javascript:void(0)" onclick="toggleSubSales(\'' + subTableId + '\', this)" style="display:inline-block; margin-top:5px; padding:4px 10px; background:#e1f5fe; color:#0288d1; font-weight:bold; font-size:12px; border-radius:4px; text-decoration:none;">বিস্তারিত দেখুন ▼</a>';
-    } else if (item.salesEntries.length === 1) {
-      var s = item.salesEntries[0].sale;
-      productColContent = (s.item || 'দুধ') + ' (' + (s.qty || 1) + ')';
+      productSummary = '<span style="color:#1b5e20; font-weight:600;">মোট ' + totalEntries + 'টি এন্ট্রি</span><br><span style="font-size:11px; color:#555;">মোট পরিমাণ:</span> <strong>' + item.totalQty + '</strong>';
     } else {
-      productColContent = '-';
+      var singleSale = item.entries[0].sale;
+      productSummary = (singleSale.item || 'দুধ') + ' (' + (singleSale.qty || 1) + ')';
+    }
+
+    var detailsBtn = hasMultiple ?
+      '<button class="action-btn btn-info" id="sale-btn-' + subTableId + '" onclick="toggleSubSales(\'' + subTableId + '\', this)" style="padding:4px 8px; font-size:11px; white-space:nowrap; margin:0;">বিস্তারিত (' + totalEntries + ') ▼</button>' :
+      '';
+
+    var actionCol = '';
+    if (!hasMultiple) {
+      var singleKey = item.entries[0].key;
+      actionCol = '<div style="display:flex; gap:6px; flex-wrap:nowrap;">' +
+                  '<button class="action-btn" style="background:#455a64; color:white; padding:4px 8px; font-size:11px; margin:0;" onclick="showCustomerLedger(\'' + encodeURIComponent(item.name) + '\')">খাতা</button>' +
+                  '<button class="action-btn btn-info" style="padding:4px 8px; font-size:11px; margin:0;" onclick="showInvoice(\'' + singleKey + '\')">Invoice</button>' +
+                  '<button class="action-btn btn-warning" style="padding:4px 8px; font-size:11px; margin:0;" onclick="editSale(\'' + singleKey + '\')">Edit</button>' +
+                  '<button class="action-btn btn-danger" style="padding:4px 8px; font-size:11px; margin:0;" onclick="deleteRecord(\'sales\',\'' + singleKey + '\')">Delete</button>' +
+                  '</div>';
+    } else {
+      actionCol = '<div style="display:flex; gap:6px; flex-wrap:nowrap;">' +
+                  detailsBtn +
+                  '<button class="action-btn" style="background:#455a64; color:white; padding:4px 8px; font-size:11px; margin:0; white-space:nowrap;" onclick="showCustomerLedger(\'' + encodeURIComponent(item.name) + '\')">খাতা</button>' +
+                  '<button class="action-btn" style="background:#2e7d32; color:white; padding:4px 8px; font-size:11px; margin:0; white-space:nowrap;" onclick="showCustomerMonthlyBill(\'' + encodeURIComponent(item.name) + '\')">মাসিক বিল</button>' +
+                  '</div>';
     }
 
     html += '<tr style="' + rowStyle + '">' +
-      '<td>' + item.latestDate + '</td>' +
-      '<td><strong>' + item.customerName + '</strong>' + (item.phone ? '<br><small style="color:#666;">📞 ' + item.phone + '</small>' : '') + '</td>' +
-      '<td>' + (item.area ? '<span class="badge badge-warning">' + item.area + '</span><br>' : '') + (item.addr || '-') + '</td>' +
-      '<td>' + productColContent + '</td>' +
+      '<td>' + dateBR + '</td>' +
+      '<td><strong>' + item.name + '</strong>' + (item.phone ? '<br><small style="color:#666;">📞 ' + item.phone + '</small>' : '') + '</td>' +
+      '<td>' + (item.area ? '<span class="badge badge-warning">' + item.area + '</span>' : '-') + '</td>' +
+      '<td>' + productSummary + '</td>' +
       '<td><strong>₹ ' + item.totalAmount + '</strong></td>' +
       '<td style="color:green;">₹ ' + item.totalPaid + '</td>' +
       '<td>' + dueBadge + '</td>' +
-      '<td>' + actionBtns + '</td>' +
+      '<td>' + actionCol + '</td>' +
     '</tr>';
 
     if (hasMultiple) {
       html += '<tr id="' + subTableId + '" style="display:none; background:#f1f8e9;"><td colspan="8" style="padding:10px 15px;">' +
-        '<div style="font-size:12px; font-weight:bold; color:#2e7d32; margin-bottom:8px;">📋 এই কাস্টমারের সমস্ত পৃথক এন্ট্রি ও কার্যক্রম:</div>' +
+        '<div style="font-size:12px; font-weight:bold; color:#2e7d32; margin-bottom:8px;">📋 এই গ্রাহকের সমস্ত বিক্রয় রেকর্ড ও অপশন:</div>' +
         '<div style="overflow-x:auto;"><table style="width:100%; font-size:12px; background:white; border:1px solid #c8e6c9; border-collapse:collapse;">' +
-          '<tr style="background:#e8f5e9;"><th style="padding:6px; border:1px solid #c8e6c9;">তারিখ</th><th style="padding:6px; border:1px solid #c8e6c9;">বিবরণ</th><th style="padding:6px; border:1px solid #c8e6c9;">পরিমাণ</th><th style="padding:6px; border:1px solid #c8e6c9;">মোট দাম</th><th style="padding:6px; border:1px solid #c8e6c9;">পরিশোধ</th><th style="padding:6px; border:1px solid #c8e6c9;">কার্যক্রম</th></tr>';
-      
-      item.salesEntries.forEach(function(entry) {
-        var sItem = entry.sale;
+          '<tr style="background:#e8f5e9;"><th style="padding:6px; border:1px solid #c8e6c9;">তারিখ</th><th style="padding:6px; border:1px solid #c8e6c9;">বিবরণ / আইটেম</th><th style="padding:6px; border:1px solid #c8e6c9;">পরিমাণ</th><th style="padding:6px; border:1px solid #c8e6c9;">মোট দাম</th><th style="padding:6px; border:1px solid #c8e6c9;">পরিশোধ</th><th style="padding:6px; border:1px solid #c8e6c9;">কার্যক্রম</th></tr>';
+
+      item.entries.sort(function(a,b){ return parseDateToTime(b.sale.date) - parseDateToTime(a.sale.date); });
+
+      item.entries.forEach(function(itemObj) {
+        var sItem = itemObj.sale;
         html += '<tr>' +
           '<td style="padding:6px; border:1px solid #c8e6c9;">' + formatDateBR(sItem.date) + '</td>' +
           '<td style="padding:6px; border:1px solid #c8e6c9;">' + (sItem.item || 'দুধ') + '</td>' +
@@ -673,97 +2115,35 @@ function renderSalesTable(salesData) {
           '<td style="padding:6px; border:1px solid #c8e6c9;">₹ ' + (Number(sItem.total) || 0) + '</td>' +
           '<td style="padding:6px; border:1px solid #c8e6c9; color:green;">₹ ' + (Number(sItem.paid) || 0) + '</td>' +
           '<td style="padding:6px; border:1px solid #c8e6c9; white-space:nowrap;">' +
-            '<button class="action-btn" style="padding:2px 5px; font-size:10px;" onclick="showInvoice(\'' + entry.key + '\')">Invoice</button> ' +
-            '<button class="action-btn btn-warning" style="padding:2px 5px; font-size:10px;" onclick="editSale(\'' + entry.key + '\')">Edit</button> ' +
-            '<button class="action-btn btn-danger" style="padding:2px 5px; font-size:10px;" onclick="deleteRecord(\'sales\',\'' + entry.key + '\')">Delete</button>' +
+            '<button class="action-btn btn-info" style="padding:2px 5px; font-size:10px; margin-right:4px;" onclick="showInvoice(\'' + itemObj.key + '\')">Invoice</button>' +
+            '<button class="action-btn btn-warning" style="padding:2px 5px; font-size:10px; margin-right:4px;" onclick="editSale(\'' + itemObj.key + '\')">Edit</button>' +
+            '<button class="action-btn btn-danger" style="padding:2px 5px; font-size:10px;" onclick="deleteRecord(\'sales\',\'' + itemObj.key + '\')">Delete</button>' +
           '</td>' +
         '</tr>';
       });
-
       html += '</table></div></td></tr>';
     }
   });
-
   body.innerHTML = html;
 }
 
 function toggleSubSales(subId, linkEl) {
   var row = document.getElementById(subId);
   if (!row) return;
+  var countMatch = linkEl.innerText.match(/\d+/);
+  var count = countMatch ? countMatch[0] : '';
   if (row.style.display === 'none') {
     row.style.display = 'table-row';
-    linkEl.innerText = 'সংক্ষিপ্ত দেখুন ▲';
+    linkEl.innerText = 'সংকুচিত করুন ▲';
     linkEl.style.background = '#ffebee';
     linkEl.style.color = '#c62828';
   } else {
     row.style.display = 'none';
-    linkEl.innerText = 'বিস্তারিত দেখুন ▼';
-    linkEl.style.background = '#e1f5fe';
-    linkEl.style.color = '#0288d1';
+    linkEl.innerText = 'বিস্তারিত (' + count + ') ▼';
+    linkEl.style.background = '#0288d1';
+    linkEl.style.color = 'white';
   }
 }
-
-window.showInvoice = function(k) {
-  var d = farmStore.sales[k];
-  if (!d) return;
-  
-  document.body.setAttribute('data-print', 'invoice');
-  var docTitleEl = getEl('invMainDocTitle');
-  if (docTitleEl) docTitleEl.innerText = 'ইনভয়েস (ক্যাশ মেমো)';
-
-  var liveDue = 0;
-  var custBalances = getCustomerLiveBalances();
-  var cKey = (d.name || '').trim().toLowerCase();
-  if (custBalances[cKey]) {
-    liveDue = custBalances[cKey].currentDue;
-  } else {
-    liveDue = Number(d.due) || 0;
-  }
-
-  var timeStr = getCurrentTimeBR();
-  var formattedDate = formatDateBR(d.date);
-  var safeKey = String(k).substring(1, 6).toUpperCase();
-
-  var itemName = (d.item || 'দুধ').replace(/\s*\([\d\.\s\w]+\)/g, '').trim();
-  var itemQty = d.qty || 1;
-  var itemRate = d.rate || 0;
-  var itemTotal = d.total || (itemQty * itemRate);
-
-  var detailsEl = getEl('invoiceDetails');
-  if (detailsEl) {
-    detailsEl.innerHTML = '<div style="display:flex; justify-content:space-between; margin-bottom:12px;">' +
-      '<div><strong>গ্রাহক:</strong> ' + (d.name || '-') + '<br>মোবাইল: ' + (d.phone || '-') + '<br>এলাকা: ' + (d.area || '-') + '</div>' +
-      '<div style="text-align:right;">তারিখ: ' + formattedDate + ' | সময়: ' + timeStr + '<br>ইনভয়েস: #NDA-' + safeKey + '</div>' +
-    '</div>' +
-    '<table class="invoice-table" style="border:1px solid #ddd; width:100%; border-collapse:collapse; margin-top:10px;">' +
-      '<thead><tr style="background:#e8f5e9;"><th style="padding:8px; border:1px solid #ddd;">পণ্য</th><th style="padding:8px; border:1px solid #ddd;">পরিমাণ</th><th style="padding:8px; border:1px solid #ddd;">দর</th><th style="text-align:right; padding:8px; border:1px solid #ddd;">মোট</th></tr></thead>' +
-      '<tbody><tr>' +
-        '<td style="padding:8px; border:1px solid #ddd;">' + itemName + '</td>' +
-        '<td style="padding:8px; border:1px solid #ddd;">' + itemQty + '</td>' +
-        '<td style="padding:8px; border:1px solid #ddd;">₹ ' + itemRate + '</td>' +
-        '<td style="text-align:right; padding:8px; border:1px solid #ddd; font-weight:bold;">₹ ' + itemTotal + '</td>' +
-      '</tr></tbody>' +
-    '</table>' +
-    '<div style="text-align:right; margin-top:12px; font-size:13.5px; line-height:1.6;">' +
-      'চালান মূল্য: <strong>₹ ' + itemTotal + '</strong><br>' +
-      'নগদ পরিশোধ: <strong style="color:green;">₹ ' + (d.paid || 0) + '</strong><br>' +
-      '<span style="color:red; font-weight:bold; font-size:14.5px;">সর্বশেষ মোট বকেয়া (Total Due): ₹ ' + liveDue + '</span>' +
-    '</div>';
-  }
-
-  var modal = getEl('invoiceModal');
-  if (modal) {
-    modal.style.display = 'flex';
-  }
-};
-
-window.closeInvoice = function() {
-  var modal = getEl('invoiceModal');
-  if (modal) {
-    modal.style.display = 'none';
-  }
-  document.body.removeAttribute('data-print');
-};
 
 function renderOrdersTable() {
   var body = getEl('ordersTableBody');
@@ -773,70 +2153,53 @@ function renderOrdersTable() {
   var areaFilter = (getEl('orderAreaFilter') ? getEl('orderAreaFilter').value : '').trim().toLowerCase();
 
   var uniqueAreas = {};
-  var customerMap = {};
+  var groupedMap = {};
   var pendingCount = 0;
 
   for (var k in farmStore.orders) {
     var d = farmStore.orders[k];
-    if (!d || !d.customer) continue;
-    
-    if (d.status === 'Pending') {
+    if (!d) continue;
+    var custName = (d.customer || d.name || d.customerName || '').trim();
+    if (!custName) continue;
+
+    var stat = String(d.status || 'Pending').trim();
+
+    if (stat.toLowerCase().includes('pending') || stat === 'Pending' || stat === '' || !d.status) {
       pendingCount++;
-    }
-    if (d.status !== 'Pending') continue;
+      var custArea = d.area || '';
+      if (custArea) uniqueAreas[custArea] = true;
 
-    var rName = d.customer.trim();
-    var cKey = rName.toLowerCase();
+      var rawName = custName;
+      var groupKey = rawName.toLowerCase();
 
-    var custPhone = d.phone || '';
-    var custArea = d.area || '';
-    for (var ck in farmStore.customers) {
-      var cust = farmStore.customers[ck];
-      if (cust && cust.name && cust.name.trim().toLowerCase() === cKey) {
-        if (cust.phone) custPhone = cust.phone;
-        if (cust.area) custArea = cust.area.trim();
-        break;
+      if (!groupedMap[groupKey]) {
+        groupedMap[groupKey] = {
+          customer: rawName,
+          phone: d.phone || '',
+          area: custArea,
+          totalAmount: 0,
+          entries: [],
+          latestDate: (d.date || '').trim(),
+          latestTime: parseDateToTime(d.date || '')
+        };
       }
-    }
 
-    if (custArea) uniqueAreas[custArea] = true;
+      var totVal = Number(d.total) || Number(d.amount) || 0;
+      groupedMap[groupKey].totalAmount += totVal;
+      if (d.phone && !groupedMap[groupKey].phone) groupedMap[groupKey].phone = d.phone;
+      if (d.area && !groupedMap[groupKey].area) groupedMap[groupKey].area = d.area;
 
-    if (!customerMap[cKey]) {
-      customerMap[cKey] = {
-        customerName: rName,
-        phone: custPhone,
-        area: custArea,
-        orders: [],
-        latestTime: 0,
-        latestDate: ''
-      };
+      var curTime = parseDateToTime(d.date || '');
+      if (curTime > groupedMap[groupKey].latestTime) {
+        groupedMap[groupKey].latestTime = curTime;
+        groupedMap[groupKey].latestDate = (d.date || '').trim();
+      }
+
+      groupedMap[groupKey].entries.push({ key: k, order: d });
     }
-    customerMap[cKey].orders.push({ key: k, data: d });
   }
 
-  var list = [];
-  for (var cKey in customerMap) {
-    var cObj = customerMap[cKey];
-    var latestTime = 0;
-    var latestDate = '';
-
-    cObj.orders.forEach(function(o) {
-      var t = parseDateToTime(o.data.date);
-      if (t > latestTime) {
-        latestTime = t;
-        latestDate = formatDateBR(o.data.date);
-      }
-    });
-
-    list.push({
-      customerName: cObj.customerName,
-      phone: cObj.phone,
-      area: cObj.area,
-      orders: cObj.orders,
-      latestDate: latestDate,
-      latestTime: latestTime
-    });
-  }
+  if (getEl('dash-pending-orders')) getEl('dash-pending-orders').innerText = pendingCount;
 
   var areaSelect = getEl('orderAreaFilter');
   if (areaSelect) {
@@ -848,57 +2211,290 @@ function renderOrdersTable() {
     areaSelect.innerHTML = optH;
   }
 
+  var list = [];
+  for (var gKey in groupedMap) {
+    list.push(groupedMap[gKey]);
+  }
+
   var filtered = list.filter(function(item) {
-    var nameMatch = item.customerName.toLowerCase().includes(searchQ);
-    var phoneMatch = (item.phone || '').toLowerCase().includes(searchQ);
-    return (!searchQ || nameMatch || phoneMatch) && (!areaFilter || (item.area || '').toLowerCase() === areaFilter);
+    return (!searchQ || item.customer.toLowerCase().includes(searchQ) || item.phone.toLowerCase().includes(searchQ)) && (!areaFilter || item.area.toLowerCase() === areaFilter.toLowerCase());
   });
 
   filtered.sort(function(a, b) { return b.latestTime - a.latestTime; });
 
   if (filtered.length === 0) {
-    body.innerHTML = '<tr><td colspan="6" style="text-align:center; color:#888;">কোনো পেন্ডিং অর্ডার নেই।</td></tr>';
+    body.innerHTML = '<tr><td colspan="6" style="text-align:center; color:#888;">কোনো অর্ডার রেকর্ড নেই।</td></tr>';
     if (getEl('ordersNoData')) getEl('ordersNoData').style.display = 'block';
     return;
   }
   if (getEl('ordersNoData')) getEl('ordersNoData').style.display = 'none';
 
   var html = '';
-  filtered.forEach(function(item) {
-    var cName = item.customerName;
-    var itemsSummary = [];
-    var totalSum = 0;
+  filtered.forEach(function(item, idx) {
+    var dateBR = formatDateBR(item.latestDate);
+    var subTableId = 'sub_orders_' + idx;
+    var totalEntries = item.entries.length;
+    var hasMultiple = totalEntries > 1;
+    var rowStyle = 'background:#fafafa; border-top:2px solid #e0e0e0;';
 
-    item.orders.forEach(function(o) {
-      itemsSummary.push(o.data.items + ' (' + formatDateBR(o.data.date) + ')');
-      totalSum += Number(o.data.total) || 0;
-    });
+    var orderSummary = '';
+    if (hasMultiple) {
+      orderSummary = '<span style="color:#1b5e20; font-weight:600;">মোট ' + totalEntries + 'টি এন্ট্রি</span><br><span style="font-size:11px; color:#555;">মোট মূল্য:</span> <strong>₹ ' + item.totalAmount + '</strong>';
+    } else {
+      var singleOrder = item.entries[0].order;
+      orderSummary = '<span style="font-size:12px;">' + (singleOrder.items || '-') + '</span><br><span style="font-size:11px; color:#555;">মূল্য:</span> <strong>₹ ' + (singleOrder.total || item.totalAmount) + '</strong>';
+    }
 
-    var rowStyle = 'background: #fff8f8; border-left: 4px solid #d32f2f;';
-    var statusBadge = '<span class="badge badge-danger">Pending</span>';
-    var firstKey = item.orders[0].key;
+    var detailsBtn = hasMultiple ?
+      '<button class="action-btn btn-info" id="ord-btn-' + subTableId + '" onclick="toggleSubOrders(\'' + subTableId + '\', this)" style="padding:4px 8px; font-size:11px; white-space:nowrap; margin:0;">বিস্তারিত (' + totalEntries + ') ▼</button>' :
+      '';
+
+    var actionCol = '';
+    if (!hasMultiple) {
+      var singleKey = item.entries[0].key;
+      actionCol = '<div style="display:flex; gap:6px; flex-wrap:nowrap;">' +
+                  '<button class="action-btn" style="background:#455a64; color:white; padding:4px 8px; font-size:11px; margin:0;" onclick="showCustomerLedger(\'' + encodeURIComponent(item.customer) + '\')">খাতা</button>' +
+                  '<button class="action-btn btn-info" style="padding:4px 8px; font-size:11px; margin:0;" onclick="editOrder(\'' + singleKey + '\')">Edit</button>' +
+                  '<button class="action-btn btn-danger" style="padding:4px 8px; font-size:11px; margin:0;" onclick="deleteRecord(\'orders\',\'' + singleKey + '\')">Delete</button>' +
+                  '</div>';
+    } else {
+      actionCol = '<div style="display:flex; gap:6px; flex-wrap:nowrap;">' +
+                  detailsBtn +
+                  '<button class="action-btn" style="background:#455a64; color:white; padding:4px 8px; font-size:11px; margin:0; white-space:nowrap;" onclick="showCustomerLedger(\'' + encodeURIComponent(item.customer) + '\')">খাতা</button>' +
+                  '</div>';
+    }
 
     html += '<tr style="' + rowStyle + '">' +
-      '<td>' + (item.latestDate || '-') + '</td>' +
-      '<td><a href="javascript:void(0)" onclick="showCustomerLedger(\'' + encodeURIComponent(cName) + '\')" style="color:var(--primary); font-weight:bold; text-decoration:underline;">' + cName + '</a>' + (item.phone ? '<br><small>📞 ' + item.phone + '</small>' : '') + '</td>' +
+      '<td>' + dateBR + '</td>' +
+      '<td><strong>' + item.customer + '</strong>' + (item.phone ? '<br><small style="color:#666;">📞 ' + item.phone + '</small>' : '') + '</td>' +
       '<td>' + (item.area ? '<span class="badge badge-warning">' + item.area + '</span>' : '-') + '</td>' +
-      '<td>' + itemsSummary.join('<br>') + '<br><strong>মোট: ₹ ' + totalSum + '</strong></td>' +
-      '<td>' + statusBadge + '</td>' +
-      '<td>' +
-        '<button class="action-btn" style="background:#455a64; color:white;" onclick="showCustomerLedger(\'' + encodeURIComponent(cName) + '\')">খাতা</button>' +
-        '<button class="action-btn btn-info" onclick="editOrder(\'' + firstKey + '\')">Edit</button>' +
-        '<button class="action-btn btn-danger" onclick="deleteRecord(\'orders\',\'' + firstKey + '\')">Delete</button>' +
-      '</td>' +
+      '<td>' + orderSummary + '</td>' +
+      '<td><span class="badge badge-danger">Pending</span></td>' +
+      '<td>' + actionCol + '</td>' +
     '</tr>';
+
+    if (hasMultiple) {
+      html += '<tr id="' + subTableId + '" style="display:none; background:#f1f8e9;"><td colspan="6" style="padding:10px 15px;">' +
+        '<div style="font-size:12px; font-weight:bold; color:#2e7d32; margin-bottom:8px;">📋 এই গ্রাহকের সমস্ত পেন্ডিং অর্ডার ও এডিট/ডিলিট অপশন:</div>' +
+        '<div style="overflow-x:auto;"><table style="width:100%; font-size:12px; background:white; border:1px solid #c8e6c9; border-collapse:collapse;">' +
+          '<tr style="background:#e8f5e9;"><th style="padding:6px; border:1px solid #c8e6c9;">তারিখ</th><th style="padding:6px; border:1px solid #c8e6c9;">বিবরণ / আইটেম</th><th style="padding:6px; border:1px solid #c8e6c9;">টাকা</th><th style="padding:6px; border:1px solid #c8e6c9;">স্ট্যাটাস</th><th style="padding:6px; border:1px solid #c8e6c9;">কার্যক্রম</th></tr>';
+
+      item.entries.sort(function(a,b){ return parseDateToTime(b.order.date) - parseDateToTime(a.order.date); });
+
+      item.entries.forEach(function(itemObj) {
+        var oItem = itemObj.order;
+        html += '<tr>' +
+          '<td style="padding:6px; border:1px solid #c8e6c9;">' + formatDateBR(oItem.date) + '</td>' +
+          '<td style="padding:6px; border:1px solid #c8e6c9;">' + (oItem.items || '-') + '</td>' +
+          '<td style="padding:6px; border:1px solid #c8e6c9;">₹ ' + (Number(oItem.total) || 0) + '</td>' +
+          '<td style="padding:6px; border:1px solid #c8e6c9;"><span class="badge badge-danger">' + (oItem.status || 'Pending') + '</span></td>' +
+          '<td style="padding:6px; border:1px solid #c8e6c9; white-space:nowrap;">' +
+            '<button class="action-btn btn-info" style="padding:3px 7px; font-size:11px;" onclick="editOrder(\'' + itemObj.key + '\')">Edit</button> ' +
+            '<button class="action-btn btn-danger" style="padding:3px 7px; font-size:11px;" onclick="deleteRecord(\'orders\',\'' + itemObj.key + '\')">Delete</button>' +
+          '</td>' +
+        '</tr>';
+      });
+      html += '</table></div></td></tr>';
+    }
   });
   body.innerHTML = html;
 }
+
+function toggleSubOrders(subId, linkEl) {
+  var row = document.getElementById(subId);
+  if (!row) return;
+  var countMatch = linkEl.innerText.match(/\d+/);
+  var count = countMatch ? countMatch[0] : '';
+  if (row.style.display === 'none') {
+    row.style.display = 'table-row';
+    linkEl.innerText = 'সংকুচিত করুন ▲';
+    linkEl.style.background = '#ffebee';
+    linkEl.style.color = '#c62828';
+  } else {
+    row.style.display = 'none';
+    linkEl.innerText = 'বিস্তারিত (' + count + ') ▼';
+    linkEl.style.background = '#0288d1';
+    linkEl.style.color = 'white';
+  }
+}
+
+var eRatKey = null;
+function editRation(k) {
+  var d = farmStore.feedRations[k]; if (!d) return; eRatKey = k;
+  getEl('rationDate').value = d.date || '';
+  getEl('ratCowTag').value = d.cowTag || '';
+  getEl('ratPellet').value = d.pellet || '';
+  getEl('ratAvgCostPerKg').value = d.avgCostPerKg || '';
+  if (getEl('ratGreenFodder')) getEl('ratGreenFodder').value = d.greenFodder || 0;
+  if (getEl('ratDryFodder')) getEl('ratDryFodder').value = d.dryFodder || 0;
+  getEl('ratSuppCost').value = d.suppCost || '';
+  getEl('ratTotalCost').value = d.totalCost || '';
+
+  getEl('ratSubmitBtn').innerText = 'Update Ration';
+  getEl('ratCancelBtn').style.display = 'inline-flex';
+  switchTab('feed', document.querySelectorAll('nav button')[9]);
+}
+
+function cancelRationEdit() {
+  eRatKey = null;
+  ['ratCowTag','ratPellet','ratAvgCostPerKg','ratGreenFodder','ratDryFodder','ratSuppCost','ratTotalCost'].forEach(function(i){ if(getEl(i)) getEl(i).value=''; });
+  if (getEl('ratPellet')) getEl('ratPellet').value = '2.0';
+  if (getEl('ratAvgCostPerKg')) getEl('ratAvgCostPerKg').value = '32';
+  if (getEl('ratGreenFodder')) getEl('ratGreenFodder').value = '0';
+  if (getEl('ratDryFodder')) getEl('ratDryFodder').value = '0';
+  if (getEl('ratSuppCost')) getEl('ratSuppCost').value = '0';
+  autoCalcRation();
+  getEl('ratSubmitBtn').innerText = 'Save & Deduct Stock';
+  getEl('ratCancelBtn').style.display = 'none';
+}
+
+function deductFeedStock(pellet) {
+  if (pellet > 0 && farmStore.stock) {
+    for (var sk in farmStore.stock) {
+      var st = farmStore.stock[sk];
+      if (st && st.name && (st.name.toLowerCase().includes('cattle feed') || st.name.toLowerCase().includes('pellet') || st.name.toLowerCase().includes('ফিড'))) {
+        var newQty = Math.max(0, (Number(st.qty) || 0) - pellet);
+        db.ref('stock/' + sk).update({ qty: parseFloat(newQty.toFixed(2)) });
+        break;
+      }
+    }
+  }
+}
+
+function saveRation() {
+  var tag = (getEl('ratCowTag').value || '').trim();
+  var dt = getEl('rationDate').value;
+  if (!tag || !dt) return showAppToast('তারিখ ও গরুর Tag ID দিন!');
+
+  var pellet = parseFloat(getEl('ratPellet').value) || 0;
+  var avgCost = parseFloat(getEl('ratAvgCostPerKg').value) || 0;
+  var greenFodder = parseFloat(getEl('ratGreenFodder') ? getEl('ratGreenFodder').value : 0) || 0;
+  var dryFodder = parseFloat(getEl('ratDryFodder') ? getEl('ratDryFodder').value : 0) || 0;
+  var suppCost = parseFloat(getEl('ratSuppCost').value) || 0;
+  var totalCost = (pellet * avgCost) + suppCost;
+  var autoExp = getEl('ratAutoExpense') ? getEl('ratAutoExpense').checked : true;
+
+  var data = {
+    date: dt,
+    cowTag: tag,
+    pellet: pellet,
+    avgCostPerKg: avgCost,
+    greenFodder: greenFodder,
+    dryFodder: dryFodder,
+    suppCost: suppCost,
+    totalCost: totalCost
+  };
+
+  if (db) {
+    var ratId = eRatKey;
+    if (eRatKey) {
+      db.ref('feedRations/' + eRatKey).update(data);
+    } else {
+      ratId = db.ref('feedRations').push(data).key;
+      deductFeedStock(pellet);
+    }
+    if (autoExp) {
+      syncAutoExpense('ration_' + ratId, {
+        date: dt,
+        category: 'Feed & Fodder',
+        title: 'Cattle Feed (' + tag + ') - ' + pellet + ' kg',
+        amount: totalCost
+      });
+    }
+  }
+  showAppToast('রেশন সফলভাবে সেভ হয়েছে!');
+  cancelRationEdit();
+}
+
+window.openBulkFeedModal = function() {
+  var listEl = getEl('bulkCowChecklist');
+  if (!listEl) return;
+  var cows = [];
+  for (var k in farmStore.cattle) {
+    if (farmStore.cattle[k] && farmStore.cattle[k].tag) cows.push(farmStore.cattle[k]);
+  }
+  cows.sort(function(a, b) {
+    return (a.tag || '').localeCompare(b.tag || '', undefined, { numeric: true, sensitivity: 'base' });
+  });
+  if (cows.length === 0) {
+    listEl.innerHTML = '<p style="color:#777; text-align:center;">কোনো গরু রেজিস্টার করা নেই।</p>';
+  } else {
+    var h = '';
+    cows.forEach(function(c) {
+      var st = (c.status || '').toLowerCase();
+      var checked = st === 'milking' ? 'checked' : '';
+      h += '<label style="display:flex; align-items:center; gap:8px; padding:6px 4px; border-bottom:1px solid #e8f5e9; cursor:pointer; font-size:13px;">' +
+        '<input type="checkbox" class="bulk-cow-cb" data-status="' + st + '" value="' + c.tag + '" ' + checked + ' style="width:auto;">' +
+        '<strong>' + c.tag + '</strong> <span style="color:#666; font-size:11.5px;">(' + (c.breed || '-') + ' • ' + (c.status || '-') + ')</span>' +
+      '</label>';
+    });
+    listEl.innerHTML = h;
+  }
+  getEl('bulkFeedModal').style.display = 'flex';
+};
+
+window.closeBulkFeedModal = function() {
+  if (getEl('bulkFeedModal')) getEl('bulkFeedModal').style.display = 'none';
+};
+
+window.selectBulkCows = function(mode) {
+  var cbs = document.querySelectorAll('.bulk-cow-cb');
+  cbs.forEach(function(cb) {
+    if (mode === 'all') cb.checked = true;
+    else if (mode === 'none') cb.checked = false;
+    else if (mode === 'milking') cb.checked = (cb.getAttribute('data-status') === 'milking');
+  });
+};
+
+window.saveBulkRation = function() {
+  var dt = getEl('rationDate').value;
+  if (!dt) return showAppToast('তারিখ দিন!');
+  var selectedTags = [];
+  document.querySelectorAll('.bulk-cow-cb:checked').forEach(function(cb) {
+    selectedTags.push(cb.value);
+  });
+  if (selectedTags.length === 0) return showAppToast('অন্তত একটি গরু সিলেক্ট করুন!');
+
+  var pellet = parseFloat(getEl('ratPellet').value) || 0;
+  var avgCost = parseFloat(getEl('ratAvgCostPerKg').value) || 0;
+  var greenFodder = parseFloat(getEl('ratGreenFodder') ? getEl('ratGreenFodder').value : 0) || 0;
+  var dryFodder = parseFloat(getEl('ratDryFodder') ? getEl('ratDryFodder').value : 0) || 0;
+  var suppCost = parseFloat(getEl('ratSuppCost').value) || 0;
+  var totalCost = (pellet * avgCost) + suppCost;
+  var autoExp = getEl('ratAutoExpense') ? getEl('ratAutoExpense').checked : true;
+
+  if (db) {
+    selectedTags.forEach(function(tag) {
+      db.ref('feedRations').push({
+        date: dt,
+        cowTag: tag,
+        pellet: pellet,
+        avgCostPerKg: avgCost,
+        greenFodder: greenFodder,
+        dryFodder: dryFodder,
+        suppCost: suppCost,
+        totalCost: totalCost
+      });
+    });
+    deductFeedStock(pellet * selectedTags.length);
+    if (autoExp && totalCost > 0) {
+      db.ref('expenses').push({
+        date: dt,
+        category: 'Feed & Fodder',
+        title: 'Bulk Cattle Feed (' + selectedTags.length + 'টি গরু) - ' + (pellet * selectedTags.length).toFixed(1) + ' kg',
+        amount: parseFloat((totalCost * selectedTags.length).toFixed(2))
+      });
+    }
+  }
+  closeBulkFeedModal();
+  showAppToast(selectedTags.length + ' টি গরুতে রেশন সফলভাবে সেভ হয়েছে!');
+};
 
 window.showCustomerLedger = function(encName) {
   var custName = decodeURIComponent(encName).trim();
   window.activeLedgerCustomerName = custName;
   document.body.setAttribute('data-print', 'ledger');
-  
+
   var custLower = custName.toLowerCase();
   var cPhone = '', cArea = '', cAddr = '', opDue = 0;
 
@@ -932,14 +2528,35 @@ window.showCustomerLedger = function(encName) {
       pList.forEach(function(p) { subsequentSum += (Number(p.amount) || 0); });
       var initialPaid = Math.max(0, bCurPaid - subsequentSum);
 
-      if (bTot > 0) {
-        totalBillAmount += bTot; totalPaidAmount += initialPaid;
-        events.push({ date: formatDateBR(s.date), desc: (s.item || 'পণ্য') + (s.qty ? ' (' + s.qty + ')' : ''), bill: bTot, paid: initialPaid, netDiff: bTot - initialPaid, isSale: true, saleKey: k, timestamp: parseDateToTime(s.date) });
+      if (bTot > 0 || initialPaid > 0) {
+        totalBillAmount += bTot;
+        totalPaidAmount += initialPaid;
+        events.push({
+          date: formatDateBR(s.date),
+          desc: (s.item || 'পণ্য') + (s.qty ? ' (' + s.qty + ')' : ''),
+          bill: bTot,
+          paid: initialPaid,
+          netDiff: bTot - initialPaid,
+          isSale: true,
+          saleKey: k,
+          timestamp: parseDateToTime(s.date)
+        });
       }
 
       pList.forEach(function(p, pIdx) {
-        var pAmt = Number(p.amount) || 0; totalPaidAmount += pAmt;
-        events.push({ date: formatDateBR(p.date || s.date), desc: '💳 বকেয়া জমা (' + (p.note || 'ক্যাশ') + ')', bill: 0, paid: pAmt, netDiff: -pAmt, isPayment: true, payObj: p, saleKey: k, timestamp: parseDateToTime(p.date || s.date) + (pIdx + 1) });
+        var pAmt = Number(p.amount) || 0;
+        totalPaidAmount += pAmt;
+        events.push({
+          date: formatDateBR(p.date || s.date),
+          desc: '💳 বকেয়া জমা (' + (p.note || 'ক্যাশ') + ')',
+          bill: 0,
+          paid: pAmt,
+          netDiff: -pAmt,
+          isPayment: true,
+          payObj: p,
+          saleKey: k,
+          timestamp: parseDateToTime(p.date || s.date) + (pIdx + 1)
+        });
       });
     }
   }
@@ -949,43 +2566,14 @@ window.showCustomerLedger = function(encName) {
   events.forEach(function(ev) { runningBalance += ev.netDiff; ev.cumDue = Math.max(0, runningBalance); });
   events.reverse();
 
-  var subHeaderHtml = '<div style="display:flex; justify-content:space-between; align-items:center; border-bottom: 2px solid #1b5e20; padding-bottom: 12px; margin-bottom: 15px;">' +
-    '<div style="display:flex; align-items:center; gap:10px;">' +
-      '<button class="action-btn btn-info" style="padding:8px 14px; font-size:14px;" onclick="closeLedger()">⬅ ফিরে যান (Back)</button>' +
-      '<div><h2 style="margin:0; color:#1b5e20; font-size:20px; border:none; padding:0;">গ্রাহক খাতা ও লেনদেন বিবরণী</h2>' +
-      '<p id="ledgerCustSub" style="font-size:13px; color:#555; margin:3px 0 0 0;">গ্রাহক: <strong>' + custName + '</strong> ' + (cPhone ? '| 📞 ' + cPhone : '') + '</p></div>' +
-    '</div>' +
-    '<span class="badge badge-success" style="font-size:13px; padding:6px 12px;">Nanda Dairy & Agro</span>' +
-  '</div>';
+  getEl('ledgerCustSub').innerHTML = 'গ্রাহক: <strong>' + custName + '</strong> ' + (cPhone ? '| 📞 ' + cPhone : '');
+  getEl('ledgerTotalBill').innerText = '₹ ' + totalBillAmount.toLocaleString();
+  getEl('ledgerTotalPaid').innerText = '₹ ' + totalPaidAmount.toLocaleString();
+  getEl('ledgerTotalDue').innerText = '₹ ' + Math.max(0, totalBillAmount - totalPaidAmount).toLocaleString();
 
-  var modalArea = document.querySelector('#ledgerModal .ledger-card');
-  if (modalArea) {
-    modalArea.innerHTML = subHeaderHtml + 
-      '<div style="display:grid; grid-template-columns:repeat(3, 1fr); gap:10px; margin-bottom:15px; text-align:center;">' +
-        '<div style="background:#e8f5e9; padding:12px; border-radius:8px;"><span style="font-size:12px; color:#555;">সর্বমোট কেনাকাটা</span><h3 id="ledgerTotalBill" style="color:#1b5e20; font-size:19px; margin-top:3px;">₹ ' + totalBillAmount.toLocaleString() + '</h3></div>' +
-        '<div style="background:#e3f2fd; padding:12px; border-radius:8px;"><span style="font-size:12px; color:#555;">মোট পরিশোধ</span><h3 id="ledgerTotalPaid" style="color:#0288d1; font-size:19px; margin-top:3px;">₹ ' + totalPaidAmount.toLocaleString() + '</h3></div>' +
-        '<div style="background:#ffebee; padding:12px; border-radius:8px;"><span style="font-size:12px; color:#555;">বর্তমান মোট বকেয়া</span><h3 id="ledgerTotalDue" style="color:#c62828; font-size:19px; margin-top:3px;">₹ ' + Math.max(0, totalBillAmount - totalPaidAmount).toLocaleString() + '</h3></div>' +
-      '</div>' +
-      '<div style="background:#f4fbf5; border:1px solid #c8e6c9; border-radius:8px; padding:14px; margin-bottom:15px;" class="no-print">' +
-        '<strong style="color:#1b5e20; font-size:14px; display:block; margin-bottom:8px;">💳 বকেয়া টাকা জমা নিন</strong>' +
-        '<div style="display:flex; flex-wrap:wrap; gap:10px; align-items:flex-end;">' +
-          '<div style="flex:1; min-width:130px;"><label style="font-size:12px; font-weight:600;">তারিখ</label><input type="date" id="ledgerPayDate" value="' + (new Date().toISOString().split('T')[0]) + '" style="padding:8px; font-size:13px;"></div>' +
-          '<div style="flex:1; min-width:130px;"><label style="font-size:12px; font-weight:600;">জমা (₹) *</label><input type="number" id="ledgerPayAmount" placeholder="টাকা" style="padding:8px; font-size:13px;"></div>' +
-          '<div style="flex:1.5; min-width:160px;"><label style="font-size:12px; font-weight:600;">পদ্ধতি / নোট</label><input type="text" id="ledgerPayNote" placeholder="ক্যাশ / UPI" style="padding:8px; font-size:13px;"></div>' +
-          '<div><button class="btn" style="padding:9px 18px; font-size:13px; height:39px;" onclick="saveCustomerPayment()">+ জমা সেভ করুন</button></div>' +
-        '</div>' +
-      '</div>' +
-      '<div class="table-container" style="max-height:50vh; overflow-y:auto;">' +
-        '<table style="width:100%; font-size:13px;">' +
-          '<thead><tr style="background:#f1f5f2;"><th>তারিখ</th><th>বিবরণ</th><th>বিলের পরিমাণ</th><th>পরিশোধ (জমা)</th><th style="background:#fff3e0; color:#e65100;">লেনদেনের পর বাকি</th><th>ইনভয়েস</th></tr></thead>' +
-          '<tbody id="ledgerTableBody"></tbody>' +
-        '</table>' +
-      '</div>' +
-      '<div class="no-print" style="display:flex; gap:10px; margin-top:20px;">' +
-        '<button class="btn btn-info" style="flex:1; padding:12px;" onclick="printSpecificModal(\'ledger\')">🖨️ প্রিন্ট করুন</button>' +
-        '<button class="btn btn-danger" style="flex:1; padding:12px;" onclick="closeLedger()">✕ বন্ধ করুন</button>' +
-      '</div>';
-  }
+  if (getEl('ledgerPayDate')) getEl('ledgerPayDate').value = new Date().toISOString().split('T')[0];
+  if (getEl('ledgerPayAmount')) getEl('ledgerPayAmount').value = '';
+  if (getEl('ledgerPayNote')) getEl('ledgerPayNote').value = '';
 
   var tbody = getEl('ledgerTableBody');
   if (events.length === 0) {
@@ -1003,7 +2591,7 @@ window.showCustomerLedger = function(encName) {
     });
     tbody.innerHTML = html;
   }
-  getEl('ledgerModal').style.display = 'block';
+  getEl('ledgerModal').style.display = 'flex';
 };
 
 window.closeLedger = function() {
@@ -1014,52 +2602,81 @@ window.closeLedger = function() {
 
 window.saveCustomerPayment = function() {
   var amt = parseFloat(getEl('ledgerPayAmount').value) || 0;
-  if (amt <= 0) return alert('জমার পরিমাণ দিন!');
+  if (amt <= 0) return showAppToast('জমার পরিমাণ দিন!');
   var pDate = getEl('ledgerPayDate').value || new Date().toISOString().split('T')[0];
   var pNote = (getEl('ledgerPayNote').value || 'নগদ জমা').trim();
   var custName = window.activeLedgerCustomerName;
+  if (!custName) return showAppToast('গ্রাহক নির্বাচন ত্রুটি!');
 
   var unpaidSales = [];
   for (var k in farmStore.sales) {
     var s = farmStore.sales[k];
-    if (s && (s.name || '').trim().toLowerCase() === custName.toLowerCase() && Number(s.due) > 0) {
-      unpaidSales.push({ key: k, data: s });
+    if (s && (s.name || '').trim().toLowerCase() === custName.toLowerCase()) {
+      var sTot = Number(s.total) || 0;
+      var sPd = Number(s.paid) || 0;
+      var actualDue = sTot - sPd;
+      if (actualDue > 0) {
+        unpaidSales.push({ key: k, data: s, actualDue: actualDue });
+      }
     }
   }
-  unpaidSales.sort(function(a, b) { return (a.data.date || '').localeCompare(b.data.date || ''); });
+  unpaidSales.sort(function(a, b) {
+    return parseDateToTime(a.data.date) - parseDateToTime(b.data.date);
+  });
 
   var paymentId = 'PAY-' + Date.now();
   var rem = amt;
+
   unpaidSales.forEach(function(item) {
     if (rem <= 0) return;
-    var curDue = Number(item.data.due) || 0;
+    var curDue = item.actualDue;
     var curPaid = Number(item.data.paid) || 0;
     var payAmount = Math.min(rem, curDue);
     rem -= payAmount;
+
     var pList = getPaymentsArray(item.data.payments);
     pList.push({ id: paymentId, date: pDate, amount: payAmount, note: pNote });
-    
+
     var newPaid = curPaid + payAmount;
-    var newDue = Math.max(0, Number(item.data.total || 0) - newPaid);
-    if (db) db.ref('sales/' + item.key).update({ paid: newPaid, due: newDue, payments: pList });
+    var newDue = Math.max(0, (Number(item.data.total) || 0) - newPaid);
+
+    if (db) {
+      db.ref('sales/' + item.key).update({ paid: newPaid, due: newDue, payments: pList });
+    }
   });
 
   if (rem > 0) {
-    var advRecord = { date: pDate, name: custName, phone: '', area: '', addr: '', item: 'অগ্রিম জমা (' + pNote + ')', qty: 1, rate: 0, total: 0, paid: rem, due: 0, isPayment: true, payments: [{ id: paymentId, date: pDate, amount: rem, note: pNote }] };
+    var advRecord = {
+      date: pDate,
+      name: custName,
+      phone: '', area: '', addr: '',
+      item: 'অগ্রিম/অতিরিক্ত জমা (' + pNote + ')',
+      qty: 1, rate: 0, total: 0,
+      paid: rem, due: 0,
+      isPayment: true,
+      payments: [{ id: paymentId, date: pDate, amount: rem, note: pNote }]
+    };
     if (db) db.ref('sales').push(advRecord);
   }
 
-  alert('পেমেন্ট সফলভাবে জমা হয়েছে!');
-  getEl('ledgerPayAmount').value = ''; getEl('ledgerPayNote').value = '';
-  setTimeout(function() { showCustomerLedger(encodeURIComponent(custName)); }, 300);
+  showAppToast('পেমেন্ট সফলভাবে জমা হয়েছে!');
+  getEl('ledgerPayAmount').value = '';
+  getEl('ledgerPayNote').value = '';
 };
 
-window.showPaymentInvoice = function(pDate, pAmt, pNote, custName, cPhone, cArea, cAddr, balAfter, pId) {
+window.showInvoice = function(k) {
+  var d = farmStore.sales[k];
+  if (!d) return;
   document.body.setAttribute('data-print', 'invoice');
-  getEl('invMainDocTitle').innerText = 'ইনভয়েস (পেমেন্ট বিল)';
-  var timeStr = getCurrentTimeBR();
-  getEl('invoiceDetails').innerHTML = '<div style="display:flex; justify-content:space-between; margin-bottom:12px;"><div><strong>গ্রাহক:</strong> ' + custName + '<br>মোবাইল: ' + cPhone + '</div><div style="text-align:right;">তারিখ: ' + pDate + ' | সময়: ' + timeStr + '<br>স্ট্যাটাস: <span style="color:green; font-weight:bold;">PAID</span></div></div><table class="invoice-table" style="border:1px solid #ddd; width:100%;"><thead><tr style="background:#e8f5e9;"><th>বিবরণ</th><th>পদ্ধতি</th><th style="text-align:right;">আদায়কৃত অর্থ</th></tr></thead><tbody><tr><td>বকেয়া জমা</td><td>' + pNote + '</td><td style="text-align:right; font-weight:bold; color:green;">₹ ' + pAmt + '</td></tr></tbody></table><div style="text-align:right; margin-top:10px;">বর্তমান বকেয়া: <strong>₹ ' + balAfter + '</strong></div>';
+  getEl('invMainDocTitle').innerText = 'ইনভয়েস (ক্যাশ মেমো)';
+  var liveDue = getCustomerLiveBalances()[(d.name || '').trim().toLowerCase()]?.currentDue || 0;
+  getEl('invoiceDetails').innerHTML = '<div style="display:flex; justify-content:space-between; margin-bottom:12px;"><div><strong>গ্রাহক:</strong> ' + d.name + '<br>মোবাইল: ' + (d.phone || '-') + '</div><div style="text-align:right;">তারিখ: ' + formatDateBR(d.date) + '<br>ইনভয়েস: #NDA-' + k.substring(1, 6).toUpperCase() + '</div></div><table class="invoice-table" style="border:1px solid #ddd; width:100%; min-width:unset;"><thead><tr style="background:#e8f5e9;"><th>পণ্য</th><th>পরিমাণ</th><th>দর</th><th style="text-align:right;">মোট</th></tr></thead><tbody><tr><td>' + d.item + '</td><td>' + d.qty + '</td><td>₹ ' + d.rate + '</td><td style="text-align:right; font-weight:bold;">₹ ' + d.total + '</td></tr></tbody></table><div style="text-align:right; margin-top:10px;">চালান মূল্য: ₹ ' + d.total + '<br>নগদ পরিশোধ: ₹ ' + d.paid + '<br><span style="color:red; font-weight:bold;">মোট বকেয়া: ₹ ' + liveDue + '</span></div>';
   getEl('invoiceModal').style.display = 'flex';
+};
+
+window.closeInvoice = function() {
+  getEl('invoiceModal').style.display = 'none';
+  document.body.removeAttribute('data-print');
 };
 
 var eCatKey = null;
@@ -1070,13 +2687,14 @@ function editCattle(k) {
   getEl('cowLactation').value = d.lactation || ''; getEl('cowStatus').value = d.status || 'Milking'; getEl('cowMilkDay').value = d.milkDay || '';
   getEl('cowSire').value = d.sire || ''; getEl('cowDam').value = d.dam || ''; getEl('cowExpCalving').value = d.expCalving || '';
   getEl('cowSubmitBtn').innerText = 'Update Cattle'; getEl('cowCancelBtn').style.display = 'inline-flex';
+  switchTab('cattle', document.querySelector('nav button:nth-child(2)'));
 }
 function cancelCattleEdit() {
   eCatKey = null; ['cowTag','cowBreed','cowBreedType','cowDob','cowWeight','cowLactation','cowMilkDay','cowSire','cowDam','cowExpCalving'].forEach(function(i){ getEl(i).value=''; });
   getEl('cowSubmitBtn').innerText = 'Save Cattle'; getEl('cowCancelBtn').style.display = 'none';
 }
 function saveCattle() {
-  var tag = (getEl('cowTag').value || '').trim(); if (!tag) return alert('Tag ID দিন!');
+  var tag = (getEl('cowTag').value || '').trim(); if (!tag) return showAppToast('Tag ID দিন!');
   var data = { tag: tag, breed: getEl('cowBreed').value, breedType: getEl('cowBreedType').value, generation: getEl('cowGeneration').value, dob: getEl('cowDob').value, weight: parseFloat(getEl('cowWeight').value)||0, lactation: parseFloat(getEl('cowLactation').value)||0, status: getEl('cowStatus').value, milkDay: parseFloat(getEl('cowMilkDay').value)||0, sire: getEl('cowSire').value, dam: getEl('cowDam').value, expCalving: getEl('cowExpCalving').value };
   if (db) eCatKey ? db.ref('cattle/' + eCatKey).update(data) : db.ref('cattle').push(data);
   cancelCattleEdit();
@@ -1085,20 +2703,525 @@ function saveCattle() {
 var eBrKey = null;
 function editBreeding(k) {
   var d = farmStore.breeding[k]; if (!d) return; eBrKey = k;
-  getEl('brCowTag').value = d.tag || ''; getEl('brAiDate').value = d.aiDate || ''; getEl('brSemenId').value = d.semenId || '';
-  getEl('brCompany').value = d.company || ''; getEl('brAiCost').value = d.aiCost || ''; getEl('brPdDate').value = d.pdDate || '';
-  getEl('brStatus').value = d.status || 'Pending'; getEl('brExpCalvingDate').value = d.expCalvingDate || d.calvingDate || ''; getEl('brActCalvingDate').value = d.actCalvingDate || '';
-  getEl('brSubmitBtn').innerText = 'Update Breeding'; getEl('brCancelBtn').style.display = 'inline-flex';
+  getEl('brCowTag').value = d.tag || '';
+  getEl('brAiDate').value = d.aiDate || '';
+  getEl('brHeatSigns').value = d.heatSigns || '-';
+  getEl('brSemenId').value = d.semenId || '';
+  getEl('brCompany').value = d.company || '';
+  getEl('brAiCost').value = d.aiCost || '';
+  getEl('brPdDate').value = d.pdDate || '';
+  getEl('brStatus').value = d.status || 'Pending';
+  getEl('brExpCalvingDate').value = d.expCalvingDate || d.calvingDate || '';
+  getEl('brActCalvingDate').value = d.actCalvingDate || '';
+  getEl('brNote').value = d.note || '';
+  getEl('brSubmitBtn').innerText = 'Update Breeding';
+  getEl('brCancelBtn').style.display = 'inline-flex';
+  switchTab('breeding', document.querySelector('nav button:nth-child(3)'));
 }
 function cancelBreedingEdit() {
-  eBrKey = null; ['brCowTag','brSemenId','brCompany','brAiCost','brPdDate','brExpCalvingDate','brActCalvingDate'].forEach(function(id){ if(getEl(id)) getEl(id).value=''; });
-  getEl('brStatus').value = 'Pending'; getEl('brSubmitBtn').innerText = 'Save Breeding Record'; getEl('brCancelBtn').style.display = 'none';
+  eBrKey = null;
+  ['brCowTag','brSemenId','brCompany','brAiCost','brPdDate','brExpCalvingDate','brActCalvingDate','brNote'].forEach(function(id){ if(getEl(id)) getEl(id).value=''; });
+  if(getEl('brHeatSigns')) getEl('brHeatSigns').value = '-';
+  getEl('brStatus').value = 'Pending';
+  getEl('brSubmitBtn').innerText = 'Save Breeding Record';
+  getEl('brCancelBtn').style.display = 'none';
 }
+window.onBreedingSemenOrCowChange = function() {
+  var semVal = (getEl('brSemenId') ? getEl('brSemenId').value : '').trim();
+  var cowTag = (getEl('brCowTag') ? getEl('brCowTag').value : '').trim();
+  var warnBox = getEl('brInbreedingWarningBox');
+
+  var matchedSemen = null;
+  if (semVal) {
+    var sLow = semVal.toLowerCase();
+    for (var sk in farmStore.semen) {
+      var sm = farmStore.semen[sk];
+      if (sm && ((sm.batch || '').trim().toLowerCase() === sLow || (sm.bullName || '').trim().toLowerCase() === sLow)) {
+        matchedSemen = sm;
+        break;
+      }
+    }
+  }
+
+  if (matchedSemen) {
+    if (getEl('brCompany')) getEl('brCompany').value = matchedSemen.source || '';
+    if (getEl('brAiCost') && matchedSemen.cost) getEl('brAiCost').value = matchedSemen.cost;
+  }
+
+  if (warnBox) {
+    var warnMsg = '';
+    if (cowTag && semVal) {
+      var cow = findCattleByTag(cowTag);
+      if (cow && cow.sire) {
+        var sireLow = cow.sire.trim().toLowerCase();
+        var bullLow = matchedSemen && matchedSemen.bullName ? matchedSemen.bullName.trim().toLowerCase() : '';
+        var batchLow = semVal.toLowerCase();
+        if (sireLow && (sireLow === batchLow || (bullLow && sireLow === bullLow) || batchLow.includes(sireLow))) {
+          warnMsg = '⚠️ ইনব্রিডিং সতর্কতা (Inbreeding Alert): গাভী ' + cowTag + '-এর বাবা (' + cow.sire + ') ও নির্বাচিত সিমেন/ষাঁড় একই ব্লাড-লাইনের হতে পারে! অনুগ্রহ করে যাচাই করুন।';
+        }
+      }
+    }
+    warnBox.innerHTML = warnMsg ? '<div style="background:#ffebee; color:#c62828; border:1px solid #ef9a9a; border-radius:8px; padding:10px; margin-bottom:12px; font-size:12.5px; font-weight:600;">' + warnMsg + '</div>' : '';
+  }
+};
+
+window.syncAutoExpense = function(sourceRefId, expObj) {
+  if (!db || !sourceRefId) return;
+  var existingKey = null;
+  for (var ek in farmStore.expenses) {
+    if (farmStore.expenses[ek] && farmStore.expenses[ek].sourceRef === sourceRefId) {
+      existingKey = ek;
+      break;
+    }
+  }
+  var amt = parseFloat(expObj.amount) || 0;
+  if (amt <= 0) {
+    if (existingKey) db.ref('expenses/' + existingKey).remove();
+    return;
+  }
+  var payload = {
+    date: expObj.date || new Date().toISOString().split('T')[0],
+    category: expObj.category || 'Other',
+    title: expObj.title || 'Auto Expense',
+    amount: parseFloat(amt.toFixed(2)),
+    paidAmount: parseFloat(amt.toFixed(2)),
+    dueAmount: 0,
+    vendor: expObj.vendor || '',
+    payMode: expObj.payMode || 'Cash',
+    status: 'Paid',
+    sourceRef: sourceRefId
+  };
+  if (existingKey) {
+    db.ref('expenses/' + existingKey).update(payload);
+  } else {
+    db.ref('expenses').push(payload);
+  }
+};
+
 function saveBreeding() {
-  var tag = (getEl('brCowTag').value || '').trim(); if (!tag) return alert('Cattle ID দিন!');
-  var data = { tag: tag, aiDate: getEl('brAiDate').value, semenId: getEl('brSemenId').value, company: getEl('brCompany').value, aiCost: parseFloat(getEl('brAiCost').value)||0, pdDate: getEl('brPdDate').value, status: getEl('brStatus').value, expCalvingDate: getEl('brExpCalvingDate').value, actCalvingDate: getEl('brActCalvingDate').value };
-  if (db) eBrKey ? db.ref('breeding/' + eBrKey).update(data) : db.ref('breeding').push(data);
+  var tag = (getEl('brCowTag').value || '').trim(); if (!tag) return showAppToast('Cattle ID দিন!');
+  var semId = (getEl('brSemenId').value || '').trim();
+  var data = {
+    tag: tag,
+    aiDate: getEl('brAiDate').value,
+    heatSigns: getEl('brHeatSigns').value,
+    semenId: semId,
+    company: getEl('brCompany').value,
+    aiCost: parseFloat(getEl('brAiCost').value)||0,
+    pdDate: getEl('brPdDate').value,
+    status: getEl('brStatus').value,
+    expCalvingDate: getEl('brExpCalvingDate').value,
+    actCalvingDate: getEl('brActCalvingDate').value,
+    note: getEl('brNote').value || ''
+  };
+  if (db) {
+    var brId = eBrKey;
+    if (eBrKey) {
+      db.ref('breeding/' + eBrKey).update(data);
+    } else {
+      var pushedRef = db.ref('breeding').push(data);
+      brId = pushedRef.key;
+      if (semId) {
+        var sLow = semId.toLowerCase();
+        for (var sk in farmStore.semen) {
+          var sm = farmStore.semen[sk];
+          if (sm && ((sm.batch || '').trim().toLowerCase() === sLow || (sm.bullName || '').trim().toLowerCase() === sLow) && (Number(sm.count) || 0) > 0) {
+            db.ref('semen/' + sk).update({ count: Math.max(0, (Number(sm.count) || 0) - 1) });
+            break;
+          }
+        }
+      }
+    }
+    syncAutoExpense('breeding_' + brId, {
+      date: data.aiDate || new Date().toISOString().split('T')[0],
+      category: 'Medicine & Health',
+      title: 'AI / Breeding Expense (Tag: ' + tag + ')' + (semId ? ' - ' + semId : ''),
+      amount: data.aiCost,
+      vendor: data.company || ''
+    });
+  }
+  showAppToast('Breeding রেকর্ড ও খরচ সফলভাবে সেভ হয়েছে!');
+  if (getEl('brInbreedingWarningBox')) getEl('brInbreedingWarningBox').innerHTML = '';
   cancelBreedingEdit();
+}
+
+var eVacKey = null;
+
+window.onVaccineTagChange = function() {
+  var tag = (getEl('vacCowTag') ? getEl('vacCowTag').value : '').trim();
+  if (!tag) return;
+  if (getEl('vacName') && getEl('vacName').value) {
+    onVaccineTypeSelect();
+  }
+};
+
+window.onVaccineTypeSelect = function() {
+  var vName = (getEl('vacName') ? getEl('vacName').value : '').trim().toLowerCase();
+  var vDate = getEl('vacDate') ? getEl('vacDate').value : '';
+  var gapDays = 180;
+
+  if (vName.includes('fmd')) {
+    gapDays = 180;
+    if (getEl('vacDose') && !getEl('vacDose').value) getEl('vacDose').value = '2.0';
+    if (getEl('vacRoute')) getEl('vacRoute').value = 'Intramuscular (I/M)';
+  } else if (vName.includes('bq') || vName.includes('hs')) {
+    gapDays = 365;
+    if (getEl('vacDose') && !getEl('vacDose').value) getEl('vacDose').value = '5.0';
+    if (getEl('vacRoute')) getEl('vacRoute').value = 'Subcutaneous (S/C)';
+  } else if (vName.includes('theileria') || vName.includes('theileriosis')) {
+    gapDays = 365;
+    if (getEl('vacDose') && !getEl('vacDose').value) getEl('vacDose').value = '3.0';
+    if (getEl('vacRoute')) getEl('vacRoute').value = 'Subcutaneous (S/C)';
+  } else if (vName.includes('brucella') || vName.includes('brucellosis')) {
+    gapDays = 0;
+    if (getEl('vacDose') && !getEl('vacDose').value) getEl('vacDose').value = '2.0';
+    if (getEl('vacRoute')) getEl('vacRoute').value = 'Subcutaneous (S/C)';
+  }
+
+  if (vDate && gapDays > 0) {
+    var d = new Date(vDate);
+    if (!isNaN(d.getTime())) {
+      d.setDate(d.getDate() + gapDays);
+      if (getEl('vacNextDate')) {
+        getEl('vacNextDate').value = d.toISOString().split('T')[0];
+      }
+    }
+  }
+};
+
+function renderVaccineTable() {
+  var body = getEl('vaccineTableBody');
+  if (!body) return;
+  var list = [];
+  for (var k in farmStore.vaccine) {
+    if (farmStore.vaccine[k]) list.push({ key: k, data: farmStore.vaccine[k] });
+  }
+  list.sort(function(a, b) {
+    return parseDateToTime(b.data.date) - parseDateToTime(a.data.date);
+  });
+
+  if (list.length === 0) {
+    body.innerHTML = '<tr><td colspan="8" style="text-align:center; color:#888;">কোনো টিকাদান রেকর্ড নেই।</td></tr>';
+    return;
+  }
+
+  var html = '';
+  list.forEach(function(item) {
+    var d = item.data, k = item.key;
+    var batchInfo = d.batchNo ? '<br><small style="color:#666;">Batch: ' + d.batchNo + (d.expiry ? ' (Exp: ' + formatDateBR(d.expiry) + ')' : '') + '</small>' : '';
+    html += '<tr>' +
+      '<td><strong>🐄 ' + (d.tag || '-') + '</strong></td>' +
+      '<td><strong>' + (d.name || '-') + '</strong>' + batchInfo + '</td>' +
+      '<td>' + (d.dose || 5) + ' mL<br><small style="color:#555;">' + (d.route || 'S/C') + '</small></td>' +
+      '<td>' + formatDateBR(d.date) + '</td>' +
+      '<td><span class="badge badge-warning">' + formatDateBR(d.nextDate) + '</span></td>' +
+      '<td>₹ ' + (d.cost || 0) + '</td>' +
+      '<td><button class="action-btn" style="background:#2e7d32; color:white;" onclick="showDigitalHealthPassport(\'' + encodeURIComponent(d.tag || '') + '\')">📘 Passbook</button></td>' +
+      '<td>' +
+        '<button class="action-btn btn-info" onclick="editVaccineRecord(\'' + k + '\')">Edit</button>' +
+        '<button class="action-btn btn-danger" onclick="deleteRecord(\'vaccine\',\'' + k + '\')">Delete</button>' +
+      '</td>' +
+    '</tr>';
+  });
+  body.innerHTML = html;
+}
+
+function editVaccineRecord(k) {
+  var d = farmStore.vaccine ? farmStore.vaccine[k] : null; if (!d) return; eVacKey = k;
+  getEl('vacCowTag').value = d.tag || '';
+  getEl('vacName').value = d.name || '';
+  getEl('vacDate').value = d.date || '';
+  getEl('vacNextDate').value = d.nextDate || '';
+  getEl('vacCost').value = d.cost || '';
+
+  if(getEl('vacDose')) getEl('vacDose').value = d.dose || '5.0';
+  if(getEl('vacRoute')) getEl('vacRoute').value = d.route || 'Subcutaneous (S/C)';
+  if(getEl('vacBatchNo')) getEl('vacBatchNo').value = d.batchNo || '';
+  if(getEl('vacExpiry')) getEl('vacExpiry').value = d.expiry || '';
+  if(getEl('vacWithdrawalDays')) getEl('vacWithdrawalDays').value = d.withdrawalDays || '0';
+
+  getEl('vacSubmitBtn').innerText = 'Update Vaccine Record';
+  getEl('vacCancelBtn').style.display = 'inline-flex';
+  switchTab('vaccine', document.querySelector('nav button:nth-child(4)'));
+}
+function cancelVaccineEdit() {
+  eVacKey = null;
+  ['vacCowTag','vacName','vacNextDate','vacCost','vacDose','vacBatchNo','vacExpiry','vacWithdrawalDays'].forEach(function(i){ if(getEl(i)) getEl(i).value=''; });
+  if (getEl('vacDate')) getEl('vacDate').value = new Date().toISOString().split('T')[0];
+  getEl('vacSubmitBtn').innerText = 'Save Vaccine Record';
+  getEl('vacCancelBtn').style.display = 'none';
+}
+function saveVaccineRecord() {
+  var tag = (getEl('vacCowTag').value || '').trim();
+  var name = (getEl('vacName').value || '').trim();
+  var dt = getEl('vacDate').value;
+  if (!tag || !name || !dt) return showAppToast('Tag, ভ্যাকসিনের নাম ও তারিখ দিন!');
+
+  var cost = parseFloat(getEl('vacCost').value) || 0;
+  var dose = parseFloat(getEl('vacDose') ? getEl('vacDose').value : 5) || 5;
+
+  var data = {
+    tag: tag,
+    name: name,
+    date: dt,
+    nextDate: getEl('vacNextDate').value,
+    cost: cost,
+    dose: dose,
+    route: getEl('vacRoute') ? getEl('vacRoute').value : 'Subcutaneous (S/C)',
+    batchNo: getEl('vacBatchNo') ? getEl('vacBatchNo').value : '',
+    expiry: getEl('vacExpiry') ? getEl('vacExpiry').value : '',
+    withdrawalDays: parseInt(getEl('vacWithdrawalDays') ? getEl('vacWithdrawalDays').value : 0) || 0
+  };
+
+  if (db) {
+    var vacId = eVacKey;
+    if (eVacKey) {
+      db.ref('vaccine/' + eVacKey).update(data);
+    } else {
+      vacId = db.ref('vaccine').push(data).key;
+    }
+    syncAutoExpense('vaccine_' + vacId, {
+      date: dt,
+      category: 'Medicine & Health',
+      title: 'Vaccine Expense (' + name + ') - Tag: ' + tag,
+      amount: cost
+    });
+  }
+  cancelVaccineEdit();
+}
+
+window.downloadHealthPassport = function(tag) {
+  var content = getEl('passportContent').innerHTML;
+  var blob = new Blob(['<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Health Passport - ' + tag + '</title></head><body style="font-family:sans-serif; padding:20px;">' + content + '</body></html>'], {type: 'text/html'});
+  var url = URL.createObjectURL(blob);
+  var a = document.createElement('a');
+  a.href = url;
+  a.download = 'Health_Passport_' + tag + '.html';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+};
+
+window.showDigitalHealthPassport = function(encTag) {
+  var tag = decodeURIComponent(encTag).trim();
+  var cow = findCattleByTag(tag);
+
+  var historyHtml = '<div style="font-family:sans-serif; padding:15px;">';
+  historyHtml += '<div style="text-align:center; border-bottom:2px solid #1b5e20; padding-bottom:10px; margin-bottom:15px;">';
+  historyHtml += '<h2 style="color:#1b5e20; margin:0;">Nanda Dairy & Agro</h2>';
+  historyHtml += '<p style="font-size:13px; font-weight:bold; margin:3px 0;">Digital Health Passport & Vaccination Passbook</p>';
+  historyHtml += '</div>';
+
+  historyHtml += '<div style="display:flex; justify-content:space-between; font-size:13px; margin-bottom:15px; background:#f1f8e9; padding:10px; border-radius:6px;">';
+  historyHtml += '<div><strong>Cattle Tag ID:</strong> ' + tag + '<br><strong>Breed:</strong> ' + (cow ? (cow.breed || 'N/A') : 'N/A') + '</div>';
+  historyHtml += '<div><strong>Status:</strong> ' + (cow ? (cow.status || 'N/A') : 'N/A') + '<br><strong>Lactation:</strong> ' + (cow ? (cow.lactation || '0') : 'N/A') + '</div>';
+  historyHtml += '</div>';
+
+  historyHtml += '<h3 style="font-size:14px; color:#1b5e20; border-bottom:1px solid #ddd; padding-bottom:4px;">সকল টিকাদানের ইতিহাস (Vaccination History):</h3>';
+  historyHtml += '<table style="width:100%; min-width:unset; border-collapse:collapse; font-size:12px; margin-top:8px;">';
+  historyHtml += '<tr style="background:#e8f5e9;"><th style="border:1px solid #c8e6c9; padding:6px;">তারিখ</th><th style="border:1px solid #c8e6c9; padding:6px;">ভ্যাকসিনের নাম</th><th style="border:1px solid #c8e6c9; padding:6px;">ডোজ ও রুট</th><th style="border:1px solid #c8e6c9; padding:6px;">ব্যাচ ও মেয়াদ</th><th style="border:1px solid #c8e6c9; padding:6px;">পরবর্তী ডোজ</th></tr>';
+
+  for (var k in farmStore.vaccine) {
+    var v = farmStore.vaccine[k];
+    if (v && (v.tag || '').trim().toLowerCase() === tag.toLowerCase()) {
+      historyHtml += '<tr>';
+      historyHtml += '<td style="border:1px solid #c8e6c9; padding:6px;">' + formatDateBR(v.date) + '</td>';
+      historyHtml += '<td style="border:1px solid #c8e6c9; padding:6px;"><strong>' + v.name + '</strong></td>';
+      historyHtml += '<td style="border:1px solid #c8e6c9; padding:6px;">' + (v.dose || 5) + ' mL (' + (v.route || 'S/C') + ')</td>';
+      historyHtml += '<td style="border:1px solid #c8e6c9; padding:6px;">' + (v.batchNo || '-') + '</td>';
+      historyHtml += '<td style="border:1px solid #c8e6c9; padding:6px; color:red;">' + formatDateBR(v.nextDate) + '</td>';
+      historyHtml += '</tr>';
+    }
+  }
+  historyHtml += '</table>';
+  historyHtml += '<div style="margin-top:30px; text-align:right; font-size:12px;"><p>Authorized Signatory</p><p><strong>Nanda Dairy & Agro</strong></p></div>';
+  historyHtml += '</div>';
+
+  var modal = getEl('digitalPassportModal');
+  if (!modal) {
+    modal = document.createElement('div');
+    modal.id = 'digitalPassportModal';
+    modal.style.cssText = "display:flex; position:fixed; inset:0; background:rgba(0,0,0,0.65); z-index:3000; align-items:center; justify-content:center; padding:15px;";
+    modal.innerHTML = '<div style="background:white; max-width:700px; width:100%; border-radius:12px; padding:25px; max-height:90vh; overflow-y:auto;"><div id="passportContent"></div><div class="no-print" style="text-align:right; margin-top:15px; display:flex; justify-content:flex-end; gap:10px;"><button class="btn btn-info" onclick="printSpecificModal(\'passport\')">🖨️ প্রিন্ট করুন</button><button class="btn btn-success" id="passportDownloadBtn" style="background:#2e7d32; color:white; border:none; padding:8px 14px; border-radius:6px; cursor:pointer;">📥 ডাউনলোড করুন</button><button class="btn btn-danger" onclick="document.getElementById(\'digitalPassportModal\').style.display=\'none\'">বন্ধ করুন</button></div></div>';
+    document.body.appendChild(modal);
+  }
+  getEl('passportContent').innerHTML = historyHtml;
+  var dlBtn = getEl('passportDownloadBtn');
+  if (dlBtn) {
+    dlBtn.onclick = function() { downloadHealthPassport(tag); };
+  }
+  modal.style.display = 'flex';
+};
+
+var eDewormKey = null;
+
+function renderDewormTable() {
+  var body = getEl('dewormTableBody');
+  if (!body) return;
+  var list = [];
+  for (var k in farmStore.deworm) {
+    if (farmStore.deworm[k]) list.push({ key: k, data: farmStore.deworm[k] });
+  }
+  list.sort(function(a, b) {
+    return parseDateToTime(b.data.date) - parseDateToTime(a.data.date);
+  });
+
+  if (list.length === 0) {
+    body.innerHTML = '<tr><td colspan="7" style="text-align:center; color:#888;">কোনো কৃমিনাশক রেকর্ড নেই।</td></tr>';
+    return;
+  }
+
+  var html = '';
+  list.forEach(function(item) {
+    var d = item.data, k = item.key;
+    html += '<tr>' +
+      '<td><strong>🐄 ' + (d.tag || '-') + '</strong></td>' +
+      '<td>' + formatDateBR(d.date) + '<br><small style="color:#666;">ওজন: ' + (d.weight || 0) + ' kg</small></td>' +
+      '<td><strong>' + (d.medName || '-') + '</strong> (' + (d.formType || 'Syrup') + ')<br><small style="color:var(--primary); font-weight:600;">ডোজ: ' + (d.dose || '-') + '</small></td>' +
+      '<td><span class="badge badge-warning">' + formatDateBR(d.nextDate) + '</span></td>' +
+      '<td>₹ ' + (d.cost || 0) + '</td>' +
+      '<td>' + (d.note || '-') + '</td>' +
+      '<td>' +
+        '<button class="action-btn btn-info" onclick="editDewormRecord(\'' + k + '\')">Edit</button>' +
+        '<button class="action-btn btn-danger" onclick="deleteRecord(\'deworm\',\'' + k + '\')">Delete</button>' +
+      '</td>' +
+    '</tr>';
+  });
+  body.innerHTML = html;
+}
+
+function onDewormTagChange() {
+  var tag = (getEl('dewormCowTag').value || '').trim();
+  var alertBox = getEl('dewormPregnancyAlertBox');
+  if (!alertBox) {
+    alertBox = document.createElement('div');
+    alertBox.id = 'dewormPregnancyAlertBox';
+    var formGrid = document.querySelector('#tab-deworm .form-grid');
+    if (formGrid) formGrid.parentNode.insertBefore(alertBox, formGrid.nextSibling);
+  }
+
+  if (!tag) {
+    alertBox.innerHTML = '';
+    return;
+  }
+
+  var cow = findCattleByTag(tag);
+  if (cow) {
+    if (getEl('dewormWeight')) getEl('dewormWeight').value = cow.weight || '';
+
+    if (cow.status === 'Pregnant' || (cow.status || '').toLowerCase() === 'pregnant') {
+      alertBox.innerHTML = '<div style="background:#ffebee; color:#c62828; padding:10px; border-radius:8px; border:1px solid #ef9a9a; margin-bottom:12px; font-weight:bold;">⚠️ প্রেগন্যান্সি হাইলাইট অ্যালার্ট: এই গাভীটি গর্ভবতী (Pregnant)! অনুগ্রহ করে গর্ভকালীন নিরাপদ (Safe for Pregnant Cattle) কৃমিনাশক ব্যবহার করুন।</div>';
+    } else {
+      alertBox.innerHTML = '<div style="background:#e8f5e9; color:#2e7d32; padding:8px; border-radius:6px; margin-bottom:12px; font-size:12.5px;">✔ গাভীর স্বাস্থ্য স্বাভাবিক। সাধারণ কৃমিনাশক ব্যবহার উপযোগী।</div>';
+    }
+
+    autoCalcDewormDose();
+  } else {
+    alertBox.innerHTML = '';
+  }
+}
+
+function autoCalcDewormDose() {
+  var wt = parseFloat(getEl('dewormWeight') ? getEl('dewormWeight').value : 0) || 0;
+  var formTypeSelect = getEl('dewormFormType');
+  var formType = formTypeSelect ? formTypeSelect.value : 'Syrup';
+  var doseField = getEl('dewormCalculatedDose');
+  if (!doseField) return;
+
+  var calcResult = '';
+  if (wt > 0) {
+    if (formType === 'Syrup') {
+      var ml = wt / 3;
+      calcResult = ml.toFixed(1) + ' mL (মিলি)';
+    } else if (formType === 'Bolus / Tablet') {
+      var tabs = Math.ceil(wt / 300);
+      calcResult = tabs + ' Bolus / Tablet (টি)';
+    } else {
+      calcResult = (wt / 3).toFixed(1) + ' mL / Gram';
+    }
+  }
+  doseField.value = calcResult;
+  autoCalcNextDewormDate();
+}
+
+function autoCalcNextDewormDate() {
+  var dtEl = getEl('dewormDate');
+  if (!dtEl || !dtEl.value) return;
+
+  var d = new Date(dtEl.value);
+  if (isNaN(d.getTime())) return;
+
+  d.setDate(d.getDate() + 90);
+  var nextDateInput = getEl('dewormNextDate');
+  if (nextDateInput) {
+    nextDateInput.value = d.toISOString().split('T')[0];
+  }
+}
+
+function editDewormRecord(k) {
+  var d = farmStore.deworm ? farmStore.deworm[k] : null; if (!d) return; eDewormKey = k;
+  getEl('dewormCowTag').value = d.tag || '';
+  getEl('dewormDate').value = d.date || '';
+  if(getEl('dewormWeight')) getEl('dewormWeight').value = d.weight || '';
+  getEl('dewormMedName').value = d.medName || '';
+  if(getEl('dewormFormType')) getEl('dewormFormType').value = d.formType || 'Syrup';
+  if(getEl('dewormCalculatedDose')) getEl('dewormCalculatedDose').value = d.dose || '';
+  if(getEl('dewormNextDate')) getEl('dewormNextDate').value = d.nextDate || '';
+  getEl('dewormCost').value = d.cost || '';
+  getEl('dewormNote').value = d.note || '';
+
+  getEl('dewormSubmitBtn').innerText = 'Update Deworming';
+  getEl('dewormCancelBtn').style.display = 'inline-flex';
+  switchTab('deworm', document.querySelector('nav button:nth-child(5)'));
+  onDewormTagChange();
+}
+
+function cancelDewormEdit() {
+  eDewormKey = null;
+  ['dewormCowTag','dewormWeight','dewormMedName','dewormCalculatedDose','dewormNextDate','dewormCost','dewormNote'].forEach(function(id){ if(getEl(id)) getEl(id).value=''; });
+  if (getEl('dewormDate')) getEl('dewormDate').value = new Date().toISOString().split('T')[0];
+  autoCalcNextDewormDate();
+  getEl('dewormSubmitBtn').innerText = 'Save Deworming Record';
+  getEl('dewormCancelBtn').style.display = 'none';
+  var alertBox = getEl('dewormPregnancyAlertBox'); if(alertBox) alertBox.innerHTML = '';
+}
+
+function saveDewormingRecord() {
+  var tag = (getEl('dewormCowTag').value || '').trim();
+  var dt = getEl('dewormDate').value;
+  var medName = (getEl('dewormMedName').value || '').trim();
+  if (!tag || !dt || !medName) return showAppToast('Tag ID, তারিখ এবং ওষুধের নাম দিন!');
+
+  var cost = parseFloat(getEl('dewormCost').value) || 0;
+  var formTypeSelect = getEl('dewormFormType');
+
+  var data = {
+    tag: tag,
+    date: dt,
+    weight: parseFloat(getEl('dewormWeight').value) || 0,
+    medName: medName,
+    formType: formTypeSelect ? formTypeSelect.value : 'Syrup',
+    dose: getEl('dewormCalculatedDose') ? getEl('dewormCalculatedDose').value : '',
+    nextDate: getEl('dewormNextDate') ? getEl('dewormNextDate').value : '',
+    cost: cost,
+    note: getEl('dewormNote').value
+  };
+
+  if (db) {
+    var dwId = eDewormKey;
+    if (eDewormKey) {
+      db.ref('deworm/' + eDewormKey).update(data);
+    } else {
+      dwId = db.ref('deworm').push(data).key;
+    }
+    syncAutoExpense('deworm_' + dwId, {
+      date: dt,
+      category: 'Medicine & Health',
+      title: 'Deworming Expense (' + medName + ') - Tag: ' + tag,
+      amount: cost
+    });
+  }
+  cancelDewormEdit();
 }
 
 var eMlkKey = null;
@@ -1106,14 +3229,15 @@ function editMilk(k) {
   var d = farmStore.milk[k]; if (!d) return; eMlkKey = k;
   getEl('milkDate').value = d.date || ''; getEl('milkCowTag').value = d.cow || ''; getEl('milkSession').value = d.session || 'Morning'; getEl('milkLiters').value = d.liters || '';
   getEl('milkSubmitBtn').innerText = 'Update Milk'; getEl('milkCancelBtn').style.display = 'inline-flex';
+  switchTab('milk', document.querySelector('nav button:nth-child(6)'));
 }
 function cancelMilkEdit() {
   eMlkKey = null; getEl('milkCowTag').value = ''; getEl('milkLiters').value = '';
   getEl('milkSubmitBtn').innerText = 'Save Milk Record'; getEl('milkCancelBtn').style.display = 'none';
 }
 function saveMilk() {
-  var lit = parseFloat(getEl('milkLiters').value) || 0; if (!lit) return alert('দুধের পরিমাণ দিন!');
-  var cowTag = (getEl('milkCowTag').value || '').trim(); if (!cowTag) return alert('Tag ID দিন!');
+  var lit = parseFloat(getEl('milkLiters').value) || 0; if (!lit) return showAppToast('দুধের পরিমাণ দিন!');
+  var cowTag = (getEl('milkCowTag').value || '').trim(); if (!cowTag) return showAppToast('Tag ID দিন!');
   var data = { date: getEl('milkDate').value, cow: cowTag, session: getEl('milkSession').value, liters: lit };
   if (db) eMlkKey ? db.ref('milk/' + eMlkKey).update(data) : db.ref('milk').push(data);
   cancelMilkEdit();
@@ -1123,48 +3247,54 @@ var eSaleKey = null;
 function calcSale() {
   var q = parseFloat(getEl('saleQty').value) || 0;
   var r = parseFloat(getEl('saleRate').value) || 0;
-  var t = q * r;
-  getEl('saleTotal').value = t; 
-  
-  var paidVal = parseFloat(getEl('salePaid').value) || 0;
-  getEl('saleDue').value = Math.max(0, t - paidVal);
+  if (q > 0 || r > 0) {
+    getEl('saleTotal').value = q * r;
+  }
 }
 
 function editSale(k) {
   var d = farmStore.sales[k]; if (!d) return; eSaleKey = k;
-  getEl('saleDate').value = d.date || ''; 
-  getEl('saleCustomer').value = d.name || ''; 
+  getEl('saleDate').value = d.date || '';
+  getEl('saleCustomer').value = d.name || '';
   getEl('salePhone').value = d.phone || '';
-  getEl('saleArea').value = d.area || ''; 
-  getEl('saleAddr').value = d.addr || ''; 
+  getEl('saleArea').value = d.area || '';
+  getEl('saleAddr').value = d.addr || '';
   getEl('saleItem').value = d.item || 'Liquid Milk';
-  
+
   var qVal = parseFloat(d.qty) || 1;
   var tVal = parseFloat(d.total) || 0;
   var rVal = parseFloat(d.rate) || (qVal > 0 ? tVal / qVal : 0);
   var paidVal = parseFloat(d.paid) || 0;
 
-  getEl('saleQty').value = qVal; 
-  getEl('saleRate').value = rVal; 
+  getEl('saleQty').value = qVal;
+  getEl('saleRate').value = rVal;
   getEl('saleTotal').value = tVal;
-  getEl('salePaid').value = paidVal; 
-  getEl('saleDue').value = Math.max(0, tVal - paidVal);
+  getEl('salePaid').value = paidVal;
 
-  getEl('saleSubmitBtn').innerText = 'Update Sale'; 
+  var prevDueInput = getEl('salePrevDue');
+  if(prevDueInput) prevDueInput.value = 0;
+
+  getEl('saleSubmitBtn').innerText = 'Update Sale';
   getEl('saleCancelBtn').style.display = 'inline-flex';
+  switchTab('sales', document.querySelector('nav button:nth-child(7)'));
   getEl('saleCustomer').scrollIntoView({ behavior: 'smooth' });
-}  
+  onSaleCustomerInput();
+}
 
 function cancelSaleEdit() {
-  eSaleKey = null; ['saleCustomer','salePhone','saleArea','saleAddr','saleQty','saleRate','saleTotal','salePaid','saleDue'].forEach(function(i){ getEl(i).value=''; });
-  getEl('saleSubmitBtn').innerText = 'Save Sale'; 
-  if(getEl('saleCancelBtn')) getEl('saleCancelBtn').style.display = 'none';
+  eSaleKey = null;
+  ['saleCustomer','salePhone','saleArea','saleAddr','saleQty','saleRate','saleTotal','salePaid','salePrevDue'].forEach(function(i){ if(getEl(i)) getEl(i).value=''; });
+  if (getEl('salePrevDue')) getEl('salePrevDue').value = '0';
+  getEl('saleSubmitBtn').innerText = 'Save Sale';
+  getEl('saleCancelBtn').style.display = 'none';
+  var lbl = document.getElementById('lblSaleCustomer');
+  if(lbl) lbl.innerHTML = 'Customer Name *';
 }
 
 function saveSale() {
-  var name = (getEl('saleCustomer').value || '').trim(); 
-  if (!name) return alert('Customer Name দিন!');
-  
+  var name = (getEl('saleCustomer').value || '').trim();
+  if (!name) return showAppToast('Customer Name দিন!');
+
   var q = parseFloat(getEl('saleQty').value) || 0;
   var r = parseFloat(getEl('saleRate').value) || 0;
   var totalVal = q * r;
@@ -1179,19 +3309,19 @@ function saveSale() {
     existingPayments = farmStore.sales[eSaleKey].payments;
   }
 
-  var data = { 
-    date: getEl('saleDate').value, 
-    name: name, 
-    phone: (getEl('salePhone').value || '').trim(), 
-    area: (getEl('saleArea').value || '').trim(), 
-    addr: (getEl('saleAddr').value || '').trim(), 
-    item: getEl('saleItem').value, 
-    qty: q, 
-    rate: r, 
-    total: totalVal, 
-    paid: paidVal, 
-    due: dueVal, 
-    payments: existingPayments 
+  var data = {
+    date: getEl('saleDate').value,
+    name: name,
+    phone: (getEl('salePhone').value || '').trim(),
+    area: (getEl('saleArea').value || '').trim(),
+    addr: (getEl('saleAddr').value || '').trim(),
+    item: getEl('saleItem').value,
+    qty: q,
+    rate: r,
+    total: totalVal,
+    paid: paidVal,
+    due: dueVal,
+    payments: existingPayments
   };
 
   if (db) {
@@ -1213,13 +3343,14 @@ function editCustomer(k) {
   if (getEl('custType')) getEl('custType').value = d.type || 'Regular Retailer';
   if (getEl('custShift')) getEl('custShift').value = d.shift || 'Morning';
   getEl('custSubmitBtn').innerText = 'Update Customer'; getEl('custCancelBtn').style.display = 'inline-flex';
+  switchTab('customers', document.querySelector('nav button:nth-child(8)'));
 }
 function cancelCustomerEdit() {
   eCustKey = null; ['custName','custPhone','custArea','custAddress','custDailyDemand','custOpeningDue'].forEach(function(i){ if(getEl(i)) getEl(i).value=''; });
   getEl('custSubmitBtn').innerText = 'Save Customer'; getEl('custCancelBtn').style.display = 'none';
 }
 function saveCustomer() {
-  var name = (getEl('custName').value || '').trim(); if (!name) return alert('নাম দিন!');
+  var name = (getEl('custName').value || '').trim(); if (!name) return showAppToast('নাম দিন!');
   var data = { name: name, phone: (getEl('custPhone').value || '').trim(), area: (getEl('custArea').value || '').trim(), addr: (getEl('custAddress').value || '').trim(), demand: parseFloat(getEl('custDailyDemand').value)||0, openingDue: parseFloat(getEl('custOpeningDue')?.value)||0, type: getEl('custType')?.value||'Regular Retailer', shift: getEl('custShift')?.value||'Morning' };
   if (db) eCustKey ? db.ref('customers/' + eCustKey).update(data) : db.ref('customers').push(data);
   cancelCustomerEdit();
@@ -1228,106 +3359,77 @@ function saveCustomer() {
 var eOrdKey = null;
 function editOrder(k) {
   var d = farmStore.orders[k]; if (!d) return; eOrdKey = k;
-  getEl('orderDate').value = d.date || ''; getEl('orderCustomer').value = d.customer || ''; getEl('orderPhone').value = d.phone || '';
+  getEl('orderDate').value = d.date || ''; getEl('orderCustomer').value = d.customer || d.name || ''; getEl('orderPhone').value = d.phone || '';
   getEl('orderArea').value = d.area || ''; getEl('orderItems').value = d.items || ''; getEl('orderTotal').value = d.total || '';
   getEl('orderPaid').value = d.paid || ''; getEl('orderStatus').value = d.status || 'Pending';
-  getEl('orderSubmitBtn').innerText = 'Update Order'; getEl('orderSubmitBtn').style.display = 'inline-flex';
+  getEl('orderSubmitBtn').innerText = 'Update Order'; getEl('orderCancelBtn').style.display = 'inline-flex';
+  switchTab('orders', document.querySelector('nav button:nth-child(9)'));
   getEl('orderCustomer').scrollIntoView({ behavior: 'smooth' });
 }
+
 function cancelOrderEdit() {
-  eOrdKey = null; ['orderCustomer','orderPhone','orderArea','orderItems','orderTotal','orderPaid'].forEach(function(i){ if(getEl(i)) getEl(i).value=''; });
-  getEl('orderStatus').value = 'Pending'; getEl('orderSubmitBtn').innerText = 'Save Order';
+  eOrdKey = null;
+  ['orderCustomer','orderPhone','orderArea','orderItems','orderTotal','orderPaid'].forEach(function(i){ if(getEl(i)) getEl(i).value=''; });
+  getEl('orderStatus').value = 'Pending';
+  getEl('orderSubmitBtn').innerText = 'Save Order';
+  getEl('orderCancelBtn').style.display = 'none';
 }
 
 function saveOrder() {
-  var cust = (getEl('orderCustomer').value || '').trim(); 
+  var cust = (getEl('orderCustomer').value || '').trim();
   var items = (getEl('orderItems').value || '').trim();
-  if (!cust || !items) return alert('নাম ও বিবরণ দিন!');
-  
-  var status = getEl('orderStatus').value; 
-  var total = parseFloat(getEl('orderTotal').value) || 0; 
+  if (!cust || !items) return showAppToast('নাম ও বিবরণ দিন!');
+
+  var status = getEl('orderStatus').value;
+  var total = parseFloat(getEl('orderTotal').value) || 0;
   var paid = parseFloat(getEl('orderPaid').value) || 0;
   var deliveryDate = getEl('orderDate').value;
   var phone = (getEl('orderPhone') ? getEl('orderPhone').value : '').trim();
   var area = (getEl('orderArea') ? getEl('orderArea').value : '').trim();
-  var addr = '';
 
   for (var ck in farmStore.customers) {
     var cObj = farmStore.customers[ck];
     if (cObj && cObj.name && cObj.name.trim().toLowerCase() === cust.toLowerCase()) {
       if (!phone && cObj.phone) phone = cObj.phone;
       if (!area && cObj.area) area = cObj.area.trim();
-      if (cObj.addr) addr = cObj.addr.trim();
       break;
     }
   }
 
-  var orderData = {
-    date: deliveryDate,
-    customer: cust,
-    phone: phone,
-    area: area,
-    items: items,
-    total: total,
-    paid: paid,
-    status: status
-  };
-
   if (db) {
-    var currentOrderKey = eOrdKey;
-    eOrdKey = null;
-
-    if (currentOrderKey) {
-      var prevOrder = farmStore.orders[currentOrderKey] || {};
-      var wasAlreadyDelivered = (prevOrder.status === 'Delivered' || prevOrder.saleAdded === true);
+    if (eOrdKey) {
+      db.ref('orders/' + eOrdKey).remove();
 
       if (status === 'Delivered') {
-        orderData.saleAdded = true;
-        db.ref('orders/' + currentOrderKey).update(orderData);
-
-        if (!wasAlreadyDelivered && total > 0) {
-          db.ref('sales').push({ 
-            date: deliveryDate, 
-            name: cust, 
-            phone: phone, 
-            area: area, 
-            addr: addr, 
-            item: items, 
-            qty: 1, 
-            rate: total, 
-            total: total, 
-            paid: paid, 
-            due: Math.max(0, total - paid), 
-            payments: [],
-            fromOrderKey: currentOrderKey
+        if (total > 0) {
+          db.ref('sales').push({
+            date: deliveryDate, name: cust, phone: phone, area: area, addr: '',
+            item: items, qty: 1, rate: total, total: total, paid: paid,
+            due: Math.max(0, total - paid), payments: []
           });
         }
-      } else {
-        db.ref('orders/' + currentOrderKey).update(orderData);
       }
+      else if (status === 'Pending') {
+        db.ref('orders').push({
+          date: deliveryDate, customer: cust, phone: phone, area: area,
+          items: items, total: total, paid: paid, status: status
+        });
+      }
+      eOrdKey = null;
     } else {
       if (status === 'Delivered') {
-        orderData.saleAdded = true;
-        var newRef = db.ref('orders').push(orderData);
         if (total > 0) {
-          db.ref('sales').push({ 
-            date: deliveryDate, 
-            name: cust, 
-            phone: phone, 
-            area: area, 
-            addr: addr, 
-            item: items, 
-            qty: 1, 
-            rate: total, 
-            total: total, 
-            paid: paid, 
-            due: Math.max(0, total - paid), 
-            payments: [],
-            fromOrderKey: newRef.key
+          db.ref('sales').push({
+            date: deliveryDate, name: cust, phone: phone, area: area, addr: '',
+            item: items, qty: 1, rate: total, total: total, paid: paid,
+            due: Math.max(0, total - paid), payments: []
           });
         }
-      } else {
-        db.ref('orders').push(orderData);
+      } else if (status === 'Pending') {
+        db.ref('orders').push({
+          date: deliveryDate, customer: cust, phone: phone, area: area,
+          items: items, total: total, paid: paid, status: status
+        });
       }
     }
   }
@@ -1337,27 +3439,29 @@ function saveOrder() {
 var eFeedKey = null;
 function editFeed(k) {
   var d = farmStore.feed[k]; if (!d) return; eFeedKey = k;
-  getEl('feedDate').value = d.date || '';
-  getEl('feedType').value = d.type || 'Cattle Feed / Pellets';
-  getEl('feedQty').value = d.qty || '';
-  getEl('feedCost').value = d.cost || '';
-  getEl('feedNote').value = d.note || '';
-  getEl('feedSubmitBtn').innerText = 'Update Feed';
-  getEl('feedDate').scrollIntoView({ behavior: 'smooth' });
+  if (getEl('feedDate')) getEl('feedDate').value = d.date || '';
+  if (getEl('feedType')) getEl('feedType').value = d.type || 'Cattle Feed / Pellets';
+  if (getEl('feedQty')) getEl('feedQty').value = d.qty || '';
+  if (getEl('feedCost')) getEl('feedCost').value = d.cost || '';
+  if (getEl('feedNote')) getEl('feedNote').value = d.note || '';
+  if (getEl('feedSubmitBtn')) getEl('feedSubmitBtn').innerText = 'Update Feed';
+  if (getEl('feedCancelBtn')) getEl('feedCancelBtn').style.display = 'inline-flex';
+  switchTab('feed', document.querySelector('nav button:nth-child(10)'));
 }
 function cancelFeedEdit() {
   eFeedKey = null;
   ['feedQty','feedCost','feedNote'].forEach(function(i){ if(getEl(i)) getEl(i).value=''; });
-  getEl('feedSubmitBtn').innerText = 'Save Feed Record';
+  if (getEl('feedSubmitBtn')) getEl('feedSubmitBtn').innerText = 'Save Feed Record';
+  if (getEl('feedCancelBtn')) getEl('feedCancelBtn').style.display = 'none';
 }
 function saveFeed() {
-  var dt = getEl('feedDate').value;
-  var type = getEl('feedType').value;
-  var qty = (getEl('feedQty').value || '').trim();
-  var cost = parseFloat(getEl('feedCost').value) || 0;
-  var note = (getEl('feedNote').value || '').trim();
+  var dt = getEl('feedDate') ? getEl('feedDate').value : '';
+  var type = getEl('feedType') ? getEl('feedType').value : '';
+  var qty = (getEl('feedQty') ? getEl('feedQty').value : '').trim();
+  var cost = parseFloat(getEl('feedCost') ? getEl('feedCost').value : 0) || 0;
+  var note = (getEl('feedNote') ? getEl('feedNote').value : '').trim();
 
-  if (!dt || !qty || cost <= 0) return alert('তারিখ, পরিমাণ ও মোট খরচ দিন!');
+  if (!dt || !qty || cost <= 0) return showAppToast('তারিখ, পরিমাণ ও মোট খরচ দিন!');
 
   var data = { date: dt, type: type, qty: qty, cost: cost, note: note };
   if (db) {
@@ -1370,201 +3474,2120 @@ function saveFeed() {
   cancelFeedEdit();
 }
 
-function renderFeedTable() {
-  var body = getEl('feedTableBody');
-  if (!body) return;
-  var list = [];
-  for (var k in farmStore.feed) {
-    list.push({ key: k, data: farmStore.feed[k] });
+window.currentFeedYear = "";
+window.currentFeedMonth = "";
+window.specificFeedDate = "";
+
+window.initFeedFilters = function() {
+  if (!window.currentFeedYear) {
+    var d = new Date();
+    window.currentFeedYear = d.getFullYear().toString();
+    window.currentFeedMonth = ('0' + (d.getMonth() + 1)).slice(-2);
   }
-  list.sort(function(a, b) {
-    return (b.data.date || '').localeCompare(a.data.date || '');
+  var yearSelect = getEl('feedFilterYear');
+  if (yearSelect && yearSelect.options.length === 0) {
+    var curY = new Date().getFullYear();
+    for (var i = 0; i < 5; i++) {
+      var y = (curY - i).toString();
+      yearSelect.options.add(new Option(y, y));
+    }
+    yearSelect.value = window.currentFeedYear;
+  }
+  renderFeedMonthTabs();
+};
+
+window.renderFeedMonthTabs = function() {
+  var tabsContainer = getEl('feedMonthTabs');
+  if (!tabsContainer) return;
+  var months = [
+    { val: '01', name: 'Jan' }, { val: '02', name: 'Feb' }, { val: '03', name: 'Mar' },
+    { val: '04', name: 'Apr' }, { val: '05', name: 'May' }, { val: '06', name: 'Jun' },
+    { val: '07', name: 'Jul' }, { val: '08', name: 'Aug' }, { val: '09', name: 'Sep' },
+    { val: '10', name: 'Oct' }, { val: '11', name: 'Nov' }, { val: '12', name: 'Dec' }
+  ];
+  var html = '';
+  months.forEach(function(m) {
+    var isActive = (m.val === window.currentFeedMonth) && !window.specificFeedDate;
+    var bg = isActive ? 'var(--primary)' : '#e0e0e0';
+    var color = isActive ? 'white' : '#333';
+    html += '<button onclick="setFeedMonth(\'' + m.val + '\')" style="padding:6px 14px; border:none; border-radius:20px; font-size:12px; font-weight:bold; cursor:pointer; background:' + bg + '; color:' + color + '; min-width:60px; transition:0.2s;">' + m.name + '</button>';
   });
+  tabsContainer.innerHTML = html;
+};
+
+window.setFeedMonth = function(mVal) {
+  window.currentFeedMonth = mVal;
+  window.specificFeedDate = "";
+  if (getEl('feedFilterDate')) getEl('feedFilterDate').value = "";
+  renderFeedMonthTabs();
+  renderFeedTable();
+};
+
+window.applyFeedFilter = function() {
+  if (getEl('feedFilterYear')) window.currentFeedYear = getEl('feedFilterYear').value;
+  var d = getEl('feedFilterDate') ? getEl('feedFilterDate').value : "";
+  if (d) {
+    window.specificFeedDate = d;
+    var dateObj = new Date(d);
+    window.currentFeedYear = dateObj.getFullYear().toString();
+    window.currentFeedMonth = ('0' + (dateObj.getMonth() + 1)).slice(-2);
+    if (getEl('feedFilterYear')) getEl('feedFilterYear').value = window.currentFeedYear;
+  } else {
+    window.specificFeedDate = "";
+  }
+  renderFeedMonthTabs();
+  renderFeedTable();
+};
+
+window.clearFeedDateFilter = function() {
+  if (getEl('feedFilterDate')) getEl('feedFilterDate').value = "";
+  if (getEl('feedSearchTag')) getEl('feedSearchTag').value = "";
+  window.specificFeedDate = "";
+  renderFeedMonthTabs();
+  renderFeedTable();
+};
+
+window.exportFeed = function(format) {
+  if (!window.currentFeedYear) initFeedFilters();
+  var targetYear = window.currentFeedYear;
+  var targetMonth = window.currentFeedMonth;
+  var targetDate = window.specificFeedDate;
+  var searchTag = (getEl('feedSearchTag') ? getEl('feedSearchTag').value : '').trim().toLowerCase();
+
+  var exportData = [];
+  exportData.push(["Date", "Cattle Tag", "Cattle Feed (kg)", "Rate (Rs/kg)", "Green Fodder (kg)", "Dry Fodder (kg)", "Supplement (Rs)", "Total Cost (Rs)"]);
+
+  var list = [];
+  for (var k in farmStore.feedRations) {
+    var r = farmStore.feedRations[k];
+    if (!r || !r.date) continue;
+    var match = false;
+    if (targetDate) {
+      if (r.date === targetDate) match = true;
+    } else {
+      if (r.date.substring(0, 4) === targetYear && r.date.substring(5, 7) === targetMonth) match = true;
+    }
+    if (match && (!searchTag || (r.cowTag || '').toLowerCase().includes(searchTag))) {
+      list.push(r);
+    }
+  }
+
+  list.sort(function(a, b) { return parseDateToTime(b.date) - parseDateToTime(a.date); });
 
   if (list.length === 0) {
+    return showAppToast('বর্তমান ভিউতে এক্সপোর্ট করার মতো কোনো খাদ্য রেকর্ড নেই!');
+  }
+
+  list.forEach(function(r) {
+    exportData.push([
+      formatDateBR(r.date),
+      r.cowTag || '-',
+      r.pellet || 0,
+      r.avgCostPerKg || 0,
+      r.greenFodder || 0,
+      r.dryFodder || 0,
+      r.suppCost || 0,
+      r.totalCost || 0
+    ]);
+  });
+
+  var fileName = "Feed_Record_" + (targetDate ? targetDate : (targetYear + "_" + targetMonth));
+
+  if (format === 'csv') {
+    var csvContent = "data:text/csv;charset=utf-8,\uFEFF";
+    exportData.forEach(function(rowArray) { csvContent += rowArray.join(",") + "\r\n"; });
+    var link = document.createElement("a");
+    link.setAttribute("href", encodeURI(csvContent));
+    link.setAttribute("download", fileName + ".csv");
+    document.body.appendChild(link); link.click(); document.body.removeChild(link);
+  } else if (format === 'txt') {
+    var txtContent = "data:text/plain;charset=utf-8,\uFEFF";
+    exportData.forEach(function(rowArray) { txtContent += rowArray.join(" \t ") + "\r\n"; });
+    var link = document.createElement("a");
+    link.setAttribute("href", encodeURI(txtContent));
+    link.setAttribute("download", fileName + ".txt");
+    document.body.appendChild(link); link.click(); document.body.removeChild(link);
+  } else if (format === 'doc') {
+    var docHtml = "<html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'><head><meta charset='utf-8'><title>Feed Record</title></head><body><h2 style='color:#1b5e20;'>Nanda Dairy & Agro - Cattle Feeding Record</h2><p><strong>Period/Date:</strong> " + (targetDate ? targetDate : (targetMonth + "/" + targetYear)) + "</p><table border='1' style='border-collapse:collapse; width:100%; text-align:left; font-family:sans-serif; font-size:12px;'>";
+    exportData.forEach(function(rowArray, idx) {
+      docHtml += "<tr>";
+      rowArray.forEach(function(cell) {
+        if (idx === 0) docHtml += "<th style='padding:6px; background:#e8f5e9;'>" + cell + "</th>";
+        else docHtml += "<td style='padding:6px;'>" + cell + "</td>";
+      });
+      docHtml += "</tr>";
+    });
+    docHtml += "</table></body></html>";
+    var blob = new Blob(['\ufeff', docHtml], { type: 'application/msword' });
+    var url = URL.createObjectURL(blob);
+    var link = document.createElement("a");
+    link.href = url; link.download = fileName + ".doc";
+    document.body.appendChild(link); link.click(); document.body.removeChild(link);
+  }
+};
+
+window.toggleSubFeed = function(subId, btnEl) {
+  var row = getEl(subId);
+  if (!row) return;
+  var countMatch = btnEl.innerText.match(/\d+/);
+  var count = countMatch ? countMatch[0] : '';
+  if (row.style.display === 'none') {
+    row.style.display = 'table-row';
+    btnEl.innerText = 'সংকুচিত করুন ▲';
+    btnEl.style.background = '#ffebee';
+    btnEl.style.color = '#c62828';
+  } else {
+    row.style.display = 'none';
+    btnEl.innerText = 'বিস্তারিত (' + count + ') ▼';
+    btnEl.style.background = '#0288d1';
+    btnEl.style.color = 'white';
+  }
+};
+
+window.showCattleMonthlyFeedBill = function(encTag) {
+  var tag = decodeURIComponent(encTag).trim();
+  if (!window.currentFeedYear) initFeedFilters();
+  var yr = window.currentFeedYear;
+  var mn = window.currentFeedMonth;
+  var prefix = yr + '-' + mn;
+  var tagUp = tag.toUpperCase();
+  var cowInfo = findCattleByTag(tag);
+
+  var items = [];
+  var totPellet = 0, totGreen = 0, totDry = 0, totSupp = 0, totCost = 0;
+  for (var k in farmStore.feedRations) {
+    var r = farmStore.feedRations[k];
+    if (!r || (r.cowTag || '').trim().toUpperCase() !== tagUp) continue;
+    if ((r.date || '').startsWith(prefix)) {
+      items.push(r);
+      totPellet += Number(r.pellet) || 0;
+      totGreen += Number(r.greenFodder) || 0;
+      totDry += Number(r.dryFodder) || 0;
+      totSupp += Number(r.suppCost) || 0;
+      totCost += Number(r.totalCost) || 0;
+    }
+  }
+
+  if (items.length === 0) {
+    return showAppToast(mn + '/' + yr + ' মাসে ' + tag + '-এর কোনো খাদ্য রেকর্ড পাওয়া যায়নি।');
+  }
+
+  var monthMilkL = 0;
+  for (var mk in farmStore.milk) {
+    var m = farmStore.milk[mk];
+    if (m && (m.cow || '').trim().toUpperCase() === tagUp && (m.date || '').startsWith(prefix)) {
+      monthMilkL += Number(m.liters) || 0;
+    }
+  }
+  var costPerLiter = monthMilkL > 0 ? (totCost / monthMilkL).toFixed(2) : '0.00';
+
+  items.sort(function(a, b) { return parseDateToTime(a.date) - parseDateToTime(b.date); });
+
+  document.body.setAttribute('data-print', 'invoice');
+  getEl('invMainDocTitle').innerText = 'মাসিক গরুর খাদ্য বিল / MONTHLY CATTLE FEED STATEMENT (' + mn + '/' + yr + ')';
+
+  var rowsHtml = '';
+  items.forEach(function(it) {
+    rowsHtml += '<tr><td>' + formatDateBR(it.date) + '</td><td>' + (it.pellet || 0) + ' kg (₹' + (it.avgCostPerKg || 0) + ')</td><td>' + (it.greenFodder || 0) + ' / ' + (it.dryFodder || 0) + ' kg</td><td>₹ ' + (it.suppCost || 0) + '</td><td style="text-align:right; font-weight:bold;">₹ ' + (it.totalCost || 0) + '</td></tr>';
+  });
+
+  getEl('invoiceDetails').innerHTML =
+    '<div style="display:flex; justify-content:space-between; margin-bottom:12px;">' +
+      '<div><strong>Cattle Tag ID:</strong> 🐄 ' + tag + '<br>জাত: ' + (cowInfo ? (cowInfo.breed || '-') : '-') + ' | স্ট্যাটাস: ' + (cowInfo ? (cowInfo.status || '-') : '-') + '</div>' +
+      '<div style="text-align:right;">বিলের মাস: <strong>' + mn + '/' + yr + '</strong><br>মোট এন্ট্রি: ' + items.length + ' টি</div>' +
+    '</div>' +
+    '<table class="invoice-table" style="border:1px solid #ddd; width:100%; min-width:unset;">' +
+      '<thead><tr style="background:#e8f5e9;"><th>তারিখ</th><th>ফিড (রেট)</th><th>ঘাস / খড়</th><th>সাপ্লিমেন্ট</th><th style="text-align:right;">মোট খরচ</th></tr></thead>' +
+      '<tbody>' + rowsHtml + '</tbody>' +
+    '</table>' +
+    '<div style="text-align:right; margin-top:12px; line-height:1.8;">' +
+      'মোট ফিড: <strong>' + totPellet.toFixed(1) + ' kg</strong> | কাঁচা ঘাস: <strong>' + totGreen.toFixed(1) + ' kg</strong> | খড়: <strong>' + totDry.toFixed(1) + ' kg</strong><br>' +
+      'এই মাসে দুধ উৎপাদন: <strong>' + monthMilkL.toFixed(1) + ' L</strong> (প্রতি লিটার খাদ্য খরচ: <strong>₹ ' + costPerLiter + '</strong>)<br>' +
+      '<span style="color:#1b5e20; font-weight:bold; font-size:16px;">মাসিক সর্বমোট খাদ্য খরচ: ₹ ' + totCost.toFixed(2) + '</span>' +
+    '</div>';
+
+  getEl('invoiceModal').style.display = 'flex';
+};
+
+function renderFeedTable() {
+  var body = getEl('rationTableBody');
+  if (!body) return;
+
+  if (!window.currentFeedYear) {
+    initFeedFilters();
+  }
+
+  var targetYear = window.currentFeedYear;
+  var targetMonth = window.currentFeedMonth;
+  var targetDate = window.specificFeedDate;
+  var searchTag = (getEl('feedSearchTag') ? getEl('feedSearchTag').value : '').trim().toLowerCase();
+
+  var monthMilkMap = {};
+  var milkPrefix = targetYear + '-' + targetMonth;
+  for (var mk in farmStore.milk) {
+    var m = farmStore.milk[mk];
+    if (!m || !m.cow || !m.date) continue;
+    var mMatch = targetDate ? (m.date === targetDate) : m.date.startsWith(milkPrefix);
+    if (mMatch) {
+      var mTag = m.cow.trim().toUpperCase();
+      monthMilkMap[mTag] = (monthMilkMap[mTag] || 0) + (Number(m.liters) || 0);
+    }
+  }
+
+  var groupedMap = {};
+  for (var k in farmStore.feedRations) {
+    var r = farmStore.feedRations[k];
+    if (!r || !r.date) continue;
+    var dateMatch = false;
+    if (targetDate) {
+      if (r.date === targetDate) dateMatch = true;
+    } else {
+      if (r.date.substring(0, 4) === targetYear && r.date.substring(5, 7) === targetMonth) {
+        dateMatch = true;
+      }
+    }
+    if (!dateMatch) continue;
+
+    var rawTag = (r.cowTag || '-').trim();
+    if (searchTag && !rawTag.toLowerCase().includes(searchTag)) continue;
+
+    var gKey = rawTag.toUpperCase();
+    if (!groupedMap[gKey]) {
+      groupedMap[gKey] = {
+        tag: rawTag,
+        totalPellet: 0,
+        totalGreen: 0,
+        totalDry: 0,
+        totalCost: 0,
+        entries: []
+      };
+    }
+    groupedMap[gKey].totalPellet += Number(r.pellet) || 0;
+    groupedMap[gKey].totalGreen += Number(r.greenFodder) || 0;
+    groupedMap[gKey].totalDry += Number(r.dryFodder) || 0;
+    groupedMap[gKey].totalCost += Number(r.totalCost) || 0;
+    groupedMap[gKey].entries.push({ key: k, data: r });
+  }
+
+  var keys = Object.keys(groupedMap).sort(function(a, b) {
+    return a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' });
+  });
+
+  if (keys.length === 0) {
     body.innerHTML = '';
-    if (getEl('feedNoData')) getEl('feedNoData').style.display = 'block';
+    if (getEl('rationNoData')) getEl('rationNoData').style.display = 'block';
     return;
   }
-  if (getEl('feedNoData')) getEl('feedNoData').style.display = 'none';
+  if (getEl('rationNoData')) getEl('rationNoData').style.display = 'none';
 
   var html = '';
-  list.forEach(function(item) {
-    var k = item.key, d = item.data;
-    html += '<tr>' +
-      '<td>' + formatDateBR(d.date) + '</td>' +
-      '<td><strong>' + (d.type || '-') + '</strong></td>' +
-      '<td>' + (d.qty || '-') + '</td>' +
-      '<td style="color:var(--danger); font-weight:600;">₹ ' + (d.cost || 0) + '</td>' +
-      '<td>' + (d.note || '-') + '</td>' +
-      '<td>' +
-        '<button class="action-btn btn-info" onclick="editFeed(\'' + k + '\')">Edit</button> ' +
-        '<button class="action-btn btn-danger" onclick="deleteRecord(\'feed\',\'' + k + '\')">Delete</button>' +
-      '</td>' +
+  keys.forEach(function(gKey, idx) {
+    var g = groupedMap[gKey];
+    var subId = 'sub_feed_' + idx;
+    var totalEntries = g.entries.length;
+    var hasMultiple = totalEntries > 1;
+    var milkL = monthMilkMap[gKey] || 0;
+    var costPerL = milkL > 0 ? ('₹ ' + (g.totalCost / milkL).toFixed(2) + '/L') : '-';
+    var milkInfo = milkL > 0 ? ('<strong>' + milkL.toFixed(1) + ' L</strong><br><small style="color:#0288d1;">খরচ: ' + costPerL + '</small>') : '<span style="color:#888;">০ L</span>';
+
+    var actionCol = '';
+    if (!hasMultiple) {
+      var singleKey = g.entries[0].key;
+      actionCol = '<div style="display:flex; gap:6px; flex-wrap:nowrap;">' +
+        '<button class="action-btn" style="background:#2e7d32; color:white; padding:4px 8px; font-size:11px; margin:0;" onclick="showCattleMonthlyFeedBill(\'' + encodeURIComponent(g.tag) + '\')">মাসিক বিল</button>' +
+        '<button class="action-btn btn-info" style="padding:4px 8px; font-size:11px; margin:0;" onclick="editRation(\'' + singleKey + '\')">Edit</button>' +
+        '<button class="action-btn btn-danger" style="padding:4px 8px; font-size:11px; margin:0;" onclick="deleteRecord(\'feedRations\',\'' + singleKey + '\')">Delete</button>' +
+      '</div>';
+    } else {
+      actionCol = '<div style="display:flex; gap:6px; flex-wrap:nowrap;">' +
+        '<button class="action-btn btn-info" onclick="toggleSubFeed(\'' + subId + '\', this)" style="padding:4px 8px; font-size:11px; margin:0;">বিস্তারিত (' + totalEntries + ') ▼</button>' +
+        '<button class="action-btn" style="background:#2e7d32; color:white; padding:4px 8px; font-size:11px; margin:0;" onclick="showCattleMonthlyFeedBill(\'' + encodeURIComponent(g.tag) + '\')">মাসিক বিল</button>' +
+      '</div>';
+    }
+
+    html += '<tr style="background:#fafafa; border-top:2px solid #e0e0e0;">' +
+      '<td><a href="javascript:void(0)" onclick="showCattleMonthlyFeedBill(\'' + encodeURIComponent(g.tag) + '\')" style="color:var(--primary); font-weight:bold; text-decoration:underline;" title="মাসিক বিল দেখতে ক্লিক করুন">🐄 ' + g.tag + '</a></td>' +
+      '<td><strong>' + g.totalPellet.toFixed(1) + ' kg</strong></td>' +
+      '<td>' + g.totalGreen.toFixed(1) + ' / ' + g.totalDry.toFixed(1) + ' kg</td>' +
+      '<td style="color:green; font-weight:bold;">₹ ' + g.totalCost.toFixed(2) + '</td>' +
+      '<td>' + milkInfo + '</td>' +
+      '<td><span class="badge badge-success">' + totalEntries + ' টি</span></td>' +
+      '<td>' + actionCol + '</td>' +
     '</tr>';
+
+    if (hasMultiple) {
+      g.entries.sort(function(a, b) { return parseDateToTime(b.data.date) - parseDateToTime(a.data.date); });
+      html += '<tr id="' + subId + '" style="display:none; background:#f1f8e9;"><td colspan="7" style="padding:10px 15px;">' +
+        '<div style="font-size:12px; font-weight:bold; color:#2e7d32; margin-bottom:8px;">📋 ' + g.tag + '-এর তারিখভিত্তিক খাদ্য তালিকা:</div>' +
+        '<div style="overflow-x:auto;"><table style="width:100%; font-size:12px; background:white; border:1px solid #c8e6c9; border-collapse:collapse;">' +
+          '<tr style="background:#e8f5e9;"><th style="padding:6px; border:1px solid #c8e6c9;">তারিখ</th><th style="padding:6px; border:1px solid #c8e6c9;">ফিড (kg)</th><th style="padding:6px; border:1px solid #c8e6c9;">রেট (₹)</th><th style="padding:6px; border:1px solid #c8e6c9;">ঘাস / খড় (kg)</th><th style="padding:6px; border:1px solid #c8e6c9;">সাপ্লিমেন্ট (₹)</th><th style="padding:6px; border:1px solid #c8e6c9;">মোট খরচ (₹)</th><th style="padding:6px; border:1px solid #c8e6c9;">অ্যাকশন</th></tr>';
+
+      g.entries.forEach(function(itemObj) {
+        var d = itemObj.data;
+        html += '<tr>' +
+          '<td style="padding:6px; border:1px solid #c8e6c9;">' + formatDateBR(d.date) + '</td>' +
+          '<td style="padding:6px; border:1px solid #c8e6c9;">' + (d.pellet || 0) + ' kg</td>' +
+          '<td style="padding:6px; border:1px solid #c8e6c9;">₹ ' + (d.avgCostPerKg || 0) + '</td>' +
+          '<td style="padding:6px; border:1px solid #c8e6c9;">' + (d.greenFodder || 0) + ' / ' + (d.dryFodder || 0) + ' kg</td>' +
+          '<td style="padding:6px; border:1px solid #c8e6c9;">₹ ' + (d.suppCost || 0) + '</td>' +
+          '<td style="padding:6px; border:1px solid #c8e6c9; color:green; font-weight:bold;">₹ ' + (d.totalCost || 0) + '</td>' +
+          '<td style="padding:6px; border:1px solid #c8e6c9; white-space:nowrap;">' +
+            '<button class="action-btn btn-info" style="padding:3px 7px; font-size:11px;" onclick="editRation(\'' + itemObj.key + '\')">Edit</button> ' +
+            '<button class="action-btn btn-danger" style="padding:3px 7px; font-size:11px;" onclick="deleteRecord(\'feedRations\',\'' + itemObj.key + '\')">Delete</button>' +
+          '</td>' +
+        '</tr>';
+      });
+      html += '</table></div></td></tr>';
+    }
   });
   body.innerHTML = html;
 }
 
-window.toggleExpenseDate = function(safeDt) {
-  var row = getEl('exp-det-' + safeDt); 
-  var btn = getEl('exp-btn-' + safeDt);
-  if (row) {
-    if (row.style.display === 'none' || !row.style.display) { 
-      row.style.display = 'table-row'; 
-      if(btn) btn.innerText = 'সংকুচিত করুন ▲'; 
-    } else { 
-      row.style.display = 'none'; 
-      if(btn) btn.innerText = 'বিস্তারিত দেখুন ▼'; 
+var renderRationTable = renderFeedTable;
+
+window.currentExpYear = "";
+window.currentExpMonth = "";
+window.specificExpDate = "";
+
+window.initExpenseFilters = function() {
+  if (!window.currentExpYear) {
+    var d = new Date();
+    window.currentExpYear = d.getFullYear().toString();
+    window.currentExpMonth = ('0' + (d.getMonth() + 1)).slice(-2);
+  }
+  var yearSelect = getEl('expFilterYear');
+  if (yearSelect && yearSelect.options.length === 0) {
+    var curY = new Date().getFullYear();
+    for (var i = 0; i < 5; i++) {
+      var y = (curY - i).toString();
+      yearSelect.options.add(new Option(y, y));
     }
+    yearSelect.value = window.currentExpYear;
+  }
+  renderExpenseMonthTabs();
+};
+
+window.renderExpenseMonthTabs = function() {
+  var tabsContainer = getEl('expMonthTabs');
+  if (!tabsContainer) return;
+  var months = [
+    { val: '01', name: 'Jan' }, { val: '02', name: 'Feb' }, { val: '03', name: 'Mar' },
+    { val: '04', name: 'Apr' }, { val: '05', name: 'May' }, { val: '06', name: 'Jun' },
+    { val: '07', name: 'Jul' }, { val: '08', name: 'Aug' }, { val: '09', name: 'Sep' },
+    { val: '10', name: 'Oct' }, { val: '11', name: 'Nov' }, { val: '12', name: 'Dec' }
+  ];
+  var html = '';
+  months.forEach(function(m) {
+    var isActive = (m.val === window.currentExpMonth) && !window.specificExpDate;
+    var bg = isActive ? 'var(--primary)' : '#e0e0e0';
+    var color = isActive ? 'white' : '#333';
+    html += '<button onclick="setExpenseMonth(\'' + m.val + '\')" style="padding:6px 14px; border:none; border-radius:20px; font-size:12px; font-weight:bold; cursor:pointer; background:' + bg + '; color:' + color + '; min-width:60px; transition:0.2s;">' + m.name + '</button>';
+  });
+  tabsContainer.innerHTML = html;
+};
+
+window.setExpenseMonth = function(mVal) {
+  window.currentExpMonth = mVal;
+  window.specificExpDate = "";
+  if (getEl('expFilterDate')) getEl('expFilterDate').value = "";
+  renderExpenseMonthTabs();
+  renderGroupedExpenseTable();
+};
+
+window.applyExpenseFilter = function() {
+  if (getEl('expFilterYear')) window.currentExpYear = getEl('expFilterYear').value;
+  var d = getEl('expFilterDate') ? getEl('expFilterDate').value : "";
+  if (d) {
+    window.specificExpDate = d;
+    var dateObj = new Date(d);
+    window.currentExpYear = dateObj.getFullYear().toString();
+    window.currentExpMonth = ('0' + (dateObj.getMonth() + 1)).slice(-2);
+    if (getEl('expFilterYear')) getEl('expFilterYear').value = window.currentExpYear;
+  } else {
+    window.specificExpDate = "";
+  }
+  renderExpenseMonthTabs();
+  renderGroupedExpenseTable();
+};
+
+window.clearExpenseDateFilter = function() {
+  if (getEl('expFilterDate')) getEl('expFilterDate').value = "";
+  window.specificExpDate = "";
+  renderExpenseMonthTabs();
+  renderGroupedExpenseTable();
+};
+
+window.saveMonthlyBudget = function() {
+  var val = parseFloat(getEl('expMonthlyBudgetInput') ? getEl('expMonthlyBudgetInput').value : 0) || 0;
+  try { localStorage.setItem('nanda_exp_monthly_budget', val); } catch(e) {}
+  renderGroupedExpenseTable();
+};
+
+window.getExpensePaidAndDue = function(e) {
+  var tot = Number(e.amount) || 0;
+  var paid = 0;
+  if (e.paidAmount !== undefined && e.paidAmount !== null && e.paidAmount !== '') {
+    paid = Number(e.paidAmount) || 0;
+  } else {
+    paid = (e.status === 'Unpaid') ? 0 : tot;
+  }
+  paid = Math.min(tot, Math.max(0, paid));
+  var due = Math.max(0, tot - paid);
+  return { total: tot, paid: paid, due: due };
+};
+
+window.autoCalcExpDue = function() {
+  var tot = parseFloat(getEl('expAmount') ? getEl('expAmount').value : 0) || 0;
+  var paidRaw = getEl('expPaid') ? getEl('expPaid').value : '';
+  var paid = (paidRaw === '') ? tot : (parseFloat(paidRaw) || 0);
+  if (paid > tot) paid = tot;
+  var due = Math.max(0, tot - paid);
+  if (getEl('expDue')) getEl('expDue').value = due;
+  var stEl = getEl('expStatus');
+  if (stEl && tot > 0) {
+    if (due === 0) stEl.value = 'Paid';
+    else if (paid > 0) stEl.value = 'Partial';
+    else stEl.value = 'Unpaid';
+  }
+};
+
+window.onExpStatusManualChange = function() {
+  var st = getEl('expStatus') ? getEl('expStatus').value : 'Paid';
+  var tot = parseFloat(getEl('expAmount') ? getEl('expAmount').value : 0) || 0;
+  if (st === 'Paid') {
+    if (getEl('expPaid')) getEl('expPaid').value = tot || '';
+    if (getEl('expDue')) getEl('expDue').value = 0;
+  } else if (st === 'Unpaid') {
+    if (getEl('expPaid')) getEl('expPaid').value = 0;
+    if (getEl('expDue')) getEl('expDue').value = tot;
+  }
+};
+
+window.markExpensePaid = function(expKey) {
+  var e = farmStore.expenses ? farmStore.expenses[expKey] : null;
+  if (db && expKey && e) {
+    db.ref('expenses/' + expKey).update({ status: 'Paid', paidAmount: Number(e.amount) || 0, dueAmount: 0 });
+    showAppToast('খরচটি সম্পূর্ণ পরিশোধিত (Paid) হিসেবে চিহ্নিত করা হয়েছে।');
+  }
+};
+
+window.repeatFixedExpenses = function() {
+  if (!window.currentExpYear) initExpenseFilters();
+  var yr = parseInt(window.currentExpYear);
+  var mn = parseInt(window.currentExpMonth);
+  var prevMn = mn - 1;
+  var prevYr = yr;
+  if (prevMn === 0) { prevMn = 12; prevYr = yr - 1; }
+  var prevPrefix = prevYr + '-' + ('0' + prevMn).slice(-2);
+  var todayISO = new Date().toISOString().split('T')[0];
+
+  var copied = 0;
+  for (var k in farmStore.expenses) {
+    var e = farmStore.expenses[k];
+    if (!e || !(e.date || '').startsWith(prevPrefix)) continue;
+    if (e.category === 'Labour Salary' || e.category === 'Electricity / Utilities') {
+      if (db) {
+        db.ref('expenses').push({
+          date: todayISO,
+          category: e.category,
+          title: e.title + ' (কপি)',
+          amount: Number(e.amount) || 0,
+          vendor: e.vendor || '',
+          payMode: e.payMode || 'Cash',
+          status: 'Paid'
+        });
+      }
+      copied++;
+    }
+  }
+  if (copied === 0) showAppToast('আগের মাসে কোনো বেতন বা বিদ্যুৎ বিল পাওয়া যায়নি।');
+  else showAppToast(copied + ' টি স্থায়ী খরচ আজকের তারিখে কপি করা হয়েছে!');
+};
+
+window.showMonthlyExpenseStatement = function() {
+  if (!window.currentExpYear) initExpenseFilters();
+  var yr = window.currentExpYear;
+  var mn = window.currentExpMonth;
+  var prefix = yr + '-' + mn;
+  var items = [];
+  var catTotals = {};
+  var grandTotal = 0;
+
+  for (var k in farmStore.expenses) {
+    var e = farmStore.expenses[k];
+    if (e && (e.date || '').startsWith(prefix)) {
+      items.push(e);
+      var c = e.category || 'Other';
+      var amt = Number(e.amount) || 0;
+      catTotals[c] = (catTotals[c] || 0) + amt;
+      grandTotal += amt;
+    }
+  }
+  if (items.length === 0) {
+    return showAppToast(mn + '/' + yr + ' মাসে কোনো খরচের রেকর্ড পাওয়া যায়নি।');
+  }
+  items.sort(function(a, b) { return parseDateToTime(a.date) - parseDateToTime(b.date); });
+
+  document.body.setAttribute('data-print', 'invoice');
+  getEl('invMainDocTitle').innerText = 'মাসিক খরচ রিপোর্ট / MONTHLY EXPENSE STATEMENT (' + mn + '/' + yr + ')';
+
+  var catRows = '';
+  for (var cat in catTotals) {
+    var pct = grandTotal > 0 ? ((catTotals[cat] / grandTotal) * 100).toFixed(1) : '0.0';
+    catRows += '<tr><td><strong>' + cat + '</strong></td><td>' + pct + '%</td><td style="text-align:right; font-weight:bold;">₹ ' + catTotals[cat].toLocaleString() + '</td></tr>';
+  }
+
+  var detRows = '';
+  items.forEach(function(it) {
+    detRows += '<tr><td>' + formatDateBR(it.date) + '</td><td>' + (it.category || '-') + '</td><td>' + (it.title || '-') + (it.vendor ? ' (' + it.vendor + ')' : '') + '</td><td>' + (it.payMode || 'Cash') + '</td><td style="text-align:right; font-weight:bold;">₹ ' + (Number(it.amount) || 0) + '</td></tr>';
+  });
+
+  getEl('invoiceDetails').innerHTML =
+    '<div style="margin-bottom:12px;"><strong>খাত-ভিত্তিক সারসংক্ষেপ (Category Summary):</strong></div>' +
+    '<table class="invoice-table" style="border:1px solid #ddd; width:100%; min-width:unset; margin-bottom:16px;">' +
+      '<thead><tr style="background:#ffebee;"><th>খাত</th><th>অংশ (%)</th><th style="text-align:right;">মোট খরচ</th></tr></thead>' +
+      '<tbody>' + catRows + '</tbody>' +
+    '</table>' +
+    '<div style="margin-bottom:8px;"><strong>তারিখভিত্তিক বিস্তারিত তালিকা:</strong></div>' +
+    '<table class="invoice-table" style="border:1px solid #ddd; width:100%; min-width:unset;">' +
+      '<thead><tr style="background:#f5f5f5;"><th>তারিখ</th><th>খাত</th><th>বিবরণ ও দোকান</th><th>মাধ্যম</th><th style="text-align:right;">টাকা</th></tr></thead>' +
+      '<tbody>' + detRows + '</tbody>' +
+    '</table>' +
+    '<div style="text-align:right; margin-top:14px; font-size:16px; color:#c62828; font-weight:bold;">মাসিক সর্বমোট খরচ: ₹ ' + grandTotal.toLocaleString() + '</div>';
+
+  getEl('invoiceModal').style.display = 'flex';
+};
+
+window.exportExpenses = function(format) {
+  if (!window.currentExpYear) initExpenseFilters();
+  var targetYear = window.currentExpYear;
+  var targetMonth = window.currentExpMonth;
+  var targetDate = window.specificExpDate;
+  var catFilter = (getEl('expFilterCategory') ? getEl('expFilterCategory').value : '').trim();
+  var searchQ = (getEl('expSearchInput') ? getEl('expSearchInput').value : '').trim().toLowerCase();
+
+  var exportData = [];
+  exportData.push(["Date", "Category", "Description", "Vendor/Paid To", "Payment Mode", "Status", "Amount (Rs)"]);
+
+  var list = [];
+  for (var k in farmStore.expenses) {
+    var e = farmStore.expenses[k];
+    if (!e || !e.date) continue;
+    var match = false;
+    if (targetDate) {
+      if (e.date === targetDate) match = true;
+    } else {
+      if (e.date.substring(0, 4) === targetYear && e.date.substring(5, 7) === targetMonth) {
+        match = true;
+      }
+    }
+    if (match && (!catFilter || e.category === catFilter)) {
+      var txt = ((e.title || '') + ' ' + (e.vendor || '')).toLowerCase();
+      if (!searchQ || txt.includes(searchQ)) list.push(e);
+    }
+  }
+
+  list.sort(function(a, b) { return parseDateToTime(b.date) - parseDateToTime(a.date); });
+
+  if (list.length === 0) {
+    showAppToast('বর্তমান ভিউতে এক্সপোর্ট করার মতো কোনো খরচের ডেটা নেই!');
+    return;
+  }
+
+  list.forEach(function(e) {
+    exportData.push([
+      formatDateBR(e.date),
+      (e.category || '-').replace(/,/g, ' '),
+      (e.title || '-').replace(/,/g, ' '),
+      (e.vendor || '-').replace(/,/g, ' '),
+      (e.payMode || 'Cash').replace(/,/g, ' '),
+      (e.status || 'Paid'),
+      Number(e.amount) || 0
+    ]);
+  });
+
+  var fileName = "Expense_Record_" + (targetDate ? targetDate : (targetYear + "_" + targetMonth));
+
+  if (format === 'csv') {
+    var csvContent = "data:text/csv;charset=utf-8,\uFEFF";
+    exportData.forEach(function(rowArray) {
+      csvContent += rowArray.join(",") + "\r\n";
+    });
+    var encodedUri = encodeURI(csvContent);
+    var link = document.createElement("a");
+    link.setAttribute("href", encodedUri);
+    link.setAttribute("download", fileName + ".csv");
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  } else if (format === 'txt') {
+    var txtContent = "data:text/plain;charset=utf-8,\uFEFF";
+    exportData.forEach(function(rowArray) {
+      txtContent += rowArray.join(" \t ") + "\r\n";
+    });
+    var encodedUri = encodeURI(txtContent);
+    var link = document.createElement("a");
+    link.setAttribute("href", encodedUri);
+    link.setAttribute("download", fileName + ".txt");
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  } else if (format === 'doc') {
+    var docHtml = "<html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'><head><meta charset='utf-8'><title>Expense Record</title></head><body><h2 style='color:#1b5e20;'>Nanda Dairy & Agro - Expense Record</h2><p><strong>Period/Date:</strong> " + (targetDate ? targetDate : (targetMonth + "/" + targetYear)) + "</p><table border='1' style='border-collapse:collapse; width:100%; text-align:left; font-family:sans-serif;'>";
+    exportData.forEach(function(rowArray, idx) {
+      docHtml += "<tr>";
+      rowArray.forEach(function(cell) {
+        if (idx === 0) docHtml += "<th style='padding:8px; background:#ffebee;'>" + cell + "</th>";
+        else docHtml += "<td style='padding:8px;'>" + cell + "</td>";
+      });
+      docHtml += "</tr>";
+    });
+    docHtml += "</table></body></html>";
+    var blob = new Blob(['\ufeff', docHtml], { type: 'application/msword' });
+    var url = URL.createObjectURL(blob);
+    var link = document.createElement("a");
+    link.href = url;
+    link.download = fileName + ".doc";
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  }
+};
+
+window.toggleExpenseDate = function(safeDt) {
+  var row = getEl('exp-det-' + safeDt); var btn = getEl('exp-btn-' + safeDt);
+  if (row) {
+    if (row.style.display === 'none' || !row.style.display) { row.style.display = 'table-row'; if(btn) btn.innerText = 'সংকুচিত করুন ▲'; }
+    else { row.style.display = 'none'; if(btn) btn.innerText = 'বিস্তারিত দেখুন ▼'; }
   }
 };
 
 var eExpKey = null;
 function editExpense(k) {
   var d = farmStore.expenses[k]; if (!d) return; eExpKey = k;
+  var pdInfo = getExpensePaidAndDue(d);
   getEl('expDate').value = d.date || ''; getEl('expCategory').value = d.category || 'Other';
   getEl('expTitle').value = d.title || ''; getEl('expAmount').value = d.amount || '';
-  getEl('expSubmitBtn').innerText = 'Update Expense';
+  if (getEl('expPaid')) getEl('expPaid').value = pdInfo.paid;
+  if (getEl('expDue')) getEl('expDue').value = pdInfo.due;
+  if (getEl('expVendor')) getEl('expVendor').value = d.vendor || '';
+  if (getEl('expPayMode')) getEl('expPayMode').value = d.payMode || 'Cash';
+  if (getEl('expStatus')) getEl('expStatus').value = d.status || (pdInfo.due === 0 ? 'Paid' : (pdInfo.paid > 0 ? 'Partial' : 'Unpaid'));
+  getEl('expSubmitBtn').innerText = 'Update Expense'; getEl('expCancelBtn').style.display = 'inline-flex';
+  switchTab('expenses', document.querySelectorAll('nav button')[10]);
 }
 function cancelExpenseEdit() {
   eExpKey = null; getEl('expTitle').value = ''; getEl('expAmount').value = '';
-  getEl('expSubmitBtn').innerText = 'Save Expense';
+  if (getEl('expPaid')) getEl('expPaid').value = '';
+  if (getEl('expDue')) getEl('expDue').value = '0';
+  if (getEl('expVendor')) getEl('expVendor').value = '';
+  if (getEl('expPayMode')) getEl('expPayMode').value = 'Cash';
+  if (getEl('expStatus')) getEl('expStatus').value = 'Paid';
+  getEl('expSubmitBtn').innerText = 'Save Expense'; getEl('expCancelBtn').style.display = 'none';
 }
 function saveExpense() {
   var title = (getEl('expTitle').value || '').trim(), amt = parseFloat(getEl('expAmount').value)||0, dt = getEl('expDate').value;
-  if (!title || !amt || !dt) return alert('সকল তথ্য দিন!');
-  var data = { date: dt, category: getEl('expCategory').value, title: title, amount: amt };
+  if (!title || !amt || !dt) return showAppToast('সকল তথ্য দিন!');
+  var paidRaw = getEl('expPaid') ? getEl('expPaid').value : '';
+  var paidAmt = (paidRaw === '') ? amt : (parseFloat(paidRaw) || 0);
+  if (paidAmt > amt) paidAmt = amt;
+  var dueAmt = Math.max(0, amt - paidAmt);
+  var statusVal = dueAmt === 0 ? 'Paid' : (paidAmt > 0 ? 'Partial' : 'Unpaid');
+
+  var data = {
+    date: dt,
+    category: getEl('expCategory').value,
+    title: title,
+    amount: amt,
+    paidAmount: paidAmt,
+    dueAmount: dueAmt,
+    vendor: getEl('expVendor') ? getEl('expVendor').value.trim() : '',
+    payMode: getEl('expPayMode') ? getEl('expPayMode').value : 'Cash',
+    status: statusVal
+  };
   if (db) eExpKey ? db.ref('expenses/' + eExpKey).update(data) : db.ref('expenses').push(data);
+  showAppToast('খরচ সফলভাবে সেভ হয়েছে!');
   cancelExpenseEdit();
 }
 
 function renderGroupedExpenseTable() {
-  var body = getEl('expenseGroupTableBody'); if (!body) return;
-  var dateGroups = {}, totalExpAll = 0;
-  for (var k in farmStore.expenses) {
-    var e = farmStore.expenses[k]; if (!e) continue;
-    var dtBR = formatDateBR(e.date) || 'Unknown', amt = Number(e.amount) || 0;
-    totalExpAll += amt;
-    if (!dateGroups[dtBR]) dateGroups[dtBR] = { date: dtBR, total: 0, items: [] };
-    dateGroups[dtBR].total += amt;
-    dateGroups[dtBR].items.push({ key: k, data: e });
+  var body = getEl('expenseGroupTableBody');
+  if (!body) return;
+
+  if (!window.currentExpYear) {
+    initExpenseFilters();
   }
-  if (getEl('dash-total-exp')) getEl('dash-total-exp').innerText = '₹ ' + totalExpAll.toLocaleString();
+
+  var targetYear = window.currentExpYear;
+  var targetMonth = window.currentExpMonth;
+  var targetDate = window.specificExpDate;
+  var catFilter = (getEl('expFilterCategory') ? getEl('expFilterCategory').value : '').trim();
+  var searchQ = (getEl('expSearchInput') ? getEl('expSearchInput').value : '').trim().toLowerCase();
+
+  var dateGroups = {}, totalExpAll = 0;
+  var monthTotal = 0;
+  var catSum = { 'Feed & Fodder': 0, 'Medicine & Health': 0, 'Labour Salary': 0, 'Electricity / Utilities': 0, 'Other': 0 };
+
+  for (var k in farmStore.expenses) {
+    var e = farmStore.expenses[k];
+    if (!e) continue;
+    var dtISO = (e.date || '').trim();
+    var dtBR = formatDateBR(dtISO) || 'Unknown';
+    var amt = Number(e.amount) || 0;
+    totalExpAll += amt;
+
+    var inPeriod = false;
+    if (targetDate) {
+      if (dtISO === targetDate) inPeriod = true;
+    } else if (dtISO) {
+      if (dtISO.substring(0, 4) === targetYear && dtISO.substring(5, 7) === targetMonth) {
+        inPeriod = true;
+      }
+    }
+
+    if (inPeriod) {
+      monthTotal += amt;
+      var catKey = catSum.hasOwnProperty(e.category) ? e.category : 'Other';
+      catSum[catKey] += amt;
+
+      var catMatch = !catFilter || (e.category === catFilter);
+      var srchTxt = ((e.title || '') + ' ' + (e.vendor || '')).toLowerCase();
+      var srchMatch = !searchQ || srchTxt.includes(searchQ);
+
+      if (catMatch && srchMatch) {
+        var pdObj = getExpensePaidAndDue(e);
+        if (!dateGroups[dtBR]) dateGroups[dtBR] = { date: dtBR, dateISO: dtISO, total: 0, unpaid: 0, items: [] };
+        dateGroups[dtBR].total += amt;
+        dateGroups[dtBR].unpaid += pdObj.due;
+        dateGroups[dtBR].items.push({ key: k, data: e });
+      }
+    }
+  }
+
+  var catGrid = getEl('expCategorySummaryGrid');
+  if (catGrid) {
+    var cgHtml = '';
+    Object.keys(catSum).forEach(function(cName) {
+      var cPct = monthTotal > 0 ? ((catSum[cName] / monthTotal) * 100).toFixed(1) : '0.0';
+      cgHtml += '<div style="background:#f8faf9; border:1px solid #e0e0e0; border-left:4px solid var(--primary); border-radius:8px; padding:8px 10px;">' +
+        '<div style="font-size:11px; color:#555; font-weight:600; display:flex; justify-content:space-between;"><span>' + cName + '</span><span style="color:var(--primary);">' + cPct + '%</span></div>' +
+        '<div style="font-size:15px; font-weight:700; color:#c62828; margin-top:2px;">₹ ' + catSum[cName].toLocaleString() + '</div>' +
+      '</div>';
+    });
+    catGrid.innerHTML = cgHtml;
+  }
+
+  var bInput = getEl('expMonthlyBudgetInput');
+  var savedBudget = 0;
+  try { savedBudget = parseFloat(localStorage.getItem('nanda_exp_monthly_budget')) || 0; } catch(ex) {}
+  if (bInput && !bInput.value && savedBudget > 0) bInput.value = savedBudget;
+  var activeBudget = parseFloat(bInput ? bInput.value : 0) || savedBudget;
+  var bTextEl = getEl('expBudgetStatusText');
+  if (bTextEl) {
+    if (activeBudget > 0) {
+      var pct = Math.round((monthTotal / activeBudget) * 100);
+      if (pct >= 100) {
+        bTextEl.innerHTML = '<span style="color:#c62828;">⚠️ বাজেট অতিক্রান্ত! (₹ ' + monthTotal.toLocaleString() + ' / ₹ ' + activeBudget.toLocaleString() + ' — ' + pct + '%)</span>';
+      } else if (pct >= 80) {
+        bTextEl.innerHTML = '<span style="color:#e65100;">⏳ বাজেটের ' + pct + '% ব্যবহৃত (₹ ' + monthTotal.toLocaleString() + ' / ₹ ' + activeBudget.toLocaleString() + ')</span>';
+      } else {
+        bTextEl.innerHTML = '<span style="color:#2e7d32;">✔ বাজেটের মধ্যে আছে (' + pct + '% — ₹ ' + monthTotal.toLocaleString() + ' / ₹ ' + activeBudget.toLocaleString() + ')</span>';
+      }
+    } else {
+      bTextEl.innerText = 'নির্বাচিত মাসের মোট খরচ: ₹ ' + monthTotal.toLocaleString();
+    }
+  }
+
+  if (getEl('dash-total-exp') && (!window.currentDashMonth || (window.currentDashMonth === 'ALL' && !window.specificDashDate))) {
+    getEl('dash-total-exp').innerText = '₹ ' + totalExpAll.toLocaleString();
+  }
   if (getEl('rep-expenses')) getEl('rep-expenses').innerText = '₹ ' + totalExpAll.toLocaleString();
   calcNet();
+  renderVendorDueTable();
+  renderLabourTable();
 
-  var sortedDates = Object.keys(dateGroups).sort(function(a, b) { return parseDateToTime(b) - parseDateToTime(a); });
-  if (sortedDates.length === 0) { body.innerHTML = ''; if(getEl('expenseNoData')) getEl('expenseNoData').style.display = 'block'; return; }
-  if(getEl('expenseNoData')) getEl('expenseNoData').style.display = 'none';
+  var sortedDates = Object.keys(dateGroups).sort(function(a, b) { return parseDateToTime(dateGroups[b].dateISO) - parseDateToTime(dateGroups[a].dateISO); });
+  if (sortedDates.length === 0) {
+    body.innerHTML = '';
+    if (getEl('expenseNoData')) getEl('expenseNoData').style.display = 'block';
+    return;
+  }
+  if (getEl('expenseNoData')) getEl('expenseNoData').style.display = 'none';
 
   var html = '';
   sortedDates.forEach(function(dt) {
     var group = dateGroups[dt], safeDt = dt.replace(/[^a-zA-Z0-9]/g, '_');
-    html += '<tr style="background:#fff; cursor:pointer;" onclick="toggleExpenseDate(\'' + safeDt + '\')"><td><strong>📅 ' + dt + '</strong></td><td><strong style="color:var(--danger);">₹ ' + group.total.toLocaleString() + '</strong></td><td>' + group.items.length + ' টি এন্ট্রি</td><td><button class="action-btn btn-info" id="exp-btn-' + safeDt + '" onclick="event.stopPropagation(); toggleExpenseDate(\'' + safeDt + '\')">বিস্তারিত দেখুন ▼</button></td></tr>';
-    html += '<tr id="exp-det-' + safeDt + '" style="display:none; background:#fff8f8;"><td colspan="4" style="padding:12px;"><div style="background:white; border:1px solid #ffcdd2; border-radius:8px; padding:12px;"><table style="width:100%; font-size:12px;"><thead><tr style="background:#ffebee;"><th>খাত</th><th>বিবরণ</th><th>টাকা</th><th>অ্যাকশন</th></tr></thead><tbody>';
+    var unpaidBadge = group.unpaid > 0 ? '<span class="badge badge-danger">₹ ' + group.unpaid.toLocaleString() + ' বাকি</span>' : '<span class="badge badge-success">পরিশোধ</span>';
+    html += '<tr style="background:#fff; cursor:pointer;" onclick="toggleExpenseDate(\'' + safeDt + '\')"><td><strong>📅 ' + dt + '</strong></td><td><strong style="color:var(--danger);">₹ ' + group.total.toLocaleString() + '</strong></td><td>' + unpaidBadge + '</td><td>' + group.items.length + ' টি এন্ট্রি</td><td><button class="action-btn btn-info" id="exp-btn-' + safeDt + '" onclick="event.stopPropagation(); toggleExpenseDate(\'' + safeDt + '\')">বিস্তারিত দেখুন ▼</button></td></tr>';
+    html += '<tr id="exp-det-' + safeDt + '" style="display:none; background:#fff8f8;"><td colspan="5" style="padding:12px;"><div style="background:white; border:1px solid #ffcdd2; border-radius:8px; padding:12px;"><table style="width:100%; font-size:12px;"><thead><tr style="background:#ffebee;"><th>খাত</th><th>বিবরণ ও দোকান</th><th>মাধ্যম ও স্ট্যাটাস</th><th>টাকা</th><th>অ্যাকশন</th></tr></thead><tbody>';
     group.items.forEach(function(item) {
-      html += '<tr><td>' + (item.data.category || '-') + '</td><td><strong>' + (item.data.title || '-') + '</strong></td><td><strong style="color:var(--danger);">₹ ' + (item.data.amount || 0) + '</strong></td><td><button class="action-btn btn-info" onclick="editExpense(\'' + item.key + '\')">Edit</button><button class="action-btn btn-danger" onclick="deleteRecord(\'expenses\',\'' + item.key + '\')">Delete</button></td></tr>';
+      var d = item.data;
+      var pd = getExpensePaidAndDue(d);
+      var stBadge = '';
+      if (pd.due > 0) {
+        var lblTxt = pd.paid > 0 ? 'Partial (বাকি ₹' + pd.due + ')' : 'Unpaid (বাকি ₹' + pd.due + ')';
+        stBadge = '<span class="badge badge-danger">' + lblTxt + '</span> <button class="action-btn" style="background:#2e7d32; color:white; padding:2px 6px; font-size:10px;" onclick="markExpensePaid(\'' + item.key + '\')">✔ পূর্ণ পরিশোধ</button>';
+      } else {
+        stBadge = '<span class="badge badge-success">Paid</span>';
+      }
+      var amtCol = '<strong style="color:var(--danger);">₹ ' + pd.total + '</strong>' + (pd.due > 0 ? '<br><small style="color:green;">জমা: ₹' + pd.paid + '</small>' : '');
+      html += '<tr><td>' + (d.category || '-') + '</td><td><strong>' + (d.title || '-') + '</strong>' + (d.vendor ? '<br><small style="color:#666;">দোকান/ব্যক্তি: ' + d.vendor + '</small>' : '') + '</td><td>' + (d.payMode || 'Cash') + '<br>' + stBadge + '</td><td>' + amtCol + '</td><td><button class="action-btn btn-info" onclick="editExpense(\'' + item.key + '\')">Edit</button><button class="action-btn btn-danger" onclick="deleteRecord(\'expenses\',\'' + item.key + '\')">Delete</button></td></tr>';
     });
     html += '</tbody></table></div></td></tr>';
   });
   body.innerHTML = html;
 }
 
+window.renderVendorDueTable = function() {
+  var body = getEl('vendorDueTableBody');
+  var badge = getEl('totalVendorDueBadge');
+  var noData = getEl('vendorDueNoData');
+  var vList = getEl('vendorNameList');
+
+  var vendorMap = {};
+  var allVendorsSet = {};
+  var grandDue = 0;
+
+  for (var k in farmStore.expenses) {
+    var e = farmStore.expenses[k];
+    if (!e) continue;
+    var vName = (e.vendor || '').trim();
+    if (vName) allVendorsSet[vName] = true;
+    var pd = getExpensePaidAndDue(e);
+    if (pd.due > 0) {
+      var dispName = vName || 'অজানা দোকান / ব্যক্তি';
+      var vKey = dispName.toLowerCase();
+      if (!vendorMap[vKey]) {
+        vendorMap[vKey] = { name: dispName, totalBill: 0, totalPaid: 0, totalDue: 0, items: [] };
+      }
+      vendorMap[vKey].totalBill += pd.total;
+      vendorMap[vKey].totalPaid += pd.paid;
+      vendorMap[vKey].totalDue += pd.due;
+      vendorMap[vKey].items.push({ key: k, data: e, pd: pd });
+      grandDue += pd.due;
+    }
+  }
+
+  if (vList) {
+    var dlHtml = '';
+    Object.keys(allVendorsSet).sort().forEach(function(vn) {
+      dlHtml += '<option value="' + vn + '">';
+    });
+    vList.innerHTML = dlHtml;
+  }
+
+  if (badge) {
+    badge.innerText = 'মোট বাকি: ₹ ' + grandDue.toLocaleString();
+    badge.className = grandDue > 0 ? 'badge badge-danger' : 'badge badge-success';
+  }
+
+  if (!body) return;
+  var vKeys = Object.keys(vendorMap);
+  if (vKeys.length === 0) {
+    body.innerHTML = '';
+    if (noData) noData.style.display = 'block';
+    return;
+  }
+  if (noData) noData.style.display = 'none';
+
+  vKeys.sort(function(a, b) { return vendorMap[b].totalDue - vendorMap[a].totalDue; });
+
+  var html = '';
+  vKeys.forEach(function(vk) {
+    var v = vendorMap[vk];
+    html += '<tr>' +
+      '<td><strong>🏪 ' + v.name + '</strong> <small style="color:#666;">(' + v.items.length + 'টি বিল)</small></td>' +
+      '<td>₹ ' + v.totalBill.toLocaleString() + '</td>' +
+      '<td style="color:green; font-weight:600;">₹ ' + v.totalPaid.toLocaleString() + '</td>' +
+      '<td style="color:#c62828; font-weight:bold; font-size:14px;">₹ ' + v.totalDue.toLocaleString() + '</td>' +
+      '<td><button class="action-btn" style="background:#1b5e20; color:white; padding:6px 12px;" onclick="openVendorPayModal(\'' + encodeURIComponent(v.name) + '\', ' + v.totalDue + ')">💳 বাকি পরিশোধ</button></td>' +
+    '</tr>';
+  });
+  body.innerHTML = html;
+};
+
+window._activePayVendorName = '';
+window.openVendorPayModal = function(encName, totalDue) {
+  var vName = decodeURIComponent(encName);
+  window._activePayVendorName = vName;
+  if (getEl('vendorPayModalDesc')) {
+    getEl('vendorPayModalDesc').innerHTML = 'দোকান / ব্যক্তি: <strong>' + vName + '</strong><br>বর্তমান মোট বাকি: <strong style="color:#c62828;">₹ ' + Number(totalDue).toLocaleString() + '</strong>';
+  }
+  if (getEl('vendorPayDate')) getEl('vendorPayDate').value = new Date().toISOString().split('T')[0];
+  if (getEl('vendorPayAmount')) getEl('vendorPayAmount').value = totalDue;
+  if (getEl('vendorPayModal')) getEl('vendorPayModal').style.display = 'flex';
+};
+
+window.closeVendorPayModal = function() {
+  window._activePayVendorName = '';
+  if (getEl('vendorPayModal')) getEl('vendorPayModal').style.display = 'none';
+};
+
+window.confirmVendorPayment = function() {
+  var vName = window._activePayVendorName;
+  var amt = parseFloat(getEl('vendorPayAmount') ? getEl('vendorPayAmount').value : 0) || 0;
+  var payMode = getEl('vendorPayMode') ? getEl('vendorPayMode').value : 'Cash';
+  if (!vName || amt <= 0) return showAppToast('সঠিক টাকার পরিমাণ দিন!');
+
+  var vLower = vName.toLowerCase();
+  var unpaidList = [];
+  for (var k in farmStore.expenses) {
+    var e = farmStore.expenses[k];
+    if (!e) continue;
+    var eVendor = ((e.vendor || '').trim() || 'অজানা দোকান / ব্যক্তি').toLowerCase();
+    if (eVendor === vLower) {
+      var pd = getExpensePaidAndDue(e);
+      if (pd.due > 0) {
+        unpaidList.push({ key: k, data: e, pd: pd });
+      }
+    }
+  }
+  unpaidList.sort(function(a, b) { return parseDateToTime(a.data.date) - parseDateToTime(b.data.date); });
+
+  var rem = amt;
+  unpaidList.forEach(function(item) {
+    if (rem <= 0) return;
+    var payNow = Math.min(rem, item.pd.due);
+    rem -= payNow;
+    var newPaid = item.pd.paid + payNow;
+    var newDue = Math.max(0, item.pd.total - newPaid);
+    var newStatus = newDue === 0 ? 'Paid' : 'Partial';
+    if (db) {
+      db.ref('expenses/' + item.key).update({
+        paidAmount: newPaid,
+        dueAmount: newDue,
+        status: newStatus,
+        payMode: payMode
+      });
+    }
+  });
+
+  closeVendorPayModal();
+  showAppToast(vName + '-কে ₹ ' + amt.toLocaleString() + ' সফলভাবে পরিশোধ করা হয়েছে!');
+};
+
+window.saveLabour = function() {
+  var name = (getEl('labName') ? getEl('labName').value : '').trim();
+  var salary = parseFloat(getEl('labSalary') ? getEl('labSalary').value : 0) || 0;
+  if (!name || salary <= 0) return showAppToast('কর্মচারীর নাম ও মাসিক বেতন দিন!');
+  var data = {
+    name: name,
+    phone: getEl('labPhone') ? getEl('labPhone').value.trim() : '',
+    salary: salary,
+    joinDate: getEl('labJoinDate') ? getEl('labJoinDate').value : ''
+  };
+  if (db) db.ref('labours').push(data);
+  ['labName','labPhone','labSalary'].forEach(function(id) { if (getEl(id)) getEl(id).value = ''; });
+  showAppToast('কর্মচারী সফলভাবে সেভ হয়েছে!');
+};
+
+window.saveLabourPayment = function() {
+  var wKey = getEl('labPayWorker') ? getEl('labPayWorker').value : '';
+  var dt = getEl('labPayDate') ? getEl('labPayDate').value : '';
+  var pType = getEl('labPayType') ? getEl('labPayType').value : 'Advance';
+  var amt = parseFloat(getEl('labPayAmount') ? getEl('labPayAmount').value : 0) || 0;
+  var note = getEl('labPayNote') ? getEl('labPayNote').value.trim() : '';
+
+  if (!wKey || !dt || amt <= 0) return showAppToast('কর্মচারী, তারিখ ও টাকার পরিমাণ দিন!');
+  var wObj = farmStore.labours ? farmStore.labours[wKey] : null;
+  var wName = wObj ? wObj.name : 'Labour';
+
+  if (db) {
+    db.ref('labourPayments').push({
+      workerKey: wKey,
+      workerName: wName,
+      date: dt,
+      type: pType,
+      amount: amt,
+      note: note
+    });
+    db.ref('expenses').push({
+      date: dt,
+      category: 'Labour Salary',
+      title: (pType === 'Advance' ? 'অগ্রিম (Advance): ' : 'বেতন (Salary): ') + wName + (note ? ' - ' + note : ''),
+      amount: amt,
+      vendor: wName,
+      payMode: 'Cash',
+      status: 'Paid'
+    });
+  }
+  if (getEl('labPayAmount')) getEl('labPayAmount').value = '';
+  if (getEl('labPayNote')) getEl('labPayNote').value = '';
+  showAppToast(wName + '-এর ' + pType + ' সেভ ও খরচে যোগ করা হয়েছে!');
+};
+
+window.toggleLabourHistory = function(subId, btnEl) {
+  var row = getEl(subId);
+  if (!row) return;
+  if (row.style.display === 'none') {
+    row.style.display = 'table-row';
+    btnEl.innerText = 'সংকুচিত ▲';
+  } else {
+    row.style.display = 'none';
+    btnEl.innerText = 'ইতিহাস ▼';
+  }
+};
+
+window.renderLabourTable = function() {
+  var body = getEl('labourTableBody');
+  var sel = getEl('labPayWorker');
+  if (!body) return;
+
+  if (!window.currentExpYear) initExpenseFilters();
+  var prefix = window.currentExpYear + '-' + window.currentExpMonth;
+
+  if (sel) {
+    var curVal = sel.value;
+    var optHtml = '<option value="">কর্মচারী বেছে নিন</option>';
+    for (var lk in farmStore.labours) {
+      var lb = farmStore.labours[lk];
+      if (lb && lb.name) optHtml += '<option value="' + lk + '">' + lb.name + ' (₹ ' + (lb.salary || 0) + ')</option>';
+    }
+    sel.innerHTML = optHtml;
+    if (curVal) sel.value = curVal;
+  }
+
+  var keys = Object.keys(farmStore.labours || {});
+  if (keys.length === 0) {
+    body.innerHTML = '';
+    if (getEl('labourNoData')) getEl('labourNoData').style.display = 'block';
+    return;
+  }
+  if (getEl('labourNoData')) getEl('labourNoData').style.display = 'none';
+
+  var html = '';
+  keys.forEach(function(lk, idx) {
+    var w = farmStore.labours[lk];
+    if (!w) return;
+    var monAdv = 0, monSal = 0, historyList = [];
+    for (var pk in farmStore.labourPayments) {
+      var p = farmStore.labourPayments[pk];
+      if (p && p.workerKey === lk) {
+        if ((p.date || '').startsWith(prefix)) {
+          if (p.type === 'Advance') monAdv += Number(p.amount) || 0;
+          else monSal += Number(p.amount) || 0;
+        }
+        historyList.push({ key: pk, data: p });
+      }
+    }
+    var remPayable = Math.max(0, (Number(w.salary) || 0) - (monAdv + monSal));
+    var subId = 'sub_lab_' + idx;
+
+    html += '<tr style="background:#fafafa;">' +
+      '<td><strong>👷 ' + w.name + '</strong>' + (w.phone ? '<br><small style="color:#666;">📞 ' + w.phone + '</small>' : '') + '</td>' +
+      '<td><strong>₹ ' + (Number(w.salary) || 0).toLocaleString() + '</strong></td>' +
+      '<td style="color:#e65100; font-weight:600;">₹ ' + monAdv.toLocaleString() + '</td>' +
+      '<td style="color:#2e7d32; font-weight:600;">₹ ' + monSal.toLocaleString() + '</td>' +
+      '<td style="color:#c62828; font-weight:bold;">₹ ' + remPayable.toLocaleString() + '</td>' +
+      '<td>' +
+        '<button class="action-btn btn-info" onclick="toggleLabourHistory(\'' + subId + '\', this)">ইতিহাস ▼</button>' +
+        '<button class="action-btn btn-danger" onclick="deleteRecord(\'labours\',\'' + lk + '\')">Delete</button>' +
+      '</td>' +
+    '</tr>';
+
+    historyList.sort(function(a, b) { return parseDateToTime(b.data.date) - parseDateToTime(a.data.date); });
+    html += '<tr id="' + subId + '" style="display:none; background:#fffdf9;"><td colspan="6" style="padding:10px 14px;">' +
+      '<table style="width:100%; font-size:12px; background:white; border:1px solid #ffe0b2;">' +
+        '<thead><tr style="background:#fff3e0;"><th>তারিখ</th><th>ধরন</th><th>টাকা</th><th>নোট</th><th>অ্যাকশন</th></tr></thead><tbody>';
+    if (historyList.length === 0) {
+      html += '<tr><td colspan="5" style="text-align:center; color:#888;">কোনো পেমেন্ট ইতিহাস নেই।</td></tr>';
+    } else {
+      historyList.forEach(function(h) {
+        html += '<tr><td>' + formatDateBR(h.data.date) + '</td><td><span class="badge ' + (h.data.type === 'Advance' ? 'badge-warning' : 'badge-success') + '">' + h.data.type + '</span></td><td><strong>₹ ' + h.data.amount + '</strong></td><td>' + (h.data.note || '-') + '</td><td><button class="action-btn btn-danger" style="padding:2px 6px; font-size:10px;" onclick="deleteRecord(\'labourPayments\',\'' + h.key + '\')">Delete</button></td></tr>';
+      });
+    }
+    html += '</tbody></table></td></tr>';
+  });
+  body.innerHTML = html;
+};
+
 var eStkKey = null;
 function editStock(k) {
   var d = farmStore.stock[k]; if (!d) return; eStkKey = k;
-  getEl('stkName').value = d.name || ''; getEl('stkQty').value = d.qty || ''; getEl('stkUnit').value = d.unit || 'kg'; getEl('stkAlert').value = d.alertLevel || '';
-  getEl('stkSubmitBtn').innerText = 'Update Stock';
+  getEl('stkName').value = d.name || '';
+  if (getEl('stkCategory')) getEl('stkCategory').value = d.category || 'Feed & Fodder';
+  getEl('stkQty').value = d.qty || '';
+  getEl('stkUnit').value = d.unit || 'kg';
+  if (getEl('stkCost')) getEl('stkCost').value = d.unitCost || '';
+  getEl('stkAlert').value = d.alertLevel || '';
+  if (getEl('stkExpiry')) getEl('stkExpiry').value = d.expiry || '';
+  getEl('stkSubmitBtn').innerText = 'Update Stock'; getEl('stkCancelBtn').style.display = 'inline-flex';
+  switchTab('stock', document.querySelectorAll('nav button')[11]);
 }
 function cancelStockEdit() {
   eStkKey = null; getEl('stkName').value = ''; getEl('stkQty').value = ''; getEl('stkAlert').value = '';
-  getEl('stkSubmitBtn').innerText = 'Save Stock';
+  if (getEl('stkCost')) getEl('stkCost').value = '';
+  if (getEl('stkExpiry')) getEl('stkExpiry').value = '';
+  getEl('stkSubmitBtn').innerText = 'Save Stock'; getEl('stkCancelBtn').style.display = 'none';
 }
 function saveStock() {
-  var name = (getEl('stkName').value || '').trim(); if (!name) return alert('নাম দিন!');
-  var data = { name: name, qty: parseFloat(getEl('stkQty').value)||0, unit: getEl('stkUnit').value, alertLevel: parseFloat(getEl('stkAlert').value)||0 };
-  if (db) eStkKey ? db.ref('stock/' + eStkKey).update(data) : db.ref('stock').push(data);
+  var name = (getEl('stkName').value || '').trim(); if (!name) return showAppToast('নাম দিন!');
+  var qty = parseFloat(getEl('stkQty').value) || 0;
+  var unitCost = parseFloat(getEl('stkCost') ? getEl('stkCost').value : 0) || 0;
+  var category = getEl('stkCategory') ? getEl('stkCategory').value : 'Feed & Fodder';
+  var expiry = getEl('stkExpiry') ? getEl('stkExpiry').value : '';
+  var data = {
+    name: name,
+    category: category,
+    qty: qty,
+    unit: getEl('stkUnit').value,
+    unitCost: unitCost,
+    alertLevel: parseFloat(getEl('stkAlert').value) || 0,
+    expiry: expiry
+  };
+  if (db) {
+    if (eStkKey) {
+      db.ref('stock/' + eStkKey).update(data);
+    } else {
+      db.ref('stock').push(data);
+      if (qty > 0) {
+        db.ref('stockLogs').push({
+          date: new Date().toISOString().split('T')[0],
+          itemName: name,
+          category: category,
+          type: 'In',
+          qty: qty,
+          unit: data.unit,
+          unitCost: unitCost,
+          totalValue: parseFloat((qty * unitCost).toFixed(2)),
+          vendor: '',
+          note: 'প্রাথমিক স্টক এন্ট্রি'
+        });
+      }
+    }
+  }
+  showAppToast('স্টক সফলভাবে সেভ হয়েছে!');
   cancelStockEdit();
 }
+
+window.renderStockTable = function() {
+  var body = getEl('stockTableBody');
+  var sumGrid = getEl('stockSummaryGrid');
+  if (!body) return;
+
+  var catFilter = (getEl('stkFilterCategory') ? getEl('stkFilterCategory').value : '').trim();
+  var searchQ = (getEl('stkSearchInput') ? getEl('stkSearchInput').value : '').trim().toLowerCase();
+
+  var totalItems = 0, totalValuation = 0, lowCount = 0, expCount = 0;
+  var html = '';
+
+  for (var k in farmStore.stock) {
+    var d = farmStore.stock[k];
+    if (!d) continue;
+    totalItems++;
+    var qty = Number(d.qty) || 0;
+    var uCost = Number(d.unitCost) || 0;
+    var val = qty * uCost;
+    totalValuation += val;
+
+    var isLow = qty <= (Number(d.alertLevel) || 0);
+    if (isLow) lowCount++;
+
+    var expBadge = '-';
+    if (d.expiry) {
+      var eDiff = getDaysDifferenceFromToday(d.expiry);
+      if (eDiff !== null && eDiff < 0) {
+        expCount++;
+        expBadge = '<span class="badge badge-danger">' + formatDateBR(d.expiry) + ' (Expired)</span>';
+      } else if (eDiff !== null && eDiff <= 30) {
+        expCount++;
+        expBadge = '<span class="badge badge-warning">' + formatDateBR(d.expiry) + ' (' + eDiff + 'd)</span>';
+      } else {
+        expBadge = formatDateBR(d.expiry);
+      }
+    }
+
+    var cat = d.category || 'Feed & Fodder';
+    if (catFilter && cat !== catFilter) continue;
+    if (searchQ && !(d.name || '').toLowerCase().includes(searchQ)) continue;
+
+    html += '<tr>' +
+      '<td><strong>' + (d.name || '-') + '</strong><br><small style="color:#666;">' + cat + '</small></td>' +
+      '<td style="color:' + (isLow ? 'red' : '#1b5e20') + '; font-weight:bold;">' + qty + ' ' + (d.unit || '') + (isLow ? ' <span class="badge badge-danger">Low</span>' : '') + '</td>' +
+      '<td>₹ ' + uCost + ' / ' + (d.unit || '') + '<br><strong style="color:#0288d1;">মোট: ₹ ' + Math.round(val).toLocaleString() + '</strong></td>' +
+      '<td>' + expBadge + '</td>' +
+      '<td>' + (d.alertLevel || 0) + '</td>' +
+      '<td style="white-space:nowrap;">' +
+        '<button class="action-btn" style="background:#2e7d32; color:white;" onclick="openStockMoveModal(\'' + k + '\', \'In\')">+ In</button>' +
+        '<button class="action-btn btn-warning" onclick="openStockMoveModal(\'' + k + '\', \'Out\')">- Out</button>' +
+        '<button class="action-btn btn-info" onclick="editStock(\'' + k + '\')">Edit</button>' +
+        '<button class="action-btn btn-danger" onclick="deleteRecord(\'stock\',\'' + k + '\')">Delete</button>' +
+      '</td>' +
+    '</tr>';
+  }
+  body.innerHTML = html || '<tr><td colspan="6" style="text-align:center; color:#888;">কোনো স্টক আইটেম পাওয়া যায়নি।</td></tr>';
+
+  if (sumGrid) {
+    sumGrid.innerHTML =
+      '<div style="background:#e8f5e9; padding:10px; border-radius:8px; border-left:4px solid #1b5e20;"><small style="color:#555;">মোট আইটেম</small><div style="font-size:18px; font-weight:bold; color:#1b5e20;">' + totalItems + ' টি</div></div>' +
+      '<div style="background:#e3f2fd; padding:10px; border-radius:8px; border-left:4px solid #0288d1;"><small style="color:#555;">মোট স্টক মূল্য</small><div style="font-size:18px; font-weight:bold; color:#0288d1;">₹ ' + Math.round(totalValuation).toLocaleString() + '</div></div>' +
+      '<div style="background:#fff3e0; padding:10px; border-radius:8px; border-left:4px solid #f57c00;"><small style="color:#555;">লো স্টক (Low)</small><div style="font-size:18px; font-weight:bold; color:#e65100;">' + lowCount + ' টি</div></div>' +
+      '<div style="background:#ffebee; padding:10px; border-radius:8px; border-left:4px solid #d32f2f;"><small style="color:#555;">মেয়াদ শেষ / আসন্ন</small><div style="font-size:18px; font-weight:bold; color:#c62828;">' + expCount + ' টি</div></div>';
+  }
+};
+
+window._activeStockMove = null;
+window.openStockMoveModal = function(stkKey, moveType) {
+  var d = farmStore.stock[stkKey];
+  if (!d) return;
+  window._activeStockMove = { key: stkKey, type: moveType };
+  getEl('stkMoveTitle').innerText = moveType === 'In' ? '➕ নতুন স্টক যোগ (Stock In)' : '➖ স্টক ব্যবহার (Stock Out)';
+  getEl('stkMoveDesc').innerHTML = 'আইটেম: <strong>' + d.name + '</strong> | বর্তমান স্টক: <strong>' + (d.qty || 0) + ' ' + (d.unit || '') + '</strong>';
+  getEl('stkMoveDate').value = new Date().toISOString().split('T')[0];
+  getEl('stkMoveQty').value = '';
+  getEl('stkMoveCost').value = d.unitCost || 0;
+  getEl('stkMoveTotal').value = 0;
+  getEl('stkMoveVendor').value = '';
+  getEl('stkMovePaid').value = '';
+  getEl('stkMoveNote').value = '';
+  getEl('stkMoveVendorWrap').style.display = moveType === 'In' ? 'block' : 'none';
+  getEl('stockMoveModal').style.display = 'flex';
+};
+
+window.closeStockMoveModal = function() {
+  window._activeStockMove = null;
+  if (getEl('stockMoveModal')) getEl('stockMoveModal').style.display = 'none';
+};
+
+window.calcStockMoveTotal = function() {
+  var q = parseFloat(getEl('stkMoveQty') ? getEl('stkMoveQty').value : 0) || 0;
+  var c = parseFloat(getEl('stkMoveCost') ? getEl('stkMoveCost').value : 0) || 0;
+  if (getEl('stkMoveTotal')) getEl('stkMoveTotal').value = (q * c).toFixed(2);
+};
+
+window.confirmStockMove = function() {
+  if (!window._activeStockMove) return;
+  var k = window._activeStockMove.key;
+  var mType = window._activeStockMove.type;
+  var d = farmStore.stock[k];
+  if (!d) return;
+
+  var dt = getEl('stkMoveDate').value || new Date().toISOString().split('T')[0];
+  var qty = parseFloat(getEl('stkMoveQty').value) || 0;
+  var uCost = parseFloat(getEl('stkMoveCost').value) || 0;
+  var note = getEl('stkMoveNote').value.trim();
+  if (qty <= 0) return showAppToast('সঠিক পরিমাণ দিন!');
+
+  var curQty = Number(d.qty) || 0;
+  var newQty = mType === 'In' ? (curQty + qty) : Math.max(0, curQty - qty);
+  var totalVal = parseFloat((qty * uCost).toFixed(2));
+
+  if (db) {
+    var updObj = { qty: parseFloat(newQty.toFixed(2)) };
+    if (mType === 'In' && uCost > 0) updObj.unitCost = uCost;
+    db.ref('stock/' + k).update(updObj);
+
+    var vendor = getEl('stkMoveVendor').value.trim();
+    db.ref('stockLogs').push({
+      date: dt,
+      itemName: d.name,
+      category: d.category || 'Feed & Fodder',
+      type: mType,
+      qty: qty,
+      unit: d.unit || '',
+      unitCost: uCost,
+      totalValue: totalVal,
+      vendor: vendor,
+      note: note
+    });
+
+    if (mType === 'In' && getEl('stkMoveAutoExp') && getEl('stkMoveAutoExp').checked && totalVal > 0) {
+      var paidRaw = getEl('stkMovePaid').value;
+      var paidAmt = (paidRaw === '') ? totalVal : Math.min(totalVal, parseFloat(paidRaw) || 0);
+      var dueAmt = Math.max(0, totalVal - paidAmt);
+      var expCat = (d.category === 'Medicine & Vaccine') ? 'Medicine & Health' : ((d.category === 'Feed & Fodder') ? 'Feed & Fodder' : 'Other');
+      db.ref('expenses').push({
+        date: dt,
+        category: expCat,
+        title: 'Stock Purchase: ' + d.name + ' (' + qty + ' ' + (d.unit || '') + ')',
+        amount: totalVal,
+        paidAmount: paidAmt,
+        dueAmount: dueAmt,
+        vendor: vendor,
+        payMode: dueAmt > 0 ? 'Credit (বাকি)' : 'Cash',
+        status: dueAmt === 0 ? 'Paid' : (paidAmt > 0 ? 'Partial' : 'Unpaid')
+      });
+    }
+  }
+  closeStockMoveModal();
+  showAppToast('স্টক ' + (mType === 'In' ? 'যোগ' : 'ব্যবহার') + ' সফলভাবে আপডেট হয়েছে!');
+};
+
+window.exportStockCurrent = function(format) {
+  var exportData = [];
+  exportData.push(["Item Name", "Category", "Quantity", "Unit", "Unit Cost (Rs)", "Total Value (Rs)", "Expiry Date", "Alert Level"]);
+  var grandTotal = 0;
+  for (var k in farmStore.stock) {
+    var d = farmStore.stock[k];
+    if (!d) continue;
+    var q = Number(d.qty) || 0;
+    var c = Number(d.unitCost) || 0;
+    var v = q * c;
+    grandTotal += v;
+    exportData.push([
+      (d.name || '-').replace(/,/g, ' '),
+      (d.category || 'Feed & Fodder').replace(/,/g, ' '),
+      q,
+      d.unit || '-',
+      c,
+      v.toFixed(2),
+      formatDateBR(d.expiry),
+      d.alertLevel || 0
+    ]);
+  }
+  if (exportData.length <= 1) return showAppToast('এক্সপোর্ট করার মতো কোনো স্টক নেই!');
+  exportData.push(["TOTAL STOCK VALUE", "", "", "", "", grandTotal.toFixed(2), "", ""]);
+
+  var fileName = "Current_Stock_Valuation_" + new Date().toISOString().split('T')[0];
+  if (format === 'csv') {
+    var csv = "data:text/csv;charset=utf-8,\uFEFF" + exportData.map(function(r){ return r.join(","); }).join("\r\n");
+    var a = document.createElement("a"); a.href = encodeURI(csv); a.download = fileName + ".csv"; document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  } else if (format === 'txt') {
+    var txt = "data:text/plain;charset=utf-8,\uFEFF" + exportData.map(function(r){ return r.join(" \t "); }).join("\r\n");
+    var a = document.createElement("a"); a.href = encodeURI(txt); a.download = fileName + ".txt"; document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  } else if (format === 'doc') {
+    var h = "<html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'><head><meta charset='utf-8'><title>Current Stock</title></head><body><h2 style='color:#1b5e20;'>Nanda Dairy & Agro - Current Stock & Valuation</h2><table border='1' style='border-collapse:collapse; width:100%; font-family:sans-serif; font-size:12px;'>";
+    exportData.forEach(function(r, idx) {
+      h += "<tr>" + r.map(function(cell){ return idx === 0 ? "<th style='padding:6px; background:#e8f5e9;'>"+cell+"</th>" : "<td style='padding:6px;'>"+cell+"</td>"; }).join("") + "</tr>";
+    });
+    h += "</table></body></html>";
+    var blob = new Blob(['\ufeff', h], { type: 'application/msword' });
+    var a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = fileName + ".doc"; document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  }
+};
+
+window.currentStkLogYear = "";
+window.currentStkLogMonth = "";
+window.specificStkLogDate = "";
+
+window.initStockLogFilters = function() {
+  if (!window.currentStkLogYear) {
+    var d = new Date();
+    window.currentStkLogYear = d.getFullYear().toString();
+    window.currentStkLogMonth = ('0' + (d.getMonth() + 1)).slice(-2);
+  }
+  var ys = getEl('stkLogFilterYear');
+  if (ys && ys.options.length === 0) {
+    var curY = new Date().getFullYear();
+    for (var i = 0; i < 5; i++) {
+      var y = (curY - i).toString();
+      ys.options.add(new Option(y, y));
+    }
+    ys.value = window.currentStkLogYear;
+  }
+  renderStockLogMonthTabs();
+};
+
+window.renderStockLogMonthTabs = function() {
+  var tc = getEl('stkLogMonthTabs');
+  if (!tc) return;
+  var months = [{val:'01',name:'Jan'},{val:'02',name:'Feb'},{val:'03',name:'Mar'},{val:'04',name:'Apr'},{val:'05',name:'May'},{val:'06',name:'Jun'},{val:'07',name:'Jul'},{val:'08',name:'Aug'},{val:'09',name:'Sep'},{val:'10',name:'Oct'},{val:'11',name:'Nov'},{val:'12',name:'Dec'}];
+  tc.innerHTML = months.map(function(m) {
+    var act = (m.val === window.currentStkLogMonth) && !window.specificStkLogDate;
+    return '<button onclick="setStockLogMonth(\'' + m.val + '\')" style="padding:6px 14px; border:none; border-radius:20px; font-size:12px; font-weight:bold; cursor:pointer; background:' + (act ? 'var(--primary)' : '#e0e0e0') + '; color:' + (act ? 'white' : '#333') + '; min-width:60px;">' + m.name + '</button>';
+  }).join('');
+};
+
+window.setStockLogMonth = function(mVal) {
+  window.currentStkLogMonth = mVal;
+  window.specificStkLogDate = "";
+  if (getEl('stkLogFilterDate')) getEl('stkLogFilterDate').value = "";
+  renderStockLogMonthTabs();
+  renderStockLogTable();
+};
+
+window.applyStockLogFilter = function() {
+  if (getEl('stkLogFilterYear')) window.currentStkLogYear = getEl('stkLogFilterYear').value;
+  var d = getEl('stkLogFilterDate') ? getEl('stkLogFilterDate').value : "";
+  if (d) {
+    window.specificStkLogDate = d;
+    var doj = new Date(d);
+    window.currentStkLogYear = doj.getFullYear().toString();
+    window.currentStkLogMonth = ('0' + (doj.getMonth() + 1)).slice(-2);
+    if (getEl('stkLogFilterYear')) getEl('stkLogFilterYear').value = window.currentStkLogYear;
+  } else {
+    window.specificStkLogDate = "";
+  }
+  renderStockLogMonthTabs();
+  renderStockLogTable();
+};
+
+window.clearStockLogDateFilter = function() {
+  if (getEl('stkLogFilterDate')) getEl('stkLogFilterDate').value = "";
+  window.specificStkLogDate = "";
+  renderStockLogMonthTabs();
+  renderStockLogTable();
+};
+
+window.renderStockLogTable = function() {
+  var body = getEl('stockLogTableBody');
+  if (!body) return;
+  if (!window.currentStkLogYear) initStockLogFilters();
+
+  var yr = window.currentStkLogYear, mn = window.currentStkLogMonth, dt = window.specificStkLogDate;
+  var list = [];
+  for (var k in farmStore.stockLogs) {
+    var l = farmStore.stockLogs[k];
+    if (!l || !l.date) continue;
+    var match = dt ? (l.date === dt) : (l.date.substring(0, 4) === yr && l.date.substring(5, 7) === mn);
+    if (match) list.push({ key: k, data: l });
+  }
+  list.sort(function(a, b) { return parseDateToTime(b.data.date) - parseDateToTime(a.data.date); });
+
+  if (list.length === 0) {
+    body.innerHTML = '';
+    if (getEl('stockLogNoData')) getEl('stockLogNoData').style.display = 'block';
+    return;
+  }
+  if (getEl('stockLogNoData')) getEl('stockLogNoData').style.display = 'none';
+
+  body.innerHTML = list.map(function(item) {
+    var d = item.data;
+    var badge = d.type === 'In' ? '<span class="badge badge-success">+ Stock In</span>' : '<span class="badge badge-warning">- Stock Out</span>';
+    return '<tr>' +
+      '<td>' + formatDateBR(d.date) + '</td>' +
+      '<td><strong>' + (d.itemName || '-') + '</strong><br><small style="color:#666;">' + (d.category || '-') + '</small></td>' +
+      '<td>' + badge + '</td>' +
+      '<td><strong>' + (d.qty || 0) + ' ' + (d.unit || '') + '</strong></td>' +
+      '<td>₹ ' + (d.totalValue || 0) + '</td>' +
+      '<td>' + (d.vendor ? 'দোকান: ' + d.vendor + '<br>' : '') + '<small style="color:#555;">' + (d.note || '-') + '</small></td>' +
+      '<td><button class="action-btn btn-danger" onclick="deleteRecord(\'stockLogs\',\'' + item.key + '\')">Delete</button></td>' +
+    '</tr>';
+  }).join('');
+};
+
+window.exportStockLogs = function(format) {
+  if (!window.currentStkLogYear) initStockLogFilters();
+  var yr = window.currentStkLogYear, mn = window.currentStkLogMonth, dt = window.specificStkLogDate;
+  var exportData = [["Date", "Item Name", "Category", "Type", "Quantity", "Unit", "Total Value (Rs)", "Vendor", "Note"]];
+  var list = [];
+  for (var k in farmStore.stockLogs) {
+    var l = farmStore.stockLogs[k];
+    if (!l || !l.date) continue;
+    var match = dt ? (l.date === dt) : (l.date.substring(0, 4) === yr && l.date.substring(5, 7) === mn);
+    if (match) list.push(l);
+  }
+  if (list.length === 0) return showAppToast('এই মাস বা তারিখে এক্সপোর্ট করার মতো কোনো স্টক লেনদেন নেই!');
+  list.sort(function(a, b) { return parseDateToTime(b.date) - parseDateToTime(a.date); });
+  list.forEach(function(d) {
+    exportData.push([formatDateBR(d.date), (d.itemName||'-').replace(/,/g,' '), (d.category||'-').replace(/,/g,' '), d.type||'In', d.qty||0, d.unit||'-', d.totalValue||0, (d.vendor||'-').replace(/,/g,' '), (d.note||'-').replace(/,/g,' ')]);
+  });
+  var fileName = "Stock_History_" + (dt ? dt : (yr + "_" + mn));
+  if (format === 'csv') {
+    var csv = "data:text/csv;charset=utf-8,\uFEFF" + exportData.map(function(r){ return r.join(","); }).join("\r\n");
+    var a = document.createElement("a"); a.href = encodeURI(csv); a.download = fileName + ".csv"; document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  } else if (format === 'txt') {
+    var txt = "data:text/plain;charset=utf-8,\uFEFF" + exportData.map(function(r){ return r.join(" \t "); }).join("\r\n");
+    var a = document.createElement("a"); a.href = encodeURI(txt); a.download = fileName + ".txt"; document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  } else if (format === 'doc') {
+    var h = "<html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'><head><meta charset='utf-8'><title>Stock History</title></head><body><h2 style='color:#1b5e20;'>Nanda Dairy & Agro - Stock Movement History</h2><table border='1' style='border-collapse:collapse; width:100%; font-family:sans-serif; font-size:12px;'>";
+    exportData.forEach(function(r, idx) {
+      h += "<tr>" + r.map(function(cell){ return idx === 0 ? "<th style='padding:6px; background:#e8f5e9;'>"+cell+"</th>" : "<td style='padding:6px;'>"+cell+"</td>"; }).join("") + "</tr>";
+    });
+    h += "</table></body></html>";
+    var blob = new Blob(['\ufeff', h], { type: 'application/msword' });
+    var a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = fileName + ".doc"; document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  }
+};
 
 var eSemKey = null;
 function editSemen(k) {
   var d = farmStore.semen[k]; if (!d) return; eSemKey = k;
-  getEl('semBatch').value = d.batch || ''; getEl('semBreed').value = d.breed || ''; getEl('semSource').value = d.source || ''; getEl('semCount').value = d.count || '';
-  getEl('semSubmitBtn').innerText = 'Update Semen';
+  if (getEl('semDate')) getEl('semDate').value = d.date || new Date().toISOString().split('T')[0];
+  getEl('semBatch').value = d.batch || '';
+  if (getEl('semBullName')) getEl('semBullName').value = d.bullName || '';
+  getEl('semBreed').value = d.breed || '';
+  getEl('semSource').value = d.source || '';
+  if (getEl('semType')) getEl('semType').value = d.type || 'Conventional';
+  getEl('semCount').value = d.count || '';
+  if (getEl('semCost')) getEl('semCost').value = d.cost || '';
+  if (getEl('semAlert')) getEl('semAlert').value = d.alertLevel || '';
+  getEl('semSubmitBtn').innerText = 'Update Semen'; getEl('semCancelBtn').style.display = 'inline-flex';
+  switchTab('semen', document.querySelectorAll('nav button')[12]);
 }
 function cancelSemenEdit() {
-  eSemKey = null; ['semBatch','semBreed','semSource','semCount'].forEach(function(i){ getEl(i).value=''; });
-  getEl('semSubmitBtn').innerText = 'Save Semen Stock';
+  eSemKey = null;
+  ['semBatch','semBullName','semBreed','semSource','semCount','semCost','semAlert'].forEach(function(i){ if(getEl(i)) getEl(i).value=''; });
+  if (getEl('semDate')) getEl('semDate').value = new Date().toISOString().split('T')[0];
+  if (getEl('semType')) getEl('semType').value = 'Conventional';
+  getEl('semSubmitBtn').innerText = 'Save Semen'; getEl('semCancelBtn').style.display = 'none';
 }
 function saveSemen() {
-  var b = (getEl('semBatch').value || '').trim(); if (!b) return alert('Batch দিন!');
-  var data = { batch: b, breed: getEl('semBreed').value, source: getEl('semSource').value, count: parseFloat(getEl('semCount').value)||0 };
-  if (db) eSemKey ? db.ref('semen/' + eSemKey).update(data) : db.ref('semen').push(data);
+  var b = (getEl('semBatch').value || '').trim(); if (!b) return showAppToast('Batch No দিন!');
+  var dt = (getEl('semDate') ? getEl('semDate').value : '') || new Date().toISOString().split('T')[0];
+  var data = {
+    date: dt,
+    batch: b,
+    bullName: getEl('semBullName') ? getEl('semBullName').value.trim() : '',
+    breed: getEl('semBreed').value.trim(),
+    source: getEl('semSource').value.trim(),
+    type: getEl('semType') ? getEl('semType').value : 'Conventional',
+    count: parseFloat(getEl('semCount').value) || 0,
+    cost: parseFloat(getEl('semCost') ? getEl('semCost').value : 0) || 0,
+    alertLevel: parseFloat(getEl('semAlert') ? getEl('semAlert').value : 0) || 0
+  };
+  if (db) {
+    if (eSemKey) {
+      db.ref('semen/' + eSemKey).update(data);
+    } else {
+      db.ref('semen').push(data);
+    }
+  }
+  showAppToast('সিমেন স্টক সেভ হয়েছে! (AI করার সময় খরচ Expenses-এ যুক্ত হবে)');
   cancelSemenEdit();
 }
+
+window.currentSemYear = "";
+window.currentSemMonth = "ALL";
+window.specificSemDate = "";
+
+window.initSemenFilters = function() {
+  if (!window.currentSemYear) {
+    window.currentSemYear = new Date().getFullYear().toString();
+  }
+  var ys = getEl('semFilterYear');
+  if (ys && ys.options.length === 0) {
+    var curY = new Date().getFullYear();
+    for (var i = 0; i < 5; i++) {
+      var y = (curY - i).toString();
+      ys.options.add(new Option(y, y));
+    }
+    ys.value = window.currentSemYear;
+  }
+  renderSemenMonthTabs();
+};
+
+window.renderSemenMonthTabs = function() {
+  var tc = getEl('semMonthTabs');
+  if (!tc) return;
+  var months = [
+    {val:'ALL',name:'সব (All)'},{val:'01',name:'Jan'},{val:'02',name:'Feb'},{val:'03',name:'Mar'},{val:'04',name:'Apr'},
+    {val:'05',name:'May'},{val:'06',name:'Jun'},{val:'07',name:'Jul'},{val:'08',name:'Aug'},
+    {val:'09',name:'Sep'},{val:'10',name:'Oct'},{val:'11',name:'Nov'},{val:'12',name:'Dec'}
+  ];
+  tc.innerHTML = months.map(function(m) {
+    var act = (m.val === window.currentSemMonth) && !window.specificSemDate;
+    return '<button onclick="setSemenMonth(\'' + m.val + '\')" style="padding:6px 14px; border:none; border-radius:20px; font-size:12px; font-weight:bold; cursor:pointer; background:' + (act ? 'var(--primary)' : '#e0e0e0') + '; color:' + (act ? 'white' : '#333') + '; min-width:60px;">' + m.name + '</button>';
+  }).join('');
+};
+
+window.setSemenMonth = function(mVal) {
+  window.currentSemMonth = mVal;
+  window.specificSemDate = "";
+  if (getEl('semFilterDate')) getEl('semFilterDate').value = "";
+  renderSemenMonthTabs();
+  renderSemenTable();
+};
+
+window.applySemenFilter = function() {
+  if (getEl('semFilterYear')) window.currentSemYear = getEl('semFilterYear').value;
+  var d = getEl('semFilterDate') ? getEl('semFilterDate').value : "";
+  if (d) {
+    window.specificSemDate = d;
+    var doj = new Date(d);
+    window.currentSemYear = doj.getFullYear().toString();
+    window.currentSemMonth = ('0' + (doj.getMonth() + 1)).slice(-2);
+    if (getEl('semFilterYear')) getEl('semFilterYear').value = window.currentSemYear;
+  } else {
+    window.specificSemDate = "";
+  }
+  renderSemenMonthTabs();
+  renderSemenTable();
+};
+
+window.clearSemenDateFilter = function() {
+  if (getEl('semFilterDate')) getEl('semFilterDate').value = "";
+  window.specificSemDate = "";
+  window.currentSemMonth = "ALL";
+  renderSemenMonthTabs();
+  renderSemenTable();
+};
+
+window.getFilteredSemenList = function() {
+  if (!window.currentSemYear) initSemenFilters();
+  var yr = window.currentSemYear, mn = window.currentSemMonth, dt = window.specificSemDate;
+  var typeFilter = (getEl('semFilterType') ? getEl('semFilterType').value : '').trim();
+  var breedFilter = (getEl('semFilterBreed') ? getEl('semFilterBreed').value : '').trim().toLowerCase();
+  var searchQ = (getEl('semSearchInput') ? getEl('semSearchInput').value : '').trim().toLowerCase();
+
+  var res = [];
+  for (var k in farmStore.semen) {
+    var d = farmStore.semen[k];
+    if (!d) continue;
+    var sDate = (d.date || '').trim();
+    var dateMatch = true;
+    if (dt) {
+      dateMatch = (sDate === dt);
+    } else if (mn !== 'ALL') {
+      dateMatch = (sDate.substring(0, 4) === yr && sDate.substring(5, 7) === mn);
+    }
+    if (!dateMatch) continue;
+
+    var sType = d.type || 'Conventional';
+    if (typeFilter && sType !== typeFilter) continue;
+    if (breedFilter && (d.breed || '').trim().toLowerCase() !== breedFilter) continue;
+    var txt = ((d.batch || '') + ' ' + (d.bullName || '') + ' ' + (d.breed || '') + ' ' + (d.source || '')).toLowerCase();
+    if (searchQ && !txt.includes(searchQ)) continue;
+
+    res.push({ key: k, data: d });
+  }
+  res.sort(function(a, b) { return parseDateToTime(b.data.date) - parseDateToTime(a.data.date); });
+  return res;
+};
+
+window.showMonthlySemenStatement = function() {
+  var list = getFilteredSemenList();
+  if (list.length === 0) return showAppToast('বর্তমান ভিউতে প্রিন্ট করার মতো কোনো সিমেন রেকর্ড নেই!');
+  var statsMap = getSemenStatsMap();
+  var yr = window.currentSemYear, mn = window.currentSemMonth, dt = window.specificSemDate;
+  var periodLabel = dt ? formatDateBR(dt) : (mn === 'ALL' ? 'সকল সময় (All Time)' : (mn + '/' + yr));
+
+  document.body.setAttribute('data-print', 'invoice');
+  getEl('invMainDocTitle').innerText = 'সিমেন স্টক ও সাফল্যের রিপোর্ট / SEMEN STATEMENT (' + periodLabel + ')';
+
+  var totStraws = 0, conv = 0, sexed = 0, totVal = 0;
+  var rows = '';
+  list.forEach(function(item) {
+    var d = item.data;
+    var cnt = Number(d.count) || 0;
+    var cost = Number(d.cost) || 0;
+    totStraws += cnt;
+    totVal += (cnt * cost);
+    if ((d.type || 'Conventional') === 'Sexed Sorted') sexed += cnt;
+    else conv += cnt;
+    var bKey = (d.batch || '').trim().toLowerCase();
+    var stObj = statsMap[bKey] || { totalAI: 0, success: 0 };
+    var rate = stObj.totalAI > 0 ? Math.round((stObj.success / stObj.totalAI) * 100) + '%' : '-';
+    rows += '<tr><td>' + formatDateBR(d.date) + '</td><td><strong>' + (d.batch||'-') + '</strong>' + (d.bullName ? ' ('+d.bullName+')' : '') + '</td><td>' + (d.breed||'-') + '<br><small>' + (d.source||'-') + '</small></td><td>' + (d.type||'Conventional') + '</td><td>' + cnt + '</td><td>' + rate + ' (' + stObj.success + '/' + stObj.totalAI + ')</td></tr>';
+  });
+
+  getEl('invoiceDetails').innerHTML =
+    '<div style="display:flex; justify-content:space-between; background:#f1f8e9; padding:10px; border-radius:8px; margin-bottom:12px;">' +
+      '<div><strong>মোট স্ট্র:</strong> ' + totStraws + ' টি (Conv: ' + conv + ', Sexed: ' + sexed + ')</div>' +
+      '<div><strong>মোট স্টক মূল্য:</strong> ₹ ' + Math.round(totVal).toLocaleString() + '</div>' +
+    '</div>' +
+    '<table class="invoice-table" style="border:1px solid #ddd; width:100%; min-width:unset;">' +
+      '<thead><tr style="background:#e8f5e9;"><th>তারিখ</th><th>ব্যাচ ও ষাঁড়</th><th>ব্রিড ও কোম্পানি</th><th>ধরন</th><th>স্ট্র</th><th>সাফল্যের হার</th></tr></thead>' +
+      '<tbody>' + rows + '</tbody>' +
+    '</table>';
+
+  getEl('invoiceModal').style.display = 'flex';
+};
+
+window.getSemenStatsMap = function() {
+  var stats = {};
+  for (var bk in farmStore.breeding) {
+    var br = farmStore.breeding[bk];
+    if (!br || !br.semenId) continue;
+    var key = br.semenId.trim().toLowerCase();
+    if (!stats[key]) stats[key] = { totalAI: 0, success: 0, failed: 0 };
+    stats[key].totalAI++;
+    var st = String(br.status || '').toLowerCase();
+    if (st === 'pregnant' || st === 'calved') stats[key].success++;
+    else if (st === 'failed') stats[key].failed++;
+  }
+  return stats;
+};
+
+window.renderSemenTable = function() {
+  var body = getEl('semenTableBody');
+  var sumGrid = getEl('semenSummaryGrid');
+  var batchDL = getEl('semenBatchList');
+  var breedFilterEl = getEl('semFilterBreed');
+  if (!body) return;
+
+  var statsMap = getSemenStatsMap();
+  if (!window.currentSemYear) initSemenFilters();
+  var totalStraws = 0, convStraws = 0, sexedStraws = 0, totalValue = 0, lowBatches = 0, totAI = 0, totSucc = 0;
+  var uniqueBreeds = {};
+  var dlHtml = '';
+
+  for (var kAll in farmStore.semen) {
+    var dAll = farmStore.semen[kAll];
+    if (!dAll) continue;
+    var cntAll = Number(dAll.count) || 0;
+    if (dAll.breed) uniqueBreeds[dAll.breed.trim()] = true;
+    if (dAll.batch) {
+      dlHtml += '<option value="' + dAll.batch + '">' + (dAll.bullName ? dAll.bullName + ' - ' : '') + (dAll.breed || '') + ' (' + (dAll.source || '') + ') [Stock: ' + cntAll + ']</option>';
+    }
+  }
+
+  var filteredList = getFilteredSemenList();
+  var html = '';
+  filteredList.forEach(function(item) {
+    var k = item.key, d = item.data;
+    var cnt = Number(d.count) || 0;
+    var cost = Number(d.cost) || 0;
+    var al = Number(d.alertLevel) || 0;
+    totalStraws += cnt;
+    if ((d.type || 'Conventional') === 'Sexed Sorted') sexedStraws += cnt;
+    else convStraws += cnt;
+    totalValue += (cnt * cost);
+    if ((al > 0 && cnt <= al) || cnt <= 0) lowBatches++;
+
+    var bKey = (d.batch || '').trim().toLowerCase();
+    var bullKey = (d.bullName || '').trim().toLowerCase();
+    var stObj = statsMap[bKey] || (bullKey ? statsMap[bullKey] : null) || { totalAI: 0, success: 0, failed: 0 };
+    totAI += stObj.totalAI;
+    totSucc += stObj.success;
+
+    var sType = d.type || 'Conventional';
+    var ratePct = stObj.totalAI > 0 ? Math.round((stObj.success / stObj.totalAI) * 100) + '%' : '-';
+    var isLow = (al > 0 && cnt <= al) || cnt <= 0;
+    var typeBadge = sType === 'Sexed Sorted' ? '<span class="badge" style="background:#f3e5f5; color:#7b1fa2;">Sexed Sorted</span>' : '<span class="badge badge-success">Conventional</span>';
+
+    html += '<tr>' +
+      '<td>' + formatDateBR(d.date) + '</td>' +
+      '<td><strong>' + (d.batch || '-') + '</strong>' + (d.bullName ? '<br><small style="color:#1b5e20;">🐂 ' + d.bullName + '</small>' : '') + '</td>' +
+      '<td><strong>' + (d.breed || '-') + '</strong><br><small style="color:#666;">🏢 ' + (d.source || '-') + '</small></td>' +
+      '<td>' + typeBadge + '</td>' +
+      '<td><strong style="color:' + (isLow ? 'red' : '#1b5e20') + ';">' + cnt + ' Straws</strong>' + (isLow ? ' <span class="badge badge-danger">Low</span>' : '') + (cost > 0 ? '<br><small style="color:#555;">₹ ' + cost + '/straw</small>' : '') + '</td>' +
+      '<td><strong>' + ratePct + '</strong><br><small style="color:#555;">AI: ' + stObj.totalAI + ' | Preg: ' + stObj.success + ' | Fail: ' + stObj.failed + '</small></td>' +
+      '<td><button class="action-btn btn-info" onclick="editSemen(\'' + k + '\')">Edit</button><button class="action-btn btn-danger" onclick="deleteRecord(\'semen\',\'' + k + '\')">Delete</button></td>' +
+    '</tr>';
+  });
+
+  if (batchDL) batchDL.innerHTML = dlHtml;
+  if (breedFilterEl) {
+    var curB = breedFilterEl.value;
+    var bOpt = '<option value="">সকল ব্রিড (Breed)</option>';
+    Object.keys(uniqueBreeds).sort().forEach(function(brName) {
+      bOpt += '<option value="' + brName + '" ' + (curB.toLowerCase() === brName.toLowerCase() ? 'selected' : '') + '>' + brName + '</option>';
+    });
+    breedFilterEl.innerHTML = bOpt;
+  }
+
+  body.innerHTML = html || '<tr><td colspan="7" style="text-align:center; color:#888;">কোনো সিমেন স্টক রেকর্ড নেই।</td></tr>';
+
+  var overallRate = totAI > 0 ? Math.round((totSucc / totAI) * 100) + '%' : '0%';
+  if (sumGrid) {
+    sumGrid.innerHTML =
+      '<div style="background:#e8f5e9; padding:10px; border-radius:8px; border-left:4px solid #1b5e20;"><small style="color:#555;">মোট সিমেন স্ট্র</small><div style="font-size:18px; font-weight:bold; color:#1b5e20;">' + totalStraws + ' টি</div></div>' +
+      '<div style="background:#f1f8e9; padding:10px; border-radius:8px; border-left:4px solid #2e7d32;"><small style="color:#555;">Conventional স্ট্র</small><div style="font-size:18px; font-weight:bold; color:#2e7d32;">' + convStraws + ' টি</div></div>' +
+      '<div style="background:#f3e5f5; padding:10px; border-radius:8px; border-left:4px solid #7b1fa2;"><small style="color:#555;">Sexed Sorted স্ট্র</small><div style="font-size:18px; font-weight:bold; color:#7b1fa2;">' + sexedStraws + ' টি</div></div>' +
+      '<div style="background:#e3f2fd; padding:10px; border-radius:8px; border-left:4px solid #0288d1;"><small style="color:#555;">মোট সিমেন মূল্য</small><div style="font-size:18px; font-weight:bold; color:#0288d1;">₹ ' + Math.round(totalValue).toLocaleString() + '</div></div>' +
+      '<div style="background:#fff3e0; padding:10px; border-radius:8px; border-left:4px solid #f57c00;"><small style="color:#555;">লো স্ট্র ও সাফল্য</small><div style="font-size:14px; font-weight:bold; color:#e65100; margin-top:4px;">Low: ' + lowBatches + ' | হার: ' + overallRate + '</div></div>';
+  }
+};
+
+window.exportSemen = function(format) {
+  var statsMap = getSemenStatsMap();
+  var filteredList = getFilteredSemenList();
+  var exportData = [["Date", "Batch No", "Bull Name", "Breed", "Company/Source", "Type", "Straw Count", "Cost/Straw (Rs)", "Total AI", "Pregnant/Calved", "Success Rate"]];
+  filteredList.forEach(function(item) {
+    var d = item.data;
+    var bKey = (d.batch || '').trim().toLowerCase();
+    var stObj = statsMap[bKey] || { totalAI: 0, success: 0 };
+    var rate = stObj.totalAI > 0 ? Math.round((stObj.success / stObj.totalAI) * 100) + '%' : '0%';
+    exportData.push([
+      formatDateBR(d.date), (d.batch||'-').replace(/,/g,' '), (d.bullName||'-').replace(/,/g,' '), (d.breed||'-').replace(/,/g,' '),
+      (d.source||'-').replace(/,/g,' '), d.type||'Conventional', d.count||0, d.cost||0, stObj.totalAI, stObj.success, rate
+    ]);
+  });
+  if (exportData.length <= 1) return showAppToast('এক্সপোর্ট করার মতো কোনো সিমেন রেকর্ড নেই!');
+  var fileName = "Semen_Stock_Report_" + new Date().toISOString().split('T')[0];
+  if (format === 'csv') {
+    var csv = "data:text/csv;charset=utf-8,\uFEFF" + exportData.map(function(r){ return r.join(","); }).join("\r\n");
+    var a = document.createElement("a"); a.href = encodeURI(csv); a.download = fileName + ".csv"; document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  } else if (format === 'txt') {
+    var txt = "data:text/plain;charset=utf-8,\uFEFF" + exportData.map(function(r){ return r.join(" \t "); }).join("\r\n");
+    var a = document.createElement("a"); a.href = encodeURI(txt); a.download = fileName + ".txt"; document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  } else if (format === 'doc') {
+    var h = "<html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'><head><meta charset='utf-8'><title>Semen Report</title></head><body><h2 style='color:#1b5e20;'>Nanda Dairy & Agro - Semen Stock & Conception Rate</h2><table border='1' style='border-collapse:collapse; width:100%; font-family:sans-serif; font-size:12px;'>";
+    exportData.forEach(function(r, idx) {
+      h += "<tr>" + r.map(function(cell){ return idx === 0 ? "<th style='padding:6px; background:#e8f5e9;'>"+cell+"</th>" : "<td style='padding:6px;'>"+cell+"</td>"; }).join("") + "</tr>";
+    });
+    h += "</table></body></html>";
+    var blob = new Blob(['\ufeff', h], { type: 'application/msword' });
+    var a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = fileName + ".doc"; document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  }
+};
 
 var eHlthKey = null;
 function editHealth(k) {
   var d = farmStore.health[k]; if (!d) return; eHlthKey = k;
-  getEl('hlthDate').value = d.date || ''; getEl('hlthCowTag').value = d.cowTag || ''; getEl('hlthType').value = d.type || 'Vaccination';
-  getEl('hlthDesc').value = d.desc || ''; getEl('hlthNextDate').value = d.nextDate || '';
-  getEl('hlthSubmitBtn').innerText = 'Update Health';
+  getEl('hlthDate').value = d.date || '';
+  getEl('hlthCowTag').value = d.cowTag || '';
+  getEl('hlthType').value = d.type || 'General Treatment';
+  if (getEl('hlthDisease')) getEl('hlthDisease').value = d.disease || '';
+  if (getEl('hlthVet')) getEl('hlthVet').value = d.vet || '';
+  if (getEl('hlthMedicine')) getEl('hlthMedicine').value = d.medicine || '';
+  if (getEl('hlthWithdrawalDays')) getEl('hlthWithdrawalDays').value = d.withdrawalDays || '0';
+  if (getEl('hlthStatus')) getEl('hlthStatus').value = d.status || 'Under Treatment';
+  getEl('hlthDesc').value = d.desc || '';
+  if (getEl('hlthCost')) getEl('hlthCost').value = d.cost || '';
+  getEl('hlthNextDate').value = d.nextDate || '';
+  getEl('hlthSubmitBtn').innerText = 'Update Health'; getEl('hlthCancelBtn').style.display = 'inline-flex';
+  switchTab('health', document.querySelectorAll('nav button')[13]);
 }
 function cancelHealthEdit() {
-  eHlthKey = null; ['hlthCowTag','hlthDesc','hlthNextDate'].forEach(function(i){ getEl(i).value=''; });
-  getEl('hlthSubmitBtn').innerText = 'Save Health Record';
+  eHlthKey = null;
+  ['hlthCowTag','hlthDisease','hlthVet','hlthMedicine','hlthWithdrawalDays','hlthDesc','hlthCost','hlthNextDate'].forEach(function(i){ if(getEl(i)) getEl(i).value=''; });
+  if (getEl('hlthStatus')) getEl('hlthStatus').value = 'Under Treatment';
+  getEl('hlthSubmitBtn').innerText = 'Save Health Record'; getEl('hlthCancelBtn').style.display = 'none';
 }
 function saveHealth() {
-  var tag = (getEl('hlthCowTag').value || '').trim(); if (!tag) return alert('Tag দিন!');
-  var data = { date: getEl('hlthDate').value, cowTag: tag, type: getEl('hlthType').value, desc: getEl('hlthDesc').value, nextDate: getEl('hlthNextDate').value };
-  if (db) eHlthKey ? db.ref('health/' + eHlthKey).update(data) : db.ref('health').push(data);
+  var tag = (getEl('hlthCowTag').value || '').trim(); if (!tag) return showAppToast('Tag দিন!');
+  var hCost = parseFloat(getEl('hlthCost') ? getEl('hlthCost').value : 0) || 0;
+  var statusVal = getEl('hlthStatus') ? getEl('hlthStatus').value : 'Under Treatment';
+  var diseaseVal = getEl('hlthDisease') ? getEl('hlthDisease').value.trim() : '';
+  var vetVal = getEl('hlthVet') ? getEl('hlthVet').value.trim() : '';
+  var medVal = getEl('hlthMedicine') ? getEl('hlthMedicine').value.trim() : '';
+  var data = {
+    date: getEl('hlthDate').value || new Date().toISOString().split('T')[0],
+    cowTag: tag,
+    type: getEl('hlthType').value,
+    disease: diseaseVal,
+    vet: vetVal,
+    medicine: medVal,
+    withdrawalDays: parseInt(getEl('hlthWithdrawalDays') ? getEl('hlthWithdrawalDays').value : 0) || 0,
+    status: statusVal,
+    desc: getEl('hlthDesc').value,
+    cost: hCost,
+    nextDate: getEl('hlthNextDate').value,
+    alertResolved: false
+  };
+  if (db) {
+    var hId = eHlthKey;
+    if (eHlthKey) {
+      db.ref('health/' + eHlthKey).update(data);
+    } else {
+      hId = db.ref('health').push(data).key;
+    }
+    var cKey = findCattleKeyByTag(tag);
+    if (cKey && farmStore.cattle[cKey]) {
+      var curStat = String(farmStore.cattle[cKey].status || '');
+      if (statusVal === 'Under Treatment' && curStat !== 'Sick') {
+        db.ref('cattle/' + cKey).update({ status: 'Sick' });
+      } else if (statusVal === 'Recovered' && curStat === 'Sick') {
+        db.ref('cattle/' + cKey).update({ status: 'Milking' });
+      }
+    }
+    syncAutoExpense('health_' + hId, {
+      date: data.date,
+      category: 'Medicine & Health',
+      title: 'Health (' + (diseaseVal || data.type) + ') - Tag: ' + tag,
+      amount: hCost,
+      vendor: vetVal
+    });
+  }
+  showAppToast('স্বাস্থ্য রেকর্ড ও খরচ সেভ হয়েছে!');
   cancelHealthEdit();
 }
 
+window.currentHlthYear = "";
+window.currentHlthMonth = "ALL";
+window.specificHlthDate = "";
+
+window.initHealthFilters = function() {
+  if (!window.currentHlthYear) {
+    window.currentHlthYear = new Date().getFullYear().toString();
+  }
+  var ys = getEl('hlthFilterYear');
+  if (ys && ys.options.length === 0) {
+    var curY = new Date().getFullYear();
+    for (var i = 0; i < 5; i++) {
+      var y = (curY - i).toString();
+      ys.options.add(new Option(y, y));
+    }
+    ys.value = window.currentHlthYear;
+  }
+  renderHealthMonthTabs();
+};
+
+window.renderHealthMonthTabs = function() {
+  var tc = getEl('hlthMonthTabs');
+  if (!tc) return;
+  var months = [
+    {val:'ALL',name:'ALL DATA'},{val:'01',name:'Jan'},{val:'02',name:'Feb'},{val:'03',name:'Mar'},{val:'04',name:'Apr'},
+    {val:'05',name:'May'},{val:'06',name:'Jun'},{val:'07',name:'Jul'},{val:'08',name:'Aug'},
+    {val:'09',name:'Sep'},{val:'10',name:'Oct'},{val:'11',name:'Nov'},{val:'12',name:'Dec'}
+  ];
+  tc.innerHTML = months.map(function(m) {
+    var act = (m.val === window.currentHlthMonth) && !window.specificHlthDate;
+    return '<button onclick="setHealthMonth(\'' + m.val + '\')" style="padding:6px 14px; border:none; border-radius:20px; font-size:12px; font-weight:bold; cursor:pointer; background:' + (act ? 'var(--primary)' : '#e0e0e0') + '; color:' + (act ? 'white' : '#333') + '; min-width:60px;">' + m.name + '</button>';
+  }).join('');
+};
+
+window.setHealthMonth = function(mVal) {
+  window.currentHlthMonth = mVal;
+  window.specificHlthDate = "";
+  if (getEl('hlthFilterDate')) getEl('hlthFilterDate').value = "";
+  renderHealthMonthTabs();
+  renderHealthTable();
+};
+
+window.applyHealthFilter = function() {
+  if (getEl('hlthFilterYear')) window.currentHlthYear = getEl('hlthFilterYear').value;
+  var d = getEl('hlthFilterDate') ? getEl('hlthFilterDate').value : "";
+  if (d) {
+    window.specificHlthDate = d;
+    var doj = new Date(d);
+    window.currentHlthYear = doj.getFullYear().toString();
+    window.currentHlthMonth = ('0' + (doj.getMonth() + 1)).slice(-2);
+    if (getEl('hlthFilterYear')) getEl('hlthFilterYear').value = window.currentHlthYear;
+  } else {
+    window.specificHlthDate = "";
+  }
+  renderHealthMonthTabs();
+  renderHealthTable();
+};
+
+window.clearHealthDateFilter = function() {
+  if (getEl('hlthFilterDate')) getEl('hlthFilterDate').value = "";
+  if (getEl('hlthSearchInput')) getEl('hlthSearchInput').value = "";
+  window.specificHlthDate = "";
+  window.currentHlthMonth = "ALL";
+  renderHealthMonthTabs();
+  renderHealthTable();
+};
+
+window.getFilteredHealthList = function() {
+  if (!window.currentHlthYear) initHealthFilters();
+  var yr = window.currentHlthYear, mn = window.currentHlthMonth, dt = window.specificHlthDate;
+  var searchQ = (getEl('hlthSearchInput') ? getEl('hlthSearchInput').value : '').trim().toLowerCase();
+  var res = [];
+  for (var k in farmStore.health) {
+    var d = farmStore.health[k];
+    if (!d) continue;
+    var hDt = (d.date || '').trim();
+    var match = dt ? (hDt === dt) : (mn === 'ALL' ? true : (hDt.substring(0,4) === yr && hDt.substring(5,7) === mn));
+    if (!match) continue;
+    var txt = ((d.cowTag||'') + ' ' + (d.type||'') + ' ' + (d.disease||'') + ' ' + (d.vet||'') + ' ' + (d.medicine||'')).toLowerCase();
+    if (searchQ && !txt.includes(searchQ)) continue;
+    res.push({ key: k, data: d });
+  }
+  res.sort(function(a, b) { return parseDateToTime(b.data.date) - parseDateToTime(a.data.date); });
+  return res;
+};
+
+window.renderHealthTable = function() {
+  var body = getEl('healthTableBody');
+  if (!body) return;
+  var list = getFilteredHealthList();
+  if (list.length === 0) {
+    body.innerHTML = '';
+    if (getEl('healthNoData')) getEl('healthNoData').style.display = 'block';
+    return;
+  }
+  if (getEl('healthNoData')) getEl('healthNoData').style.display = 'none';
+  body.innerHTML = list.map(function(item) {
+    var d = item.data, k = item.key;
+    var stBadge = (d.status === 'Under Treatment') ? '<span class="badge badge-danger">Under Treatment</span>' : '<span class="badge badge-success">' + (d.status || 'Recovered') + '</span>';
+    var wInfo = (Number(d.withdrawalDays) > 0) ? '<br><small style="color:#c62828;">Withdrawal: ' + d.withdrawalDays + 'd</small>' : '';
+    return '<tr>' +
+      '<td>' + formatDateBR(d.date) + '</td>' +
+      '<td><strong>🐄 ' + (d.cowTag || '-') + '</strong></td>' +
+      '<td><strong>' + (d.type || '-') + '</strong>' + (d.disease ? '<br><small style="color:#c62828;">' + d.disease + '</small>' : '') + '</td>' +
+      '<td>' + (d.vet ? '👨‍⚕️ ' + d.vet + '<br>' : '') + '<small style="color:#1b5e20;">' + (d.medicine || d.desc || '-') + '</small>' + wInfo + '</td>' +
+      '<td>' + stBadge + '</td>' +
+      '<td>' + formatDateBR(d.nextDate) + '</td>' +
+      '<td>₹ ' + (d.cost || 0) + '</td>' +
+      '<td><button class="action-btn btn-info" onclick="editHealth(\'' + k + '\')">Edit</button><button class="action-btn btn-danger" onclick="deleteRecord(\'health\',\'' + k + '\')">Delete</button></td>' +
+    '</tr>';
+  }).join('');
+};
+
+window.showMonthlyHealthReport = function() {
+  var list = getFilteredHealthList();
+  if (list.length === 0) return showAppToast('বর্তমান ভিউতে প্রিন্ট করার মতো কোনো স্বাস্থ্য রেকর্ড নেই!');
+  var periodLabel = window.specificHlthDate ? formatDateBR(window.specificHlthDate) : (window.currentHlthMonth === 'ALL' ? 'ALL DATA' : (window.currentHlthMonth + '/' + window.currentHlthYear));
+  document.body.setAttribute('data-print', 'invoice');
+  getEl('invMainDocTitle').innerText = 'মাসিক স্বাস্থ্য ও চিকিৎসা রিপোর্ট / HEALTH REPORT (' + periodLabel + ')';
+  var totCost = 0;
+  var rows = list.map(function(item) {
+    var d = item.data;
+    totCost += Number(d.cost) || 0;
+    return '<tr><td>' + formatDateBR(d.date) + '</td><td><strong>' + (d.cowTag||'-') + '</strong></td><td>' + (d.disease||d.type||'-') + '</td><td>' + (d.vet||'-') + ' / ' + (d.medicine||'-') + '</td><td>' + (d.status||'Recovered') + '</td><td style="text-align:right;">₹ ' + (d.cost||0) + '</td></tr>';
+  }).join('');
+  getEl('invoiceDetails').innerHTML =
+    '<table class="invoice-table" style="border:1px solid #ddd; width:100%; min-width:unset;">' +
+      '<thead><tr style="background:#e8f5e9;"><th>তারিখ</th><th>Tag ID</th><th>রোগ/ধরন</th><th>ডাক্তার ও ওষুধ</th><th>স্ট্যাটাস</th><th style="text-align:right;">খরচ</th></tr></thead>' +
+      '<tbody>' + rows + '</tbody>' +
+    '</table>' +
+    '<div style="text-align:right; margin-top:12px; font-weight:bold; color:#c62828;">মোট চিকিৎসা খরচ: ₹ ' + totCost.toLocaleString() + '</div>';
+  getEl('invoiceModal').style.display = 'flex';
+};
+
+window.exportHealth = function(format) {
+  var list = getFilteredHealthList();
+  if (list.length === 0) return showAppToast('এক্সপোর্ট করার মতো কোনো স্বাস্থ্য রেকর্ড নেই!');
+  var exportData = [["Date", "Tag ID", "Type", "Disease", "Vet", "Medicine", "Withdrawal (Days)", "Status", "Next Dose", "Cost (Rs)"]];
+  list.forEach(function(item) {
+    var d = item.data;
+    exportData.push([
+      formatDateBR(d.date), d.cowTag||'-', (d.type||'-').replace(/,/g,' '), (d.disease||'-').replace(/,/g,' '),
+      (d.vet||'-').replace(/,/g,' '), (d.medicine||'-').replace(/,/g,' '), d.withdrawalDays||0,
+      d.status||'Recovered', formatDateBR(d.nextDate), d.cost||0
+    ]);
+  });
+  var fileName = "Health_Report_" + (window.specificHlthDate ? window.specificHlthDate : (window.currentHlthYear + "_" + window.currentHlthMonth));
+  if (format === 'csv') {
+    var csv = "data:text/csv;charset=utf-8,\uFEFF" + exportData.map(function(r){ return r.join(","); }).join("\r\n");
+    var a = document.createElement("a"); a.href = encodeURI(csv); a.download = fileName + ".csv"; document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  } else if (format === 'txt') {
+    var txt = "data:text/plain;charset=utf-8,\uFEFF" + exportData.map(function(r){ return r.join(" \t "); }).join("\r\n");
+    var a = document.createElement("a"); a.href = encodeURI(txt); a.download = fileName + ".txt"; document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  } else if (format === 'doc') {
+    var h = "<html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'><head><meta charset='utf-8'><title>Health Report</title></head><body><h2 style='color:#1b5e20;'>Nanda Dairy & Agro - Health & Treatment Report</h2><table border='1' style='border-collapse:collapse; width:100%; font-family:sans-serif; font-size:12px;'>";
+    exportData.forEach(function(r, idx) {
+      h += "<tr>" + r.map(function(cell){ return idx === 0 ? "<th style='padding:6px; background:#e8f5e9;'>"+cell+"</th>" : "<td style='padding:6px;'>"+cell+"</td>"; }).join("") + "</tr>";
+    });
+    h += "</table></body></html>";
+    var blob = new Blob(['\ufeff', h], { type: 'application/msword' });
+    var a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = fileName + ".doc"; document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  }
+};
+
 function downloadBackup() {
-  if (!db) return alert('ডাটাবেস নেই!');
+  if (!db) return showAppToast('ডাটাবেস নেই!');
   db.ref('/').once('value', function(snap) {
     var dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(snap.val(), null, 2));
     var a = document.createElement('a'); a.setAttribute("href", dataStr); a.setAttribute("download", "Nanda_Dairy_Backup.json"); a.click();
   });
 }
 
-function renderBreedSummary() {
-  var summaryEl = getEl('breedSummaryBadges'); if (!summaryEl) return;
-  var counts = {};
-  for (var k in farmStore.cattle) {
-    var c = farmStore.cattle[k]; var key = (c.breed || 'Jersey').trim() + ' : ' + (c.generation || 'F1').trim();
-    counts[key] = (counts[key] || 0) + 1;
-  }
-  var keys = Object.keys(counts);
-  if (keys.length === 0) { summaryEl.innerHTML = '<span style="font-size:12px; color:#777;">কোনো ক্যাটল নেই।</span>'; return; }
-  var html = '';
-  keys.forEach(function(k) { html += '<span style="background:#e8f5e9; color:#1b5e20; border:1px solid #c8e6c9; padding:6px 14px; border-radius:20px; font-size:12px; font-weight:700;">' + k + ' : ' + counts[k] + '</span>'; });
-  summaryEl.innerHTML = html;
-}
-
 window.listenAllData = function() {
   if (!db) return;
   checkAndGenerateDailyOrders();
 
-  db.ref('cattle').on('value', function(snap) { farmStore.cattle = {}; snap.forEach(function(c){ farmStore.cattle[c.key] = c.val(); }); renderCattleTable(); });
-  db.ref('milk').on('value', function(snap) { farmStore.milk = {}; snap.forEach(function(c){ farmStore.milk[c.key] = c.val(); }); renderGroupedMilkTable(); renderCattleTable(); });
+  db.ref('cattle').on('value', function(snap) {
+    farmStore.cattle = {};
+    snap.forEach(function(c){ farmStore.cattle[c.key] = c.val(); });
+    renderCattleTable();
+    renderDashboardAlerts();
+  });
+  db.ref('milk').on('value', function(snap) { farmStore.milk = {}; snap.forEach(function(c){ farmStore.milk[c.key] = c.val(); }); renderGroupedMilkTable(); renderCattleTable(); renderAllCharts(); renderDashboardSummary(); renderReportsSummary(); });
   db.ref('breeding').on('value', function(snap) {
     farmStore.breeding = {}; var body = getEl('breedingTableBody'); if (body) body.innerHTML = ''; var count = 0;
     snap.forEach(function(c) {
       count++; var d = c.val(), k = c.key; farmStore.breeding[k] = d;
       var badgeClass = d.status === 'Pregnant' ? 'badge-success' : (d.status === 'Failed' ? 'badge-danger' : 'badge-warning');
-      if (body) body.innerHTML += '<tr><td><strong>' + (d.tag || '-') + '</strong></td><td>' + formatDateBR(d.aiDate) + '</td><td>' + (d.semenId || '-') + '</td><td>' + (d.company || '-') + '</td><td>₹ ' + (d.aiCost || 0) + '</td><td>' + formatDateBR(d.pdDate) + '</td><td><span class="badge ' + badgeClass + '">' + (d.status || 'Pending') + '</span></td><td>' + formatDateBR(d.expCalvingDate || d.calvingDate) + '</td><td>' + formatDateBR(d.actCalvingDate) + '</td><td><button class="action-btn btn-info" onclick="editBreeding(\'' + k + '\')">Edit</button><button class="action-btn btn-danger" onclick="deleteRecord(\'breeding\',\'' + k + '\')">Delete</button></td></tr>';
+      if (body) body.innerHTML += '<tr><td><strong>' + (d.tag || '-') + '</strong></td><td>' + formatDateBR(d.aiDate) + '</td><td><span class="badge badge-warning">' + (d.heatSigns || '-') + '</span></td><td>' + (d.semenId || '-') + '</td><td>' + (d.company || '-') + '</td><td>₹ ' + (d.aiCost || 0) + '</td><td>' + formatDateBR(d.pdDate) + '</td><td><span class="badge ' + badgeClass + '">' + (d.status || 'Pending') + '</span></td><td>' + formatDateBR(d.expCalvingDate || d.calvingDate) + '</td><td>' + formatDateBR(d.actCalvingDate) + '</td><td>' + (d.note || '-') + '</td><td><button class="action-btn btn-info" onclick="editBreeding(\'' + k + '\')">Edit</button><button class="action-btn btn-danger" onclick="deleteRecord(\'breeding\',\'' + k + '\')">Delete</button></td></tr>';
     });
     if (getEl('breedingNoData')) getEl('breedingNoData').style.display = count === 0 ? 'block' : 'none';
+    renderSemenTable();
+    renderDashboardAlerts();
+  });
+
+  db.ref('vaccine').on('value', function(snap) {
+    farmStore.vaccine = {}; snap.forEach(function(c){ farmStore.vaccine[c.key] = c.val(); });
+    renderVaccineTable();
+    renderDashboardAlerts();
+  });
+  db.ref('deworm').on('value', function(snap) {
+    farmStore.deworm = {}; snap.forEach(function(c){ farmStore.deworm[c.key] = c.val(); });
+    renderDewormTable();
+    renderDashboardAlerts();
   });
 
   db.ref('sales').on('value', function(snap) {
     farmStore.sales = {}; snap.forEach(function(c){ farmStore.sales[c.key] = c.val(); });
     renderSalesTable();
-    if (window.activeLedgerCustomerName) showCustomerLedger(encodeURIComponent(window.activeLedgerCustomerName));
+    renderAllCharts();
+    if (window.activeLedgerCustomerName && getEl('ledgerModal') && getEl('ledgerModal').style.display !== 'none') {
+       showCustomerLedger(encodeURIComponent(window.activeLedgerCustomerName));
+    }
   });
 
   db.ref('customers').on('value', function(snap) {
@@ -1576,7 +5599,6 @@ window.listenAllData = function() {
       if (d.area && !areaSet[d.area]) { areaSet[d.area] = true; areaOpt += '<option value="' + d.area + '">'; }
       if (body) body.innerHTML += '<tr><td><strong>' + (d.name || '-') + '</strong></td><td>' + (d.phone || '-') + '</td><td>' + (d.area ? '<span class="badge badge-warning">' + d.area + '</span>' : '-') + '</td><td>' + (d.addr || '-') + '</td><td>' + (d.demand || 0) + ' L</td><td>₹ ' + (d.openingDue || 0) + '</td><td><span style="font-size:11px; background:#e3f2fd; padding:2px 6px;">' + (d.type || 'Retail') + '</span> / <span style="font-size:11px; color:#1b5e20;">' + (d.shift || 'Morning') + '</span></td><td><button class="action-btn btn-info" onclick="editCustomer(\'' + k + '\')">Edit</button><button class="action-btn btn-danger" onclick="deleteRecord(\'customers\',\'' + k + '\')">Delete</button></td></tr>';
     });
-    
     if (getEl('customerNameList')) getEl('customerNameList').innerHTML = nameOpt;
     if (getEl('customerAreaList')) getEl('customerAreaList').innerHTML = areaOpt;
     renderSalesTable();
@@ -1604,37 +5626,759 @@ window.listenAllData = function() {
     snap.forEach(function(c) {
       farmStore.feedRations[c.key] = c.val();
     });
+    renderRationTable();
   });
 
   db.ref('expenses').on('value', function(snap) {
     farmStore.expenses = {}; snap.forEach(function(c){ farmStore.expenses[c.key] = c.val(); });
     renderGroupedExpenseTable();
+    renderAllCharts();
+  });
+  db.ref('labours').on('value', function(snap) {
+    farmStore.labours = {}; snap.forEach(function(c){ farmStore.labours[c.key] = c.val(); });
+    renderLabourTable();
+  });
+  db.ref('labourPayments').on('value', function(snap) {
+    farmStore.labourPayments = {}; snap.forEach(function(c){ farmStore.labourPayments[c.key] = c.val(); });
+    renderLabourTable();
   });
 
   db.ref('stock').on('value', function(snap) {
-    farmStore.stock = {}; var body = getEl('stockTableBody'); if (body) body.innerHTML = '';
-    snap.forEach(function(c) {
-      var d = c.val(), k = c.key; farmStore.stock[k] = d;
-      var isLow = Number(d.qty) <= Number(d.alertLevel);
-      if (body) body.innerHTML += '<tr><td><strong>' + (d.name || '-') + '</strong></td><td style="color:' + (isLow ? 'red' : 'inherit') + ';font-weight:bold;">' + (d.qty || 0) + '</td><td>' + (d.unit || '-') + '</td><td>' + (d.alertLevel || 0) + '</td><td><button class="action-btn btn-info" onclick="editStock(\'' + k + '\')">Edit</button><button class="action-btn btn-danger" onclick="deleteRecord(\'stock\',\'' + k + '\')">Delete</button></td></tr>';
-    });
+    farmStore.stock = {};
+    snap.forEach(function(c) { farmStore.stock[c.key] = c.val(); });
+    renderStockTable();
+    renderStockAutocomplete();
+    renderDashboardAlerts();
+  });
+  db.ref('stockLogs').on('value', function(snap) {
+    farmStore.stockLogs = {};
+    snap.forEach(function(c) { farmStore.stockLogs[c.key] = c.val(); });
+    renderStockLogTable();
   });
 
   db.ref('semen').on('value', function(snap) {
-    farmStore.semen = {}; var body = getEl('semenTableBody'); if (body) body.innerHTML = '';
-    snap.forEach(function(c) {
-      var d = c.val(), k = c.key; farmStore.semen[k] = d;
-      if (body) body.innerHTML += '<tr><td><strong>' + (d.batch || '-') + '</strong></td><td>' + (d.breed || '-') + '</td><td>' + (d.source || '-') + '</td><td><strong>' + (d.count || 0) + ' Straws</strong></td><td><button class="action-btn btn-info" onclick="editSemen(\'' + k + '\')">Edit</button><button class="action-btn btn-danger" onclick="deleteRecord(\'semen\',\'' + k + '\')">Delete</button></td></tr>';
-    });
+    farmStore.semen = {};
+    snap.forEach(function(c) { farmStore.semen[c.key] = c.val(); });
+    renderSemenTable();
+    renderDashboardAlerts();
   });
 
   db.ref('health').on('value', function(snap) {
-    farmStore.health = {}; var body = getEl('healthTableBody'); if (body) body.innerHTML = '';
-    snap.forEach(function(c) {
-      var d = c.val(), k = c.key; farmStore.health[k] = d;
-      if (body) body.innerHTML += '<tr><td>' + formatDateBR(d.date) + '</td><td><strong>' + (d.cowTag || '-') + '</strong></td><td>' + (d.type || '-') + '</td><td>' + (d.desc || '-') + '</td><td>' + formatDateBR(d.nextDate) + '</td><td><button class="action-btn btn-info" onclick="editHealth(\'' + k + '\')">Edit</button><button class="action-btn btn-danger" onclick="deleteRecord(\'health\',\'' + k + '\')">Delete</button></td></tr>';
-    });
+    farmStore.health = {};
+    snap.forEach(function(c) { farmStore.health[c.key] = c.val(); });
+    renderHealthTable();
+    renderDashboardAlerts();
   });
+};
+
+window.calcCattleAgeText = function(dobStr) {
+  if (!dobStr || dobStr === '-') return '';
+  var dob = new Date(dobStr);
+  if (isNaN(dob.getTime())) return '';
+  var now = new Date();
+  var months = (now.getFullYear() - dob.getFullYear()) * 12 + (now.getMonth() - dob.getMonth());
+  if (now.getDate() < dob.getDate()) months--;
+  if (months < 0) return '';
+  var yrs = Math.floor(months / 12);
+  var remM = months % 12;
+  if (yrs > 0 && remM > 0) return yrs + ' বছর ' + remM + ' মাস';
+  if (yrs > 0) return yrs + ' বছর';
+  return remM + ' মাস';
+};
+
+window.currentDashYear = "";
+window.currentDashMonth = "ALL";
+window.specificDashDate = "";
+
+window.initDashFilters = function() {
+  if (!window.currentDashYear) {
+    window.currentDashYear = new Date().getFullYear().toString();
+  }
+  var ys = getEl('dashFilterYear');
+  if (ys && ys.options.length === 0) {
+    var curY = new Date().getFullYear();
+    for (var i = 0; i < 5; i++) {
+      var y = (curY - i).toString();
+      ys.options.add(new Option(y, y));
+    }
+    ys.value = window.currentDashYear;
+  }
+  renderDashMonthTabs();
+};
+
+window.renderDashMonthTabs = function() {
+  var tc = getEl('dashMonthTabs');
+  if (!tc) return;
+  var months = [
+    {val:'ALL',name:'ALL DATA'},{val:'01',name:'Jan'},{val:'02',name:'Feb'},{val:'03',name:'Mar'},{val:'04',name:'Apr'},
+    {val:'05',name:'May'},{val:'06',name:'Jun'},{val:'07',name:'Jul'},{val:'08',name:'Aug'},
+    {val:'09',name:'Sep'},{val:'10',name:'Oct'},{val:'11',name:'Nov'},{val:'12',name:'Dec'}
+  ];
+  tc.innerHTML = months.map(function(m) {
+    var act = (m.val === window.currentDashMonth) && !window.specificDashDate;
+    return '<button onclick="setDashMonth(\'' + m.val + '\')" style="padding:6px 14px; border:none; border-radius:20px; font-size:12px; font-weight:bold; cursor:pointer; background:' + (act ? 'var(--primary)' : '#e0e0e0') + '; color:' + (act ? 'white' : '#333') + '; min-width:60px;">' + m.name + '</button>';
+  }).join('');
+};
+
+window.setDashMonth = function(mVal) {
+  window.currentDashMonth = mVal;
+  window.specificDashDate = "";
+  if (getEl('dashFilterDate')) getEl('dashFilterDate').value = "";
+  renderDashMonthTabs();
+  renderDashboardSummary();
+  renderAllCharts();
+};
+
+window.applyDashFilter = function() {
+  if (getEl('dashFilterYear')) window.currentDashYear = getEl('dashFilterYear').value;
+  var d = getEl('dashFilterDate') ? getEl('dashFilterDate').value : "";
+  if (d) {
+    window.specificDashDate = d;
+    var doj = new Date(d);
+    window.currentDashYear = doj.getFullYear().toString();
+    window.currentDashMonth = ('0' + (doj.getMonth() + 1)).slice(-2);
+    if (getEl('dashFilterYear')) getEl('dashFilterYear').value = window.currentDashYear;
+  } else {
+    window.specificDashDate = "";
+  }
+  renderDashMonthTabs();
+  renderDashboardSummary();
+  renderAllCharts();
+};
+
+window.clearDashDateFilter = function() {
+  if (getEl('dashFilterDate')) getEl('dashFilterDate').value = "";
+  window.specificDashDate = "";
+  window.currentDashMonth = "ALL";
+  renderDashMonthTabs();
+  renderDashboardSummary();
+  renderAllCharts();
+};
+
+window.getDashboardPeriodMetrics = function() {
+  if (!window.currentDashYear) initDashFilters();
+  var yr = window.currentDashYear, mn = window.currentDashMonth, dt = window.specificDashDate;
+  var isAll = (!dt && mn === 'ALL');
+  var todayISO = new Date().toISOString().split('T')[0];
+
+  var milkTotal = 0, milkDaysSet = {}, cowMilkMap = {};
+  for (var mk in farmStore.milk) {
+    var m = farmStore.milk[mk];
+    if (!m || !m.date) continue;
+    var lit = Number(m.liters) || 0;
+    var match = dt ? (m.date === dt) : (isAll ? (m.date === todayISO) : (m.date.substring(0,4) === yr && m.date.substring(5,7) === mn));
+    if (match) milkTotal += lit;
+
+    var periodMatch = dt ? (m.date === dt) : (isAll ? true : (m.date.substring(0,4) === yr && m.date.substring(5,7) === mn));
+    if (periodMatch) {
+      milkDaysSet[m.date] = true;
+      if (m.cow) {
+        var cUp = m.cow.trim().toUpperCase();
+        cowMilkMap[cUp] = (cowMilkMap[cUp] || 0) + lit;
+      }
+    }
+  }
+
+  var salesTotal = 0;
+  for (var sk in farmStore.sales) {
+    var sl = farmStore.sales[sk];
+    if (!sl || (sl.isPayment && Number(sl.total) === 0)) continue;
+    var sDt = (sl.date || '').trim();
+    var sMatch = dt ? (sDt === dt) : (isAll ? true : (sDt.substring(0,4) === yr && sDt.substring(5,7) === mn));
+    if (sMatch) salesTotal += Number(sl.total) || 0;
+  }
+
+  var expTotal = 0;
+  for (var ek in farmStore.expenses) {
+    var ex = farmStore.expenses[ek];
+    if (!ex) continue;
+    var eDt = (ex.date || '').trim();
+    var eMatch = dt ? (eDt === dt) : (isAll ? true : (eDt.substring(0,4) === yr && eDt.substring(5,7) === mn));
+    if (eMatch) expTotal += Number(ex.amount) || 0;
+  }
+
+  var milkingCowsCount = 0;
+  for (var ck in farmStore.cattle) {
+    var cw = farmStore.cattle[ck];
+    if (cw && String(cw.status || '').toLowerCase() === 'milking') milkingCowsCount++;
+  }
+  var activeCowsInMilk = Object.keys(cowMilkMap).length || milkingCowsCount || 1;
+  var totalPeriodMilk = 0;
+  for (var tKey in cowMilkMap) totalPeriodMilk += cowMilkMap[tKey];
+  var avgMilkPerCow = isAll ? (milkTotal / activeCowsInMilk) : (totalPeriodMilk / activeCowsInMilk);
+
+  var cutoffISO = '';
+  if (dt) {
+    cutoffISO = dt;
+  } else if (!isAll) {
+    var lastDay = new Date(parseInt(yr), parseInt(mn), 0).getDate();
+    cutoffISO = yr + '-' + mn + '-' + ('0' + lastDay).slice(-2);
+  }
+  var cutoffTime = cutoffISO ? parseDateToTime(cutoffISO) : Infinity;
+
+  var custDueMap = {};
+  var todayTime = parseDateToTime(todayISO);
+  for (var cuK in farmStore.customers) {
+    var cu = farmStore.customers[cuK];
+    if (!cu || !cu.name) continue;
+    var cKey = cu.name.trim().toLowerCase();
+    var opDue = Number(cu.openingDue) || 0;
+    if (!custDueMap[cKey]) custDueMap[cKey] = { billed: 0, paid: 0, opDue: opDue, earliestBill: Infinity };
+  }
+
+  for (var slK in farmStore.sales) {
+    var slObj = farmStore.sales[slK];
+    if (!slObj || !slObj.name) continue;
+    var scKey = slObj.name.trim().toLowerCase();
+    if (!custDueMap[scKey]) custDueMap[scKey] = { billed: 0, paid: 0, opDue: 0, earliestBill: Infinity };
+
+    var bTime = parseDateToTime(slObj.date);
+    var bTot = Number(slObj.total) || 0;
+    var bPaid = Number(slObj.paid) || 0;
+
+    if (bTot > 0 && bTime > 0 && bTime < custDueMap[scKey].earliestBill) {
+      custDueMap[scKey].earliestBill = bTime;
+    }
+
+    if (bTime <= cutoffTime) {
+      if (bTot > 0) custDueMap[scKey].billed += bTot;
+
+      var pList = getPaymentsArray(slObj.payments);
+      if (pList.length > 0) {
+        var subSum = 0;
+        pList.forEach(function(p) {
+          var pAmt = Number(p.amount) || 0;
+          subSum += pAmt;
+          var pTime = parseDateToTime(p.date || slObj.date);
+          if (pTime <= cutoffTime) custDueMap[scKey].paid += pAmt;
+        });
+        var initPaid = Math.max(0, bPaid - subSum);
+        custDueMap[scKey].paid += initPaid;
+      } else {
+        custDueMap[scKey].paid += bPaid;
+      }
+    }
+  }
+
+  var periodTotalDue = 0;
+  for (var cdKey in custDueMap) {
+    var cObj = custDueMap[cdKey];
+    var effectiveBilled = cObj.billed;
+    if (cObj.opDue > 0) {
+      var opStart = cObj.earliestBill < Infinity ? cObj.earliestBill : todayTime;
+      if (isAll || opStart <= cutoffTime) {
+        effectiveBilled += cObj.opDue;
+      }
+    }
+    periodTotalDue += Math.max(0, effectiveBilled - cObj.paid);
+  }
+
+  var topCows = Object.keys(cowMilkMap).map(function(tag) {
+    return { tag: tag, liters: cowMilkMap[tag] };
+  }).sort(function(a, b) { return b.liters - a.liters; }).slice(0, 5);
+
+  return {
+    isAll: isAll,
+    periodLabel: dt ? formatDateBR(dt) : (isAll ? 'ALL DATA' : (mn + '/' + yr)),
+    milkDisplay: milkTotal,
+    salesTotal: salesTotal,
+    expTotal: expTotal,
+    netProfit: salesTotal - expTotal,
+    periodDue: periodTotalDue,
+    avgMilkPerCow: avgMilkPerCow,
+    topCows: topCows
+  };
+};
+
+window.renderDashboardSummary = function() {
+  var m = getDashboardPeriodMetrics();
+  if (getEl('dash-milk-label')) getEl('dash-milk-label').innerText = m.isAll ? "TODAY'S MILK" : "PERIOD MILK";
+  if (getEl('dash-sales-label')) getEl('dash-sales-label').innerText = m.isAll ? "TOTAL SALES" : "PERIOD SALES";
+  if (getEl('dash-exp-label')) getEl('dash-exp-label').innerText = m.isAll ? "TOTAL EXPENSE" : "PERIOD EXPENSE";
+
+  if (getEl('dash-due-label')) getEl('dash-due-label').innerText = m.isAll ? "TOTAL DUE" : ("DUE AS OF " + m.periodLabel);
+  if (getEl('dash-total-due')) getEl('dash-total-due').innerText = '₹ ' + m.periodDue.toLocaleString();
+  if (getEl('dash-milk-today')) getEl('dash-milk-today').innerText = m.milkDisplay.toFixed(1) + ' L';
+  if (getEl('dash-total-sales')) getEl('dash-total-sales').innerText = '₹ ' + m.salesTotal.toLocaleString();
+  if (getEl('dash-total-exp')) getEl('dash-total-exp').innerText = '₹ ' + m.expTotal.toLocaleString();
+  if (getEl('dash-net-profit')) {
+    getEl('dash-net-profit').innerText = '₹ ' + m.netProfit.toLocaleString();
+    getEl('dash-net-profit').style.color = m.netProfit >= 0 ? '#1b5e20' : '#c62828';
+  }
+  if (getEl('dash-avg-milk')) getEl('dash-avg-milk').innerText = m.avgMilkPerCow.toFixed(1) + ' L';
+
+  var topEl = getEl('dashTopCowsList');
+  if (topEl) {
+    if (m.topCows.length === 0) {
+      topEl.innerHTML = '<div style="grid-column:1/-1; color:#777; font-size:13px;">এই সময়ে কোনো দুধ উৎপাদন রেকর্ড নেই।</div>';
+    } else {
+      topEl.innerHTML = m.topCows.map(function(c, i) {
+        return '<div style="background:#f4fbf5; border:1px solid #c8e6c9; border-left:4px solid #2e7d32; border-radius:8px; padding:10px 12px; display:flex; justify-content:space-between; align-items:center;">' +
+          '<div><span style="font-size:11px; color:#666;">#' + (i+1) + '</span> <strong style="color:#1b5e20;">🐄 ' + c.tag + '</strong></div>' +
+          '<strong style="color:#0288d1; font-size:14px;">' + c.liters.toFixed(1) + ' L</strong>' +
+        '</div>';
+      }).join('');
+    }
+  }
+};
+
+window.exportDashboard = function(format) {
+  var m = getDashboardPeriodMetrics();
+  var cowCnt = getEl('dash-cow-count') ? getEl('dash-cow-count').innerText : '0';
+  var totDue = getEl('dash-total-due') ? getEl('dash-total-due').innerText : '₹ 0';
+  var pendOrd = getEl('dash-pending-orders') ? getEl('dash-pending-orders').innerText : '0';
+
+  var exportData = [
+    ["Metric", "Value (" + m.periodLabel + ")"],
+    ["Total Cattle", cowCnt],
+    ["Milk Produced (" + (m.isAll ? "Today" : "Period") + ")", m.milkDisplay.toFixed(1) + " L"],
+    ["Avg Milk / Milking Cow", m.avgMilkPerCow.toFixed(1) + " L"],
+    ["Total Sales", "Rs " + m.salesTotal],
+    ["Total Expense", "Rs " + m.expTotal],
+    ["Net Profit / Loss", "Rs " + m.netProfit],
+    ["Total Customer Due", totDue.replace('₹', 'Rs')],
+    ["Pending Orders", pendOrd]
+  ];
+  var fileName = "Dashboard_Summary_" + m.periodLabel.replace(/[\/\s]/g, '_');
+  if (format === 'csv') {
+    var csv = "data:text/csv;charset=utf-8,\uFEFF" + exportData.map(function(r){ return r.join(","); }).join("\r\n");
+    var a = document.createElement("a"); a.href = encodeURI(csv); a.download = fileName + ".csv"; document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  } else if (format === 'txt') {
+    var txt = "data:text/plain;charset=utf-8,\uFEFF" + exportData.map(function(r){ return r.join(" : "); }).join("\r\n");
+    var a = document.createElement("a"); a.href = encodeURI(txt); a.download = fileName + ".txt"; document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  } else if (format === 'doc') {
+    var h = "<html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'><head><meta charset='utf-8'><title>Dashboard Summary</title></head><body><h2 style='color:#1b5e20;'>Nanda Dairy & Agro - Dashboard Summary (" + m.periodLabel + ")</h2><table border='1' style='border-collapse:collapse; width:100%; font-family:sans-serif; font-size:13px;'>";
+    exportData.forEach(function(r, idx) {
+      h += "<tr>" + r.map(function(cell){ return idx === 0 ? "<th style='padding:8px; background:#e8f5e9;'>"+cell+"</th>" : "<td style='padding:8px;'>"+cell+"</td>"; }).join("") + "</tr>";
+    });
+    h += "</table></body></html>";
+    var blob = new Blob(['\ufeff', h], { type: 'application/msword' });
+    var a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = fileName + ".doc"; document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  }
+};
+
+window.openBulkMilkModal = function() {
+  var listEl = getEl('bulkMilkList');
+  if (!listEl) return;
+  if (getEl('bulkMilkDate')) getEl('bulkMilkDate').value = new Date().toISOString().split('T')[0];
+
+  var cows = [];
+  for (var k in farmStore.cattle) {
+    if (farmStore.cattle[k] && farmStore.cattle[k].tag) cows.push(farmStore.cattle[k]);
+  }
+  cows.sort(function(a, b) {
+    var aM = String(a.status || '').toLowerCase() === 'milking' ? 0 : 1;
+    var bM = String(b.status || '').toLowerCase() === 'milking' ? 0 : 1;
+    if (aM !== bM) return aM - bM;
+    return (a.tag || '').localeCompare(b.tag || '', undefined, { numeric: true, sensitivity: 'base' });
+  });
+
+  if (cows.length === 0) {
+    listEl.innerHTML = '<p style="text-align:center; color:#777;">কোনো গরু রেজিস্টার করা নেই।</p>';
+  } else {
+    listEl.innerHTML = cows.map(function(c) {
+      var isMilking = String(c.status || '').toLowerCase() === 'milking';
+      return '<div style="display:flex; justify-content:space-between; align-items:center; padding:6px 4px; border-bottom:1px solid #e8f5e9;">' +
+        '<div><strong>🐄 ' + c.tag + '</strong> <small style="color:#666;">(' + (c.status || '-') + ')</small></div>' +
+        '<input type="number" step="0.1" class="bulk-milk-input" data-tag="' + c.tag + '" placeholder="' + (isMilking ? (c.milkDay || '0.0') : '0.0') + '" style="width:110px; padding:5px 8px; text-align:right;">' +
+      '</div>';
+    }).join('');
+  }
+  getEl('bulkMilkModal').style.display = 'flex';
+};
+
+window.closeBulkMilkModal = function() {
+  if (getEl('bulkMilkModal')) getEl('bulkMilkModal').style.display = 'none';
+};
+
+window.saveBulkMilk = function() {
+  var dt = getEl('bulkMilkDate') ? getEl('bulkMilkDate').value : '';
+  var sess = getEl('bulkMilkSession') ? getEl('bulkMilkSession').value : 'Morning';
+  if (!dt) return showAppToast('তারিখ দিন!');
+  var savedCount = 0;
+  document.querySelectorAll('.bulk-milk-input').forEach(function(inp) {
+    var lit = parseFloat(inp.value) || 0;
+    var tag = inp.getAttribute('data-tag');
+    if (lit > 0 && tag && db) {
+      db.ref('milk').push({ date: dt, cow: tag, session: sess, liters: lit });
+      savedCount++;
+    }
+  });
+  if (savedCount === 0) return showAppToast('অন্তত একটি গরুর দুধের পরিমাণ লিখুন!');
+  closeBulkMilkModal();
+  showAppToast(savedCount + ' টি গরুর দুধের এন্ট্রি সেভ হয়েছে!');
+};
+
+window.currentRepYear = "";
+window.currentRepMonth = "ALL";
+window.specificRepDate = "";
+window._repExpCatChartInst = null;
+window._repSalesItemChartInst = null;
+
+window.initReportFilters = function() {
+  if (!window.currentRepYear) {
+    window.currentRepYear = new Date().getFullYear().toString();
+  }
+  var ys = getEl('repFilterYear');
+  if (ys && ys.options.length === 0) {
+    var curY = new Date().getFullYear();
+    for (var i = 0; i < 5; i++) {
+      var y = (curY - i).toString();
+      ys.options.add(new Option(y, y));
+    }
+    ys.value = window.currentRepYear;
+  }
+  renderReportMonthTabs();
+};
+
+window.renderReportMonthTabs = function() {
+  var tc = getEl('repMonthTabs');
+  if (!tc) return;
+  var months = [
+    {val:'ALL',name:'ALL DATA'},{val:'01',name:'Jan'},{val:'02',name:'Feb'},{val:'03',name:'Mar'},{val:'04',name:'Apr'},
+    {val:'05',name:'May'},{val:'06',name:'Jun'},{val:'07',name:'Jul'},{val:'08',name:'Aug'},
+    {val:'09',name:'Sep'},{val:'10',name:'Oct'},{val:'11',name:'Nov'},{val:'12',name:'Dec'}
+  ];
+  tc.innerHTML = months.map(function(m) {
+    var act = (m.val === window.currentRepMonth) && !window.specificRepDate;
+    return '<button onclick="setReportMonth(\'' + m.val + '\')" style="padding:6px 14px; border:none; border-radius:20px; font-size:12px; font-weight:bold; cursor:pointer; background:' + (act ? 'var(--primary)' : '#e0e0e0') + '; color:' + (act ? 'white' : '#333') + '; min-width:60px;">' + m.name + '</button>';
+  }).join('');
+};
+
+window.setReportMonth = function(mVal) {
+  window.currentRepMonth = mVal;
+  window.specificRepDate = "";
+  if (getEl('repFilterDate')) getEl('repFilterDate').value = "";
+  renderReportMonthTabs();
+  renderReportsSummary();
+};
+
+window.applyReportFilter = function() {
+  if (getEl('repFilterYear')) window.currentRepYear = getEl('repFilterYear').value;
+  var d = getEl('repFilterDate') ? getEl('repFilterDate').value : "";
+  if (d) {
+    window.specificRepDate = d;
+    var doj = new Date(d);
+    window.currentRepYear = doj.getFullYear().toString();
+    window.currentRepMonth = ('0' + (doj.getMonth() + 1)).slice(-2);
+    if (getEl('repFilterYear')) getEl('repFilterYear').value = window.currentRepYear;
+  } else {
+    window.specificRepDate = "";
+  }
+  renderReportMonthTabs();
+  renderReportsSummary();
+};
+
+window.clearReportDateFilter = function() {
+  if (getEl('repFilterDate')) getEl('repFilterDate').value = "";
+  window.specificRepDate = "";
+  window.currentRepMonth = "ALL";
+  renderReportMonthTabs();
+  renderReportsSummary();
+};
+
+window.getReportPeriodData = function() {
+  if (!window.currentRepYear) initReportFilters();
+  var yr = window.currentRepYear, mn = window.currentRepMonth, dt = window.specificRepDate;
+  var isAll = (!dt && mn === 'ALL');
+
+  function matchDate(dStr) {
+    if (!dStr) return isAll;
+    if (dt) return dStr === dt;
+    if (isAll) return true;
+    return dStr.substring(0, 4) === yr && dStr.substring(5, 7) === mn;
+  }
+
+  var milkL = 0, cowSet = {};
+  for (var mk in farmStore.milk) {
+    var m = farmStore.milk[mk];
+    if (m && matchDate(m.date)) {
+      milkL += Number(m.liters) || 0;
+      if (m.cow) cowSet[m.cow.trim().toUpperCase()] = true;
+    }
+  }
+  var salesTot = 0, salesByItem = {};
+  for (var sk in farmStore.sales) {
+    var sl = farmStore.sales[sk];
+    if (sl && !(sl.isPayment && Number(sl.total) === 0) && matchDate(sl.date)) {
+      var t = Number(sl.total) || 0;
+      salesTot += t;
+      var it = sl.item || 'Other';
+      salesByItem[it] = (salesByItem[it] || 0) + t;
+    }
+  }
+  var expTot = 0, expByCat = {};
+  for (var ek in farmStore.expenses) {
+    var ex = farmStore.expenses[ek];
+    if (ex && matchDate(ex.date)) {
+      var a = Number(ex.amount) || 0;
+      expTot += a;
+      var cat = ex.category || 'Other';
+      expByCat[cat] = (expByCat[cat] || 0) + a;
+    }
+  }
+
+  var cowRoiMap = {};
+  for (var ck in farmStore.cattle) {
+    var cw = farmStore.cattle[ck];
+    if (cw && cw.tag) {
+      cowRoiMap[cw.tag.trim().toUpperCase()] = { tag: cw.tag.trim(), breed: cw.breed || '-', milkL: 0, feedCost: 0, medCost: 0 };
+    }
+  }
+  for (var mk2 in farmStore.milk) {
+    var m2 = farmStore.milk[mk2];
+    if (m2 && m2.cow && matchDate(m2.date)) {
+      var tu = m2.cow.trim().toUpperCase();
+      if (!cowRoiMap[tu]) cowRoiMap[tu] = { tag: m2.cow.trim(), breed: '-', milkL: 0, feedCost: 0, medCost: 0 };
+      cowRoiMap[tu].milkL += Number(m2.liters) || 0;
+    }
+  }
+  for (var fk in farmStore.feedRations) {
+    var fr = farmStore.feedRations[fk];
+    if (fr && fr.cowTag && matchDate(fr.date)) {
+      var tu2 = fr.cowTag.trim().toUpperCase();
+      if (!cowRoiMap[tu2]) cowRoiMap[tu2] = { tag: fr.cowTag.trim(), breed: '-', milkL: 0, feedCost: 0, medCost: 0 };
+      cowRoiMap[tu2].feedCost += Number(fr.totalCost) || 0;
+    }
+  }
+  for (var vk in farmStore.vaccine) {
+    var vc = farmStore.vaccine[vk];
+    if (vc && vc.tag && matchDate(vc.date)) {
+      var tu3 = vc.tag.trim().toUpperCase();
+      if (cowRoiMap[tu3]) cowRoiMap[tu3].medCost += Number(vc.cost) || 0;
+    }
+  }
+  for (var dk in farmStore.deworm) {
+    var dw = farmStore.deworm[dk];
+    if (dw && dw.tag && matchDate(dw.date)) {
+      var tu4 = dw.tag.trim().toUpperCase();
+      if (cowRoiMap[tu4]) cowRoiMap[tu4].medCost += Number(dw.cost) || 0;
+    }
+  }
+  for (var bk in farmStore.breeding) {
+    var br = farmStore.breeding[bk];
+    if (br && br.tag && matchDate(br.aiDate)) {
+      var tu5 = br.tag.trim().toUpperCase();
+      if (cowRoiMap[tu5]) cowRoiMap[tu5].medCost += Number(br.aiCost) || 0;
+    }
+  }
+  for (var hk in farmStore.health) {
+    var hl = farmStore.health[hk];
+    if (hl && hl.cowTag && matchDate(hl.date)) {
+      var tu6 = hl.cowTag.trim().toUpperCase();
+      if (cowRoiMap[tu6]) cowRoiMap[tu6].medCost += Number(hl.cost) || 0;
+    }
+  }
+
+  var cowRoiList = Object.values(cowRoiMap).map(function(c) {
+    var inc = c.milkL * 50;
+    return { tag: c.tag, breed: c.breed, milkL: c.milkL, income: inc, feedCost: c.feedCost, medCost: c.medCost, net: inc - (c.feedCost + c.medCost) };
+  }).sort(function(a, b) { return b.net - a.net; });
+
+  var refY = parseInt(yr), refM = (mn === 'ALL') ? (new Date().getMonth() + 1) : parseInt(mn);
+  var curPrefix = refY + '-' + ('0' + refM).slice(-2);
+  var prevM = refM - 1, prevY = refY;
+  if (prevM === 0) { prevM = 12; prevY = refY - 1; }
+  var prevPrefix = prevY + '-' + ('0' + prevM).slice(-2);
+
+  function getMonthTotals(pfx) {
+    var ml = 0, sl = 0, ex = 0;
+    for (var k1 in farmStore.milk) if (farmStore.milk[k1] && (farmStore.milk[k1].date||'').startsWith(pfx)) ml += Number(farmStore.milk[k1].liters)||0;
+    for (var k2 in farmStore.sales) if (farmStore.sales[k2] && !(farmStore.sales[k2].isPayment && Number(farmStore.sales[k2].total)===0) && (farmStore.sales[k2].date||'').startsWith(pfx)) sl += Number(farmStore.sales[k2].total)||0;
+    for (var k3 in farmStore.expenses) if (farmStore.expenses[k3] && (farmStore.expenses[k3].date||'').startsWith(pfx)) ex += Number(farmStore.expenses[k3].amount)||0;
+    return { milk: ml, sales: sl, profit: sl - ex };
+  }
+  var curMo = getMonthTotals(curPrefix), prevMo = getMonthTotals(prevPrefix);
+
+  var custBalances = getCustomerLiveBalances();
+  var custDueTot = 0;
+  for (var cbk in custBalances) custDueTot += custBalances[cbk].currentDue;
+  var vendDueTot = 0;
+  for (var ek2 in farmStore.expenses) {
+    if (farmStore.expenses[ek2]) vendDueTot += getExpensePaidAndDue(farmStore.expenses[ek2]).due;
+  }
+  var stkVal = 0;
+  for (var stkK in farmStore.stock) {
+    var stO = farmStore.stock[stkK];
+    if (stO) stkVal += (Number(stO.qty)||0) * (Number(stO.unitCost)||0);
+  }
+  var availSemenTot = 0, availConv = 0, availSexed = 0;
+  for (var semK in farmStore.semen) {
+    var smO = farmStore.semen[semK];
+    if (smO) {
+      var c = Number(smO.count) || 0;
+      stkVal += c * (Number(smO.cost) || 0);
+      availSemenTot += c;
+      if ((smO.type || 'Conventional') === 'Sexed Sorted') availSexed += c;
+      else availConv += c;
+    }
+  }
+
+  var cowCnt = Object.keys(cowSet).length || 1;
+  return {
+    label: dt ? formatDateBR(dt) : (isAll ? 'ALL DATA' : (mn + '/' + yr)),
+    milkL: milkL,
+    avgPerCow: milkL / cowCnt,
+    salesTot: salesTot,
+    expTot: expTot,
+    netProfit: salesTot - expTot,
+    salesByItem: salesByItem,
+    expByCat: expByCat,
+    cowRoiList: cowRoiList,
+    curMo: curMo,
+    prevMo: prevMo,
+    custDueTot: custDueTot,
+    vendDueTot: vendDueTot,
+    stkVal: stkVal,
+    availSemenTot: availSemenTot,
+    availConv: availConv,
+    availSexed: availSexed
+  };
+};
+
+function formatMomBadge(curVal, prevVal) {
+  if (!prevVal) return '<span style="color:#777;">গত মাস: ০</span>';
+  var diffPct = Math.round(((curVal - prevVal) / Math.abs(prevVal)) * 100);
+  if (diffPct >= 0) return '<span style="color:#1b5e20; font-weight:600;">▲ ' + diffPct + '% (গত মাসের তুলনায়)</span>';
+  return '<span style="color:#c62828; font-weight:600;">▼ ' + Math.abs(diffPct) + '% (গত মাসের তুলনায়)</span>';
+}
+
+window.renderReportsSummary = function() {
+  var r = getReportPeriodData();
+  if (getEl('rep-milk')) getEl('rep-milk').innerText = r.milkL.toFixed(1) + ' L';
+  if (getEl('rep-avg-cow')) getEl('rep-avg-cow').innerText = 'গড়: ' + r.avgPerCow.toFixed(1) + ' L/গরু';
+  if (getEl('rep-sales')) getEl('rep-sales').innerText = '₹ ' + r.salesTot.toLocaleString();
+  if (getEl('rep-expenses')) getEl('rep-expenses').innerText = '₹ ' + r.expTot.toLocaleString();
+  var pEl = getEl('rep-profit');
+  if (pEl) {
+    pEl.innerText = '₹ ' + r.netProfit.toLocaleString();
+    pEl.style.color = r.netProfit >= 0 ? 'green' : 'red';
+  }
+
+  if (getEl('rep-mom-milk')) getEl('rep-mom-milk').innerHTML = formatMomBadge(r.curMo.milk, r.prevMo.milk);
+  if (getEl('rep-mom-sales')) getEl('rep-mom-sales').innerHTML = formatMomBadge(r.curMo.sales, r.prevMo.sales);
+  if (getEl('rep-mom-profit')) getEl('rep-mom-profit').innerHTML = formatMomBadge(r.curMo.profit, r.prevMo.profit);
+
+  var bsEl = getEl('repBalanceSheetGrid');
+  if (bsEl) {
+    bsEl.innerHTML =
+      '<div style="background:#e8f5e9; padding:10px; border-radius:8px;"><small style="color:#555;">গ্রাহকের কাছে পাওনা (Receivable)</small><div style="font-size:16px; font-weight:bold; color:#1b5e20;">₹ ' + Math.round(r.custDueTot).toLocaleString() + '</div></div>' +
+      '<div style="background:#ffebee; padding:10px; border-radius:8px;"><small style="color:#555;">দোকানদারের বাকি (Payable)</small><div style="font-size:16px; font-weight:bold; color:#c62828;">₹ ' + Math.round(r.vendDueTot).toLocaleString() + '</div></div>' +
+      '<div style="background:#e3f2fd; padding:10px; border-radius:8px;"><small style="color:#555;">মোট স্টক ও সিমেন সম্পদ</small><div style="font-size:16px; font-weight:bold; color:#0288d1;">₹ ' + Math.round(r.stkVal).toLocaleString() + '</div></div>' +
+      '<div style="background:#f3e5f5; padding:10px; border-radius:8px;"><small style="color:#555;">মোট ব্যবহারযোগ্য সিমেন স্ট্র</small><div style="font-size:16px; font-weight:bold; color:#7b1fa2;">' + r.availSemenTot + ' টি</div><small style="color:#555;">Conv: ' + r.availConv + ' | Sexed: ' + r.availSexed + '</small></div>';
+  }
+
+  var roiBody = getEl('reportCowRoiTableBody');
+  if (roiBody) {
+    if (r.cowRoiList.length === 0) {
+      roiBody.innerHTML = '<tr><td colspan="7" style="text-align:center; color:#888;">কোনো গরুর ডাটা নেই।</td></tr>';
+    } else {
+      roiBody.innerHTML = r.cowRoiList.map(function(c, i) {
+        return '<tr>' +
+          '<td>' + (i + 1) + '</td>' +
+          '<td><strong>🐄 ' + c.tag + '</strong> <small style="color:#666;">(' + c.breed + ')</small></td>' +
+          '<td><strong>' + c.milkL.toFixed(1) + ' L</strong></td>' +
+          '<td style="color:#0288d1;">₹ ' + Math.round(c.income).toLocaleString() + '</td>' +
+          '<td style="color:#e65100;">₹ ' + Math.round(c.feedCost).toLocaleString() + '</td>' +
+          '<td style="color:#c2185b;">₹ ' + Math.round(c.medCost).toLocaleString() + '</td>' +
+          '<td style="font-weight:bold; color:' + (c.net >= 0 ? '#1b5e20' : '#c62828') + ';">₹ ' + Math.round(c.net).toLocaleString() + '</td>' +
+        '</tr>';
+      }).join('');
+    }
+  }
+
+  if (typeof Chart !== 'undefined') {
+    var expCanvas = getEl('reportExpenseCatChart');
+    if (expCanvas) {
+      if (window._repExpCatChartInst) window._repExpCatChartInst.destroy();
+      var eKeys = Object.keys(r.expByCat);
+      window._repExpCatChartInst = new Chart(expCanvas.getContext('2d'), {
+        type: 'doughnut',
+        data: {
+          labels: eKeys.length ? eKeys : ['No Data'],
+          datasets: [{ data: eKeys.length ? eKeys.map(function(k){ return r.expByCat[k]; }) : [1], backgroundColor: ['#ef5350', '#ffa726', '#ab47bc', '#29b6f6', '#78909c'] }]
+        },
+        options: { responsive: true, maintainAspectRatio: false }
+      });
+    }
+    var salCanvas = getEl('reportSalesItemChart');
+    if (salCanvas) {
+      if (window._repSalesItemChartInst) window._repSalesItemChartInst.destroy();
+      var sKeys = Object.keys(r.salesByItem);
+      window._repSalesItemChartInst = new Chart(salCanvas.getContext('2d'), {
+        type: 'doughnut',
+        data: {
+          labels: sKeys.length ? sKeys : ['No Data'],
+          datasets: [{ data: sKeys.length ? sKeys.map(function(k){ return r.salesByItem[k]; }) : [1], backgroundColor: ['#2e7d32', '#66bb6a', '#ffb300', '#0288d1', '#8d6e63'] }]
+        },
+        options: { responsive: true, maintainAspectRatio: false }
+      });
+    }
+  }
+};
+
+window.showProfitLossStatement = function() {
+  var r = getReportPeriodData();
+  document.body.setAttribute('data-print', 'invoice');
+  getEl('invMainDocTitle').innerText = 'লাভ-ক্ষতি ও পারফরম্যান্স রিপোর্ট / P&L STATEMENT (' + r.label + ')';
+
+  var sRows = Object.keys(r.salesByItem).map(function(k) {
+    return '<tr><td>' + k + '</td><td style="text-align:right;">₹ ' + r.salesByItem[k].toLocaleString() + '</td></tr>';
+  }).join('') || '<tr><td colspan="2">কোনো বিক্রি নেই</td></tr>';
+
+  var eRows = Object.keys(r.expByCat).map(function(k) {
+    return '<tr><td>' + k + '</td><td style="text-align:right;">₹ ' + r.expByCat[k].toLocaleString() + '</td></tr>';
+  }).join('') || '<tr><td colspan="2">কোনো খরচ নেই</td></tr>';
+
+  getEl('invoiceDetails').innerHTML =
+    '<div style="background:#f1f8e9; padding:10px; border-radius:8px; margin-bottom:12px;">' +
+      '<strong>মোট দুধ উৎপাদন:</strong> ' + r.milkL.toFixed(1) + ' লিটার (গড়: ' + r.avgPerCow.toFixed(1) + ' L/গরু) | ' +
+      '<strong>গ্রাহক পাওনা:</strong> ₹ ' + Math.round(r.custDueTot).toLocaleString() + ' | <strong>দোকান বাকি:</strong> ₹ ' + Math.round(r.vendDueTot).toLocaleString() +
+    '</div>' +
+    '<div style="display:grid; grid-template-columns:1fr 1fr; gap:14px;">' +
+      '<div><strong>বিক্রি / আয় (Sales):</strong><table class="invoice-table" style="width:100%; min-width:unset; margin-top:6px;"><tbody>' + sRows + '</tbody><tfoot><tr style="background:#e8f5e9;"><th>মোট আয়</th><th style="text-align:right;">₹ ' + r.salesTot.toLocaleString() + '</th></tr></tfoot></table></div>' +
+      '<div><strong>খরচ (Expenses):</strong><table class="invoice-table" style="width:100%; min-width:unset; margin-top:6px;"><tbody>' + eRows + '</tbody><tfoot><tr style="background:#ffebee;"><th>মোট খরচ</th><th style="text-align:right;">₹ ' + r.expTot.toLocaleString() + '</th></tr></tfoot></table></div>' +
+    '</div>' +
+    '<div style="text-align:right; margin-top:16px; font-size:17px; font-weight:bold; color:' + (r.netProfit >= 0 ? '#1b5e20' : '#c62828') + ';">নিট লাভ / ক্ষতি (Net Profit): ₹ ' + r.netProfit.toLocaleString() + '</div>';
+
+  getEl('invoiceModal').style.display = 'flex';
+};
+
+window.exportReports = function(format) {
+  var r = getReportPeriodData();
+  var exportData = [
+    ["Farm P&L Report", r.label],
+    ["Total Milk Produced", r.milkL.toFixed(1) + " L"],
+    ["Avg Milk per Cow", r.avgPerCow.toFixed(1) + " L"],
+    ["Total Sales Revenue", "Rs " + r.salesTot],
+    ["Total Expenses", "Rs " + r.expTot],
+    ["Net Profit / Loss", "Rs " + r.netProfit],
+    ["Customer Receivable Due", "Rs " + Math.round(r.custDueTot)],
+    ["Vendor Payable Due", "Rs " + Math.round(r.vendDueTot)],
+    ["Stock & Semen Valuation", "Rs " + Math.round(r.stkVal)],
+    ["Available Semen Straws", r.availSemenTot + " (Conv: " + r.availConv + " / Sexed: " + r.availSexed + ")"],
+    ["---", "---"],
+    ["Cow Tag", "Milk (L) / Est Income (Rs) / Feed Cost (Rs) / Med Cost (Rs) / Net Profit (Rs)"]
+  ];
+  r.cowRoiList.forEach(function(c) {
+    exportData.push([c.tag + " (" + c.breed + ")", c.milkL.toFixed(1) + " L / Rs " + Math.round(c.income) + " / Rs " + Math.round(c.feedCost) + " / Rs " + Math.round(c.medCost) + " / Rs " + Math.round(c.net)]);
+  });
+  var fileName = "Farm_Analytics_Report_" + r.label.replace(/[\/\s]/g, '_');
+  if (format === 'csv') {
+    var csv = "data:text/csv;charset=utf-8,\uFEFF" + exportData.map(function(row){ return row.join(","); }).join("\r\n");
+    var a = document.createElement("a"); a.href = encodeURI(csv); a.download = fileName + ".csv"; document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  } else if (format === 'txt') {
+    var txt = "data:text/plain;charset=utf-8,\uFEFF" + exportData.map(function(row){ return row.join(" : "); }).join("\r\n");
+    var a = document.createElement("a"); a.href = encodeURI(txt); a.download = fileName + ".txt"; document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  } else if (format === 'doc') {
+    var h = "<html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'><head><meta charset='utf-8'><title>Farm Report</title></head><body><h2 style='color:#1b5e20;'>Nanda Dairy & Agro - Analytics & P&L Report (" + r.label + ")</h2><table border='1' style='border-collapse:collapse; width:100%; font-family:sans-serif; font-size:12px;'>";
+    exportData.forEach(function(row, idx) {
+      h += "<tr>" + row.map(function(cell){ return idx === 0 ? "<th style='padding:6px; background:#e8f5e9;'>"+cell+"</th>" : "<td style='padding:6px;'>"+cell+"</td>"; }).join("") + "</tr>";
+    });
+    h += "</table></body></html>";
+    var blob = new Blob(['\ufeff', h], { type: 'application/msword' });
+    var a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = fileName + ".doc"; document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  }
 };
 
 function calcNet() {
@@ -1646,4 +6390,6 @@ function calcNet() {
     pEl.innerText = '₹ ' + net.toLocaleString();
     pEl.style.color = net >= 0 ? 'green' : 'red';
   }
+  if (typeof renderDashboardSummary === 'function') renderDashboardSummary();
+  if (typeof renderReportsSummary === 'function') renderReportsSummary();
 }
