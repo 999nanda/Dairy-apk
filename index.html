@@ -337,13 +337,60 @@
     .invoice-content { position: relative; z-index: 1; }
 
     @media print {
+      @page { size: A4 portrait; margin: 10mm 12mm; }
+      html, body { height: auto !important; min-height: 0 !important; overflow: visible !important; background: white !important; }
       body * { visibility: hidden; }
       .no-print { display: none !important; }
       body[data-print="invoice"] #invoiceModal,
+      body[data-print="invoice"] #invoiceModal .invoice-card,
       body[data-print="invoice"] #invoicePrintArea,
       body[data-print="invoice"] #invoicePrintArea * { visibility: visible; }
-      body[data-print="invoice"] #invoiceModal { position: absolute; left: 0; top: 0; width: 100%; background: white; padding: 0; }
-      body[data-print="invoice"] .invoice-card { box-shadow: none; max-height: none; width: 100%; max-width: 100%; padding: 10px; }
+      body[data-print="invoice"] #invoiceModal {
+        position: static !important;
+        inset: auto !important;
+        display: block !important;
+        width: 100% !important;
+        height: auto !important;
+        max-height: none !important;
+        overflow: visible !important;
+        background: white !important;
+        padding: 0 !important;
+        margin: 0 !important;
+      }
+      body[data-print="invoice"] .invoice-card {
+        position: static !important;
+        box-shadow: none !important;
+        border: 1px solid #cfd8dc !important;
+        border-radius: 8px !important;
+        height: auto !important;
+        max-height: none !important;
+        overflow: visible !important;
+        width: 100% !important;
+        max-width: 100% !important;
+        padding: 16px 20px 18px 20px !important;
+        margin: 0 0 24px 0 !important;
+        page-break-inside: avoid !important;
+        break-inside: avoid !important;
+      }
+      body[data-print="invoice"] #invoicePrintArea {
+        height: auto !important;
+        max-height: none !important;
+        overflow: visible !important;
+      }
+      body[data-print="invoice"] .invoice-watermark {
+        width: 150px !important;
+        height: 150px !important;
+        opacity: 0.05 !important;
+      }
+      body[data-print="invoice"] table.invoice-table th,
+      body[data-print="invoice"] table.invoice-table td {
+        padding: 6px 10px !important;
+        font-size: 12.5px !important;
+      }
+      body[data-print="invoice"] .invoice-content > div:last-child {
+        margin-top: 22px !important;
+        padding-top: 10px !important;
+      }
 
       body[data-print="ledger"] #ledgerModal,
       body[data-print="ledger"] #ledgerPrintArea,
